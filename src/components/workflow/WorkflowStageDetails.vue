@@ -1,9 +1,6 @@
 <template>
     <div>
         <h3>Selected Stage Detail</h3>
-        <p>Stage Name: {{ stageName }}</p>
-        <p>Stage Class: {{ stageClass }}</p>
-  
         <div>
             <h3>Fields:</h3>
             <p v-for="(field, index) in fields" :key="index">{{ field }}</p>

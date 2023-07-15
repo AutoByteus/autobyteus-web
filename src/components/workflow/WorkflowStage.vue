@@ -7,7 +7,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, inject, Ref, computed } from 'vue';
+import { inject, Ref, computed } from 'vue';
 const props = defineProps<{ stageName: string }>();
 const selectedStage = inject<Ref<string | null>>('selectedStage')!;
 

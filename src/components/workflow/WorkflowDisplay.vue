@@ -17,11 +17,11 @@
 
   <script setup lang="ts">
   import { useQuery } from "@vue/apollo-composable";
-  import { GetWorkflowConfig } from "../graphql/queries";
-  import type { GetWorkflowConfigQuery as GetWorkflowConfigQueryType } from "../generated/graphql";
+  import { GetWorkflowConfig } from "../../graphql/queries";
+  import type { GetWorkflowConfigQuery as GetWorkflowConfigQueryType } from "../../generated/graphql";
   import WorkflowStage from './WorkflowStage.vue';
   import WorkflowStageDetails from './WorkflowStageDetails.vue';
-  import { computed, provide, ref } from 'vue';
+  import { computed, provide, ref, watchEffect } from 'vue';
   
   const { result, loading, error } = useQuery<GetWorkflowConfigQueryType>(GetWorkflowConfig);
   const stages = computed(() => {
@@ -37,9 +37,14 @@
     }
   });
 
-const selectedStage = ref(null);
+const selectedStage = ref<string | null>(null); // Specify the type of selectedStage as Ref<string | null>
 provide('selectedStage', selectedStage);
 
+watchEffect(() => {
+    if (!selectedStage.value && stages.value) {
+      selectedStage.value = Object.keys(stages.value)[0]; // Sets selectedStage to the first stage
+    }
+});
 </script>
 
 <style scoped>
@@ -61,4 +66,10 @@ provide('selectedStage', selectedStage);
   padding: 1rem; /* Optional: Add padding so content isn't pressed against the border */
 }
 </style>
+
+
+
+
+
+
 
