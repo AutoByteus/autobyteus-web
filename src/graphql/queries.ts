@@ -5,3 +5,9 @@ export const GetWorkflowConfig = gql`
     workflowConfig
   }
 `;
+
+export const AddWorkspace = gql`
+  mutation AddWorkspace($workspaceRootPath: String!) {
+    addWorkspace(workspaceRootPath: $workspaceRootPath)
+  }
+`;

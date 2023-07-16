@@ -15,7 +15,13 @@ export type Scalars = {
 
 export type Mutation = {
   __typename?: 'Mutation';
+  addWorkspace: Scalars['JSON'];
   startWorkflow: Scalars['Boolean'];
+};
+
+
+export type MutationAddWorkspaceArgs = {
+  workspaceRootPath: Scalars['String'];
 };
 
 export type Query = {
@@ -27,3 +33,10 @@ export type GetWorkflowConfigQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type GetWorkflowConfigQuery = { __typename?: 'Query', workflowConfig: any };
+
+export type AddWorkspaceMutationVariables = Exact<{
+  workspaceRootPath: Scalars['String'];
+}>;
+
+
+export type AddWorkspaceMutation = { __typename?: 'Mutation', addWorkspace: any };

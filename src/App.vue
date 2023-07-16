@@ -7,10 +7,10 @@
 
       <TabList v-model="selectedTab" class="app-panel">
         <Tab name="ContentViewer">
-          Content Viewer
+          File
         </Tab>
-        <Tab name="WorkflowDisplay">
-          Workflow Display
+        <Tab name="Agent">
+          Agent
         </Tab>
 
         <template #FileContentViewer>
@@ -29,9 +29,9 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import WorkspaceSelector from "./components/WorkspaceSelector.vue";
-import FileExplorer from "./components/FileExplorer.vue";
-import ContentViewer from "./components/FileContentViewer.vue";
+import WorkspaceSelector from "./components/workspace/WorkspaceSelector.vue";
+import FileExplorer from "./components/FileExplorer/FileExplorer.vue";
+import ContentViewer from "./components/FileExplorer/FileContentViewer.vue";
 import WorkflowDisplay from "./components/workflow/WorkflowDisplay.vue";
 import TabList from "./components/tabs/TabList.vue";
 import Tab from "./components/tabs/Tab.vue";
