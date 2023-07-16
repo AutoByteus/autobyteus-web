@@ -30,8 +30,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import WorkspaceSelector from "./components/workspace/WorkspaceSelector.vue";
-import FileExplorer from "./components/FileExplorer/FileExplorer.vue";
-import ContentViewer from "./components/FileExplorer/FileContentViewer.vue";
+import FileExplorer from "./components/fileExplorer/FileExplorer.vue";
+import ContentViewer from "./components/fileExplorer/FileContentViewer.vue";
 import WorkflowDisplay from "./components/workflow/WorkflowDisplay.vue";
 import TabList from "./components/tabs/TabList.vue";
 import Tab from "./components/tabs/Tab.vue";
