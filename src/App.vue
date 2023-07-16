@@ -5,22 +5,9 @@
     <div class="app-content">
       <FileExplorer class="app-file-explorer" />
 
-      <TabList v-model="selectedTab" class="app-panel">
-        <Tab name="ContentViewer">
-          File
-        </Tab>
-        <Tab name="Agent">
-          Agent
-        </Tab>
+      <TabList :tabs="tabs" @changeTab="activeTab = $event"></TabList>
 
-        <template #FileContentViewer>
-          <ContentViewer />
-        </template>
-
-        <template #WorkflowDisplay>
-          <WorkflowDisplay />
-        </template>
-      </TabList>
+      <component :is="activeTab.component" />
     </div>
 
     <div class="clear"></div>
@@ -36,7 +23,12 @@ import WorkflowDisplay from "./components/workflow/WorkflowDisplay.vue";
 import TabList from "./components/tabs/TabList.vue";
 import Tab from "./components/tabs/Tab.vue";
 
-const selectedTab = ref('ContentViewer');
+const tabs = [
+  { name: 'File', component: ContentViewer },
+  { name: 'Agent', component: WorkflowDisplay }
+];
+
+const activeTab = ref(tabs[0]);
 </script>
 
 <style scoped>

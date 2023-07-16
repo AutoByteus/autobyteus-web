@@ -1,32 +1,24 @@
 <template>
   <div>
     <div class="tab-list">
-      <slot />
-    </div>
-    <div class="tab-content">
-      <slot :name="selectedTab" />
+      <Tab v-for="tab in tabs" :key="tab.name" @click="changeTab(tab)">{{ tab.name }}</Tab>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import Tab from "/Tab.vue";
+import Tab from "./Tab.vue";
 
-const props = withDefaults(defineProps<{
-  default: Tab[]
-}>(), {
-  default: []
+const props = defineProps({
+  tabs: Array
 });
 
-const selectedTab = ref(props.default[0]?.name);
+const emit = defineEmits(["changeTab"]);
 
-const selectTab = (name: string) => {
-  selectedTab.value = name;
+const changeTab = (tab) => {
+  emit('changeTab', tab);
 };
 </script>
-# rest of styles ..
-
   
   <style scoped>
   .tab-list {
