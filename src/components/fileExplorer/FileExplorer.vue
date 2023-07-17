@@ -8,12 +8,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { workspaceTree } from '../../utils/workspaceState';
 import FileItem from './FileItem.vue';
 
 const files = computed(() => {
     return workspaceTree.value ? workspaceTree.value.children : [];
+});
+
+onMounted(() => {
+    console.log("Workspace tree:", workspaceTree.value);
 });
 </script>
 
@@ -28,7 +32,7 @@ const files = computed(() => {
 }
 
 .file-explorer h2 {
-    color: #9CDCFE;
+    color: #020e14;
     margin-bottom: 1rem;
 }
 

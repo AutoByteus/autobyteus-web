@@ -21,7 +21,6 @@ import FileExplorer from "./components/fileExplorer/FileExplorer.vue";
 import ContentViewer from "./components/fileExplorer/FileContentViewer.vue";
 import WorkflowDisplay from "./components/workflow/WorkflowDisplay.vue";
 import TabList from "./components/tabs/TabList.vue";
-import Tab from "./components/tabs/Tab.vue";
 
 const tabs = [
   { name: 'File', component: ContentViewer },
