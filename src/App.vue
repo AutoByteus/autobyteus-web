@@ -3,11 +3,15 @@
     <WorkspaceSelector class="app-workspace-selector" />
 
     <div class="app-content">
-      <FileExplorer class="app-file-explorer" />
+      <div class="app-row">
+        <FileExplorer class="app-file-explorer" />
 
-      <TabList :tabs="tabs" @changeTab="activeTab = $event"></TabList>
-
-      <component :is="activeTab.component" />
+        <div class="app-panel">
+          <TabList :tabs="tabs" @changeTab="activeTab = $event"></TabList>
+          
+          <component :is="activeTab.component" />
+        </div>
+      </div>
     </div>
 
     <div class="clear"></div>
@@ -50,8 +54,13 @@ h1 {
 
 .app-content {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   flex-grow: 1;
+}
+
+.app-row {
+  display: flex;
+  flex-direction: row;
 }
 
 .app-workspace-selector {
@@ -66,8 +75,10 @@ h1 {
   padding: 20px;
   border-radius: 10px;
   box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.1);
-  width: 30%;
+  min-width: 10%; /* Smallest width allowed */
+  max-width: 30%; /* Maximum width allowed */
   height: 100%;
+  overflow: auto; /* In case content is larger than the maximum width allowed */
 }
 
 .app-panel {
@@ -84,4 +95,3 @@ h1 {
   clear: both;
 }
 </style>
-

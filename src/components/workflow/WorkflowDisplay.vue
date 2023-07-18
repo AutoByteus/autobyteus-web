@@ -2,48 +2,48 @@
   <p v-if="error">Something went wrong...</p>
   <p v-if="loading">Loading...</p>
   <div class="workflow-container" v-if="result">
-    <div class="workflow-stages">
-      <WorkflowStage 
-        v-for="(_, key) in stages" 
+    <div class="workflow-steps">
+      <WorkflowStep 
+        v-for="(_, key) in steps" 
         :key="key"
-        :stageName="key" 
+        :stepName="key" 
       />
     </div>
     <div class="workflow-details">
-      <WorkflowStageDetails v-if="selectedStage" :stageName="selectedStage"/>
+      <WorkflowStepDetails v-if="selectedStep" :stepName="selectedStep"/>
     </div>
   </div>
 </template>
 
-  <script setup lang="ts">
-  import { useQuery } from "@vue/apollo-composable";
-  import { GetWorkflowConfig } from "../../graphql/queries";
-  import type { GetWorkflowConfigQuery as GetWorkflowConfigQueryType } from "../../generated/graphql";
-  import WorkflowStage from './WorkflowStage.vue';
-  import WorkflowStageDetails from './WorkflowStageDetails.vue';
-  import { computed, provide, ref, watchEffect } from 'vue';
-  
-  const { result, loading, error } = useQuery<GetWorkflowConfigQueryType>(GetWorkflowConfig);
-  const stages = computed(() => {
-    if (!result.value?.workflowConfig) {
-      return {};
-    }
-    try {
-      const config = JSON.parse(result.value.workflowConfig);
-      return config.stages || {};
-    } catch (err) {
-      console.error('Failed to parse workflowConfig JSON', err);
-      return {};
-    }
-  });
+<script setup lang="ts">
+import { useQuery } from "@vue/apollo-composable";
+import { GetWorkflowConfig } from "../../graphql/queries";
+import type { GetWorkflowConfigQuery as GetWorkflowConfigQueryType } from "../../generated/graphql";
+import WorkflowStep from './WorkflowStep.vue';
+import WorkflowStepDetails from './WorkflowStepDetails.vue';
+import { computed, provide, ref, watchEffect } from 'vue';
 
-const selectedStage = ref<string | null>(null); // Specify the type of selectedStage as Ref<string | null>
-provide('selectedStage', selectedStage);
+const { result, loading, error } = useQuery<GetWorkflowConfigQueryType>(GetWorkflowConfig);
+const steps = computed(() => {
+  if (!result.value?.workflowConfig) {
+    return {};
+  }
+  try {
+    const config = JSON.parse(result.value.workflowConfig);
+    return config.steps || {};
+  } catch (err) {
+    console.error('Failed to parse workflowConfig JSON', err);
+    return {};
+  }
+});
+
+const selectedStep = ref<string | null>(null);
+provide('selectedStep', selectedStep);
 
 watchEffect(() => {
-    if (!selectedStage.value && stages.value) {
-      selectedStage.value = Object.keys(stages.value)[0]; // Sets selectedStage to the first stage
-    }
+  if (!selectedStep.value && steps.value) {
+    selectedStep.value = Object.keys(steps.value)[0]; // Sets selectedStep to the first step
+  }
 });
 </script>
 
@@ -52,7 +52,7 @@ watchEffect(() => {
   display: flex;
   flex-direction: column;
 }
-.workflow-stages {
+.workflow-steps {
   flex: 0 0 auto; /* As much space as it needs */
   display: flex;
   flex-wrap: wrap;
@@ -66,10 +66,3 @@ watchEffect(() => {
   padding: 1rem; /* Optional: Add padding so content isn't pressed against the border */
 }
 </style>
-
-
-
-
-
-
-
