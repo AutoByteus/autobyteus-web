@@ -24,12 +24,24 @@ export type MutationAddWorkspaceArgs = {
   workspaceRootPath: Scalars['String'];
 };
 
+
+export type MutationStartWorkflowArgs = {
+  workspaceRootPath: Scalars['String'];
+};
+
 export type Query = {
   __typename?: 'Query';
   workflowConfig: Scalars['JSON'];
 };
 
-export type GetWorkflowConfigQueryVariables = Exact<{ [key: string]: never; }>;
+
+export type QueryWorkflowConfigArgs = {
+  workspaceRootPath: Scalars['String'];
+};
+
+export type GetWorkflowConfigQueryVariables = Exact<{
+  workspaceRootPath: Scalars['String'];
+}>;
 
 
 export type GetWorkflowConfigQuery = { __typename?: 'Query', workflowConfig: any };

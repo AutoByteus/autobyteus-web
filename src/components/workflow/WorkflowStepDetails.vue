@@ -1,83 +1,95 @@
 <template>
-    <div>
-      <h3>Selected Step Detail</h3>
-      <div>
-        <h3>Fields:</h3>
-        <p v-for="(field, index) in fields" :key="index">{{ field }}</p>
+    <!-- Slide-down Panel for Selected Step Details -->
+    <transition name="slide-fade">
+      <div v-if="selectedStep" class="selected-step-details">
+        <h3>Selected Step: {{ selectedStep.name }}</h3>
+        <!-- Prompt Editor Integration -->
+        <div v-if="selectedStep.prompt_template" class="prompt-editor-section">
+          <h4>Fill in the Prompt:</h4>
+          <PromptEditor :template="selectedStep.prompt_template" />
+        </div>
+        <button @click="startExecution" class="start-execution-button">Start Execution</button>
+        <p>Execution Status: {{ executionStatus }}</p>
+        <!-- Execution Logs Panel -->
+        <div class="execution-logs-panel">
+          <h4>Execution Logs:</h4>
+          <pre v-if="executionLogs">{{ executionLogs }}</pre>
+        </div>
       </div>
-  
-      <div v-if="showPrompts">
-        <h3>Predefined Prompts: Click to View</h3>
-        <p v-for="(prompt, index) in prompts" :key="index">{{ prompt }}</p>
-      </div>
-  
-      <button @click="startExecution">Start Execution</button>
-  
-      <p>Execution Status: {{ executionStatus }}</p>
-    </div>
+    </transition>
   </template>
   
-  <script lang="ts">
-  import { defineComponent } from 'vue';
+  <script setup lang="ts">
+  import { inject, Ref, ref } from 'vue';
+  import PromptEditor from './PromptEditor.vue';
+  import type { Step } from '../../types/Workflow';
   
-  export default defineComponent({
-    props: ['stepName'],
-    data() {
-      return {
-        fields: ['Field1', 'Field2', '...'],
-        prompts: ['Prompt1', 'Prompt2', '...'],
-        showPrompts: false,
-        executionStatus: 'Not Started'
-      }
-    },
-    computed: {
-      stepClass() {
-        return `${this.stepName}Step`;
-      }
-    },
-    methods: {
-      startExecution() {
-        this.executionStatus = 'Running';
-        // ... start execution process
-      }
-    }
-  });
+  const selectedStep = inject<Ref<Step | null>>('selectedStep')!;
+  const executionStatus = ref('Not Started');
+  const executionLogs = ref('');  // Placeholder for execution logs
+  
+  const startExecution = () => {
+    executionStatus.value = 'Running';
+    // ... start execution process
+    // ... update executionLogs with streaming logs from the backend
+  };
   </script>
   
+  <!-- Existing styles for details will be kept here -->
   <style scoped>
-  .workflow-step-details {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #000;
-    border-radius: 5px;
-    padding: 10px;
-    box-sizing: border-box;
-    cursor: pointer;
-    margin: 10px;
-    color: white;
-    background-color: #428BCA;
-    word-wrap: break-word;
-    transition: background-color 0.3s;
-  }
-  
-  .workflow-step-details:hover {
-    background-color: #3276B1;
-  }
-  
-  .workflow-step-details h3 {
-    margin: 10px 0;
-  }
-  
-  .workflow-step-details p {
-    margin: 5px 0;
-  }
-  
-  .workflow-step-details button {
-    margin-top: 20px;
-    color: #000;
-    background-color: #fff;
-  }
-  </style>
-  
+.selected-step-details {
+  width: 100%;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: #f5f5f5;
+}
+
+.slide-fade-enter-active, .slide-fade-leave-active {
+  transition: opacity 0.5s, max-height 0.5s, padding 0.5s;
+}
+
+.slide-fade-enter, .slide-fade-leave-to {
+  opacity: 0;
+  max-height: 0;
+  padding: 0;
+}
+
+h3, h4 {
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.prompt-editor-section {
+  width: 100%;
+  margin-top: 15px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.start-execution-button {
+  margin-top: 20px;
+  padding: 10px 15px;
+  color: #fff;
+  background-color: #428BCA;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.start-execution-button:hover {
+  background-color: #3276B1;
+}
+
+.execution-logs-panel {
+  margin-top: 20px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #f5f5f5;
+}
+</style>

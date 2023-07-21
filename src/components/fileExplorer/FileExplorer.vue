@@ -9,7 +9,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
-import { workspaceTree } from '../../utils/workspaceState';
+import { workspaceTree } from '../../store/workspaceState';
 import FileItem from './FileItem.vue';
 
 const files = computed(() => {
@@ -40,3 +40,4 @@ onMounted(() => {
     padding-left: 1rem;
 }
 </style>
+../../store/workspaceState

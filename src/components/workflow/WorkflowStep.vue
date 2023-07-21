@@ -1,34 +1,46 @@
 <template>
-  <div class="workflow-step"
-       :class="{ selected: isSelected }"
-       @click="selectStep">
-    <h3>{{ stepName }}</h3>
+  <!-- Workflow Steps in a Row -->
+  <div class="workflow-step" :class="{ selected: isSelected }" @click="selectStep(step)">
+    <h3>{{ step.name }}</h3>
   </div>
 </template>
 
 <script setup lang="ts">
-import { inject, Ref, computed, defineProps } from 'vue';
+import { inject, Ref } from 'vue';
+import type { Step } from '../../types/Workflow';
 
-const props = defineProps<{ stepName: string }>();
-const selectedStep = inject<Ref<string | null>>('selectedStep')!;
+const props = defineProps<{ step: Step, isSelected: boolean }>();
+const selectedStep = inject<Ref<Step | null>>('selectedStep')!;
 
-const selectStep = () => {
-  selectedStep.value = props.stepName;
+const selectStep = (step: Step) => {
+  selectedStep.value = step;
 }
-
-const isSelected = computed(() => selectedStep.value === props.stepName);
 </script>
 
 <style scoped>
 .workflow-step {
-  flex: 1 0 20%; /* grow, shrink, basis */
+  flex: 1 0 auto;
   border: 1px solid #000;
   border-radius: 5px;
   padding: 10px;
   box-sizing: border-box;
+  position: relative;
+  cursor: pointer;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+  margin-right: 10px;
+}
+
+.workflow-step:last-child {
+  margin-right: 0;
 }
 
 .workflow-step.selected {
-  background-color: #ddd; /* Change this to whatever color you want for a selected step */
+  background-color: #ddd;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 </style>
