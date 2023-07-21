@@ -1,20 +1,18 @@
 <template>
   <div class="prompt-editor">
-    <!-- Display complete prompt first with placeholders -->
-    <div v-for="segment in segments" :key="segment.placeholder || segment">
-      <span v-if="typeof segment === 'string'" class="segment-content">{{ segment }}</span>
-      
-      <!-- Display variable placeholder in a distinct style in the content -->
-      <span v-else class="variable-placeholder">{{ segment.placeholder }}</span>
-    </div>
+    <!-- Single editor for the entire prompt -->
+    <textarea 
+        class="entire-prompt-editor"
+        v-model="entirePrompt"
+    ></textarea>
 
-    <!-- All variable inputs will appear below the content -->
-    <div v-for="segment in segments.filter(s => typeof s !== 'string')" :key="segment.placeholder" class="input-container">
-      <label :for="segment.placeholder">{{ segment.placeholder }}</label>
+    <!-- Display editors for placeholders -->
+    <div v-for="placeholder in placeholders" :key="placeholder" class="input-container">
+      <label :for="placeholder">{{ placeholder }}</label>
       <textarea 
-          :id="segment.placeholder"
-          v-model="values[segment.placeholder]" 
-          :placeholder="segment.placeholder" 
+          :id="placeholder"
+          v-model="values[placeholder]" 
+          :placeholder="placeholder" 
           class="segment-input"
           rows="3"
       ></textarea>
@@ -23,70 +21,68 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { parsePromptTemplate } from '../../utils/PromptParser';
+import { ref, computed, watch } from 'vue';
+import { getPlaceholders } from '../../utils/PromptParser';
 
 const props = defineProps<{ template: string }>();
-const segments = parsePromptTemplate(props.template);
+
+const entirePrompt = ref(props.template);
+const placeholders = computed(() => getPlaceholders(props.template));
+
 const values: { [key: string]: string } = ref({});
+
+watch(entirePrompt, (newVal) => {
+    const newPlaceholders = getPlaceholders(newVal);
+    newPlaceholders.forEach((ph) => {
+        if (!values[ph]) values[ph] = '';
+    });
+});
 </script>
 
 <style>
 .prompt-editor {
-  font-family: "Arial", sans-serif;
-  white-space: pre; /* Preserve whitespace */
+  font-family: "Roboto", sans-serif;
+  background-color: #f4f4f8;
+  padding: 15px;
+  border-radius: 6px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
 }
 
-/* Styling for content segments */
-.segment-content {
-  display: inline-block;
-  margin: 5px 0;
-  padding: 5px;
-  color: #555;
-}
-
-/* Highlight variable placeholders in the content */
-.variable-placeholder {
-  display: inline-block;
-  padding: 2px 6px;
-  background-color: #f0f0f0;
+.entire-prompt-editor, .segment-input {
+  box-sizing: border-box; 
+  width: 100%;
+  border: 1px solid #ccc;
+  padding: 10px 15px;
+  margin-bottom: 20px;
   border-radius: 4px;
-  margin: 2px;
-  font-weight: 600;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  color: #333;
+  white-space: pre-wrap;
+  overflow-y: auto;
+  resize: vertical;
 }
 
-/* Styling for the variable input */
+.entire-prompt-editor:hover, .segment-input:hover {
+  border-color: #666;
+  transform: scale(1.01);
+}
+
+.entire-prompt-editor:focus, .segment-input:focus {
+  border-color: #007BFF;
+  outline: none;
+  box-shadow: 0 0 5px rgba(0,123,255,0.6);
+  transform: scale(1.03);
+}
+
 .input-container {
-  margin: 10px 0;
+  margin: 15px 0;
 }
 
 .input-container label {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 7px;
   font-weight: 600;
-}
-
-.prompt-editor textarea.segment-input {
-  width: 100%;
-  border: 1px solid #ccc;
-  padding: 10px 15px;
-  margin: 2px 0;
-  border-radius: 4px;
-  transition: border-color 0.3s ease;
-  resize: vertical;
-  min-height: 60px;
-  max-height: 300px;
-  font-size: 16px;
-  color: #333;
-}
-
-.prompt-editor textarea.segment-input:hover {
-  border-color: #888;
-}
-
-.prompt-editor textarea.segment-input:focus {
-  border-color: #007BFF;
-  outline: none;
-  box-shadow: 0 0 3px rgba(0,123,255,0.5);
+  color: #444;
 }
 </style>
