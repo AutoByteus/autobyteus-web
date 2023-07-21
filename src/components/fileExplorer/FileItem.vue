@@ -2,8 +2,8 @@
     <div :class="{ 'folder': !file.is_file, 'open': isFileOpen() }" @click.stop="toggle" class="file-item">
         <div class="file-header">
             <div class="icon">
-                <svg v-if="!file.is_file" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#87CEEB" class="folder-icon">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H6a2 2 0 01-2-2V5a2 2 0 011.293-1.858l3.704-1.48A2 2 0 0110 2h10a2 2 0 012 2v7M9 16a2 2 0 00-2 2v3a2 2 0 002 2h6a2 2 0 002-2v-3a2 2 0 00-2-2H9z"/>
+                <svg v-if="!file.is_file" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#87CEEB" class="mac-folder-icon">
+                    <path d="M20 18c0 .55-.45 1-1 1H5c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h5l2 1h7c.55 0 1 .45 1 1v11z"/>
                 </svg>
                 <i v-if="file.is_file && file.name.endsWith('.txt')" class="fas fa-file-alt"></i>
                 <i v-else-if="file.is_file && file.name.endsWith('.jpg')" class="fas fa-file-image"></i>
@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, watch,reactive } from 'vue';
+import { onMounted, watch, reactive } from 'vue';
 import { TreeNode } from '../../utils/fileExplorer/TreeNode';
 import FileItem from './FileItem.vue';
 
@@ -91,8 +91,7 @@ onMounted(() => {
     color: #08516e;
 }
 
-.folder-icon {
-    stroke: #08516e;
+.mac-folder-icon {
     width: 1em;
     height: 1em;
 }
