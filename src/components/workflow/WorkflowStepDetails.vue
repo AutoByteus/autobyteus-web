@@ -5,7 +5,7 @@
         <h3>Selected Step: {{ selectedStep.name }}</h3>
         <!-- Prompt Editor Integration -->
         <div v-if="selectedStep.prompt_template" class="prompt-editor-section">
-          <h4>Fill in the Prompt:</h4>
+          <h4>Edit Prompt:</h4>
           <PromptEditor :template="selectedStep.prompt_template" />
         </div>
         <button @click="startExecution" class="start-execution-button">Start Execution</button>

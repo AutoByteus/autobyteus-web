@@ -4,6 +4,7 @@
     <textarea 
         class="entire-prompt-editor"
         v-model="entirePrompt"
+        @input="resizeTextarea"
     ></textarea>
 
     <!-- Display editors for placeholders -->
@@ -15,27 +16,34 @@
           :placeholder="placeholder" 
           class="segment-input"
           rows="3"
+          @input="resizeTextarea"
       ></textarea>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { getPlaceholders } from '../../utils/PromptParser';
 
 const props = defineProps<{ template: string }>();
 
 const entirePrompt = ref(props.template);
 const placeholders = computed(() => getPlaceholders(props.template));
-
 const values: { [key: string]: string } = ref({});
 
-watch(entirePrompt, (newVal) => {
-    const newPlaceholders = getPlaceholders(newVal);
-    newPlaceholders.forEach((ph) => {
-        if (!values[ph]) values[ph] = '';
+const resizeTextarea = (event: Event) => {
+  let textarea: any = event.target;
+  textarea.style.height = 'auto';  // Reset height to auto to calculate the new height
+  textarea.style.height = textarea.scrollHeight + 'px';
+};
+
+onMounted(() => {
+  nextTick(() => {
+    document.querySelectorAll('textarea').forEach(textarea => {
+      resizeTextarea({ target: textarea });
     });
+  });
 });
 </script>
 
@@ -61,6 +69,7 @@ watch(entirePrompt, (newVal) => {
   white-space: pre-wrap;
   overflow-y: auto;
   resize: vertical;
+  overflow: hidden;  /* to avoid scrollbars */
 }
 
 .entire-prompt-editor:hover, .segment-input:hover {
