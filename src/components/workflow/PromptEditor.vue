@@ -1,30 +1,33 @@
 <template>
   <div class="prompt-editor">
-    <!-- Single editor for the entire prompt -->
-    <textarea 
-        class="entire-prompt-editor"
-        v-model="entirePrompt"
-        @input="resizeTextarea"
-    ></textarea>
-
-    <!-- Display editors for placeholders -->
-    <div v-for="placeholder in placeholders" :key="placeholder" class="input-container">
-      <label :for="placeholder">{{ placeholder }}</label>
+    <Collapsible>
       <textarea 
-          :id="placeholder"
-          v-model="values[placeholder]" 
-          :placeholder="placeholder" 
-          class="segment-input"
-          rows="3"
+          class="entire-prompt-editor"
+          v-model="entirePrompt"
           @input="resizeTextarea"
       ></textarea>
-    </div>
+    </Collapsible>
+
+    <Collapsible>
+      <div v-for="placeholder in placeholders" :key="placeholder" class="input-container">
+        <label :for="placeholder">{{ placeholder }}</label>
+        <textarea 
+            :id="placeholder"
+            v-model="values[placeholder]" 
+            :placeholder="placeholder" 
+            class="placeholder-input"
+            rows="3"
+            @input="resizeTextarea"
+        ></textarea>
+      </div>
+    </Collapsible>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { getPlaceholders } from '../../utils/PromptParser';
+import Collapsible from '../Collapsible.vue';
 
 const props = defineProps<{ template: string }>();
 
@@ -56,7 +59,7 @@ onMounted(() => {
   box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
 }
 
-.entire-prompt-editor, .segment-input {
+.entire-prompt-editor, .placeholder-input {
   box-sizing: border-box; 
   width: 100%;
   border: 1px solid #ccc;
@@ -72,12 +75,12 @@ onMounted(() => {
   overflow: hidden;  /* to avoid scrollbars */
 }
 
-.entire-prompt-editor:hover, .segment-input:hover {
+.entire-prompt-editor:hover, .placeholder-input:hover {
   border-color: #666;
   transform: scale(1.01);
 }
 
-.entire-prompt-editor:focus, .segment-input:focus {
+.entire-prompt-editor:focus, .placeholder-input:focus {
   border-color: #007BFF;
   outline: none;
   box-shadow: 0 0 5px rgba(0,123,255,0.6);
@@ -95,3 +98,4 @@ onMounted(() => {
   color: #444;
 }
 </style>
+

@@ -3,10 +3,7 @@
 import { mount } from '@vue/test-utils';
 import PromptEditor from '../PromptEditor.vue';
 import { describe, it, expect } from 'vitest'
-
-it("testing GuessAge component props", async () => {
-  console.log("How to debug this");
-});
+import { nextTick } from 'vue';
 
 
 describe('PromptEditor.vue', () => {
@@ -26,7 +23,7 @@ describe('PromptEditor.vue', () => {
         template: 'Hello, {name}! Age: {age}'
       }
     });
-    const placeholders = wrapper.findAll('.segment-input');
+    const placeholders = wrapper.findAll('.placeholder-input');
     expect(placeholders.length).toBe(2);
   });
 
@@ -50,7 +47,7 @@ describe('PromptEditor.vue', () => {
     const textarea = wrapper.find('.entire-prompt-editor');
     await textarea.setValue('Hello, John!\nHow are you today?');
     await textarea.trigger('input');
-    expect(textarea.element.style.height).toBeGreaterThan('0px');
+    expect(textarea.element.style.height).toBeGreaterThan(1);
   });
 
   it('resizes all textareas on component mount', async () => {
@@ -60,9 +57,11 @@ describe('PromptEditor.vue', () => {
       }
     });
     await nextTick();
+    await nextTick();
     const textareas = wrapper.findAll('textarea');
     for (let i = 0; i < textareas.length; i++) {
-      expect(textareas[i].element.style.height).toBeGreaterThan('0px');
+      const height = parseInt(textareas[i].element.style.height);  // Parse the height value
+      expect(height).toBeGreaterThan(1);
     }
   });
 });

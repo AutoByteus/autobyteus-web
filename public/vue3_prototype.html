@@ -1,0 +1,132 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vue3 HTML Prototype</title>
+    <style>
+.selected-step-details {
+  width: 100%;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: #f5f5f5;
+}
+
+h3, h4 {
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.prompt-editor-section {
+  width: 100%;
+  margin-top: 15px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.start-execution-button {
+  margin-top: 20px;
+  padding: 10px 15px;
+  color: #fff;
+  background-color: #428BCA;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.start-execution-button:hover {
+  background-color: #3276B1;
+}
+
+.execution-logs-panel {
+  margin-top: 20px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #f5f5f5;
+}
+
+.prompt-editor {
+  font-family: "Roboto", sans-serif;
+  background-color: #f4f4f8;
+  padding: 15px;
+  border-radius: 6px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+}
+
+.entire-prompt-editor, .placeholder-input {
+  box-sizing: border-box; 
+  width: 100%;
+  border: 1px solid #ccc;
+  padding: 10px 15px;
+  margin-bottom: 20px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  color: #333;
+  white-space: pre-wrap;
+  overflow-y: auto;
+  resize: vertical;
+  overflow: hidden;  /* to avoid scrollbars */
+}
+
+.entire-prompt-editor:hover, .placeholder-input:hover {
+  border-color: #666;
+  transform: scale(1.01);
+}
+
+.entire-prompt-editor:focus, .placeholder-input:focus {
+  border-color: #007BFF;
+  outline: none;
+  box-shadow: 0 0 5px rgba(0,123,255,0.6);
+  transform: scale(1.03);
+}
+
+.input-container {
+  margin: 15px 0;
+}
+
+.input-container label {
+  display: block;
+  margin-bottom: 7px;
+  font-weight: 600;
+  color: #444;
+}
+</style>
+</head>
+<body>
+
+<!-- Slide-down Panel for Selected Step Details -->
+<div class="selected-step-details">
+    <h3>Selected Step: Step Name</h3>
+    <!-- Prompt Editor Integration -->
+    <div class="prompt-editor-section">
+        <h4>Edit Prompt:</h4>
+        <!-- PromptEditor Component Replacement -->
+        <div class="prompt-editor">
+            <!-- Single editor for the entire prompt -->
+            <textarea class="entire-prompt-editor">Prompt Template</textarea>
+            <!-- Display editors for placeholders -->
+            <div class="input-container">
+                <label for="placeholder">Requirement</label>
+                <textarea id="placeholder" class="placeholder-input" placeholder="User input requirement" rows="3">Placeholder Value</textarea>
+            </div>
+        </div>
+    </div>
+    <button class="start-execution-button">Start Execution</button>
+    <p>Execution Status: Not Started</p>
+    <!-- Execution Logs Panel -->
+    <div class="execution-logs-panel">
+        <h4>Execution Logs:</h4>
+        <pre>Execution Logs Placeholder</pre>
+    </div>
+</div>
+
+</body>
+</html>
