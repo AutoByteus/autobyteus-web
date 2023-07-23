@@ -31,7 +31,13 @@ export type MutationStartWorkflowArgs = {
 
 export type Query = {
   __typename?: 'Query';
+  searchCodeEntities: Scalars['JSON'];
   workflowConfig: Scalars['JSON'];
+};
+
+
+export type QuerySearchCodeEntitiesArgs = {
+  query: Scalars['String'];
 };
 
 
@@ -52,3 +58,10 @@ export type AddWorkspaceMutationVariables = Exact<{
 
 
 export type AddWorkspaceMutation = { __typename?: 'Mutation', addWorkspace: any };
+
+export type SearchCodeEntitiesQueryVariables = Exact<{
+  query: Scalars['String'];
+}>;
+
+
+export type SearchCodeEntitiesQuery = { __typename?: 'Query', searchCodeEntities: any };

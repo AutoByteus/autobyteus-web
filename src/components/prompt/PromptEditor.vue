@@ -1,33 +1,30 @@
 <template>
   <div class="prompt-editor">
     <Collapsible>
-      <textarea 
+      <ResizableTextArea 
+          v-model="entirePrompt" 
           class="entire-prompt-editor"
-          v-model="entirePrompt"
-          @input="resizeTextarea"
-      ></textarea>
+      />
     </Collapsible>
 
     <Collapsible>
       <div v-for="placeholder in placeholders" :key="placeholder" class="input-container">
         <label :for="placeholder">{{ placeholder }}</label>
-        <textarea 
-            :id="placeholder"
+        <ResizableTextArea 
             v-model="values[placeholder]" 
             :placeholder="placeholder" 
             class="placeholder-input"
-            rows="3"
-            @input="resizeTextarea"
-        ></textarea>
+        />
       </div>
     </Collapsible>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed } from 'vue';
 import { getPlaceholders } from '../../utils/PromptParser';
 import Collapsible from '../Collapsible.vue';
+import ResizableTextArea from '../ResizableTextArea.vue'; // Importing the new ResizableTextArea component
 
 const props = defineProps<{ template: string }>();
 
@@ -35,19 +32,6 @@ const entirePrompt = ref(props.template);
 const placeholders = computed(() => getPlaceholders(props.template));
 const values: { [key: string]: string } = ref({});
 
-const resizeTextarea = (event: Event) => {
-  let textarea: any = event.target;
-  textarea.style.height = 'auto';  // Reset height to auto to calculate the new height
-  textarea.style.height = textarea.scrollHeight + 'px';
-};
-
-onMounted(() => {
-  nextTick(() => {
-    document.querySelectorAll('textarea').forEach(textarea => {
-      resizeTextarea({ target: textarea });
-    });
-  });
-});
 </script>
 
 <style>
@@ -58,6 +42,7 @@ onMounted(() => {
   border-radius: 6px;
   box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
 }
+
 
 .entire-prompt-editor, .placeholder-input {
   box-sizing: border-box; 
@@ -77,16 +62,13 @@ onMounted(() => {
 
 .entire-prompt-editor:hover, .placeholder-input:hover {
   border-color: #666;
-  transform: scale(1.01);
 }
 
 .entire-prompt-editor:focus, .placeholder-input:focus {
   border-color: #007BFF;
   outline: none;
   box-shadow: 0 0 5px rgba(0,123,255,0.6);
-  transform: scale(1.03);
 }
-
 .input-container {
   margin: 15px 0;
 }

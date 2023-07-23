@@ -20,8 +20,6 @@ const selectTab = () => {
   emit("select", props.name);
 };
 </script>
-# rest of code ...
-
 
 <style scoped>
 .tab {
