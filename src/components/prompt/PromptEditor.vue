@@ -8,11 +8,14 @@
     </Collapsible>
 
     <Collapsible>
-      <div v-for="placeholder in placeholders" :key="placeholder" class="input-container">
-        <label :for="placeholder">{{ placeholder }}</label>
+      <div 
+          v-for="promptTemplateVariable in promptTemplateVariables" 
+          :key="promptTemplateVariable.name" 
+          class="input-container">
+        <label :for="promptTemplateVariable.name">{{ promptTemplateVariable.name }}</label>
         <ResizableTextArea 
-            v-model="values[placeholder]" 
-            :placeholder="placeholder" 
+            v-model="values[promptTemplateVariable.name]" 
+            :placeholder="promptTemplateVariable.name" 
             class="placeholder-input"
         />
       </div>
@@ -22,14 +25,15 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { getPlaceholders } from '../../utils/PromptParser';
 import Collapsible from '../Collapsible.vue';
-import ResizableTextArea from '../ResizableTextArea.vue'; // Importing the new ResizableTextArea component
+import ResizableTextArea from '../ResizableTextArea.vue';
+import type { PromptTemplate } from '../../types/Workflow';
 
-const props = defineProps<{ template: string }>();
-
-const entirePrompt = ref(props.template);
-const placeholders = computed(() => getPlaceholders(props.template));
+const props = defineProps<{ template: PromptTemplate }>();
+const entirePrompt = ref(props.template.template);
+const promptTemplateVariables = computed(() => 
+  props.template.variables.filter(variable => variable.source === 'USER_INPUT')
+);
 const values: { [key: string]: string } = ref({});
 
 </script>

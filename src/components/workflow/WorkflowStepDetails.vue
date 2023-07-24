@@ -9,8 +9,11 @@
         <h4>Edit Prompt:</h4>
         <PromptEditor :template="selectedStep.prompt_template" />
         
-        <button @click="searchCodeContext" class="search-context-button">Search Code Context</button>
-        <button class="refine-requirement-button">Refine Requirement</button>
+        <!-- Show Search Code Context button based on allow_code_context_building -->
+        <button v-if="showSearchContextButton" @click="searchCodeContext" class="search-context-button">Search Code Context</button>
+        
+        <!-- Show Refine Requirement button based on allow_llm_refinement -->
+        <button v-if="showRefineRequirementButton" class="refine-requirement-button">Refine Requirement</button>
       </div>
 
       <!-- Search Results Section -->
@@ -29,7 +32,7 @@
 </template>
   
 <script setup lang="ts">
-import { inject, Ref, ref } from 'vue';
+import { inject, Ref, ref, computed } from 'vue';
 import PromptEditor from '../prompt/PromptEditor.vue';
 import CodeSearchResult from './CodeSearchResult.vue';
 import ExecutionLogsPanel from './ExecutionLogsPanel.vue';
@@ -66,10 +69,19 @@ const startExecution = () => {
   // ... start execution process
   // ... update executionLogs with streaming logs from the backend
 };
+
+// Computed property to determine if the Search Code Context button should be displayed
+const showSearchContextButton = computed(() => {
+  return selectedStep.value?.prompt_template.variables.some(variable => variable.allow_code_context_building);
+});
+
+// Computed property to determine if the Refine Requirement button should be displayed
+const showRefineRequirementButton = computed(() => {
+  return selectedStep.value?.prompt_template.variables.some(variable => variable.allow_llm_refinement);
+});
 </script>
 
 
-  <!-- Existing styles for details will be kept here -->
 <style scoped>
 .selected-step-details {
   width: 100%;

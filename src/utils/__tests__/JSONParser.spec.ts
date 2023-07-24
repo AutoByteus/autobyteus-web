@@ -1,5 +1,5 @@
 import { deserializeWorkflow, deserializeSearchResult } from '../JSONParser';
-import { Workflow } from '../../types/Workflow';
+import { Source, Workflow } from '../../types/Workflow';
 import { SearchResult, FunctionEntity } from '../../types/code_entities';
 import { describe, it, expect } from 'vitest';
 
@@ -14,7 +14,15 @@ describe('JSONParser', () => {
           "1": {
             id: "1",
             name: "Step One",
-            prompt_template: "Hello, World!"
+            prompt_template: {
+              template: "Hello, {name}!",
+              variables: [{
+                name: "name",
+                source: Source.DYNAMIC,
+                allow_code_context_building: true,
+                allow_llm_refinement: false
+              }]
+            }
           }
         }
       });
@@ -22,6 +30,8 @@ describe('JSONParser', () => {
       const result: Workflow = deserializeWorkflow(jsonString);
       expect(result.name).toBe("Sample Workflow");
       expect(result.steps["1"].name).toBe("Step One");
+      expect(result.steps["1"].prompt_template.template).toBe("Hello, {name}!");
+      expect(result.steps["1"].prompt_template.variables[0].name).toBe("name");
     });
 
     it('should throw error for invalid JSON', () => {
@@ -36,6 +46,7 @@ describe('JSONParser', () => {
       });
       expect(() => deserializeWorkflow(wrongJsonString)).toThrow();
     });
+
 
   });
 
