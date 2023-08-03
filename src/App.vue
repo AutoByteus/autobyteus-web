@@ -7,9 +7,9 @@
         <FileExplorer class="app-file-explorer" />
 
         <div class="app-panel">
-          <TabList :tabs="tabs" @changeTab="activeTab = $event"></TabList>
+          <TabList :tabs="tabs" :selectedTab="activeTab" @select="changeTab"></TabList>
           
-          <component :is="activeTab.component" />
+          <component :is="components[activeTab]" />
         </div>
       </div>
     </div>
@@ -19,19 +19,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { shallowRef } from "vue";
 import WorkspaceSelector from "./components/workspace/WorkspaceSelector.vue";
 import FileExplorer from "./components/fileExplorer/FileExplorer.vue";
 import ContentViewer from "./components/fileExplorer/FileContentViewer.vue";
 import WorkflowDisplay from "./components/workflow/WorkflowDisplay.vue";
 import TabList from "./components/tabs/TabList.vue";
 
-const tabs = [
-  { name: 'File', component: ContentViewer },
-  { name: 'Agent', component: WorkflowDisplay }
-];
+const tabs = shallowRef([
+  { name: 'File' },
+  { name: 'Agent' }
+]);
 
-const activeTab = ref(tabs[0]);
+const components = {
+  'File': ContentViewer,
+  'Agent': WorkflowDisplay
+};
+
+const activeTab = shallowRef('File');
+
+const changeTab = (tabName: string) => {
+  activeTab.value = tabName;
+};
 </script>
 
 <style scoped>

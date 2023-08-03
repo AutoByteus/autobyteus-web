@@ -1,8 +1,7 @@
 <template>
-  <div>
-    <div class="tab-list">
-      <Tab v-for="tab in tabs" :key="tab.name" @click="changeTab(tab)">{{ tab.name }}</Tab>
-    </div>
+  <div class="tab-list">
+    <!-- Modify the event handler to accept the emitted tab name -->
+    <Tab v-for="tab in tabs" :key="tab.name" :name="tab.name" :selected="selectedTab === tab.name" @select="selectTab">{{ tab.name }}</Tab>
   </div>
 </template>
 
@@ -10,16 +9,19 @@
 import Tab from "./Tab.vue";
 
 const props = defineProps({
-  tabs: Array
+  tabs: Array,
+  selectedTab: String
 });
 
-const emit = defineEmits(["changeTab"]);
+const emit = defineEmits(["select"]);
 
-const changeTab = (tab) => {
-  emit('changeTab', tab);
+// Modify the method to accept the tabName argument
+const selectTab = (tabName: string) => {
+  emit('select', tabName);
 };
 </script>
-  
+
+
   <style scoped>
   .tab-list {
     display: flex;

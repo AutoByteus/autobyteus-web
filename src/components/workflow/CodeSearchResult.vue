@@ -6,7 +6,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps } from 'vue';
+import { toRefs } from 'vue';
 
 const props = defineProps<{ snippet: string }>();
 const { snippet } = toRefs(props);

@@ -12,9 +12,9 @@ const props = defineProps({
   selected: Boolean,
 });
 
-const emit = defineEmits(["select"]);
-
 const isActive = computed(() => props.selected);
+
+const emit = defineEmits(["select"]);
 
 const selectTab = () => {
   emit("select", props.name);

@@ -7,7 +7,10 @@
       <!-- Prompt Editor Integration -->
       <div v-if="selectedStep.prompt_template" class="prompt-editor-section">
         <h4>Edit Prompt:</h4>
-        <PromptEditor :template="selectedStep.prompt_template" />
+        <PromptEditor 
+            :template="selectedStep.prompt_template" 
+            @update:variable="updatePromptVariable"
+        />
         
         <!-- Show Search Code Context button based on allow_code_context_building -->
         <button v-if="showSearchContextButton" @click="searchCodeContext" class="search-context-button">Search Code Context</button>
@@ -19,68 +22,76 @@
       <!-- Search Results Section -->
       <div class="search-results-section">
         <h4>Search Results:</h4>
-        <CodeSearchResult v-for="result in searchResults" :key="result.entity.file_path" :snippet="result.entity.docstring" />
+        <CodeSearchResult v-for="code_entity in processedSearchData" :key="code_entity.entity.file_path" :snippet="code_entity.entity.docstring" />
       </div>
 
       <button @click="startExecution" class="start-execution-button">Start Execution</button>
-      <p>Execution Status: {{ executionStatus }}</p>
+      <p data-test-id="execution-status">Execution Status: {{ executionStatus }}</p>
       
       <!-- Integration of the ExecutionLogsPanel component -->
       <ExecutionLogsPanel :logs="executionLogs" />
     </div>
   </transition>
 </template>
-  
+
 <script setup lang="ts">
 import { inject, Ref, ref, computed } from 'vue';
 import PromptEditor from '../prompt/PromptEditor.vue';
 import CodeSearchResult from './CodeSearchResult.vue';
 import ExecutionLogsPanel from './ExecutionLogsPanel.vue';
-import { useQuery } from "@vue/apollo-composable";
+import { useLazyQuery } from "@vue/apollo-composable";
 import { SearchCodeEntities } from "../../graphql/queries";
-
-// Importing the required types and functions
-import type { Step } from '../../types/Workflow';
+import type { SearchCodeEntitiesQuery as SearchCodeEntitiesQueryType, SearchCodeEntitiesQueryVariables }  from "../../generated/graphql";
 import type { SearchResult, ScoredEntity, CodeEntity } from '../../types/code_entities';
 import { deserializeSearchResult } from '../../utils/JSONParser';
+import { Step } from '../../types/Workflow';
 
 const selectedStep = inject<Ref<Step | null>>('selectedStep')!;
 const executionStatus = ref('Not Started');
-const executionLogs = ref('');
-const searchResults = ref<ScoredEntity<CodeEntity>[]>([]);
 
-const { result: searchResult, loading: searchLoading, error: searchError } = useQuery(
-  SearchCodeEntities, 
-  { query: "dummy_query" }  // This is the dummy query for now
-);
+const executionLogs = ref('');
+const processedSearchData = ref<ScoredEntity<CodeEntity>[]>([]);
+const searchCodeQueryVariables: Ref<SearchCodeEntitiesQueryVariables> = ref({ query: "" });
+
+const { load: executeSearch, onResult: onSearchResult } = useLazyQuery<SearchCodeEntitiesQueryType, SearchCodeEntitiesQueryVariables>(SearchCodeEntities, searchCodeQueryVariables);
+
+onSearchResult(({ data }) => {
+  const parsedSearchResult: SearchResult = deserializeSearchResult(data.searchCodeEntities);
+  processedSearchData.value = parsedSearchResult.entities;
+});
+
+const promptVariables = ref<{ [key: string]: string }>({});
+
+const updatePromptVariable = ({ variableName, value }: { variableName: string, value: string }) => {
+  promptVariables.value[variableName] = value;
+};
 
 const searchCodeContext = () => {
-  if (searchResult.value) {
-    const parsedSearchResult: SearchResult = deserializeSearchResult(searchResult.value);
-    searchResults.value = parsedSearchResult.entities;
-  }
-  if (searchError.value) {
-    console.error("Error while searching for code entities:", searchError.value);
+  // Check if any of the updated variables support code search
+  const variableToSearch = Object.keys(promptVariables.value).find(variableName => {
+    const variable = selectedStep.value?.prompt_template.variables.find(v => v.name === variableName);
+    return variable?.allow_code_context_building;
+  });
+
+  if (variableToSearch) {
+    searchCodeQueryVariables.value.query = promptVariables.value[variableToSearch];
+    executeSearch(SearchCodeEntities);
   }
 };
+
 
 const startExecution = () => {
   executionStatus.value = 'Running';
-  // ... start execution process
-  // ... update executionLogs with streaming logs from the backend
 };
 
-// Computed property to determine if the Search Code Context button should be displayed
 const showSearchContextButton = computed(() => {
   return selectedStep.value?.prompt_template.variables.some(variable => variable.allow_code_context_building);
 });
 
-// Computed property to determine if the Refine Requirement button should be displayed
 const showRefineRequirementButton = computed(() => {
   return selectedStep.value?.prompt_template.variables.some(variable => variable.allow_llm_refinement);
 });
 </script>
-
 
 <style scoped>
 .selected-step-details {

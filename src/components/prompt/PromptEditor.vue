@@ -24,17 +24,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import Collapsible from '../Collapsible.vue';
-import ResizableTextArea from '../ResizableTextArea.vue';
+import { ref, computed, reactive, watch, Ref } from 'vue';
+import Collapsible from '../utils/Collapsible.vue';
+import ResizableTextArea from '../utils/ResizableTextArea.vue';
 import type { PromptTemplate } from '../../types/Workflow';
 
 const props = defineProps<{ template: PromptTemplate }>();
+const emit = defineEmits();
+
 const entirePrompt = ref(props.template.template);
 const promptTemplateVariables = computed(() => 
   props.template.variables.filter(variable => variable.source === 'USER_INPUT')
 );
-const values: { [key: string]: string } = ref({});
+const values: Ref<{ [key: string]: string }> = reactive({});
+
+// Watch for changes in the values object and emit updated value
+watch(values, (newValues, oldValues) => {
+  for (const key in newValues) {
+    if (newValues[key] !== oldValues[key]) {
+      emit('update:variable', { variableName: key, value: newValues[key] });
+      break;
+    }
+  }
+});
 
 </script>
 
