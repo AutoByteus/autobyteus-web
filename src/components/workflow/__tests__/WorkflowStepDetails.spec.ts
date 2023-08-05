@@ -1,3 +1,4 @@
+// src/components/workflow/__tests__/WorkflowStepDetails.spec.ts
 
 import { describe, it, expect, vi } from 'vitest';
 import { mount, shallowMount } from '@vue/test-utils';
@@ -7,7 +8,6 @@ import { nextTick, ref } from 'vue';
 vi.mock('@vue/apollo-composable', async () => {
   const { ref } = await import('vue');
   
-  // Define the data structure
   const searchData = {
     total: 2,
     entities: [
@@ -34,8 +34,20 @@ vi.mock('@vue/apollo-composable', async () => {
     ]
   };
   
-  // Convert the data structure to a JSON string
   const jsonString = JSON.stringify(searchData);
+  
+  const useLazyQuery = () => {
+    return {
+      load: () => {},
+      onResult: (callback) => {
+        callback({
+          data: {
+            searchCodeEntities: jsonString
+          }
+        });
+      }
+    };
+  };
 
   return {
     useQuery: vi.fn().mockReturnValue({
@@ -44,7 +56,8 @@ vi.mock('@vue/apollo-composable', async () => {
       }),
       loading: ref(false),
       error: ref(null)
-    })
+    }),
+    useLazyQuery: useLazyQuery
   };
 });
 
@@ -131,7 +144,6 @@ describe('WorkflowDetails', () => {
   it('renders default execution status correctly', () => {
     const selectedStepMock = {
       name: "Mock Step",
-      // ... other necessary properties
     };
   
     const wrapper = mount(WorkflowStepDetails, {
@@ -146,14 +158,73 @@ describe('WorkflowDetails', () => {
     expect(executionStatus.exists()).toBe(true);
     expect(executionStatus.text()).toContain('Not Started');
   });
-  
-  it('renders correct number of CodeSearchResult components', async () => {
-    // Providing the required injection for selectedStep
+
+  it('updates promptVariables when PromptEditor emits update:variable', async () => {
+    const selectedStepMock = ref({
+      name: "Step One",
+      prompt_template: {
+        template: "Hello, {name}!",
+        variables: [{
+          name: "name",
+          source: "DYNAMIC",
+          allow_code_context_building: true,
+          allow_llm_refinement: false
+        }]
+      }
+    });
+
+    const wrapper = mount(WorkflowStepDetails, {
+      global: {
+        provide: {
+          selectedStep: selectedStepMock
+        }
+      }
+    });
+
+    const promptEditor = wrapper.findComponent({ name: 'PromptEditor' });
+    promptEditor.vm.$emit('update:variable', { variableName: 'name', value: 'John' });
+
+    await nextTick();
+
+    expect(wrapper.vm.promptVariables.name).toBe('John');
+  });
+
+  it('calls searchCodeContext and updates processedSearchData on button click', async () => {
+    const selectedStepMock = ref({
+      name: "Step One",
+      prompt_template: {
+        template: "Hello, {name}!",
+        variables: [{
+          name: "name",
+          source: "DYNAMIC",
+          allow_code_context_building: true,
+          allow_llm_refinement: false
+        }]
+      }
+    });
+
+    const wrapper = mount(WorkflowStepDetails, {
+      global: {
+        provide: {
+          selectedStep: selectedStepMock
+        }
+      }
+    });
+
+    const searchContextButton = wrapper.find('.search-context-button');
+    searchContextButton.trigger('click');
+
+    await nextTick();
+
+    expect(wrapper.vm.processedSearchData.length).toBe(2);
+    expect(wrapper.vm.processedSearchData[0].entity.file_path).toBe('path1');
+  });
+
+  it('updates executionStatus to Running when Start Execution button is clicked', async () => {
     const selectedStepMock = {
       name: "Mock Step",
-      // ... other necessary properties
     };
-  
+
     const wrapper = mount(WorkflowStepDetails, {
       global: {
         provide: {
@@ -161,26 +232,45 @@ describe('WorkflowDetails', () => {
         }
       }
     });
-    // Simulate change in rawSearchData ref (which is the mock's result ref)
-    // This will mimic fetching data and should trigger the watcher
-    const mockSearchData = {
-      searchCodeEntities: {
-        total: 3,
-        entities: [
-          { entity: { file_path: 'path1', docstring: 'doc1', name: 'func1', type: 'function' }, score: 5 },
-          { entity: { file_path: 'path2', docstring: 'doc2', name: 'func2', type: 'function' }, score: 4 },
-          { entity: { file_path: 'path3', docstring: 'doc3', name: 'func3', type: 'function' }, score: 3 }
-        ]
+
+    const startExecutionButton = wrapper.find('.start-execution-button');
+    startExecutionButton.trigger('click');
+
+    await nextTick();
+
+    const executionStatus = wrapper.find('[data-test-id="execution-status"]');
+    expect(executionStatus.text()).toContain('Running');
+  });
+
+  it('renders correct number of CodeSearchResult components', async () => {
+    const selectedStepMock = {
+      name: "Mock Step",
+      prompt_template: {
+        template: "Hello, {name}!",
+        variables: [{
+          name: "name",
+          source: "DYNAMIC",
+          allow_code_context_building: true,
+          allow_llm_refinement: false
+        }]
       }
     };
-    //Inside Vue component script area, we need to use .value to modify the value of reactivity object. But outside, vm.rawSearchData will automatically unwrap to value.
-    wrapper.vm.rawSearchData = { searchCodeEntities: JSON.stringify(mockSearchData.searchCodeEntities)};
 
-    await nextTick(); 
+    const wrapper = mount(WorkflowStepDetails, {
+      global: {
+        provide: {
+          selectedStep: ref(selectedStepMock)
+        }
+      }
+    });
+
+    const searchContextButton = wrapper.find('.search-context-button');
+    searchContextButton.trigger('click');
+
+    await nextTick();
 
     const searchResultsComponents = wrapper.findAllComponents({ name: 'CodeSearchResult' });
-  
-    expect(searchResultsComponents.length).toBe(3);
+
+    expect(searchResultsComponents.length).toBe(2);
   });
 });
-

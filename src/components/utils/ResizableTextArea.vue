@@ -18,6 +18,7 @@ const emit = defineEmits(['update:modelValue']);
 const textareaRef = ref(null);
 
 const handleInput = (event: Event) => {
+    console.log("ResizableTextArea: Emitting update:modelValue with value", event.target.value); // Added log
     resizeTextarea();
     emit('update:modelValue', event.target.value);
 };

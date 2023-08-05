@@ -7,14 +7,15 @@
       />
     </Collapsible>
 
-    <Collapsible>
+    <Collapsible class="placeholders-section">
       <div 
           v-for="promptTemplateVariable in promptTemplateVariables" 
           :key="promptTemplateVariable.name" 
           class="input-container">
         <label :for="promptTemplateVariable.name">{{ promptTemplateVariable.name }}</label>
         <ResizableTextArea 
-            v-model="values[promptTemplateVariable.name]" 
+            :modelValue="values[promptTemplateVariable.name]" 
+            @update:modelValue="updateValue(promptTemplateVariable.name, $event)"
             :placeholder="promptTemplateVariable.name" 
             class="placeholder-input"
         />
@@ -24,7 +25,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, watch, Ref } from 'vue';
+import { ref, computed, reactive, Ref, watch } from 'vue';
 import Collapsible from '../utils/Collapsible.vue';
 import ResizableTextArea from '../utils/ResizableTextArea.vue';
 import type { PromptTemplate } from '../../types/Workflow';
@@ -36,19 +37,22 @@ const entirePrompt = ref(props.template.template);
 const promptTemplateVariables = computed(() => 
   props.template.variables.filter(variable => variable.source === 'USER_INPUT')
 );
-const values: Ref<{ [key: string]: string }> = reactive({});
 
-// Watch for changes in the values object and emit updated value
-watch(values, (newValues, oldValues) => {
-  for (const key in newValues) {
-    if (newValues[key] !== oldValues[key]) {
-      emit('update:variable', { variableName: key, value: newValues[key] });
-      break;
-    }
-  }
-});
+// Initialize values with an empty string for 'name'
+const values: Ref<{ [key: string]: string }> = reactive({ name: '' });
+
+const updateValue = (key, newValue) => {
+  values[key] = newValue;
+  emit('update:variable', { variableName: key, value: newValue });
+};
+
+ // Log the computed promptTemplateVariables for debugging.
+ watch(promptTemplateVariables, (newVal) => {
+    console.log("promptTemplateVariables:", newVal);
+  });
 
 </script>
+
 
 <style>
 .prompt-editor {
