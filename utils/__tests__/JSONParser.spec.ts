@@ -1,5 +1,5 @@
 import { deserializeWorkflow, deserializeSearchResult } from '../JSONParser';
-import { Source, Workflow } from '../../types/Workflow';
+import { Source, Workflow } from '../../types/workflow';
 import { SearchResult, FunctionEntity } from '../../types/code_entities';
 import { describe, it, expect } from 'vitest';
 

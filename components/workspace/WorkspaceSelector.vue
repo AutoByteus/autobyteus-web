@@ -20,40 +20,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useWorkspaceStore } from '~/stores/workspace'
-import { useMutation } from '@vue/apollo-composable'
-import { AddWorkspace } from '~/graphql/queries'
-import { convertJsonToTreeNode } from '~/utils/fileExplorer/TreeNode'
 
 const workspaceStore = useWorkspaceStore()
 
-const workspaces = ref([] as string[])
+const workspaces = computed(() => workspaceStore.workspaces)
 const selectedWorkspace = ref(null as string | null)
 const newWorkspace = ref('')
-const message = ref(null as string | null)
-const messageClass = ref('')
-
-const { mutate: addWorkspaceMutation } = useMutation(AddWorkspace)
+const message = computed(() => workspaceStore.message)
+const messageClass = computed(() => workspaceStore.messageClass)
 
 const addWorkspace = async () => {
-  try {
-    const { data } = await addWorkspaceMutation({
-      variables: {
-        workspaceRootPath: newWorkspace.value,
-      },
-    })
-    if (data?.addWorkspace) {
-      workspaceStore.setWorkspaceTree(convertJsonToTreeNode(data.addWorkspace))
-      workspaces.value.push(newWorkspace.value)
-      selectedWorkspace.value = newWorkspace.value
-      newWorkspace.value = ''
-      message.value = 'Workspace added successfully!'
-      messageClass.value = 'success'
-    }
-  } catch (error) {
-    message.value = 'Error adding workspace'
-    messageClass.value = 'error'
+  const success = await workspaceStore.addWorkspace(newWorkspace.value)
+  if (success) {
+    selectedWorkspace.value = newWorkspace.value
+    newWorkspace.value = ''
   }
 }
 

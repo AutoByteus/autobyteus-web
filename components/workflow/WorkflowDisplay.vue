@@ -21,38 +21,27 @@
 </template>
 
 <script setup lang="ts">
-import { useQuery } from '@vue/apollo-composable'
-import { GetWorkflowConfig } from '~/graphql/queries'
-import type { GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables } from '~/generated/graphql'
-import { computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useWorkspaceStore } from '~/stores/workspace'
 import { useWorkflowStore } from '~/stores/workflow'
-import { deserializeWorkflow } from '~/utils/JSONParser'
 
 const workspaceStore = useWorkspaceStore()
 const workflowStore = useWorkflowStore()
 
-const { result, loading, error } = useQuery<GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables>(
-  GetWorkflowConfig,
-  () => ({
-    workspaceRootPath: workspaceStore.selectedWorkspacePath
-  })
-)
+const loading = ref(false)
+const error = ref(null)
 
-const workflow = computed(() => {
-  if (!result.value?.workflowConfig) {
-    return null
-  }
-  try {
-    const parsedWorkflow = deserializeWorkflow(result.value.workflowConfig)
-    workflowStore.setWorkflow(parsedWorkflow)
-    return parsedWorkflow
-  } catch (err) {
-    console.error('Failed to parse workflowConfig JSON', err)
-    return null
-  }
-})
+const fetchWorkflow = async () => {
+  const { loading: isLoading, error: fetchError } = await workflowStore.fetchWorkflowConfig(workspaceStore.selectedWorkspacePath)
+  loading.value = isLoading
+  error.value = fetchError
+}
 
+onMounted(fetchWorkflow)
+
+watch(() => workspaceStore.selectedWorkspacePath, fetchWorkflow)
+
+const workflow = computed(() => workflowStore.workflow)
 const selectedStepId = computed(() => workflowStore.selectedStepId)
 
 watch(() => Object.values(workflow.value?.steps || {}), (steps) => {
@@ -61,7 +50,3 @@ watch(() => Object.values(workflow.value?.steps || {}), (steps) => {
   }
 })
 </script>
-
-<style scoped>
-/* ... (keep existing styles) ... */
-</style>

@@ -10,7 +10,7 @@
 
 <script setup lang="ts">
 import { inject, Ref } from 'vue';
-import type { Step } from '../../types/Workflow';
+import type { Step } from '../../types/workflow';
 
 const props = defineProps<{ step: Step; isSelected: boolean }>();
 const selectedStep = inject<Ref<Step | null>>('selectedStep')!;

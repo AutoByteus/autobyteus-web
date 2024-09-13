@@ -11,9 +11,3 @@ export const AddWorkspace = gql`
     addWorkspace(workspaceRootPath: $workspaceRootPath)
   }
 `;
-
-export const SearchCodeEntities = gql`
-  query SearchCodeEntities($query: String!) {
-    searchCodeEntities(query: $query)
-  }
-`;

@@ -33,7 +33,7 @@
 import { ref, computed, reactive, Ref, watch } from 'vue';
 import Collapsible from '../utils/Collapsible.vue';
 import ResizableTextArea from '../utils/ResizableTextArea.vue';
-import type { PromptTemplate } from '../../types/Workflow';
+import type { PromptTemplate } from '../../types/workflow';
 
 const props = defineProps<{ template: PromptTemplate }>();
 const emit = defineEmits();
