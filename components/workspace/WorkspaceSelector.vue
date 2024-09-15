@@ -1,21 +1,18 @@
 <template>
-  <div id="workspaceSelector">
-    <div class="form-group">
-      <label for="workspace">Select Workspace:</label>
-      <select v-model="selectedWorkspace" v-if="workspaces.length > 0">
-        <option v-for="workspace in workspaces" :key="workspace" :value="workspace">
-          {{ workspace }}
-        </option>
+  <div class="space-y-4">
+    <div class="flex space-x-4">
+      <select class="flex-grow p-2 border rounded-md focus:ring-2 focus:ring-blue-500">
+        <option>No Workspaces available</option>
       </select>
-      <span v-else>No Workspaces available</span>
+      <button class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors">
+        Add New Workspace
+      </button>
     </div>
-    <div class="form-group">
-      <input v-model="newWorkspace" placeholder="Enter new workspace path" />
-      <button @click="addWorkspace">Add New Workspace</button>
-    </div>
-    <transition name="fade">
-      <p v-if="message" :class="messageClass">{{ message }}</p>
-    </transition>
+    <input 
+      type="text" 
+      placeholder="Enter new workspace path" 
+      class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+    >
   </div>
 </template>
 
@@ -28,14 +25,14 @@ const workspaceStore = useWorkspaceStore()
 const workspaces = computed(() => workspaceStore.workspaces)
 const selectedWorkspace = ref(null as string | null)
 const newWorkspace = ref('')
-const message = computed(() => workspaceStore.message)
-const messageClass = computed(() => workspaceStore.messageClass)
 
 const addWorkspace = async () => {
-  const success = await workspaceStore.addWorkspace(newWorkspace.value)
-  if (success) {
+  try {
+    await workspaceStore.addWorkspace(newWorkspace.value)
     selectedWorkspace.value = newWorkspace.value
     newWorkspace.value = ''
+  } catch (error) {
+    console.error('Failed to add workspace:', error)
   }
 }
 

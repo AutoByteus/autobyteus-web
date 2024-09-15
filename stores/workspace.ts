@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { TreeNode, convertJsonToTreeNode } from '~/utils/fileExplorer/TreeNode'
 import { useMutation } from '@vue/apollo-composable'
-import { AddWorkspace } from '~/graphql/queries/workspace_queries'
+import { AddWorkspace } from '~/graphql/mutations/workspace_mutations'
 import type { AddWorkspaceMutation, AddWorkspaceMutationVariables } from '~/generated/graphql'
 
 interface WorkspaceState {
@@ -26,18 +26,15 @@ export const useWorkspaceStore = defineStore('workspace', {
     async addWorkspace(newWorkspacePath: string): Promise<void> {
       const { mutate: addWorkspaceMutation } = useMutation<AddWorkspaceMutation, AddWorkspaceMutationVariables>(AddWorkspace)
       try {
-        const { data } = await addWorkspaceMutation({
-          variables: {
-            workspaceRootPath: newWorkspacePath,
-          },
+        const result = await addWorkspaceMutation({
+          workspaceRootPath: newWorkspacePath,
         })
-        if (data?.addWorkspace) {
-          this.setWorkspaceTree(convertJsonToTreeNode(data.addWorkspace))
-          this.workspaces.push(newWorkspacePath)
-          this.setSelectedWorkspacePath(newWorkspacePath)
-        } else {
-          throw new Error('Failed to add workspace')
+        if (!result || !result.data?.addWorkspace) {
+          throw new Error('Failed to add workspace: No data returned')
         }
+        this.setWorkspaceTree(convertJsonToTreeNode(result.data.addWorkspace))
+        this.workspaces.push(newWorkspacePath)
+        this.setSelectedWorkspacePath(newWorkspacePath)
       } catch (error) {
         console.error('Error adding workspace:', error)
         throw error

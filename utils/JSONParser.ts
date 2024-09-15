@@ -1,4 +1,4 @@
-import type { Workflow } from '~/types/Workflow'
+import type { Workflow } from '~/types/workflow'
 import type { SearchResult } from '~/types/code_entities'
 
 export const deserializeWorkflow = (jsonString: string): Workflow => {

@@ -32,7 +32,7 @@
 import { ref, computed } from 'vue'
 import { useWorkflowStore } from '~/stores/workflow'
 import { useLazyQuery } from '@vue/apollo-composable'
-import { SearchCodeEntities } from '~/graphql/queries'
+import { SearchCodeEntities } from '~/graphql/queries/code_search_queries'
 import type { SearchCodeEntitiesQuery, SearchCodeEntitiesQueryVariables } from '~/generated/graphql'
 import type { ScoredEntity, CodeEntity } from '~/types/code_entities'
 import { deserializeSearchResult } from '~/utils/JSONParser'
