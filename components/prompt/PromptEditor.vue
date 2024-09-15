@@ -30,7 +30,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, Ref, watch } from 'vue';
+import { ref, computed, reactive, type Ref, watch } from 'vue';
 import Collapsible from '../utils/Collapsible.vue';
 import ResizableTextArea from '../utils/ResizableTextArea.vue';
 import type { PromptTemplate } from '../../types/workflow';

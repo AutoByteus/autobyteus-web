@@ -26,12 +26,12 @@ import TabList from "~/components/tabs/TabList.vue";
 
 const tabs = shallowRef([
   { name: 'File' },
-  { name: 'Agent' }
+  { name: 'Workflow' }
 ]);
 
 const components = {
   'File': ContentViewer,
-  'Agent': WorkflowDisplay
+  'Workflow': WorkflowDisplay
 };
 
 const activeTab = shallowRef('File');

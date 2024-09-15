@@ -9,7 +9,7 @@
 </template>
 
 <script setup lang="ts">
-import { inject, Ref } from 'vue';
+import { inject, type Ref } from 'vue';
 import type { Step } from '../../types/workflow';
 
 const props = defineProps<{ step: Step; isSelected: boolean }>();

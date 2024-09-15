@@ -32,9 +32,7 @@ const loading = ref(false)
 const error = ref(null)
 
 const fetchWorkflow = async () => {
-  const { loading: isLoading, error: fetchError } = await workflowStore.fetchWorkflowConfig(workspaceStore.selectedWorkspacePath)
-  loading.value = isLoading
-  error.value = fetchError
+  await workflowStore.fetchWorkflowConfig(workspaceStore.selectedWorkspacePath)
 }
 
 onMounted(fetchWorkflow)
