@@ -32,8 +32,6 @@ export const useWorkflowStore = defineStore('workflow', {
         if (result.value?.workflowConfig) {
           const parsedWorkflow = deserializeWorkflow(result.value.workflowConfig)
           this.setWorkflow(parsedWorkflow)
-        } else {
-          throw new Error('Failed to fetch workflow config')
         }
       } catch (err) {
         console.error('Failed to fetch or parse workflowConfig', err)
