@@ -1,92 +1,85 @@
 <template>
-  <transition name="slide-fade">
-    <div v-if="selectedStep" class="selected-step-details">
-      <h3>Selected Step: {{ selectedStep.name }}</h3>
-      
-      <div v-if="selectedStep.prompt_template" class="prompt-editor-section">
-        <h4>Edit Prompt:</h4>
-        <PromptEditor 
-          :template="selectedStep.prompt_template" 
-          @update:variable="updatePromptVariable"
-        />
-        
-        <button v-if="showSearchContextButton" @click="searchCodeContext" class="search-context-button">Search Code Context</button>
-        
-        <button v-if="showRefineRequirementButton" class="refine-requirement-button">Refine Requirement</button>
-      </div>
-
-      <div class="search-results-section">
-        <h4>Search Results:</h4>
-        <CodeSearchResult v-for="code_entity in processedSearchData" :key="code_entity.entity.file_path" :snippet="code_entity.entity.docstring" />
-      </div>
-
-      <button @click="startExecution" class="start-execution-button">Start Execution</button>
-      <p data-test-id="execution-status">Execution Status: {{ executionStatus }}</p>
-      
-      <ExecutionLogsPanel :logs="executionLogs" />
+  <div v-if="selectedStep" class="space-y-6 p-4 bg-white rounded-lg shadow">
+    <h3 class="text-xl font-semibold text-gray-800">Selected Step: {{ selectedStep.name }}</h3>
+    
+    <div class="space-y-2">
+      <h4 class="text-lg font-medium text-gray-700">Edit Prompt:</h4>
+      <PromptEditor 
+        :prompt="selectedStep.prompt_template.template" 
+        @update:prompt="updatePrompt"
+      />
     </div>
-  </transition>
+
+    <div class="space-y-2">
+      <h4 class="text-lg font-medium text-gray-700">Context File Path:</h4>
+      <div 
+        class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-blue-500 transition duration-300"
+        @dragover.prevent
+        @drop.prevent="onFileDrop"
+      >
+        <p class="text-gray-600">
+          {{ contextFilePath || 'Drag and drop a file here' }}
+        </p>
+      </div>
+    </div>
+
+    <div class="space-y-2">
+      <h4 class="text-lg font-medium text-gray-700">User Requirement:</h4>
+      <textarea
+        v-model="userRequirement"
+        @input="updateUserRequirement"
+        class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        rows="5"
+        placeholder="Enter your requirement here..."
+      ></textarea>
+    </div>
+
+    <button 
+      @click="startExecution" 
+      class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-300"
+    >
+      Start Execution
+    </button>
+
+    <p data-test-id="execution-status" class="text-sm text-gray-600">
+      Execution Status: {{ executionStatus }}
+    </p>
+    
+    <ExecutionLogsPanel :logs="executionLogs" />
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useWorkflowStore } from '~/stores/workflow'
-import { useLazyQuery } from '@vue/apollo-composable'
-import { SearchCodeEntities } from '~/graphql/queries/code_search_queries'
-import type { SearchCodeEntitiesQuery, SearchCodeEntitiesQueryVariables } from '~/generated/graphql'
-import type { ScoredEntity, CodeEntity } from '~/types/code_entities'
-import { deserializeSearchResult } from '~/utils/JSONParser'
+import PromptEditor from '~/components/prompt/PromptEditor.vue'
+import ExecutionLogsPanel from './ExecutionLogsPanel.vue'
 
 const workflowStore = useWorkflowStore()
 
-const executionStatus = ref('Not Started')
-const executionLogs = ref('')
-const processedSearchData = ref<ScoredEntity<CodeEntity>[]>([])
-const promptVariables = ref<{ [key: string]: string }>({})
+const selectedStep = computed(() => workflowStore.selectedStep)
+const executionStatus = computed(() => workflowStore.executionStatus)
+const executionLogs = computed(() => workflowStore.executionLogs)
+const contextFilePath = computed(() => workflowStore.contextFilePath)
+const userRequirement = computed(() => workflowStore.userRequirement)
 
-const selectedStep = computed(() => {
-  const workflow = workflowStore.workflow
-  const selectedStepId = workflowStore.selectedStepId
-  return workflow && selectedStepId ? workflow.steps[selectedStepId] : null
-})
-
-const { load: executeSearch, onResult: onSearchResult } = useLazyQuery<SearchCodeEntitiesQuery, SearchCodeEntitiesQueryVariables>(SearchCodeEntities)
-
-onSearchResult(({ data }) => {
-  if (data?.searchCodeEntities) {
-    const parsedSearchResult = deserializeSearchResult(data.searchCodeEntities)
-    processedSearchData.value = parsedSearchResult.entities
-  }
-})
-
-const updatePromptVariable = ({ variableName, value }: { variableName: string, value: string }) => {
-  promptVariables.value[variableName] = value
-}
-
-const searchCodeContext = () => {
-  const variableToSearch = Object.keys(promptVariables.value).find(variableName => {
-    const variable = selectedStep.value?.prompt_template.variables.find(v => v.name === variableName)
-    return variable?.allow_code_context_building
-  })
-
-  if (variableToSearch) {
-    executeSearch({ query: promptVariables.value[variableToSearch] })
-  }
+const updatePrompt = (newPrompt: string) => {
+  workflowStore.updateStepPrompt(newPrompt)
 }
 
 const startExecution = () => {
-  executionStatus.value = 'Running'
+  workflowStore.startExecution()
 }
 
-const showSearchContextButton = computed(() => {
-  return selectedStep.value?.prompt_template.variables.some(variable => variable.allow_code_context_building)
-})
+const onFileDrop = (event: DragEvent) => {
+  const file = event.dataTransfer?.files[0]
+  if (file) {
+    workflowStore.setContextFilePath(file.path)
+  }
+}
 
-const showRefineRequirementButton = computed(() => {
-  return selectedStep.value?.prompt_template.variables.some(variable => variable.allow_llm_refinement)
-})
+const updateUserRequirement = (event: Event) => {
+  const target = event.target as HTMLTextAreaElement
+  workflowStore.setUserRequirement(target.value)
+}
 </script>
-
-<style scoped>
-/* ... (keep existing styles) ... */
-</style>

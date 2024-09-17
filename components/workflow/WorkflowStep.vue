@@ -9,13 +9,13 @@
 </template>
 
 <script setup lang="ts">
-import { inject, type Ref } from 'vue';
-import type { Step } from '../../types/workflow';
+import { useWorkflowStore } from '~/stores/workflow'
+import type { Step } from '../../types/workflow'
 
-const props = defineProps<{ step: Step; isSelected: boolean }>();
-const selectedStep = inject<Ref<Step | null>>('selectedStep')!;
+const props = defineProps<{ step: Step; isSelected: boolean }>()
+const workflowStore = useWorkflowStore()
 
 const selectStep = (step: Step) => {
-  selectedStep.value = step;
+  workflowStore.setSelectedStepId(step.id)
 }
 </script>
