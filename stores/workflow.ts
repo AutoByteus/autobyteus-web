@@ -4,13 +4,14 @@ import { useQuery } from '@vue/apollo-composable'
 import { GetWorkflowConfig } from '~/graphql/queries/workspace_queries'
 import type { GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables } from '~/generated/graphql'
 import { deserializeWorkflow } from '~/utils/JSONParser'
+import path from 'path'
 
 interface WorkflowState {
   workflow: Workflow | null;
   selectedStepId: string | null;
   executionStatus: 'Not Started' | 'Running' | 'Completed' | 'Failed';
   executionLogs: string;
-  contextFilePath: string;
+  contextFilePaths: string[];
   userRequirement: string;
 }
 
@@ -20,7 +21,7 @@ export const useWorkflowStore = defineStore('workflow', {
     selectedStepId: null,
     executionStatus: 'Not Started',
     executionLogs: '',
-    contextFilePath: '',
+    contextFilePaths: [],
     userRequirement: ''
   }),
   actions: {
@@ -43,14 +44,12 @@ export const useWorkflowStore = defineStore('workflow', {
             this.setWorkflow(parsedWorkflow)
           } catch (err) {
             console.error('Failed to parse workflowConfig', err)
-            // Optionally, you can set an error state here
           }
         }
       })
 
       onError((error) => {
         console.error('Failed to fetch workflowConfig', error)
-        // Optionally, you can set an error state here
       })
 
       return { onResult, onError }
@@ -66,15 +65,21 @@ export const useWorkflowStore = defineStore('workflow', {
     startExecution() {
       this.executionStatus = 'Running'
       this.executionLogs = 'Execution started...\n'
-      // Here you would typically start the actual execution process
-      // For now, we'll just simulate it with a timeout
       setTimeout(() => {
         this.executionStatus = 'Completed'
         this.executionLogs += 'Execution completed successfully.'
       }, 3000)
     },
-    setContextFilePath(path: string) {
-      this.contextFilePath = path
+    addContextFilePath(filePath: string) {
+      if (!this.contextFilePaths.includes(filePath)) {
+        this.contextFilePaths.push(filePath)
+      }
+    },
+    removeContextFilePath(index: number) {
+      this.contextFilePaths.splice(index, 1)
+    },
+    clearAllContextFilePaths() {
+      this.contextFilePaths = []
     },
     setUserRequirement(requirement: string) {
       this.userRequirement = requirement

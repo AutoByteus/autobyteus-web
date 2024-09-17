@@ -1,5 +1,11 @@
 <template>
-  <div :class="{ 'folder': !file.is_file, 'open': isFileOpen }" @click.stop="toggle" class="file-item cursor-pointer hover:bg-gray-200 rounded p-2 transition-colors duration-200">
+  <div 
+    :class="{ 'folder': !file.is_file, 'open': isFileOpen }" 
+    @click.stop="toggle" 
+    class="file-item cursor-pointer hover:bg-gray-200 rounded p-2 transition-colors duration-200"
+    draggable="true"
+    @dragstart="onDragStart"
+  >
     <div class="file-header flex items-center space-x-2">
       <div class="icon w-5 h-5 flex-shrink-0">
         <svg v-if="!file.is_file" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#87CEEB" class="w-full h-full">
@@ -49,4 +55,12 @@ onMounted(() => {
     console.log(`Child nodes of '${props.file.name}':`, props.file.children)
   }
 })
+
+const onDragStart = (event: DragEvent) => {
+  if (event.dataTransfer) {
+    // Pass the entire file object (TreeNode) as a JSON string
+    event.dataTransfer.setData('application/json', JSON.stringify(props.file))
+    event.dataTransfer.effectAllowed = 'copy'
+  }
+}
 </script>

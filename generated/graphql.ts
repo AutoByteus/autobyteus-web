@@ -57,7 +57,8 @@ export enum LlmModel {
 export type Mutation = {
   __typename?: 'Mutation';
   addWorkspace: Scalars['JSON']['output'];
-  sendImplementationRequirement: Scalars['String']['output'];
+  configureStepLlm: Scalars['String']['output'];
+  sendStepRequirement: Scalars['String']['output'];
   startWorkflow: Scalars['Boolean']['output'];
 };
 
@@ -67,10 +68,16 @@ export type MutationAddWorkspaceArgs = {
 };
 
 
-export type MutationSendImplementationRequirementArgs = {
+export type MutationConfigureStepLlmArgs = {
+  llmModel: LlmModel;
+  stepId: Scalars['String']['input'];
+  workspaceRootPath: Scalars['String']['input'];
+};
+
+
+export type MutationSendStepRequirementArgs = {
   contextFilePaths: Array<Scalars['String']['input']>;
-  implementationRequirement: Scalars['String']['input'];
-  llmModel?: InputMaybe<LlmModel>;
+  requirement: Scalars['String']['input'];
   stepId: Scalars['String']['input'];
   workspaceRootPath: Scalars['String']['input'];
 };
@@ -104,11 +111,11 @@ export type QueryWorkflowConfigArgs = {
 
 export type Subscription = {
   __typename?: 'Subscription';
-  implementationResponse: Scalars['String']['output'];
+  stepResponse: Scalars['String']['output'];
 };
 
 
-export type SubscriptionImplementationResponseArgs = {
+export type SubscriptionStepResponseArgs = {
   stepId: Scalars['String']['input'];
   workspaceRootPath: Scalars['String']['input'];
 };
@@ -119,16 +126,31 @@ export type WorkspaceTool = {
   promptTemplate: Scalars['String']['output'];
 };
 
-export type SendImplementationRequirementMutationVariables = Exact<{
+export type SendStepRequirementMutationVariables = Exact<{
   workspaceRootPath: Scalars['String']['input'];
   stepId: Scalars['String']['input'];
   contextFilePaths: Array<Scalars['String']['input']> | Scalars['String']['input'];
-  implementationRequirement: Scalars['String']['input'];
-  llmModel?: InputMaybe<LlmModel>;
+  requirement: Scalars['String']['input'];
 }>;
 
 
-export type SendImplementationRequirementMutation = { __typename?: 'Mutation', sendImplementationRequirement: string };
+export type SendStepRequirementMutation = { __typename?: 'Mutation', sendStepRequirement: string };
+
+export type ConfigureStepLlmMutationVariables = Exact<{
+  workspaceRootPath: Scalars['String']['input'];
+  stepId: Scalars['String']['input'];
+  llmModel: LlmModel;
+}>;
+
+
+export type ConfigureStepLlmMutation = { __typename?: 'Mutation', configureStepLlm: string };
+
+export type AddWorkspaceMutationVariables = Exact<{
+  workspaceRootPath: Scalars['String']['input'];
+}>;
+
+
+export type AddWorkspaceMutation = { __typename?: 'Mutation', addWorkspace: any };
 
 export type SearchCodeEntitiesQueryVariables = Exact<{
   query: Scalars['String']['input'];
@@ -144,59 +166,102 @@ export type GetWorkflowConfigQueryVariables = Exact<{
 
 export type GetWorkflowConfigQuery = { __typename?: 'Query', workflowConfig: any };
 
-export type AddWorkspaceMutationVariables = Exact<{
-  workspaceRootPath: Scalars['String']['input'];
-}>;
 
-
-export type AddWorkspaceMutation = { __typename?: 'Mutation', addWorkspace: any };
-
-export type ImplementationResponseSubscriptionVariables = Exact<{
-  workspaceRootPath: Scalars['String']['input'];
-  stepId: Scalars['String']['input'];
-}>;
-
-
-export type ImplementationResponseSubscription = { __typename?: 'Subscription', implementationResponse: string };
-
-
-export const SendImplementationRequirementDocument = gql`
-    mutation SendImplementationRequirement($workspaceRootPath: String!, $stepId: String!, $contextFilePaths: [String!]!, $implementationRequirement: String!, $llmModel: LLMModel) {
-  sendImplementationRequirement(
+export const SendStepRequirementDocument = gql`
+    mutation SendStepRequirement($workspaceRootPath: String!, $stepId: String!, $contextFilePaths: [String!]!, $requirement: String!) {
+  sendStepRequirement(
     workspaceRootPath: $workspaceRootPath
     stepId: $stepId
     contextFilePaths: $contextFilePaths
-    implementationRequirement: $implementationRequirement
-    llmModel: $llmModel
+    requirement: $requirement
   )
 }
     `;
 
 /**
- * __useSendImplementationRequirementMutation__
+ * __useSendStepRequirementMutation__
  *
- * To run a mutation, you first call `useSendImplementationRequirementMutation` within a Vue component and pass it any options that fit your needs.
- * When your component renders, `useSendImplementationRequirementMutation` returns an object that includes:
+ * To run a mutation, you first call `useSendStepRequirementMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useSendStepRequirementMutation` returns an object that includes:
  * - A mutate function that you can call at any time to execute the mutation
  * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
  *
  * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
  *
  * @example
- * const { mutate, loading, error, onDone } = useSendImplementationRequirementMutation({
+ * const { mutate, loading, error, onDone } = useSendStepRequirementMutation({
  *   variables: {
  *     workspaceRootPath: // value for 'workspaceRootPath'
  *     stepId: // value for 'stepId'
  *     contextFilePaths: // value for 'contextFilePaths'
- *     implementationRequirement: // value for 'implementationRequirement'
+ *     requirement: // value for 'requirement'
+ *   },
+ * });
+ */
+export function useSendStepRequirementMutation(options: VueApolloComposable.UseMutationOptions<SendStepRequirementMutation, SendStepRequirementMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<SendStepRequirementMutation, SendStepRequirementMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<SendStepRequirementMutation, SendStepRequirementMutationVariables>(SendStepRequirementDocument, options);
+}
+export type SendStepRequirementMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<SendStepRequirementMutation, SendStepRequirementMutationVariables>;
+export const ConfigureStepLlmDocument = gql`
+    mutation configureStepLLM($workspaceRootPath: String!, $stepId: String!, $llmModel: LLMModel!) {
+  configureStepLlm(
+    workspaceRootPath: $workspaceRootPath
+    stepId: $stepId
+    llmModel: $llmModel
+  )
+}
+    `;
+
+/**
+ * __useConfigureStepLlmMutation__
+ *
+ * To run a mutation, you first call `useConfigureStepLlmMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useConfigureStepLlmMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useConfigureStepLlmMutation({
+ *   variables: {
+ *     workspaceRootPath: // value for 'workspaceRootPath'
+ *     stepId: // value for 'stepId'
  *     llmModel: // value for 'llmModel'
  *   },
  * });
  */
-export function useSendImplementationRequirementMutation(options: VueApolloComposable.UseMutationOptions<SendImplementationRequirementMutation, SendImplementationRequirementMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<SendImplementationRequirementMutation, SendImplementationRequirementMutationVariables>> = {}) {
-  return VueApolloComposable.useMutation<SendImplementationRequirementMutation, SendImplementationRequirementMutationVariables>(SendImplementationRequirementDocument, options);
+export function useConfigureStepLlmMutation(options: VueApolloComposable.UseMutationOptions<ConfigureStepLlmMutation, ConfigureStepLlmMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<ConfigureStepLlmMutation, ConfigureStepLlmMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<ConfigureStepLlmMutation, ConfigureStepLlmMutationVariables>(ConfigureStepLlmDocument, options);
 }
-export type SendImplementationRequirementMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<SendImplementationRequirementMutation, SendImplementationRequirementMutationVariables>;
+export type ConfigureStepLlmMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<ConfigureStepLlmMutation, ConfigureStepLlmMutationVariables>;
+export const AddWorkspaceDocument = gql`
+    mutation AddWorkspace($workspaceRootPath: String!) {
+  addWorkspace(workspaceRootPath: $workspaceRootPath)
+}
+    `;
+
+/**
+ * __useAddWorkspaceMutation__
+ *
+ * To run a mutation, you first call `useAddWorkspaceMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useAddWorkspaceMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useAddWorkspaceMutation({
+ *   variables: {
+ *     workspaceRootPath: // value for 'workspaceRootPath'
+ *   },
+ * });
+ */
+export function useAddWorkspaceMutation(options: VueApolloComposable.UseMutationOptions<AddWorkspaceMutation, AddWorkspaceMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<AddWorkspaceMutation, AddWorkspaceMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<AddWorkspaceMutation, AddWorkspaceMutationVariables>(AddWorkspaceDocument, options);
+}
+export type AddWorkspaceMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<AddWorkspaceMutation, AddWorkspaceMutationVariables>;
 export const SearchCodeEntitiesDocument = gql`
     query SearchCodeEntities($query: String!) {
   searchCodeEntities(query: $query)
@@ -253,56 +318,3 @@ export function useGetWorkflowConfigLazyQuery(variables?: GetWorkflowConfigQuery
   return VueApolloComposable.useLazyQuery<GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables>(GetWorkflowConfigDocument, variables, options);
 }
 export type GetWorkflowConfigQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables>;
-export const AddWorkspaceDocument = gql`
-    mutation AddWorkspace($workspaceRootPath: String!) {
-  addWorkspace(workspaceRootPath: $workspaceRootPath)
-}
-    `;
-
-/**
- * __useAddWorkspaceMutation__
- *
- * To run a mutation, you first call `useAddWorkspaceMutation` within a Vue component and pass it any options that fit your needs.
- * When your component renders, `useAddWorkspaceMutation` returns an object that includes:
- * - A mutate function that you can call at any time to execute the mutation
- * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
- *
- * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
- *
- * @example
- * const { mutate, loading, error, onDone } = useAddWorkspaceMutation({
- *   variables: {
- *     workspaceRootPath: // value for 'workspaceRootPath'
- *   },
- * });
- */
-export function useAddWorkspaceMutation(options: VueApolloComposable.UseMutationOptions<AddWorkspaceMutation, AddWorkspaceMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<AddWorkspaceMutation, AddWorkspaceMutationVariables>> = {}) {
-  return VueApolloComposable.useMutation<AddWorkspaceMutation, AddWorkspaceMutationVariables>(AddWorkspaceDocument, options);
-}
-export type AddWorkspaceMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<AddWorkspaceMutation, AddWorkspaceMutationVariables>;
-export const ImplementationResponseDocument = gql`
-    subscription ImplementationResponse($workspaceRootPath: String!, $stepId: String!) {
-  implementationResponse(workspaceRootPath: $workspaceRootPath, stepId: $stepId)
-}
-    `;
-
-/**
- * __useImplementationResponseSubscription__
- *
- * To run a query within a Vue component, call `useImplementationResponseSubscription` and pass it any options that fit your needs.
- * When your component renders, `useImplementationResponseSubscription` returns an object from Apollo Client that contains result, loading and error properties
- * you can use to render your UI.
- *
- * @param variables that will be passed into the subscription
- * @param options that will be passed into the subscription, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/subscription.html#options;
- *
- * @example
- * const { result, loading, error } = useImplementationResponseSubscription({
- *   workspaceRootPath: // value for 'workspaceRootPath'
- *   stepId: // value for 'stepId'
- * });
- */
-export function useImplementationResponseSubscription(variables: ImplementationResponseSubscriptionVariables | VueCompositionApi.Ref<ImplementationResponseSubscriptionVariables> | ReactiveFunction<ImplementationResponseSubscriptionVariables>, options: VueApolloComposable.UseSubscriptionOptions<ImplementationResponseSubscription, ImplementationResponseSubscriptionVariables> | VueCompositionApi.Ref<VueApolloComposable.UseSubscriptionOptions<ImplementationResponseSubscription, ImplementationResponseSubscriptionVariables>> | ReactiveFunction<VueApolloComposable.UseSubscriptionOptions<ImplementationResponseSubscription, ImplementationResponseSubscriptionVariables>> = {}) {
-  return VueApolloComposable.useSubscription<ImplementationResponseSubscription, ImplementationResponseSubscriptionVariables>(ImplementationResponseDocument, variables, options);
-}
-export type ImplementationResponseSubscriptionCompositionFunctionResult = VueApolloComposable.UseSubscriptionReturn<ImplementationResponseSubscription, ImplementationResponseSubscriptionVariables>;

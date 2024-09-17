@@ -10,16 +10,19 @@
       />
     </div>
 
-    <div class="space-y-2">
-      <h4 class="text-lg font-medium text-gray-700">Context File Path:</h4>
+    <div 
+      class="space-y-2"
+      @dragover.prevent
+      @drop.prevent="onFileDrop"
+    >
+      <h4 class="text-lg font-medium text-gray-700">Context File Paths:</h4>
       <div 
         class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-blue-500 transition duration-300"
-        @dragover.prevent
-        @drop.prevent="onFileDrop"
       >
-        <p class="text-gray-600">
-          {{ contextFilePath || 'Drag and drop a file here' }}
+        <p class="text-gray-600" v-if="contextFilePaths.length === 0">
+          Drag and drop files or folders here
         </p>
+        <ContextFilePathList v-else />
       </div>
     </div>
 
@@ -54,13 +57,16 @@ import { computed } from 'vue'
 import { useWorkflowStore } from '~/stores/workflow'
 import PromptEditor from '~/components/prompt/PromptEditor.vue'
 import ExecutionLogsPanel from './ExecutionLogsPanel.vue'
+import ContextFilePathList from '~/components/workflow/ContextFilePathList.vue'
+import { getFilePathsFromFolder } from '~/utils/fileExplorer/fileUtils'
+import { TreeNode } from '~/utils/fileExplorer/TreeNode'
 
 const workflowStore = useWorkflowStore()
 
 const selectedStep = computed(() => workflowStore.selectedStep)
 const executionStatus = computed(() => workflowStore.executionStatus)
 const executionLogs = computed(() => workflowStore.executionLogs)
-const contextFilePath = computed(() => workflowStore.contextFilePath)
+const contextFilePaths = computed(() => workflowStore.contextFilePaths)
 const userRequirement = computed(() => workflowStore.userRequirement)
 
 const updatePrompt = (newPrompt: string) => {
@@ -72,9 +78,13 @@ const startExecution = () => {
 }
 
 const onFileDrop = (event: DragEvent) => {
-  const file = event.dataTransfer?.files[0]
-  if (file) {
-    workflowStore.setContextFilePath(file.path)
+  const dragData = event.dataTransfer?.getData('application/json')
+  if (dragData) {
+    const droppedNode: TreeNode = JSON.parse(dragData)
+    const filePaths = getFilePathsFromFolder(droppedNode)
+    filePaths.forEach(filePath => {
+      workflowStore.addContextFilePath(filePath)
+    })
   }
 }
 
