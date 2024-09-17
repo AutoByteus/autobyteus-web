@@ -1,6 +1,6 @@
 <template>
   <div v-if="error" class="alert alert-error">
-    <i class="fas fa-exclamation-triangle"></i> Something went wrong...
+    <i class="fas fa-exclamation-triangle"></i> {{ error }}
   </div>
   <div v-if="loading" class="alert alert-info">
     <i class="fas fa-spinner fa-spin"></i> Loading...
@@ -9,7 +9,7 @@
   <div class="workflow-container" v-if="workflow">
     <div class="workflow-steps">
       <WorkflowStep
-        v-for="step in Object.values(workflow.steps)"
+        v-for="step in steps"
         :key="step.id"
         :step="step"
         :isSelected="selectedStepId === step.id"
@@ -29,22 +29,33 @@ const workspaceStore = useWorkspaceStore()
 const workflowStore = useWorkflowStore()
 
 const loading = ref(false)
-const error = ref(null)
+const error = ref<string | null>(null)
 
 const fetchWorkflow = async () => {
-  await workflowStore.fetchWorkflowConfig(workspaceStore.selectedWorkspacePath)
+  loading.value = true
+  error.value = null
+  try {
+      workflowStore.fetchWorkflowConfig(workspaceStore.selectedWorkspacePath)
+  } catch (err: any) {
+    error.value = err.message || 'Failed to fetch workflow.'
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(fetchWorkflow)
 
 watch(() => workspaceStore.selectedWorkspacePath, fetchWorkflow)
 
-const workflow = computed(() => workflowStore.workflow)
-const selectedStepId = computed(() => workflowStore.selectedStepId)
+const workflow = computed(() => workflowStore.currentWorkflow)
+const selectedStepId = computed(() => workflowStore.currentSelectedStepId)
 
-watch(() => Object.values(workflow.value?.steps || {}), (steps) => {
-  if (steps.length > 0 && !selectedStepId.value) {
-    workflowStore.setSelectedStepId(steps[0].id)
+// Computed property for steps with default empty array
+const steps = computed(() => Object.values(workflow.value?.steps || {}))
+
+watch(steps, (stepsArray) => {
+  if (stepsArray.length > 0 && !selectedStepId.value) {
+    workflowStore.setSelectedStepId(stepsArray[0].id)
   }
 })
 </script>

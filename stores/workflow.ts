@@ -30,21 +30,30 @@ export const useWorkflowStore = defineStore('workflow', {
     setSelectedStepId(stepId: string) {
       this.selectedStepId = stepId
     },
-    async fetchWorkflowConfig(workspaceRootPath: string): Promise<void> {
-      try {
-        const { result } = await useQuery<GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables>(
-          GetWorkflowConfig,
-          { workspaceRootPath }
-        )
+    fetchWorkflowConfig(workspaceRootPath: string) {
+      const { onResult, onError } = useQuery<GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables>(
+        GetWorkflowConfig,
+        { workspaceRootPath }
+      )
 
-        if (result.value?.workflowConfig) {
-          const parsedWorkflow = deserializeWorkflow(result.value.workflowConfig)
-          this.setWorkflow(parsedWorkflow)
+      onResult((result) => {
+        if (result.data?.workflowConfig) {
+          try {
+            const parsedWorkflow = deserializeWorkflow(result.data.workflowConfig)
+            this.setWorkflow(parsedWorkflow)
+          } catch (err) {
+            console.error('Failed to parse workflowConfig', err)
+            // Optionally, you can set an error state here
+          }
         }
-      } catch (err) {
-        console.error('Failed to fetch or parse workflowConfig', err)
-        throw err
-      }
+      })
+
+      onError((error) => {
+        console.error('Failed to fetch workflowConfig', error)
+        // Optionally, you can set an error state here
+      })
+
+      return { onResult, onError }
     },
     updateStepPrompt(newPrompt: string) {
       if (this.workflow && this.selectedStepId) {
