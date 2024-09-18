@@ -2,15 +2,15 @@
   <div class="flex flex-col h-screen bg-gray-100 p-2 sm:p-5 font-sans text-gray-800">
     <WorkspaceSelector class="bg-gray-200 p-2 sm:p-4 rounded-lg mb-4" />
 
-    <div class="flex-grow flex flex-col">
-      <div class="flex flex-col sm:flex-row flex-grow">
-        <FileExplorer class="bg-white p-2 sm:p-5 rounded-lg shadow-md w-full sm:w-1/4 mb-4 sm:mb-0 sm:mr-5 overflow-auto" />
+    <div class="flex-grow flex flex-col sm:flex-row overflow-hidden">
+      <div class="w-full sm:w-1/4 mb-4 sm:mb-0 sm:mr-5 flex flex-col">
+        <FileExplorer class="bg-white p-2 sm:p-5 rounded-lg shadow-md flex-grow overflow-hidden" />
+      </div>
 
-        <div class="flex-grow bg-white p-2 sm:p-5 rounded-lg shadow-md">
-          <TabList :tabs="tabs" :selectedTab="activeTab" @select="changeTab" />
-          
-          <component :is="components[activeTab]" />
-        </div>
+      <div class="flex-grow bg-white p-2 sm:p-5 rounded-lg shadow-md overflow-auto">
+        <TabList :tabs="tabs" :selectedTab="activeTab" @select="changeTab" />
+        
+        <component :is="components[activeTab]" />
       </div>
     </div>
   </div>

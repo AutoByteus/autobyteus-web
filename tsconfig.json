@@ -1,3 +1,32 @@
 {
-  "extends": "./.nuxt/tsconfig.json"
+  "extends": "./.nuxt/tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020", "DOM"],
+    "strict": true,
+    "esModuleInterop": true,
+    "outDir": ".nuxt/dist",
+    "rootDir": ".",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": false,
+    "types": ["node", "electron"],
+    "baseUrl": ".",
+    "paths": {
+      "~/*": ["./*"],
+      "@/*": ["./*"],
+      "@electron/*": ["./electron/*"]
+    }
+  },
+  "include": [
+    ".nuxt/types/**/*.d.ts",
+    "electron/**/*.ts",
+    "plugins/**/*.ts",
+    "types/**/*.ts",
+    "**/*.ts",
+    "**/*.vue"
+  ],
+  "exclude": ["node_modules", ".nuxt/dist"]
 }

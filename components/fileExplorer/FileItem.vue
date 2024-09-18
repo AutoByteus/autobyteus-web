@@ -1,5 +1,6 @@
 <template>
   <div 
+    ref="fileItemRef"
     :class="{ 'folder': !file.is_file, 'open': isFileOpen }" 
     @click.stop="toggle" 
     class="file-item cursor-pointer hover:bg-gray-200 rounded p-2 transition-colors duration-200"
@@ -26,12 +27,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onMounted } from 'vue'
+import { computed, watch, onMounted, ref } from 'vue'
 import { TreeNode } from '~/utils/fileExplorer/TreeNode'
 import { useFileExplorerStore } from '~/stores/fileExplorer'
 
 const props = defineProps<{ file: TreeNode }>()
 const fileExplorerStore = useFileExplorerStore()
+
+const fileItemRef = ref<HTMLElement | null>(null)
 
 const toggle = () => {
   if (!props.file.is_file) {
@@ -57,10 +60,16 @@ onMounted(() => {
 })
 
 const onDragStart = (event: DragEvent) => {
-  if (event.dataTransfer) {
-    // Pass the entire file object (TreeNode) as a JSON string
-    event.dataTransfer.setData('application/json', JSON.stringify(props.file))
-    event.dataTransfer.effectAllowed = 'copy'
+  // Stop the event from bubbling up to parent elements
+  event.stopPropagation()
+
+  // Check if the dragged element is the one that fired the event
+  if (event.target === fileItemRef.value) {
+    if (event.dataTransfer) {
+      // Pass the entire file object (TreeNode) as a JSON string
+      event.dataTransfer.setData('application/json', JSON.stringify(props.file))
+      event.dataTransfer.effectAllowed = 'copy'
+    }
   }
 }
 </script>
