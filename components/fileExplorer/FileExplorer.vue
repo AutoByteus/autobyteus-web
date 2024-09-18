@@ -1,9 +1,19 @@
 <template>
   <div class="file-explorer flex flex-col h-full">
     <h2 class="text-xl font-semibold mb-4 flex-shrink-0">Project Files</h2>
+    <div v-if="workspaces.length > 0" class="mb-4">
+      <select v-model="selectedWorkspace" @change="changeWorkspace" class="p-2 border rounded">
+        <option v-for="workspace in workspaces" :key="workspace" :value="workspace">
+          {{ workspace }}
+        </option>
+      </select>
+    </div>
     <div class="file-explorer-content flex-grow overflow-y-auto">
-      <div v-if="files.length === 0" class="text-gray-500 italic">
-        No files available. Add a workspace to see files.
+      <div v-if="!hasWorkspaces" class="text-gray-500 italic">
+        No workspaces available. Add a workspace to see files.
+      </div>
+      <div v-else-if="files.length === 0" class="text-gray-500 italic">
+        This workspace is empty. Add files to see them here.
       </div>
       <div v-else class="space-y-2">
         <FileItem v-for="file in files" :key="file.path" :file="file" />
@@ -13,18 +23,28 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import FileItem from "~/components/fileExplorer/FileItem.vue";
 import { useWorkspaceStore } from '~/stores/workspace'
 
 const workspaceStore = useWorkspaceStore()
 
 const files = computed(() => {
-  return workspaceStore.workspaceTree ? workspaceStore.workspaceTree.children : []
+  return workspaceStore.activeWorkspaceTree ? workspaceStore.activeWorkspaceTree.children : []
 })
 
+const hasWorkspaces = computed(() => workspaceStore.allWorkspaces.length > 0)
+
+const workspaces = computed(() => workspaceStore.allWorkspaces)
+
+const selectedWorkspace = ref(workspaceStore.currentSelectedWorkspacePath)
+
+const changeWorkspace = () => {
+  workspaceStore.setSelectedWorkspacePath(selectedWorkspace.value)
+}
+
 onMounted(() => {
-  console.log("Workspace tree:", workspaceStore.workspaceTree)
+  console.log("Active workspace tree:", workspaceStore.activeWorkspaceTree)
 })
 </script>
 

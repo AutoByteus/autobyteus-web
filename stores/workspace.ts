@@ -5,23 +5,27 @@ import { AddWorkspace } from '~/graphql/mutations/workspace_mutations'
 import type { AddWorkspaceMutation, AddWorkspaceMutationVariables } from '~/generated/graphql'
 
 interface WorkspaceState {
-  workspaceTree: TreeNode | null;
+  workspaceTrees: Record<string, TreeNode>;
   selectedWorkspacePath: string;
   workspaces: string[];
 }
 
 export const useWorkspaceStore = defineStore('workspace', {
   state: (): WorkspaceState => ({
-    workspaceTree: null,
+    workspaceTrees: {},
     selectedWorkspacePath: '',
     workspaces: []
   }),
   actions: {
-    setWorkspaceTree(tree: TreeNode) {
-      this.workspaceTree = tree
+    setWorkspaceTree(path: string, tree: TreeNode) {
+      this.workspaceTrees[path] = tree
     },
     setSelectedWorkspacePath(path: string) {
-      this.selectedWorkspacePath = path
+      if (this.workspaceTrees[path]) {
+        this.selectedWorkspacePath = path
+      } else {
+        console.warn(`Attempted to select non-existent workspace path: ${path}`)
+      }
     },
     async addWorkspace(newWorkspacePath: string): Promise<void> {
       const { mutate: addWorkspaceMutation } = useMutation<AddWorkspaceMutation, AddWorkspaceMutationVariables>(AddWorkspace)
@@ -32,7 +36,8 @@ export const useWorkspaceStore = defineStore('workspace', {
         if (!result || !result.data?.addWorkspace) {
           throw new Error('Failed to add workspace: No data returned')
         }
-        this.setWorkspaceTree(convertJsonToTreeNode(result.data.addWorkspace))
+        const newTree = convertJsonToTreeNode(result.data.addWorkspace)
+        this.setWorkspaceTree(newWorkspacePath, newTree)
         this.workspaces.push(newWorkspacePath)
         this.setSelectedWorkspacePath(newWorkspacePath)
       } catch (error) {
@@ -42,7 +47,11 @@ export const useWorkspaceStore = defineStore('workspace', {
     }
   },
   getters: {
-    currentWorkspaceTree: (state): TreeNode | null => state.workspaceTree,
+    activeWorkspaceTree: (state): TreeNode | null => 
+      state.workspaceTrees[state.selectedWorkspacePath] || null,
+    currentWorkspaceTree(): TreeNode | null {
+      return this.activeWorkspaceTree
+    },
     currentSelectedWorkspacePath: (state): string => state.selectedWorkspacePath,
     allWorkspaces: (state): string[] => state.workspaces
   }
