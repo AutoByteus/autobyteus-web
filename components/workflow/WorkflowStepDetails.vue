@@ -52,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useWorkflowStore } from '~/stores/workflow'
 import { useWorkflowStepStore } from '~/stores/workflowStep'
 import PromptEditor from '~/components/prompt/PromptEditor.vue'
@@ -73,4 +73,9 @@ const formatTimestamp = (date: Date) => {
   const minutes = String(date.getMinutes()).padStart(2, '0')
   return `${hours}:${minutes}`
 }
+
+// Watch for changes in the selected step and clear messages when it changes
+watch(() => workflowStore.selectedStep, () => {
+  workflowStepStore.clearMessagesAfterLastUser()
+}, { deep: true })
 </script>

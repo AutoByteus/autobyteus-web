@@ -11,6 +11,8 @@ export default defineNuxtConfig({
     clients: {
       default: {
         httpEndpoint: 'http://localhost:8000/graphql',
+        wsEndpoint: 'ws://localhost:8000/graphql', // Add WebSocket endpoint
+        websocketsOnly: false, // Enable both HTTP and WebSocket transports
       },
     },
   },

@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
-import { useMutation, useSubscription } from '@vue/apollo-composable'
+import { useSubscription, useMutation } from '@vue/apollo-composable'
 import { SendStepRequirement, ConfigureStepLLM } from '~/graphql/mutations/workflowStepMutations'
 import { StepResponseSubscription } from '~/graphql/subscriptions/workflowStepSubscriptions'
-import type { 
-  SendStepRequirementMutation, 
-  SendStepRequirementMutationVariables, 
+import type {
+  SendStepRequirementMutation,
+  SendStepRequirementMutationVariables,
   ConfigureStepLlmMutation,
   ConfigureStepLlmMutationVariables,
   LlmModel,
@@ -41,7 +41,7 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
     stepResult: null,
     llmConfigurationResult: null,
     userRequirement: '',
-    messages: [], // Ensure this is always initialized as an empty array
+    messages: [],
     isSubscribed: false,
     isSending: false
   }),
@@ -84,17 +84,23 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
     },
 
     subscribeToStepResponse(workspaceRootPath: string, stepId: string) {
-      const { onResult } = useSubscription<StepResponseSubscriptionType, StepResponseSubscriptionVariables>(StepResponseSubscription, {
+      const { onResult, onError } = useSubscription<StepResponseSubscriptionType, StepResponseSubscriptionVariables>(StepResponseSubscription, {
         workspaceRootPath,
         stepId
       })
 
       onResult(({ data }) => {
-        if (data?.stepResponse) {
-          this.addAIMessage(data.stepResponse)
+        if (data?.stepResponse?.message) {
+          this.addAIMessage(data.stepResponse.message) // Extract the 'message' field
+        } else if (data?.stepResponse) {
+          console.warn('Received stepResponse without a message:', data.stepResponse)
         }
       })
 
+      onError((error) => {
+        console.error('Subscription error:', error)
+      })
+      
       this.isSubscribed = true
     },
 
@@ -107,11 +113,10 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
       
       try {
         const result = await configureStepLLMMutation({
-            workspaceRootPath,
-            stepId,
-            llmModel,
-          },
-        )
+          workspaceRootPath,
+          stepId,
+          llmModel,
+        })
 
         if (result?.data?.configureStepLlm) {
           this.llmConfigurationResult = result.data.configureStepLlm
@@ -136,25 +141,29 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
       this.userRequirement = requirement
     },
 
-    // Updated to accept a combined user message
     addUserMessage(payload: { text: string; contextFilePaths: string[]; timestamp: Date }) {
       const { text, contextFilePaths, timestamp } = payload
       this.messages.push({ type: 'user', text, contextFilePaths, timestamp })
     },
 
-    addAIMessage(text: string) {
-      this.messages.push({ type: 'ai', text, timestamp: new Date() })
+    /**
+     * Updated addAIMessage to accept a message string.
+     * Previously, it might have been handling a plain string, but now we extract the message from StepResponse.
+     */
+    addAIMessage(message: string) {
+      this.messages.push({ type: 'ai', text: message, timestamp: new Date() })
     },
 
     clearMessagesAfterLastUser() {
-      if (Array.isArray(this.messages) && this.messages.length > 0) {
-        const lastUserIndex = this.messages.map(m => m.type).lastIndexOf('user')
-        if (lastUserIndex !== -1) {
-          this.messages.splice(lastUserIndex + 1)
+      for (let i = this.messages.length - 1; i >= 0; i--) {
+        if (this.messages[i].type === 'user') {
+          this.messages.splice(i + 1)
+          break
         }
       }
     }
   },
+
   getters: {
     currentStepResult: (state): string | null => state.stepResult,
     currentLLMConfigurationResult: (state): string | null => state.llmConfigurationResult,
