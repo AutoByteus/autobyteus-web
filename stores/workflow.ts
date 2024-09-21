@@ -4,7 +4,6 @@ import { useQuery } from '@vue/apollo-composable'
 import { GetWorkflowConfig } from '~/graphql/queries/workspace_queries'
 import type { GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables } from '~/generated/graphql'
 import { deserializeWorkflow } from '~/utils/JSONParser'
-import path from 'path'
 
 interface WorkflowState {
   workflow: Workflow | null;
@@ -12,7 +11,6 @@ interface WorkflowState {
   executionStatus: 'Not Started' | 'Running' | 'Completed' | 'Failed';
   executionLogs: string;
   contextFilePaths: string[];
-  userRequirement: string;
 }
 
 export const useWorkflowStore = defineStore('workflow', {
@@ -21,8 +19,7 @@ export const useWorkflowStore = defineStore('workflow', {
     selectedStepId: null,
     executionStatus: 'Not Started',
     executionLogs: '',
-    contextFilePaths: [],
-    userRequirement: ''
+    contextFilePaths: []
   }),
   actions: {
     setWorkflow(workflow: Workflow) {
@@ -80,9 +77,6 @@ export const useWorkflowStore = defineStore('workflow', {
     },
     clearAllContextFilePaths() {
       this.contextFilePaths = []
-    },
-    setUserRequirement(requirement: string) {
-      this.userRequirement = requirement
     }
   },
   getters: {

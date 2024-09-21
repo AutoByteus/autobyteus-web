@@ -3,11 +3,11 @@
     ref="fileItemRef"
     :class="{ 'folder': !file.is_file, 'open': isFileOpen }" 
     @click.stop="toggle" 
-    class="file-item cursor-pointer hover:bg-gray-200 rounded p-2 transition-colors duration-200"
+    class="file-item cursor-pointer"
     draggable="true"
     @dragstart="onDragStart"
   >
-    <div class="file-header flex items-center space-x-2">
+    <div class="file-header flex items-center space-x-2 rounded p-2 transition-colors duration-200 hover:bg-gray-200">
       <div class="icon w-5 h-5 flex-shrink-0">
         <svg v-if="!file.is_file" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#87CEEB" class="w-full h-full">
           <path d="M20 18c0 .55-.45 1-1 1H5c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h5l2 1h7c.55 0 1 .45 1 1v11z"/>
@@ -19,7 +19,7 @@
       <span class="text-sm text-gray-700">{{ file.name }}</span>
     </div>
     <transition name="folder">
-      <div v-if="!file.is_file && isFileOpen" class="children ml-4 mt-2 space-y-2">
+      <div v-if="!file.is_file && isFileOpen" class="children ml-4 mt-2">
         <FileItem v-for="(child, index) in file.children" :key="`${child.path}-${index}`" :file="child"/>
       </div>
     </transition>
