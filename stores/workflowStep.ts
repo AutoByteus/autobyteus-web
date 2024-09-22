@@ -90,8 +90,8 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
       })
 
       onResult(({ data }) => {
-        if (data?.stepResponse?.message) {
-          this.addAIMessage(data.stepResponse.message) // Extract the 'message' field
+        if (data?.stepResponse) {
+          this.addAIMessage(data.stepResponse)
         } else if (data?.stepResponse) {
           console.warn('Received stepResponse without a message:', data.stepResponse)
         }
@@ -100,7 +100,7 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
       onError((error) => {
         console.error('Subscription error:', error)
       })
-      
+
       this.isSubscribed = true
     },
 
