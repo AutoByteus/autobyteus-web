@@ -1,55 +1,65 @@
 <template>
-    <div class="user-requirement-input border border-gray-300 rounded-lg p-4 shadow-sm">
+  <div class="user-requirement-input border border-gray-300 rounded-lg p-4 shadow-sm">
+    <div 
+      v-if="contextFilePaths.length > 0"
+      class="mb-4 bg-gray-50 rounded-md overflow-hidden border border-gray-200 hover:shadow-md transition-shadow duration-200"
+      @dragover.prevent
+      @drop.prevent="onFileDrop"
+    >
       <div 
-        class="mb-4 bg-gray-50 rounded-md overflow-hidden border border-gray-200"
-        @dragover.prevent
-        @drop.prevent="onFileDrop"
+        @click="toggleCollapse"
+        class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-100 transition duration-300"
       >
-        <div 
-          @click="toggleCollapse"
-          class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-100 transition duration-300"
-        >
-          <div class="flex items-center">
-            <i :class="['fas', isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down', 'mr-2 text-gray-500']"></i>
-            <span class="text-sm font-medium text-gray-700">Context Files ({{ contextFilePaths.length }})</span>
-          </div>
-          <span class="text-sm text-gray-500">Drop files here</span>
+        <div class="flex items-center">
+          <i :class="['fas', isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down', 'mr-2 text-gray-500']"></i>
+          <span class="text-sm font-medium text-gray-700">Context Files ({{ contextFilePaths.length }})</span>
         </div>
-        <div v-show="!isCollapsed" class="p-3 border-t border-gray-200">
-          <ContextFilePathList
-            :contextFilePaths="contextFilePaths"
-            @removePath="removePath"
-            @clearAllPaths="clearAllPaths"
-          />
-        </div>
+        <span class="text-sm text-blue-600 hover:text-blue-800 transition-colors duration-200">Drop files here</span>
       </div>
-  
-      <div class="relative">
-        <textarea
-          v-model="userRequirement"
-          ref="textarea"
-          class="w-full p-4 pr-[5.5rem] pb-16 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden bg-white"
-          :style="{ height: textareaHeight + 'px' }"
-          placeholder="Enter your requirement here..."
-          @input="adjustTextareaHeight"
-        ></textarea>
-        <button 
-          @click="handleSend"
-          :disabled="isSending || !userRequirement.trim()"
-          class="absolute bottom-4 right-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm"
-        >
-          <svg v-if="isSending" class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-          </svg>
-          <svg v-else class="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
-          </svg>
-          <span>{{ isSending ? 'Sending...' : 'Send' }}</span>
-        </button>
+      <div v-show="!isCollapsed" class="p-3 border-t border-gray-200">
+        <ContextFilePathList
+          :contextFilePaths="contextFilePaths"
+          @removePath="removePath"
+          @clearAllPaths="clearAllPaths"
+        />
       </div>
     </div>
-  </template>
+
+    <div 
+      v-else
+      @dragover.prevent
+      @drop.prevent="onFileDrop"
+      class="mb-4 bg-gray-50 rounded-md border border-gray-200 p-3 text-center text-sm text-gray-500 hover:bg-gray-100 transition duration-300 cursor-pointer"
+    >
+      Drop context files here (optional)
+    </div>
+
+    <div class="relative">
+      <textarea
+        v-model="userRequirement"
+        ref="textarea"
+        class="w-full p-4 pr-[5.5rem] pb-16 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden bg-white"
+        :style="{ height: textareaHeight + 'px' }"
+        placeholder="Enter your requirement here..."
+        @input="adjustTextareaHeight"
+      ></textarea>
+      <button 
+        @click="handleSend"
+        :disabled="isSending || !userRequirement.trim()"
+        class="absolute bottom-4 right-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm"
+      >
+        <svg v-if="isSending" class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <svg v-else class="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
+        </svg>
+        <span>{{ isSending ? 'Sending...' : 'Send' }}</span>
+      </button>
+    </div>
+  </div>
+</template>
   
   <script setup lang="ts">
   import { ref, computed, onMounted, nextTick } from 'vue'

@@ -1,18 +1,19 @@
 <template>
-  <div v-if="error" class="alert alert-error">
-    <i class="fas fa-exclamation-triangle"></i> {{ error }}
+  <div v-if="error" class="alert alert-error mb-4 p-4 bg-red-100 text-red-700 rounded-md">
+    <i class="fas fa-exclamation-triangle mr-2"></i> {{ error }}
   </div>
-  <div v-if="loading" class="alert alert-info">
-    <i class="fas fa-spinner fa-spin"></i> Loading...
+  <div v-if="loading" class="alert alert-info mb-4 p-4 bg-blue-100 text-blue-700 rounded-md">
+    <i class="fas fa-spinner fa-spin mr-2"></i> Loading...
   </div>
 
   <div class="workflow-container" v-if="workflow">
-    <div class="workflow-steps">
+    <div class="workflow-steps flex overflow-x-auto mb-6 pb-2">
       <WorkflowStep
         v-for="step in steps"
         :key="step.id"
         :step="step"
         :isSelected="selectedStepId === step.id"
+        class="flex-shrink-0"
       />
     </div>
 
@@ -35,7 +36,7 @@ const fetchWorkflow = async () => {
   loading.value = true
   error.value = null
   try {
-      workflowStore.fetchWorkflowConfig(workspaceStore.selectedWorkspacePath)
+    await workflowStore.fetchWorkflowConfig(workspaceStore.selectedWorkspacePath)
   } catch (err: any) {
     error.value = err.message || 'Failed to fetch workflow.'
   } finally {
@@ -49,8 +50,6 @@ watch(() => workspaceStore.selectedWorkspacePath, fetchWorkflow)
 
 const workflow = computed(() => workflowStore.currentWorkflow)
 const selectedStepId = computed(() => workflowStore.currentSelectedStepId)
-
-// Computed property for steps with default empty array
 const steps = computed(() => Object.values(workflow.value?.steps || {}))
 
 watch(steps, (stepsArray) => {
@@ -59,3 +58,23 @@ watch(steps, (stepsArray) => {
   }
 })
 </script>
+
+<style scoped>
+.workflow-steps {
+  scrollbar-width: thin;
+  scrollbar-color: #4A5568 #EDF2F7;
+}
+
+.workflow-steps::-webkit-scrollbar {
+  height: 6px;
+}
+
+.workflow-steps::-webkit-scrollbar-track {
+  background: #EDF2F7;
+}
+
+.workflow-steps::-webkit-scrollbar-thumb {
+  background-color: #4A5568;
+  border-radius: 3px;
+}
+</style>
