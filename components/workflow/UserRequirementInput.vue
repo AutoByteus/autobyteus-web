@@ -1,44 +1,12 @@
 <template>
-  <div class="user-requirement-input border border-gray-300 rounded-lg p-4 shadow-sm">
-    <div 
-      v-if="contextFilePaths.length > 0"
-      class="mb-4 bg-gray-50 rounded-md overflow-hidden border border-gray-200 hover:shadow-md transition-shadow duration-200"
-      @dragover.prevent
-      @drop.prevent="onFileDrop"
-    >
-      <div 
-        @click="toggleCollapse"
-        class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-100 transition duration-300"
-      >
-        <div class="flex items-center">
-          <i :class="['fas', isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down', 'mr-2 text-gray-500']"></i>
-          <span class="text-sm font-medium text-gray-700">Context Files ({{ contextFilePaths.length }})</span>
-        </div>
-        <span class="text-sm text-blue-600 hover:text-blue-800 transition-colors duration-200">Drop files here</span>
-      </div>
-      <div v-show="!isCollapsed" class="p-3 border-t border-gray-200">
-        <ContextFilePathList
-          :contextFilePaths="contextFilePaths"
-          @removePath="removePath"
-          @clearAllPaths="clearAllPaths"
-        />
-      </div>
-    </div>
+  <div class="border border-gray-300 rounded-lg shadow-sm">
+    <ContextFilePathList />
 
-    <div 
-      v-else
-      @dragover.prevent
-      @drop.prevent="onFileDrop"
-      class="mb-4 bg-gray-50 rounded-md border border-gray-200 p-3 text-center text-sm text-gray-500 hover:bg-gray-100 transition duration-300 cursor-pointer"
-    >
-      Drop context files here (optional)
-    </div>
-
-    <div class="relative">
+    <div class="relative mt-4">
       <textarea
         v-model="userRequirement"
         ref="textarea"
-        class="w-full p-4 pr-[5.5rem] pb-16 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden bg-white"
+        class="w-full p-4 pr-24 pb-16 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden bg-white transition-all duration-300"
         :style="{ height: textareaHeight + 'px' }"
         placeholder="Enter your requirement here..."
         @input="adjustTextareaHeight"
@@ -47,7 +15,7 @@
       <button 
         @click="handleSend"
         :disabled="isSending || !userRequirement.trim()"
-        class="absolute bottom-4 right-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm"
+        class="absolute bottom-4 right-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm"
       >
         <svg v-if="isSending" class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -68,8 +36,6 @@ import { useWorkflowStore } from '~/stores/workflow'
 import { useWorkflowStepStore } from '~/stores/workflowStep'
 import { useWorkspaceStore } from '~/stores/workspace'
 import ContextFilePathList from '~/components/workflow/ContextFilePathList.vue'
-import { getFilePathsFromFolder } from '~/utils/fileExplorer/fileUtils'
-import type { TreeNode } from '~/utils/fileExplorer/TreeNode'
 
 const workflowStore = useWorkflowStore()
 const workflowStepStore = useWorkflowStepStore()
@@ -78,33 +44,8 @@ const workspaceStore = useWorkspaceStore()
 const contextFilePaths = computed(() => workflowStore.contextFilePaths)
 const isSending = computed(() => workflowStepStore.isCurrentlySending)
 const userRequirement = ref('')
-const isCollapsed = ref(false)
 const textarea = ref<HTMLTextAreaElement | null>(null)
 const textareaHeight = ref(100) // Initial height
-
-const toggleCollapse = () => {
-  isCollapsed.value = !isCollapsed.value
-}
-
-const onFileDrop = (event: DragEvent) => {
-  const dragData = event.dataTransfer?.getData('application/json')
-  if (dragData) {
-    const droppedNode: TreeNode = JSON.parse(dragData)
-    const filePaths = getFilePathsFromFolder(droppedNode)
-    filePaths.forEach(filePath => {
-      workflowStore.addContextFilePath(filePath)
-    })
-  }
-  isCollapsed.value = false
-}
-
-const removePath = (index: number) => {
-  workflowStore.removeContextFilePath(index)
-}
-
-const clearAllPaths = () => {
-  workflowStore.clearAllContextFilePaths()
-}
 
 const handleSend = async () => {
   if (!userRequirement.value.trim()) {
@@ -164,13 +105,3 @@ onMounted(() => {
   })
 })
 </script>
-
-<style scoped>
-.user-requirement-input textarea {
-  transition: border-color 0.3s, box-shadow 0.3s;
-}
-
-.user-requirement-input button {
-  transition: background-color 0.3s, opacity 0.3s;
-}
-</style>

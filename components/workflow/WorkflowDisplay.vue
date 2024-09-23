@@ -25,6 +25,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useWorkspaceStore } from '~/stores/workspace'
 import { useWorkflowStore } from '~/stores/workflow'
+import WorkflowStepDetails from '~/components/workflow/WorkflowStepDetails.vue'
+import WorkflowStep from '~/components/workflow/WorkflowStep.vue'
 
 const workspaceStore = useWorkspaceStore()
 const workflowStore = useWorkflowStore()
@@ -36,7 +38,7 @@ const fetchWorkflow = async () => {
   loading.value = true
   error.value = null
   try {
-    await workflowStore.fetchWorkflowConfig(workspaceStore.selectedWorkspacePath)
+    workflowStore.fetchWorkflowConfig(workspaceStore.selectedWorkspacePath)
   } catch (err: any) {
     error.value = err.message || 'Failed to fetch workflow.'
   } finally {

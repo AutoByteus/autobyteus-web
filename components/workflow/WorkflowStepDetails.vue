@@ -7,7 +7,6 @@
         <PromptEditor 
           :prompt="selectedStep.prompt_template.template" 
           @update:prompt="updatePrompt"
-          @collapseChanged="handleCollapseChanged"
         />
       </div>
 
@@ -46,7 +45,7 @@
       </div>
     </div>
 
-    <div class="mt-auto border-t border-gray-200 p-4 bg-white">
+    <div class="mt-auto bg-white">
       <h4 class="text-lg font-medium text-gray-700 mb-2">New Message</h4>
       <UserRequirementInput />
     </div>
@@ -68,10 +67,6 @@ const messages = computed(() => workflowStepStore.messages)
 
 const updatePrompt = (newPrompt: string) => {
   workflowStore.updateStepPrompt(newPrompt)
-}
-
-const handleCollapseChanged = (isCollapsed: boolean) => {
-  console.log('Prompt editor collapsed:', isCollapsed)
 }
 
 const formatTimestamp = (date: Date) => {
