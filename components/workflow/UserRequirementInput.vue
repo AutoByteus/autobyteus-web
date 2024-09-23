@@ -42,6 +42,7 @@
         :style="{ height: textareaHeight + 'px' }"
         placeholder="Enter your requirement here..."
         @input="adjustTextareaHeight"
+        @keydown="handleKeyDown"
       ></textarea>
       <button 
         @click="handleSend"
@@ -61,108 +62,115 @@
   </div>
 </template>
   
-  <script setup lang="ts">
-  import { ref, computed, onMounted, nextTick } from 'vue'
-  import { useWorkflowStore } from '~/stores/workflow'
-  import { useWorkflowStepStore } from '~/stores/workflowStep'
-  import { useWorkspaceStore } from '~/stores/workspace'
-  import ContextFilePathList from '~/components/workflow/ContextFilePathList.vue'
-  import { getFilePathsFromFolder } from '~/utils/fileExplorer/fileUtils'
-  import type { TreeNode } from '~/utils/fileExplorer/TreeNode'
-  
-  const workflowStore = useWorkflowStore()
-  const workflowStepStore = useWorkflowStepStore()
-  const workspaceStore = useWorkspaceStore()
-  
-  const contextFilePaths = computed(() => workflowStore.contextFilePaths)
-  const isSending = computed(() => workflowStepStore.isCurrentlySending)
-  const userRequirement = ref('')
-  const isCollapsed = ref(false)
-  const textarea = ref<HTMLTextAreaElement | null>(null)
-  const textareaHeight = ref(100) // Initial height
-  
-  const toggleCollapse = () => {
-    isCollapsed.value = !isCollapsed.value
-  }
-  
-  const onFileDrop = (event: DragEvent) => {
-    const dragData = event.dataTransfer?.getData('application/json')
-    if (dragData) {
-      const droppedNode: TreeNode = JSON.parse(dragData)
-      const filePaths = getFilePathsFromFolder(droppedNode)
-      filePaths.forEach(filePath => {
-        workflowStore.addContextFilePath(filePath)
-      })
-    }
-    isCollapsed.value = false
-  }
-  
-  const removePath = (index: number) => {
-    workflowStore.removeContextFilePath(index)
-  }
-  
-  const clearAllPaths = () => {
-    workflowStore.clearAllContextFilePaths()
-  }
-  
-  const handleSend = async () => {
-    if (!userRequirement.value.trim()) {
-      alert('Please enter a user requirement before sending.')
-      return
-    }
-  
-    const workspaceRootPath = workspaceStore.currentSelectedWorkspacePath
-    const stepId = workflowStore.selectedStep?.id
-  
-    if (!workspaceRootPath || !stepId) {
-      alert('Workspace or step is not selected.')
-      return
-    }
-  
-    try {
-      await workflowStepStore.sendStepRequirementAndSubscribe(
-        workspaceRootPath,
-        stepId,
-        contextFilePaths.value,
-        userRequirement.value
-      )
-  
-      const payload = {
-        text: userRequirement.value,
-        contextFilePaths: [...contextFilePaths.value],
-        timestamp: new Date()
-      }
-  
-      workflowStepStore.addUserMessage(payload)
-      userRequirement.value = ''
-      adjustTextareaHeight()
-    } catch (error) {
-      console.error('Error sending requirement:', error)
-      alert('Failed to send requirement. Please try again.')
-    }
-  }
-  
-  const adjustTextareaHeight = () => {
-    if (textarea.value) {
-      textarea.value.style.height = 'auto'
-      textarea.value.style.height = `${textarea.value.scrollHeight}px`
-      textareaHeight.value = textarea.value.scrollHeight
-    }
-  }
-  
-  onMounted(() => {
-    nextTick(() => {
-      adjustTextareaHeight()
+<script setup lang="ts">
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { useWorkflowStore } from '~/stores/workflow'
+import { useWorkflowStepStore } from '~/stores/workflowStep'
+import { useWorkspaceStore } from '~/stores/workspace'
+import ContextFilePathList from '~/components/workflow/ContextFilePathList.vue'
+import { getFilePathsFromFolder } from '~/utils/fileExplorer/fileUtils'
+import type { TreeNode } from '~/utils/fileExplorer/TreeNode'
+
+const workflowStore = useWorkflowStore()
+const workflowStepStore = useWorkflowStepStore()
+const workspaceStore = useWorkspaceStore()
+
+const contextFilePaths = computed(() => workflowStore.contextFilePaths)
+const isSending = computed(() => workflowStepStore.isCurrentlySending)
+const userRequirement = ref('')
+const isCollapsed = ref(false)
+const textarea = ref<HTMLTextAreaElement | null>(null)
+const textareaHeight = ref(100) // Initial height
+
+const toggleCollapse = () => {
+  isCollapsed.value = !isCollapsed.value
+}
+
+const onFileDrop = (event: DragEvent) => {
+  const dragData = event.dataTransfer?.getData('application/json')
+  if (dragData) {
+    const droppedNode: TreeNode = JSON.parse(dragData)
+    const filePaths = getFilePathsFromFolder(droppedNode)
+    filePaths.forEach(filePath => {
+      workflowStore.addContextFilePath(filePath)
     })
+  }
+  isCollapsed.value = false
+}
+
+const removePath = (index: number) => {
+  workflowStore.removeContextFilePath(index)
+}
+
+const clearAllPaths = () => {
+  workflowStore.clearAllContextFilePaths()
+}
+
+const handleSend = async () => {
+  if (!userRequirement.value.trim()) {
+    alert('Please enter a user requirement before sending.')
+    return
+  }
+
+  const workspaceRootPath = workspaceStore.currentSelectedWorkspacePath
+  const stepId = workflowStore.selectedStep?.id
+
+  if (!workspaceRootPath || !stepId) {
+    alert('Workspace or step is not selected.')
+    return
+  }
+
+  try {
+    await workflowStepStore.sendStepRequirementAndSubscribe(
+      workspaceRootPath,
+      stepId,
+      contextFilePaths.value,
+      userRequirement.value
+    )
+
+    const payload = {
+      text: userRequirement.value,
+      contextFilePaths: [...contextFilePaths.value],
+      timestamp: new Date()
+    }
+
+    workflowStepStore.addUserMessage(payload)
+    userRequirement.value = ''
+    adjustTextareaHeight()
+  } catch (error) {
+    console.error('Error sending requirement:', error)
+    alert('Failed to send requirement. Please try again.')
+  }
+}
+
+const adjustTextareaHeight = () => {
+  if (textarea.value) {
+    textarea.value.style.height = 'auto'
+    textarea.value.style.height = `${textarea.value.scrollHeight}px`
+    textareaHeight.value = textarea.value.scrollHeight
+  }
+}
+
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.altKey) {
+    event.preventDefault() // Prevents adding a newline
+    handleSend()
+  }
+}
+
+onMounted(() => {
+  nextTick(() => {
+    adjustTextareaHeight()
   })
-  </script>
-  
-  <style scoped>
-  .user-requirement-input textarea {
-    transition: border-color 0.3s, box-shadow 0.3s;
-  }
-  
-  .user-requirement-input button {
-    transition: background-color 0.3s, opacity 0.3s;
-  }
-  </style>
+})
+</script>
+
+<style scoped>
+.user-requirement-input textarea {
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.user-requirement-input button {
+  transition: background-color 0.3s, opacity 0.3s;
+}
+</style>

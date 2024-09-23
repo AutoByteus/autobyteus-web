@@ -1,94 +1,90 @@
 <template>
-  <div class="relative">
-    <textarea
-      ref="textareaRef"
-      v-model="localPrompt"
-      @input="updatePromptAndResize"
-      :class="textareaClasses"
-      :style="textareaStyle"
-      rows="5"
-    ></textarea>
-    <button
-      @click="toggleExpand"
-      class="absolute bottom-2 right-2 p-1 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors duration-200 group"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        class="w-4 h-4 group-hover:text-gray-700"
-        :class="{ 'rotate-180': isExpanded }"
+  <div class="flex flex-col">
+    <div class="flex justify-between items-center mb-2">
+      <h4 class="text-lg font-medium text-gray-700">Edit Prompt</h4>
+      <button 
+        @click="toggleCollapse" 
+        class="text-blue-600 hover:text-blue-800 transition-colors duration-200 text-sm"
       >
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-      </svg>
-    </button>
+        {{ isCollapsed ? 'Expand' : 'Collapse' }}
+      </button>
+    </div>
+    <div 
+      class="transition-max-height duration-300 ease-in-out overflow-hidden"
+      :style="containerStyle"
+    >
+      <textarea
+        ref="textareaRef"
+        v-model="localPrompt"
+        @input="updatePrompt"
+        class="w-full p-2 border rounded resize-none transition-all duration-300 ease-in-out"
+        :style="textareaStyle"
+      ></textarea>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, nextTick } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue';
 
 const props = defineProps<{
   prompt: string
-}>()
+}>();
 
 const emit = defineEmits<{
   (e: 'update:prompt', value: string): void
-}>()
+  (e: 'collapseChanged', value: boolean): void
+}>();
 
-const localPrompt = ref(props.prompt)
-const isExpanded = ref(false)
-const textareaRef = ref<HTMLTextAreaElement | null>(null)
-const textareaHeight = ref('80px') // Default height
+const localPrompt = ref(props.prompt);
+const isCollapsed = ref(true);
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
+const textareaHeight = ref(0);
+
+const updateHeight = () => {
+  if (textareaRef.value) {
+    textareaRef.value.style.height = 'auto'; // Reset height to calculate scrollHeight correctly
+    textareaHeight.value = textareaRef.value.scrollHeight;
+    textareaRef.value.style.height = `${textareaHeight.value}px`; // Set the new height
+  }
+};
 
 watch(() => props.prompt, (newPrompt) => {
-  localPrompt.value = newPrompt
-  nextTick(() => {
-    if (isExpanded.value) {
-      adjustTextareaHeight()
-    }
-  })
-})
+  localPrompt.value = newPrompt;
+  updateHeight();
+});
 
-const updatePromptAndResize = () => {
-  emit('update:prompt', localPrompt.value)
-  if (isExpanded.value) {
-    adjustTextareaHeight()
+const updatePrompt = () => {
+  emit('update:prompt', localPrompt.value);
+  updateHeight();
+};
+
+const toggleCollapse = () => {
+  isCollapsed.value = !isCollapsed.value;
+  emit('collapseChanged', isCollapsed.value);
+  if (!isCollapsed.value) {
+    updateHeight();
   }
-}
-
-const toggleExpand = () => {
-  isExpanded.value = !isExpanded.value
-  nextTick(() => {
-    if (isExpanded.value) {
-      adjustTextareaHeight()
-    } else {
-      textareaHeight.value = '80px'
-    }
-  })
-}
-
-const adjustTextareaHeight = () => {
-  if (textareaRef.value) {
-    textareaRef.value.style.height = 'auto'
-    textareaRef.value.style.height = `${textareaRef.value.scrollHeight}px`
-    textareaHeight.value = `${textareaRef.value.scrollHeight}px`
-  }
-}
-
-const textareaClasses = computed(() => {
-  return [
-    'w-full p-2 border border-gray-300 rounded-md font-mono text-sm transition-all duration-300 ease-in-out resize-none',
-    isExpanded.value ? 'overflow-hidden' : 'overflow-hidden h-20'
-  ]
-})
-
-const textareaStyle = computed(() => {
-  return isExpanded.value ? { height: textareaHeight.value } : {}
-})
+};
 
 onMounted(() => {
-  adjustTextareaHeight()
-})
+  updateHeight();
+});
+
+const containerStyle = computed(() => ({
+  maxHeight: isCollapsed.value ? '0px' : `${textareaHeight.value}px`,
+}));
+
+const textareaStyle = computed(() => ({
+  height: `${textareaHeight.value}px`,
+  overflowY: 'hidden', // Remove scrollbar by hiding overflow
+  transition: 'height 0.3s ease-in-out', // Smooth height transition
+}));
 </script>
+
+<style scoped>
+/* Optional: Enhance transition for max-height */
+.transition-max-height {
+  transition: max-height 0.3s ease-in-out;
+}
+</style>
