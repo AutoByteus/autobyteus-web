@@ -19,6 +19,7 @@
           type="text" 
           placeholder="Enter new workspace path" 
           class="flex-grow p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+          @keyup="handleKeyup"
         >
         <button 
           @click="addWorkspace" 
@@ -57,6 +58,12 @@ const addWorkspace = async () => {
     error.value = ''
   } catch (err) {
     error.value = 'Failed to add workspace'
+  }
+}
+
+const handleKeyup = (event: KeyboardEvent) => {
+  if (event.key === 'Enter') {
+    addWorkspace()
   }
 }
 

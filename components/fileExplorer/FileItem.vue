@@ -1,8 +1,8 @@
 <template>
   <div 
     ref="fileItemRef"
-    :class="{ 'folder': !file.is_file, 'open': isFileOpen }" 
-    @click.stop="toggle" 
+    :class="{ 'folder': !file.is_file, 'open': isFolderOpen }" 
+    @click.stop="handleClick" 
     class="file-item cursor-pointer"
     draggable="true"
     @dragstart="onDragStart"
@@ -19,7 +19,7 @@
       <span class="text-sm text-gray-700">{{ file.name }}</span>
     </div>
     <transition name="folder">
-      <div v-if="!file.is_file && isFileOpen" class="children ml-4 mt-2">
+      <div v-if="!file.is_file && isFolderOpen" class="children ml-4 mt-2">
         <FileItem v-for="(child, index) in file.children" :key="`${child.path}-${index}`" :file="child"/>
       </div>
     </transition>
@@ -36,19 +36,23 @@ const fileExplorerStore = useFileExplorerStore()
 
 const fileItemRef = ref<HTMLElement | null>(null)
 
-const toggle = () => {
-  if (!props.file.is_file) {
-    fileExplorerStore.toggleFile(props.file.path)
+const handleClick = () => {
+  if (props.file.is_file) {
+    fileExplorerStore.openFile(props.file.path)
+  } else {
+    fileExplorerStore.toggleFolder(props.file.path)
   }
 }
 
-const isFileOpen = computed(() => fileExplorerStore.openFiles[props.file.path] || false)
+const isFolderOpen = computed(() => !props.file.is_file && fileExplorerStore.isFolderOpen(props.file.path))
 
-watch(isFileOpen, (newValue) => {
-  if (newValue) {
-    console.log(`'${props.file.name}' is now open. Children:`, props.file.children)
-  } else {
-    console.log(`'${props.file.name}' is now closed.`)
+watch(isFolderOpen, (newValue) => {
+  if (!props.file.is_file) {
+    if (newValue) {
+      console.log(`Folder '${props.file.name}' is now open. Children:`, props.file.children)
+    } else {
+      console.log(`Folder '${props.file.name}' is now closed.`)
+    }
   }
 })
 
@@ -60,13 +64,9 @@ onMounted(() => {
 })
 
 const onDragStart = (event: DragEvent) => {
-  // Stop the event from bubbling up to parent elements
   event.stopPropagation()
-
-  // Check if the dragged element is the one that fired the event
   if (event.target === fileItemRef.value) {
     if (event.dataTransfer) {
-      // Pass the entire file object (TreeNode) as a JSON string
       event.dataTransfer.setData('application/json', JSON.stringify(props.file))
       event.dataTransfer.effectAllowed = 'copy'
     }
