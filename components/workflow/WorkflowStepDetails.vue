@@ -78,6 +78,6 @@ const formatAIResponse = (text: string) => {
 }
 
 watch(() => workflowStore.selectedStep, () => {
-  workflowStepStore.clearMessagesAfterLastUser()
+  workflowStepStore.resetStepState()
 }, { deep: true })
 </script>

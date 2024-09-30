@@ -6,12 +6,14 @@ export const SendStepRequirement = gql`
     $stepId: String!
     $contextFilePaths: [String!]!
     $requirement: String!
+    $llmModel: LLMModel
   ) {
     sendStepRequirement(
       workspaceRootPath: $workspaceRootPath
       stepId: $stepId
       contextFilePaths: $contextFilePaths
       requirement: $requirement
+      llmModel: $llmModel
     )
   }
 `;

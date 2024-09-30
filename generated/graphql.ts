@@ -77,6 +77,7 @@ export type MutationConfigureStepLlmArgs = {
 
 export type MutationSendStepRequirementArgs = {
   contextFilePaths: Array<Scalars['String']['input']>;
+  llmModel?: InputMaybe<LlmModel>;
   requirement: Scalars['String']['input'];
   stepId: Scalars['String']['input'];
   workspaceRootPath: Scalars['String']['input'];
@@ -89,9 +90,16 @@ export type MutationStartWorkflowArgs = {
 
 export type Query = {
   __typename?: 'Query';
+  fileContent: Scalars['String']['output'];
   getAvailableWorkspaceTools: Array<WorkspaceTool>;
   searchCodeEntities: Scalars['JSON']['output'];
   workflowConfig: Scalars['JSON']['output'];
+};
+
+
+export type QueryFileContentArgs = {
+  filePath: Scalars['String']['input'];
+  workspaceRootPath: Scalars['String']['input'];
 };
 
 
@@ -131,6 +139,7 @@ export type SendStepRequirementMutationVariables = Exact<{
   stepId: Scalars['String']['input'];
   contextFilePaths: Array<Scalars['String']['input']> | Scalars['String']['input'];
   requirement: Scalars['String']['input'];
+  llmModel?: InputMaybe<LlmModel>;
 }>;
 
 
@@ -159,6 +168,14 @@ export type SearchCodeEntitiesQueryVariables = Exact<{
 
 export type SearchCodeEntitiesQuery = { __typename?: 'Query', searchCodeEntities: any };
 
+export type GetFileContentQueryVariables = Exact<{
+  workspaceRootPath: Scalars['String']['input'];
+  filePath: Scalars['String']['input'];
+}>;
+
+
+export type GetFileContentQuery = { __typename?: 'Query', fileContent: string };
+
 export type GetWorkflowConfigQueryVariables = Exact<{
   workspaceRootPath: Scalars['String']['input'];
 }>;
@@ -166,14 +183,23 @@ export type GetWorkflowConfigQueryVariables = Exact<{
 
 export type GetWorkflowConfigQuery = { __typename?: 'Query', workflowConfig: any };
 
+export type StepResponseSubscriptionVariables = Exact<{
+  workspaceRootPath: Scalars['String']['input'];
+  stepId: Scalars['String']['input'];
+}>;
+
+
+export type StepResponseSubscription = { __typename?: 'Subscription', stepResponse: string };
+
 
 export const SendStepRequirementDocument = gql`
-    mutation SendStepRequirement($workspaceRootPath: String!, $stepId: String!, $contextFilePaths: [String!]!, $requirement: String!) {
+    mutation SendStepRequirement($workspaceRootPath: String!, $stepId: String!, $contextFilePaths: [String!]!, $requirement: String!, $llmModel: LLMModel) {
   sendStepRequirement(
     workspaceRootPath: $workspaceRootPath
     stepId: $stepId
     contextFilePaths: $contextFilePaths
     requirement: $requirement
+    llmModel: $llmModel
   )
 }
     `;
@@ -195,6 +221,7 @@ export const SendStepRequirementDocument = gql`
  *     stepId: // value for 'stepId'
  *     contextFilePaths: // value for 'contextFilePaths'
  *     requirement: // value for 'requirement'
+ *     llmModel: // value for 'llmModel'
  *   },
  * });
  */
@@ -290,6 +317,35 @@ export function useSearchCodeEntitiesLazyQuery(variables?: SearchCodeEntitiesQue
   return VueApolloComposable.useLazyQuery<SearchCodeEntitiesQuery, SearchCodeEntitiesQueryVariables>(SearchCodeEntitiesDocument, variables, options);
 }
 export type SearchCodeEntitiesQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<SearchCodeEntitiesQuery, SearchCodeEntitiesQueryVariables>;
+export const GetFileContentDocument = gql`
+    query GetFileContent($workspaceRootPath: String!, $filePath: String!) {
+  fileContent(workspaceRootPath: $workspaceRootPath, filePath: $filePath)
+}
+    `;
+
+/**
+ * __useGetFileContentQuery__
+ *
+ * To run a query within a Vue component, call `useGetFileContentQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetFileContentQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param variables that will be passed into the query
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetFileContentQuery({
+ *   workspaceRootPath: // value for 'workspaceRootPath'
+ *   filePath: // value for 'filePath'
+ * });
+ */
+export function useGetFileContentQuery(variables: GetFileContentQueryVariables | VueCompositionApi.Ref<GetFileContentQueryVariables> | ReactiveFunction<GetFileContentQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetFileContentQuery, GetFileContentQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetFileContentQuery, GetFileContentQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetFileContentQuery, GetFileContentQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetFileContentQuery, GetFileContentQueryVariables>(GetFileContentDocument, variables, options);
+}
+export function useGetFileContentLazyQuery(variables?: GetFileContentQueryVariables | VueCompositionApi.Ref<GetFileContentQueryVariables> | ReactiveFunction<GetFileContentQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetFileContentQuery, GetFileContentQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetFileContentQuery, GetFileContentQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetFileContentQuery, GetFileContentQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetFileContentQuery, GetFileContentQueryVariables>(GetFileContentDocument, variables, options);
+}
+export type GetFileContentQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetFileContentQuery, GetFileContentQueryVariables>;
 export const GetWorkflowConfigDocument = gql`
     query GetWorkflowConfig($workspaceRootPath: String!) {
   workflowConfig(workspaceRootPath: $workspaceRootPath)
@@ -318,3 +374,29 @@ export function useGetWorkflowConfigLazyQuery(variables?: GetWorkflowConfigQuery
   return VueApolloComposable.useLazyQuery<GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables>(GetWorkflowConfigDocument, variables, options);
 }
 export type GetWorkflowConfigQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables>;
+export const StepResponseDocument = gql`
+    subscription StepResponse($workspaceRootPath: String!, $stepId: String!) {
+  stepResponse(workspaceRootPath: $workspaceRootPath, stepId: $stepId)
+}
+    `;
+
+/**
+ * __useStepResponseSubscription__
+ *
+ * To run a query within a Vue component, call `useStepResponseSubscription` and pass it any options that fit your needs.
+ * When your component renders, `useStepResponseSubscription` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param variables that will be passed into the subscription
+ * @param options that will be passed into the subscription, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/subscription.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useStepResponseSubscription({
+ *   workspaceRootPath: // value for 'workspaceRootPath'
+ *   stepId: // value for 'stepId'
+ * });
+ */
+export function useStepResponseSubscription(variables: StepResponseSubscriptionVariables | VueCompositionApi.Ref<StepResponseSubscriptionVariables> | ReactiveFunction<StepResponseSubscriptionVariables>, options: VueApolloComposable.UseSubscriptionOptions<StepResponseSubscription, StepResponseSubscriptionVariables> | VueCompositionApi.Ref<VueApolloComposable.UseSubscriptionOptions<StepResponseSubscription, StepResponseSubscriptionVariables>> | ReactiveFunction<VueApolloComposable.UseSubscriptionOptions<StepResponseSubscription, StepResponseSubscriptionVariables>> = {}) {
+  return VueApolloComposable.useSubscription<StepResponseSubscription, StepResponseSubscriptionVariables>(StepResponseDocument, variables, options);
+}
+export type StepResponseSubscriptionCompositionFunctionResult = VueApolloComposable.UseSubscriptionReturn<StepResponseSubscription, StepResponseSubscriptionVariables>;

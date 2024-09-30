@@ -12,40 +12,57 @@
         @input="adjustTextareaHeight"
         @keydown="handleKeyDown"
       ></textarea>
-      <button 
-        @click="handleSend"
-        :disabled="isSending || !userRequirement.trim()"
-        class="absolute bottom-4 right-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm"
-      >
-        <svg v-if="isSending" class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-        </svg>
-        <svg v-else class="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
-        </svg>
-        <span>{{ isSending ? 'Sending...' : 'Send' }}</span>
-      </button>
+      <div class="absolute bottom-4 right-4 flex items-center">
+        <select
+          v-if="isFirstMessage"
+          v-model="selectedModel"
+          class="mr-2 p-2 border border-gray-300 rounded-md text-sm"
+        >
+          <option v-for="model in llmModels" :key="model" :value="model">
+            {{ model }}
+          </option>
+        </select>
+        <button 
+          @click="handleSend"
+          :disabled="isSending || !userRequirement.trim()"
+          class="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm"
+        >
+          <svg v-if="isSending" class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <svg v-else class="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
+          </svg>
+          <span>{{ isSending ? 'Sending...' : 'Send' }}</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
   
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useWorkflowStore } from '~/stores/workflow'
 import { useWorkflowStepStore } from '~/stores/workflowStep'
 import { useWorkspaceStore } from '~/stores/workspace'
 import ContextFilePathList from '~/components/workflow/ContextFilePathList.vue'
+import { LlmModel } from '~/generated/graphql'
 
 const workflowStore = useWorkflowStore()
 const workflowStepStore = useWorkflowStepStore()
 const workspaceStore = useWorkspaceStore()
 
+const { userRequirement } = storeToRefs(workflowStepStore)
 const contextFilePaths = computed(() => workflowStore.contextFilePaths)
 const isSending = computed(() => workflowStepStore.isCurrentlySending)
-const userRequirement = ref('')
+const isFirstMessage = computed(() => workflowStepStore.isFirstMessage)
 const textarea = ref<HTMLTextAreaElement | null>(null)
 const textareaHeight = ref(100) // Initial height
+const selectedModel = ref<LlmModel>(LlmModel.Claude_3_5Sonnet)
+
+const llmModels = Object.values(LlmModel)
 
 const handleSend = async () => {
   if (!userRequirement.value.trim()) {
@@ -66,7 +83,8 @@ const handleSend = async () => {
       workspaceRootPath,
       stepId,
       contextFilePaths.value,
-      userRequirement.value
+      userRequirement.value,
+      isFirstMessage.value ? selectedModel.value : undefined
     )
 
     const payload = {
@@ -103,5 +121,9 @@ onMounted(() => {
   nextTick(() => {
     adjustTextareaHeight()
   })
+})
+
+watch(userRequirement, () => {
+  workflowStepStore.updateUserRequirement(userRequirement.value)
 })
 </script>

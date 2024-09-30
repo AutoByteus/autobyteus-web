@@ -34,6 +34,7 @@ interface WorkflowStepState {
   messages: Message[];
   isSubscribed: boolean;
   isSending: boolean;
+  selectedLLMModel: LlmModel | null;
 }
 
 export const useWorkflowStepStore = defineStore('workflowStep', {
@@ -43,7 +44,8 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
     userRequirement: '',
     messages: [],
     isSubscribed: false,
-    isSending: false
+    isSending: false,
+    selectedLLMModel: null
   }),
 
   actions: {
@@ -52,6 +54,7 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
       stepId: string,
       contextFilePaths: string[],
       requirement: string,
+      llmModel?: LlmModel
     ): Promise<void> {
       const { mutate: sendStepRequirementMutation } = useMutation<SendStepRequirementMutation, SendStepRequirementMutationVariables>(SendStepRequirement)
       
@@ -63,10 +66,14 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
           stepId,
           contextFilePaths,
           requirement,
+          llmModel
         })
 
         if (result?.data?.sendStepRequirement) {
           this.stepResult = result.data.sendStepRequirement
+          if (llmModel) {
+            this.selectedLLMModel = llmModel
+          }
         } else {
           throw new Error('Failed to send step requirement')
         }
@@ -120,6 +127,7 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
 
         if (result?.data?.configureStepLlm) {
           this.llmConfigurationResult = result.data.configureStepLlm
+          this.selectedLLMModel = llmModel
         } else {
           throw new Error('Failed to configure step LLM')
         }
@@ -137,7 +145,7 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
       this.llmConfigurationResult = null
     },
 
-    setUserRequirement(requirement: string) {
+    updateUserRequirement(requirement: string) {
       this.userRequirement = requirement
     },
 
@@ -146,21 +154,18 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
       this.messages.push({ type: 'user', text, contextFilePaths, timestamp })
     },
 
-    /**
-     * Updated addAIMessage to accept a message string.
-     * Previously, it might have been handling a plain string, but now we extract the message from StepResponse.
-     */
     addAIMessage(message: string) {
       this.messages.push({ type: 'ai', text: message, timestamp: new Date() })
     },
 
-    clearMessagesAfterLastUser() {
-      for (let i = this.messages.length - 1; i >= 0; i--) {
-        if (this.messages[i].type === 'user') {
-          this.messages.splice(i + 1)
-          break
-        }
-      }
+    resetStepState() {
+      this.stepResult = null
+      this.llmConfigurationResult = null
+      this.userRequirement = ''
+      this.messages = []
+      this.isSubscribed = false
+      this.isSending = false
+      this.selectedLLMModel = null
     }
   },
 
@@ -168,6 +173,8 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
     currentStepResult: (state): string | null => state.stepResult,
     currentLLMConfigurationResult: (state): string | null => state.llmConfigurationResult,
     currentUserRequirement: (state): string => state.userRequirement,
-    isCurrentlySending: (state): boolean => state.isSending
+    isCurrentlySending: (state): boolean => state.isSending,
+    currentSelectedLLMModel: (state): LlmModel | null => state.selectedLLMModel,
+    isFirstMessage: (state): boolean => state.messages.length === 0
   }
 })
