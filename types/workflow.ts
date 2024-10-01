@@ -3,7 +3,6 @@ export enum Source {
   USER_INPUT = "USER_INPUT"
 }
 
-
 export interface PromptTemplateVariable {
   name: string;
   source: Source;
@@ -19,7 +18,7 @@ export interface PromptTemplate {
 export interface Step {
   id: string;             
   name: string;           
-  prompt_template: PromptTemplate;  
+  prompt_templates: Record<string, PromptTemplate>;  
 }
 
 export interface Workflow {

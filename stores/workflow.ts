@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { Workflow, Step } from '~/types/workflow'
+import type { Workflow, Step, PromptTemplate } from '~/types/workflow'
 import { useQuery } from '@vue/apollo-composable'
 import { GetWorkflowConfig } from '~/graphql/queries/workspace_queries'
 import type { GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables } from '~/generated/graphql'
@@ -51,12 +51,16 @@ export const useWorkflowStore = defineStore('workflow', {
 
       return { onResult, onError }
     },
-    updateStepPrompt(newPrompt: string) {
-      if (this.workflow && this.selectedStepId) {
-        const step = this.workflow.steps[this.selectedStepId]
-        if (step) {
-          step.prompt_template.template = newPrompt
+    updateStepPrompt({ stepId, modelName, newPrompt }: { stepId: string, modelName: string, newPrompt: string }) {
+      if (this.workflow && stepId) {
+        const step = this.workflow.steps[stepId]
+        if (step && step.prompt_templates[modelName]) {
+          step.prompt_templates[modelName].template = newPrompt
+        } else {
+          console.error(`No prompt template found for model ${modelName} in step ${stepId}`)
         }
+      } else {
+        console.error('No workflow or stepId provided for updating prompt')
       }
     },
     startExecution() {
@@ -85,6 +89,12 @@ export const useWorkflowStore = defineStore('workflow', {
     selectedStep: (state): Step | null => {
       if (state.workflow && state.selectedStepId) {
         return state.workflow.steps[state.selectedStepId]
+      }
+      return null
+    },
+    selectedStepPromptTemplates: (state): Record<string, PromptTemplate> | null => {
+      if (state.workflow && state.selectedStepId) {
+        return state.workflow.steps[state.selectedStepId].prompt_templates
       }
       return null
     }

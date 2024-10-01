@@ -5,8 +5,7 @@
       
       <div class="mb-4">
         <PromptEditor 
-          :prompt="selectedStep.prompt_template.template" 
-          @update:prompt="updatePrompt"
+          :promptTemplates="selectedStep.prompt_templates"
         />
       </div>
 
@@ -56,10 +55,6 @@ const activeConversation = computed(() => workflowStepStore.activeConversation)
 
 const isHistoryPanelOpen = ref(false)
 const conversationHistory = computed(() => workflowStepStore.getConversationHistory())
-
-const updatePrompt = (newPrompt: string) => {
-  workflowStore.updateStepPrompt(newPrompt)
-}
 
 const createNewConversation = () => {
   workflowStepStore.createConversation()
