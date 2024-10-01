@@ -40,7 +40,7 @@
     </div>
   </div>
 </template>
-  
+
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { storeToRefs } from 'pinia'
@@ -87,13 +87,6 @@ const handleSend = async () => {
       isFirstMessage.value ? selectedModel.value : undefined
     )
 
-    const payload = {
-      text: userRequirement.value,
-      contextFilePaths: [...contextFilePaths.value],
-      timestamp: new Date()
-    }
-
-    workflowStepStore.addUserMessage(payload)
     userRequirement.value = ''
     adjustTextareaHeight()
   } catch (error) {

@@ -27,11 +27,19 @@ interface AIMessage {
 
 type Message = UserMessage | AIMessage;
 
+interface Conversation {
+  id: string;
+  messages: Message[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 interface WorkflowStepState {
   stepResult: string | null;
   llmConfigurationResult: string | null;
   userRequirement: string;
-  messages: Message[];
+  conversations: Conversation[];
+  activeConversationId: string | null;
   isSubscribed: boolean;
   isSending: boolean;
   selectedLLMModel: LlmModel | null;
@@ -42,13 +50,50 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
     stepResult: null,
     llmConfigurationResult: null,
     userRequirement: '',
-    messages: [],
+    conversations: [],
+    activeConversationId: null,
     isSubscribed: false,
     isSending: false,
     selectedLLMModel: null
   }),
 
   actions: {
+    createConversation(): string {
+      const newConversation: Conversation = {
+        id: Date.now().toString(),
+        messages: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+      this.conversations.push(newConversation)
+      this.activeConversationId = newConversation.id
+      return newConversation.id
+    },
+
+    ensureActiveConversation(): string {
+      if (!this.activeConversationId || !this.conversations.some(c => c.id === this.activeConversationId)) {
+        return this.createConversation()
+      }
+      return this.activeConversationId
+    },
+
+    activateConversation(conversationId: string) {
+      const conversation = this.conversations.find(c => c.id === conversationId)
+      if (conversation) {
+        this.activeConversationId = conversationId
+      }
+    },
+
+    deleteConversation(conversationId: string) {
+      const index = this.conversations.findIndex(c => c.id === conversationId)
+      if (index !== -1) {
+        this.conversations.splice(index, 1)
+        if (this.activeConversationId === conversationId) {
+          this.activeConversationId = this.conversations.length > 0 ? this.conversations[0].id : null
+        }
+      }
+    },
+
     async sendStepRequirementAndSubscribe(
       workspaceRootPath: string,
       stepId: string,
@@ -60,7 +105,6 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
       
       this.isSending = true;
       try {
-        // Send the requirement
         const result = await sendStepRequirementMutation({
           workspaceRootPath,
           stepId,
@@ -74,11 +118,11 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
           if (llmModel) {
             this.selectedLLMModel = llmModel
           }
+          this.addUserMessage({ text: requirement, contextFilePaths, timestamp: new Date() })
         } else {
           throw new Error('Failed to send step requirement')
         }
 
-        // Subscribe to responses if not already subscribed
         if (!this.isSubscribed) {
           this.subscribeToStepResponse(workspaceRootPath, stepId)
         }
@@ -99,8 +143,6 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
       onResult(({ data }) => {
         if (data?.stepResponse) {
           this.addAIMessage(data.stepResponse)
-        } else if (data?.stepResponse) {
-          console.warn('Received stepResponse without a message:', data.stepResponse)
         }
       })
 
@@ -150,22 +192,38 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
     },
 
     addUserMessage(payload: { text: string; contextFilePaths: string[]; timestamp: Date }) {
-      const { text, contextFilePaths, timestamp } = payload
-      this.messages.push({ type: 'user', text, contextFilePaths, timestamp })
+      if (this.activeConversationId) {
+        const conversation = this.conversations.find(c => c.id === this.activeConversationId)
+        if (conversation) {
+          conversation.messages.push({ type: 'user', ...payload })
+          conversation.updatedAt = new Date()
+        }
+      }
     },
 
     addAIMessage(message: string) {
-      this.messages.push({ type: 'ai', text: message, timestamp: new Date() })
+      if (this.activeConversationId) {
+        const conversation = this.conversations.find(c => c.id === this.activeConversationId)
+        if (conversation) {
+          conversation.messages.push({ type: 'ai', text: message, timestamp: new Date() })
+          conversation.updatedAt = new Date()
+        }
+      }
     },
 
     resetStepState() {
       this.stepResult = null
       this.llmConfigurationResult = null
       this.userRequirement = ''
-      this.messages = []
+      this.conversations = []
+      this.activeConversationId = null
       this.isSubscribed = false
       this.isSending = false
       this.selectedLLMModel = null
+    },
+
+    getConversationHistory() {
+      return this.conversations.slice().reverse().slice(0, 10)
     }
   },
 
@@ -175,6 +233,12 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
     currentUserRequirement: (state): string => state.userRequirement,
     isCurrentlySending: (state): boolean => state.isSending,
     currentSelectedLLMModel: (state): LlmModel | null => state.selectedLLMModel,
-    isFirstMessage: (state): boolean => state.messages.length === 0
+    isFirstMessage: (state): boolean => {
+      const activeConversation = state.conversations.find(c => c.id === state.activeConversationId)
+      return activeConversation ? activeConversation.messages.length === 0 : true
+    },
+    activeConversation: (state): Conversation | null => {
+      return state.conversations.find(c => c.id === state.activeConversationId) || null
+    }
   }
 })

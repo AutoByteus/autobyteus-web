@@ -10,74 +10,75 @@
         />
       </div>
 
-      <div class="space-y-4 mb-4">
+      <div class="flex justify-between items-center mb-4">
         <h4 class="text-lg font-medium text-gray-700">Conversation</h4>
-        <div class="space-y-4">
-          <div 
-            v-for="(message, index) in messages" 
-            :key="index"
-            :class="[
-              'p-3 rounded-lg max-w-3/4 relative shadow-sm hover:shadow-md transition-shadow duration-200',
-              message.type === 'user' ? 'ml-auto bg-blue-100 text-blue-800' : 'mr-auto bg-gray-100 text-gray-800'
-            ]"
-          >
-            <div v-if="message.type === 'user'">
-              <div v-if="message.contextFilePaths && message.contextFilePaths.length > 0">
-                <strong>Context Files:</strong>
-                <ul class="list-disc list-inside">
-                  <li v-for="path in message.contextFilePaths" :key="path" class="truncate">{{ path }}</li>
-                </ul>
-              </div>
-              <div class="mt-2">
-                <strong>User:</strong>
-                <div>{{ message.text }}</div>
-              </div>
-            </div>
-            <div v-else>
-              <strong>AI:</strong>
-              <div v-html="formatAIResponse(message.text)"></div>
-            </div>
-            <span class="text-xs text-gray-500 absolute bottom-1 right-2">
-              {{ formatTimestamp(message.timestamp) }}
-            </span>
-          </div>
+        <div>
+          <button @click="createNewConversation" class="mr-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
+            New Conversation
+          </button>
+          <button @click="showConversationHistory" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
+            History
+          </button>
         </div>
       </div>
+
+      <Conversation v-if="activeConversation" :conversation="activeConversation" />
     </div>
 
     <div class="mt-auto bg-white">
       <h4 class="text-lg font-medium text-gray-700 mb-2">New Message</h4>
       <UserRequirementInput />
     </div>
+
+    <ConversationHistoryPanel 
+      :isOpen="isHistoryPanelOpen"
+      :conversations="conversationHistory"
+      @close="closeConversationHistory"
+      @activate="activateHistoryConversation"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useWorkflowStore } from '~/stores/workflow'
 import { useWorkflowStepStore } from '~/stores/workflowStep'
 import PromptEditor from '~/components/prompt/PromptEditor.vue'
 import UserRequirementInput from '~/components/workflow/UserRequirementInput.vue'
+import ConversationHistoryPanel from '~/components/workflow/ConversationHistoryPanel.vue'
+import Conversation from '~/components/workflow/Conversation.vue'
 
 const workflowStore = useWorkflowStore()
 const workflowStepStore = useWorkflowStepStore()
 
 const selectedStep = computed(() => workflowStore.selectedStep)
-const messages = computed(() => workflowStepStore.messages)
+const activeConversation = computed(() => workflowStepStore.activeConversation)
+
+const isHistoryPanelOpen = ref(false)
+const conversationHistory = computed(() => workflowStepStore.getConversationHistory())
 
 const updatePrompt = (newPrompt: string) => {
   workflowStore.updateStepPrompt(newPrompt)
 }
 
-const formatTimestamp = (date: Date) => {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+const createNewConversation = () => {
+  workflowStepStore.createConversation()
 }
 
-const formatAIResponse = (text: string) => {
-  return text.replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-800 text-white p-2 rounded"><code>$1</code></pre>')
+const showConversationHistory = () => {
+  isHistoryPanelOpen.value = true
 }
 
-watch(() => workflowStore.selectedStep, () => {
-  workflowStepStore.resetStepState()
-}, { deep: true })
+const closeConversationHistory = () => {
+  isHistoryPanelOpen.value = false
+}
+
+const activateHistoryConversation = (conversationId: string) => {
+  workflowStepStore.activateConversation(conversationId)
+  isHistoryPanelOpen.value = false
+}
+
+watch(selectedStep, () => {
+  workflowStepStore.ensureActiveConversation()
+}, { immediate: true })
 </script>
