@@ -52,13 +52,25 @@ const workflowStore = useWorkflowStore()
 const workflowStepStore = useWorkflowStepStore()
 
 const selectedStep = computed(() => workflowStore.selectedStep)
-const activeConversation = computed(() => workflowStepStore.activeConversation)
+const activeConversation = computed(() => {
+  if (selectedStep.value) {
+    return workflowStepStore.activeConversation(selectedStep.value.id)
+  }
+  return null
+})
 
 const isHistoryPanelOpen = ref(false)
-const conversationHistory = computed(() => workflowStepStore.getConversationHistory())
+const conversationHistory = computed(() => {
+  if (selectedStep.value) {
+    return workflowStepStore.getConversationHistory(selectedStep.value.id)
+  }
+  return []
+})
 
 const createNewConversation = () => {
-  workflowStepStore.createConversation()
+  if (selectedStep.value) {
+    workflowStepStore.createNewConversation(selectedStep.value.id)
+  }
 }
 
 const showConversationHistory = () => {
@@ -70,11 +82,15 @@ const closeConversationHistory = () => {
 }
 
 const activateHistoryConversation = (conversationId: string) => {
-  workflowStepStore.activateConversation(conversationId)
+  if (selectedStep.value) {
+    workflowStepStore.activateConversation(selectedStep.value.id, conversationId)
+  }
   isHistoryPanelOpen.value = false
 }
 
-watch(selectedStep, () => {
-  workflowStepStore.ensureActiveConversation()
+watch(selectedStep, (newStep, oldStep) => {
+  if (newStep && newStep.id !== oldStep?.id) {
+    workflowStepStore.resetStepState(newStep.id)
+  }
 }, { immediate: true })
 </script>

@@ -31,7 +31,7 @@
   </template>
   
   <script setup lang="ts">
-  import type { Conversation } from '~/stores/workflowStep'
+  import type { Conversation } from '~/types/conversation'
   
   const props = defineProps<{
     conversations: Conversation[]

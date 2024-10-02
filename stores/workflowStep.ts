@@ -21,7 +21,7 @@ interface WorkflowStepState {
   llmConfigurationResult: string | null;
   userRequirement: string;
   contextFilePaths: ContextFilePath[];
-  conversations: Conversation[];
+  conversationsByStep: Record<string, Conversation[]>;
   activeConversationId: string | null;
   isSubscribed: boolean;
   isSending: boolean;
@@ -34,13 +34,88 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
     llmConfigurationResult: null,
     userRequirement: '',
     contextFilePaths: [],
-    conversations: [],
+    conversationsByStep: {},
     activeConversationId: null,
     isSubscribed: false,
     isSending: false,
     selectedLLMModel: null,
   }),
   actions: {
+    resetStepState(stepId: string) {
+      this.stepResult = null
+      this.llmConfigurationResult = null
+      this.userRequirement = ''
+      this.contextFilePaths = []
+      this.activeConversationId = null
+      this.isSubscribed = false
+      this.isSending = false
+      this.selectedLLMModel = null
+
+      // Only reset conversations for the current step if they don't exist
+      if (!this.conversationsByStep[stepId]) {
+        this.conversationsByStep[stepId] = []
+      }
+    },
+
+    createNewConversation(stepId: string): string {
+      const newConversation: Conversation = {
+        id: Date.now().toString(),
+        messages: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+      if (!this.conversationsByStep[stepId]) {
+        this.conversationsByStep[stepId] = []
+      }
+      this.conversationsByStep[stepId].push(newConversation)
+      this.activeConversationId = newConversation.id
+      return newConversation.id
+    },
+
+    getActiveConversationId(stepId: string): string | null {
+      if (!this.activeConversationId || !this.conversationsByStep[stepId]?.some(c => c.id === this.activeConversationId)) {
+        const conversations = this.conversationsByStep[stepId] || []
+        if (conversations.length > 0) {
+          this.activeConversationId = conversations[conversations.length - 1].id
+        } else {
+          this.activeConversationId = null
+        }
+      }
+      return this.activeConversationId
+    },
+
+    activateConversation(stepId: string, conversationId: string) {
+      const conversation = this.conversationsByStep[stepId]?.find(c => c.id === conversationId)
+      if (conversation) {
+        this.activeConversationId = conversationId
+      }
+    },
+
+    addUserMessage(stepId: string, text: string, contextFilePaths: ContextFilePath[]) {
+      const activeConversation = this.conversationsByStep[stepId]?.find(c => c.id === this.activeConversationId)
+      if (activeConversation) {
+        activeConversation.messages.push({
+          type: 'user',
+          text,
+          contextFilePaths,
+          timestamp: new Date()
+        })
+        activeConversation.updatedAt = new Date()
+      }
+    },
+
+    addAIMessage(stepId: string, message: string) {
+      const conversation = this.conversationsByStep[stepId]?.find(c => c.id === this.activeConversationId)
+      if (conversation) {
+        conversation.messages.push({ type: 'ai', text: message, timestamp: new Date() })
+        conversation.updatedAt = new Date()
+      }
+    },
+
+    getConversationHistory(stepId: string) {
+      return (this.conversationsByStep[stepId] || []).slice().reverse().slice(0, 10)
+    },
+
     addContextFilePath(contextFilePath: ContextFilePath) {
       this.contextFilePaths.push(contextFilePath)
     },
@@ -51,42 +126,6 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
 
     clearContextFilePaths() {
       this.contextFilePaths = []
-    },
-
-    createConversation(): string {
-      const newConversation: Conversation = {
-        id: Date.now().toString(),
-        messages: [],
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-      this.conversations.push(newConversation)
-      this.activeConversationId = newConversation.id
-      return newConversation.id
-    },
-
-    ensureActiveConversation(): string {
-      if (!this.activeConversationId || !this.conversations.some(c => c.id === this.activeConversationId)) {
-        return this.createConversation()
-      }
-      return this.activeConversationId
-    },
-
-    activateConversation(conversationId: string) {
-      const conversation = this.conversations.find(c => c.id === conversationId)
-      if (conversation) {
-        this.activeConversationId = conversationId
-      }
-    },
-
-    deleteConversation(conversationId: string) {
-      const index = this.conversations.findIndex(c => c.id === conversationId)
-      if (index !== -1) {
-        this.conversations.splice(index, 1)
-        if (this.activeConversationId === conversationId) {
-          this.activeConversationId = this.conversations.length > 0 ? this.conversations[0].id : null
-        }
-      }
     },
 
     async sendStepRequirementAndSubscribe(
@@ -117,7 +156,7 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
           if (llmModel) {
             this.selectedLLMModel = llmModel
           }
-          this.addUserMessage(requirement, this.contextFilePaths)
+          this.addUserMessage(stepId, requirement, this.contextFilePaths)
           this.clearContextFilePaths()
         } else {
           throw new Error('Failed to send step requirement')
@@ -133,6 +172,7 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
         this.isSending = false;
       }
     },
+
     subscribeToStepResponse(workspaceRootPath: string, stepId: string) {
       const { onResult, onError } = useSubscription<StepResponseSubscriptionType, StepResponseSubscriptionVariables>(StepResponseSubscription, {
         workspaceRootPath,
@@ -141,7 +181,7 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
 
       onResult(({ data }) => {
         if (data?.stepResponse) {
-          this.addAIMessage(data.stepResponse)
+          this.addAIMessage(stepId, data.stepResponse)
         }
       })
 
@@ -190,44 +230,6 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
       this.userRequirement = requirement
     },
 
-    addUserMessage(text: string, contextFilePaths: ContextFilePath[]) {
-      const activeConversation = this.conversations.find(c => c.id === this.activeConversationId)
-      if (activeConversation) {
-        activeConversation.messages.push({
-          type: 'user',
-          text,
-          contextFilePaths,
-          timestamp: new Date()
-        })
-        activeConversation.updatedAt = new Date()
-      }
-    },
-
-    addAIMessage(message: string) {
-      if (this.activeConversationId) {
-        const conversation = this.conversations.find(c => c.id === this.activeConversationId)
-        if (conversation) {
-          conversation.messages.push({ type: 'ai', text: message, timestamp: new Date() })
-          conversation.updatedAt = new Date()
-        }
-      }
-    },
-
-    resetStepState() {
-      this.stepResult = null
-      this.llmConfigurationResult = null
-      this.userRequirement = ''
-      this.conversations = []
-      this.activeConversationId = null
-      this.isSubscribed = false
-      this.isSending = false
-      this.selectedLLMModel = null
-    },
-
-    getConversationHistory() {
-      return this.conversations.slice().reverse().slice(0, 10)
-    },
-
     async uploadFile(file: File): Promise<string> {
       const workspaceStore = useWorkspaceStore()
       const workspaceRootPath = workspaceStore.currentSelectedWorkspacePath
@@ -236,12 +238,12 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
       formData.append('workspaceRootPath', workspaceRootPath)
 
       try {
-        const response = await apiService.post<{ fileUrl: string }>('/upload-file', formData, {
+        const response = await apiService.post<{ filePath: string }>('/upload-file', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
         })
-        return response.data.fileUrl
+        return response.data.filePath
       } catch (error) {
         console.error('Error uploading file:', error)
         throw error
@@ -249,16 +251,7 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
     },
 
     clearAllContextFilePaths() {
-      const activeConversation = this.conversations.find(c => c.id === this.activeConversationId)
-      if (activeConversation) {
-        const latestUserMessage = activeConversation.messages
-          .filter(m => m.type === 'user')
-          .pop() as Message & { type: 'user' } | undefined
-
-        if (latestUserMessage) {
-          latestUserMessage.contextFilePaths = []
-        }
-      }
+      this.contextFilePaths = []
     }
   },
 
@@ -268,12 +261,12 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
     currentUserRequirement: (state): string => state.userRequirement,
     isCurrentlySending: (state): boolean => state.isSending,
     currentSelectedLLMModel: (state): LlmModel | null => state.selectedLLMModel,
-    isFirstMessage: (state): boolean => {
-      const activeConversation = state.conversations.find(c => c.id === state.activeConversationId)
-      return activeConversation ? activeConversation.messages.length === 0 : true
+    isFirstMessage: (state) => (stepId: string): boolean => {
+      const conversations = state.conversationsByStep[stepId] || []
+      return conversations.length === 0 || (conversations.length === 1 && conversations[0].messages.length === 0)
     },
-    activeConversation: (state): Conversation | null => {
-      return state.conversations.find(c => c.id === state.activeConversationId) || null
+    activeConversation: (state) => (stepId: string): Conversation | null => {
+      return state.conversationsByStep[stepId]?.find(c => c.id === state.activeConversationId) || null
     },
     currentContextPaths: (state): ContextFilePath[] => state.contextFilePaths,
   }

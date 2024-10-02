@@ -78,6 +78,11 @@ const handleSend = async () => {
   }
 
   try {
+    // Check if there's an active conversation, if not, create a new one
+    if (!workflowStepStore.getActiveConversationId(stepId)) {
+      workflowStepStore.createNewConversation(stepId)
+    }
+
     await workflowStepStore.sendStepRequirementAndSubscribe(
       workspaceRootPath,
       stepId,
