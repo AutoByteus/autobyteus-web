@@ -9,35 +9,18 @@ import type {
   ConfigureStepLlmMutationVariables,
   LlmModel,
   StepResponseSubscriptionVariables,
-  StepResponseSubscription as StepResponseSubscriptionType
+  StepResponseSubscription as StepResponseSubscriptionType,
+  ContextFilePathInput
 } from '~/generated/graphql'
-
-interface UserMessage {
-  type: 'user';
-  text: string;
-  contextFilePaths: string[];
-  timestamp: Date;
-}
-
-interface AIMessage {
-  type: 'ai';
-  text: string;
-  timestamp: Date;
-}
-
-type Message = UserMessage | AIMessage;
-
-interface Conversation {
-  id: string;
-  messages: Message[];
-  createdAt: Date;
-  updatedAt: Date;
-}
+import type { Conversation, Message, ContextFilePath } from '~/types/conversation'
+import apiService from '~/services/api'
+import { useWorkspaceStore } from '~/stores/workspace'
 
 interface WorkflowStepState {
   stepResult: string | null;
   llmConfigurationResult: string | null;
   userRequirement: string;
+  contextFilePaths: ContextFilePath[];
   conversations: Conversation[];
   activeConversationId: string | null;
   isSubscribed: boolean;
@@ -50,14 +33,26 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
     stepResult: null,
     llmConfigurationResult: null,
     userRequirement: '',
+    contextFilePaths: [],
     conversations: [],
     activeConversationId: null,
     isSubscribed: false,
     isSending: false,
-    selectedLLMModel: null
+    selectedLLMModel: null,
   }),
-
   actions: {
+    addContextFilePath(contextFilePath: ContextFilePath) {
+      this.contextFilePaths.push(contextFilePath)
+    },
+
+    removeContextFilePath(index: number) {
+      this.contextFilePaths.splice(index, 1)
+    },
+
+    clearContextFilePaths() {
+      this.contextFilePaths = []
+    },
+
     createConversation(): string {
       const newConversation: Conversation = {
         id: Date.now().toString(),
@@ -97,18 +92,22 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
     async sendStepRequirementAndSubscribe(
       workspaceRootPath: string,
       stepId: string,
-      contextFilePaths: string[],
       requirement: string,
       llmModel?: LlmModel
     ): Promise<void> {
       const { mutate: sendStepRequirementMutation } = useMutation<SendStepRequirementMutation, SendStepRequirementMutationVariables>(SendStepRequirement)
-      
+
       this.isSending = true;
       try {
+        const formattedContextFilePaths: ContextFilePathInput[] = this.contextFilePaths.map(path => ({
+          path: path.path,
+          type: path.type
+        }))
+
         const result = await sendStepRequirementMutation({
           workspaceRootPath,
           stepId,
-          contextFilePaths,
+          contextFilePaths: formattedContextFilePaths,
           requirement,
           llmModel
         })
@@ -118,7 +117,8 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
           if (llmModel) {
             this.selectedLLMModel = llmModel
           }
-          this.addUserMessage({ text: requirement, contextFilePaths, timestamp: new Date() })
+          this.addUserMessage(requirement, this.contextFilePaths)
+          this.clearContextFilePaths()
         } else {
           throw new Error('Failed to send step requirement')
         }
@@ -133,7 +133,6 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
         this.isSending = false;
       }
     },
-
     subscribeToStepResponse(workspaceRootPath: string, stepId: string) {
       const { onResult, onError } = useSubscription<StepResponseSubscriptionType, StepResponseSubscriptionVariables>(StepResponseSubscription, {
         workspaceRootPath,
@@ -191,13 +190,16 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
       this.userRequirement = requirement
     },
 
-    addUserMessage(payload: { text: string; contextFilePaths: string[]; timestamp: Date }) {
-      if (this.activeConversationId) {
-        const conversation = this.conversations.find(c => c.id === this.activeConversationId)
-        if (conversation) {
-          conversation.messages.push({ type: 'user', ...payload })
-          conversation.updatedAt = new Date()
-        }
+    addUserMessage(text: string, contextFilePaths: ContextFilePath[]) {
+      const activeConversation = this.conversations.find(c => c.id === this.activeConversationId)
+      if (activeConversation) {
+        activeConversation.messages.push({
+          type: 'user',
+          text,
+          contextFilePaths,
+          timestamp: new Date()
+        })
+        activeConversation.updatedAt = new Date()
       }
     },
 
@@ -224,6 +226,39 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
 
     getConversationHistory() {
       return this.conversations.slice().reverse().slice(0, 10)
+    },
+
+    async uploadFile(file: File): Promise<string> {
+      const workspaceStore = useWorkspaceStore()
+      const workspaceRootPath = workspaceStore.currentSelectedWorkspacePath
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('workspaceRootPath', workspaceRootPath)
+
+      try {
+        const response = await apiService.post<{ fileUrl: string }>('/upload-file', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        return response.data.fileUrl
+      } catch (error) {
+        console.error('Error uploading file:', error)
+        throw error
+      }
+    },
+
+    clearAllContextFilePaths() {
+      const activeConversation = this.conversations.find(c => c.id === this.activeConversationId)
+      if (activeConversation) {
+        const latestUserMessage = activeConversation.messages
+          .filter(m => m.type === 'user')
+          .pop() as Message & { type: 'user' } | undefined
+
+        if (latestUserMessage) {
+          latestUserMessage.contextFilePaths = []
+        }
+      }
     }
   },
 
@@ -239,6 +274,7 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
     },
     activeConversation: (state): Conversation | null => {
       return state.conversations.find(c => c.id === state.activeConversationId) || null
-    }
+    },
+    currentContextPaths: (state): ContextFilePath[] => state.contextFilePaths,
   }
 })

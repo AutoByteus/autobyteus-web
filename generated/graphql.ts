@@ -19,6 +19,11 @@ export type Scalars = {
   JSON: { input: any; output: any; }
 };
 
+export type ContextFilePathInput = {
+  path: Scalars['String']['input'];
+  type: Scalars['String']['input'];
+};
+
 export enum LlmModel {
   Claude_3_5Sonnet = 'CLAUDE_3_5_SONNET',
   Claude_3_5SonnetApi = 'CLAUDE_3_5_SONNET_API',
@@ -110,7 +115,7 @@ export type MutationConfigureStepLlmArgs = {
 
 
 export type MutationSendStepRequirementArgs = {
-  contextFilePaths: Array<Scalars['String']['input']>;
+  contextFilePaths: Array<ContextFilePathInput>;
   llmModel?: InputMaybe<LlmModel>;
   requirement: Scalars['String']['input'];
   stepId: Scalars['String']['input'];
@@ -171,7 +176,7 @@ export type WorkspaceTool = {
 export type SendStepRequirementMutationVariables = Exact<{
   workspaceRootPath: Scalars['String']['input'];
   stepId: Scalars['String']['input'];
-  contextFilePaths: Array<Scalars['String']['input']> | Scalars['String']['input'];
+  contextFilePaths: Array<ContextFilePathInput> | ContextFilePathInput;
   requirement: Scalars['String']['input'];
   llmModel?: InputMaybe<LlmModel>;
 }>;
@@ -227,7 +232,7 @@ export type StepResponseSubscription = { __typename?: 'Subscription', stepRespon
 
 
 export const SendStepRequirementDocument = gql`
-    mutation SendStepRequirement($workspaceRootPath: String!, $stepId: String!, $contextFilePaths: [String!]!, $requirement: String!, $llmModel: LLMModel) {
+    mutation SendStepRequirement($workspaceRootPath: String!, $stepId: String!, $contextFilePaths: [ContextFilePathInput!]!, $requirement: String!, $llmModel: LLMModel) {
   sendStepRequirement(
     workspaceRootPath: $workspaceRootPath
     stepId: $stepId
@@ -264,7 +269,7 @@ export function useSendStepRequirementMutation(options: VueApolloComposable.UseM
 }
 export type SendStepRequirementMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<SendStepRequirementMutation, SendStepRequirementMutationVariables>;
 export const ConfigureStepLlmDocument = gql`
-    mutation configureStepLLM($workspaceRootPath: String!, $stepId: String!, $llmModel: LLMModel!) {
+    mutation ConfigureStepLLM($workspaceRootPath: String!, $stepId: String!, $llmModel: LLMModel!) {
   configureStepLlm(
     workspaceRootPath: $workspaceRootPath
     stepId: $stepId

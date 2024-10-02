@@ -3,6 +3,7 @@
     class="mb-4 bg-gray-50 rounded-md overflow-hidden border border-gray-200 hover:shadow-md transition-shadow duration-200"
     @dragover.prevent
     @drop.prevent="onFileDrop"
+    @paste="onPaste"
   >
     <div 
       class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-100 transition-colors duration-300"
@@ -15,7 +16,7 @@
           <i :class="['fas', isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down', 'text-gray-500']"></i>
         </button>
         <span class="text-sm font-medium text-gray-700">Context Files ({{ contextFilePaths.length }})</span>
-        <span class="text-xs text-gray-500">(drag and drop)</span>
+        <span class="text-xs text-gray-500">(drag and drop or paste)</span>
       </div>
     </div>
     <transition
@@ -30,13 +31,16 @@
         <ul v-if="contextFilePaths.length > 0" class="space-y-2">
           <li 
             v-for="(filePath, index) in contextFilePaths" 
-            :key="filePath" 
+            :key="filePath.path" 
             class="bg-gray-100 p-2 rounded transition-colors duration-300 animate-fadeIn flex items-center justify-between"
           >
             <div class="flex items-center space-x-2 flex-grow">
-              <i class="fas fa-file text-gray-500 w-4 flex-shrink-0"></i>
+              <i :class="['fas', filePath.type === 'image' ? 'fa-image' : 'fa-file', 'text-gray-500 w-4 flex-shrink-0']"></i>
               <span class="text-sm text-gray-600 truncate">
-                {{ filePath }}
+                {{ filePath.path }}
+              </span>
+              <span v-if="uploadingFiles.includes(filePath.path)" class="text-xs text-blue-500">
+                <i class="fas fa-spinner fa-spin mr-1"></i>Uploading...
               </span>
             </div>
             <button 
@@ -44,13 +48,14 @@
               class="text-red-500 bg-red-100 hover:bg-red-200 transition-colors duration-300 p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500"
               title="Remove this file"
               aria-label="Remove file"
+              :disabled="uploadingFiles.includes(filePath.path)"
             >
               <i class="fas fa-times"></i>
             </button>
           </li>
         </ul>
         <div v-else class="text-center text-sm text-gray-500 py-2">
-          Drag and drop files here to add context
+          Drag and drop files here or paste images to add context
         </div>
         <div v-if="contextFilePaths.length > 0" class="flex justify-end mt-4">
           <button 
@@ -68,14 +73,16 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useWorkflowStore } from '~/stores/workflow'
-import { getFilePathsFromFolder } from '~/utils/fileExplorer/fileUtils'
+import { useWorkflowStepStore } from '~/stores/workflowStep'
+import { getFilePathsFromFolder, determineFileType } from '~/utils/fileExplorer/fileUtils'
 import type { TreeNode } from '~/utils/fileExplorer/TreeNode'
+import type { ContextFilePath } from '~/types/conversation'
 
-const workflowStore = useWorkflowStore()
+const workflowStepStore = useWorkflowStepStore()
 
-const contextFilePaths = computed(() => workflowStore.contextFilePaths)
+const contextFilePaths = computed(() => workflowStepStore.currentContextPaths)
 const isCollapsed = ref(contextFilePaths.value.length === 0)
+const uploadingFiles = ref<string[]>([])
 
 const toggleCollapse = () => {
   if (contextFilePaths.value.length > 0) {
@@ -83,33 +90,79 @@ const toggleCollapse = () => {
   }
 }
 
-const addContextFilePath = (filePath: string) => {
-  workflowStore.addContextFilePath(filePath)
+const addContextFilePath = (filePath: string, fileType: 'text' | 'image') => {
+  workflowStepStore.addContextFilePath({ path: filePath, type: fileType })
   isCollapsed.value = false
 }
 
 const removeContextFilePath = (index: number) => {
-  workflowStore.removeContextFilePath(index)
+  workflowStepStore.removeContextFilePath(index)
   if (contextFilePaths.value.length === 0) {
     isCollapsed.value = true
   }
 }
 
 const clearAllContextFilePaths = () => {
-  workflowStore.clearAllContextFilePaths()
+  workflowStepStore.clearContextFilePaths()
   isCollapsed.value = true
 }
 
-const onFileDrop = (event: DragEvent) => {
+const onFileDrop = async (event: DragEvent) => {
   const dragData = event.dataTransfer?.getData('application/json')
   if (dragData) {
     const droppedNode: TreeNode = JSON.parse(dragData)
     const filePaths = getFilePathsFromFolder(droppedNode)
-    filePaths.forEach(filePath => {
-      addContextFilePath(filePath)
-    })
+    for (const filePath of filePaths) {
+      const fileType = await determineFileType(filePath)
+      addContextFilePath(filePath, fileType)
+    }
+  } else if (event.dataTransfer?.files.length) {
+    for (const file of event.dataTransfer.files) {
+      const tempPath = URL.createObjectURL(file)
+      const fileType = file.type.startsWith('image/') ? 'image' : 'text'
+      addContextFilePath(tempPath, fileType)
+      uploadingFiles.value.push(tempPath)
+      
+      try {
+        const uploadedFilePath = await workflowStepStore.uploadFile(file)
+        uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath)
+        workflowStepStore.removeContextFilePath(contextFilePaths.value.findIndex(cf => cf.path === tempPath))
+        addContextFilePath(uploadedFilePath, fileType)
+      } catch (error) {
+        console.error('Error uploading file:', error)
+        workflowStepStore.removeContextFilePath(contextFilePaths.value.findIndex(cf => cf.path === tempPath))
+        uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath)
+      }
+    }
   }
   isCollapsed.value = false
+}
+
+const onPaste = async (event: ClipboardEvent) => {
+  const items = event.clipboardData?.items
+  if (items) {
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const blob = item.getAsFile()
+        if (blob) {
+          const tempPath = URL.createObjectURL(blob)
+          addContextFilePath(tempPath, 'image')
+          uploadingFiles.value.push(tempPath)
+          
+          try {
+            const uploadedFilePath = await workflowStepStore.uploadFile(blob)
+            uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath)
+            workflowStepStore.removeContextFilePath(contextFilePaths.value.findIndex(cf => cf.path === tempPath))
+            addContextFilePath(uploadedFilePath, 'image')
+          } catch (error) {
+            console.error('Error uploading pasted image:', error)
+            workflowStepStore.removeContextFilePath(contextFilePaths.value.findIndex(cf => cf.path === tempPath))
+            uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath)
+          }
+        }
+      }
+    }
+  }
 }
 </script>
 

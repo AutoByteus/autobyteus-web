@@ -10,7 +10,6 @@ interface WorkflowState {
   selectedStepId: string | null;
   executionStatus: 'Not Started' | 'Running' | 'Completed' | 'Failed';
   executionLogs: string;
-  contextFilePaths: string[];
 }
 
 export const useWorkflowStore = defineStore('workflow', {
@@ -18,8 +17,7 @@ export const useWorkflowStore = defineStore('workflow', {
     workflow: null,
     selectedStepId: null,
     executionStatus: 'Not Started',
-    executionLogs: '',
-    contextFilePaths: []
+    executionLogs: ''
   }),
   actions: {
     setWorkflow(workflow: Workflow) {
@@ -70,17 +68,6 @@ export const useWorkflowStore = defineStore('workflow', {
         this.executionStatus = 'Completed'
         this.executionLogs += 'Execution completed successfully.'
       }, 3000)
-    },
-    addContextFilePath(filePath: string) {
-      if (!this.contextFilePaths.includes(filePath)) {
-        this.contextFilePaths.push(filePath)
-      }
-    },
-    removeContextFilePath(index: number) {
-      this.contextFilePaths.splice(index, 1)
-    },
-    clearAllContextFilePaths() {
-      this.contextFilePaths = []
     }
   },
   getters: {

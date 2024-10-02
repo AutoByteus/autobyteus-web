@@ -6,6 +6,7 @@
       <div class="mb-4">
         <PromptEditor 
           :promptTemplates="selectedStep.prompt_templates"
+          :stepId="selectedStep.id"
         />
       </div>
 

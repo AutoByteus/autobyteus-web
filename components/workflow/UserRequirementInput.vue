@@ -55,7 +55,6 @@ const workflowStepStore = useWorkflowStepStore()
 const workspaceStore = useWorkspaceStore()
 
 const { userRequirement } = storeToRefs(workflowStepStore)
-const contextFilePaths = computed(() => workflowStore.contextFilePaths)
 const isSending = computed(() => workflowStepStore.isCurrentlySending)
 const isFirstMessage = computed(() => workflowStepStore.isFirstMessage)
 const textarea = ref<HTMLTextAreaElement | null>(null)
@@ -82,7 +81,6 @@ const handleSend = async () => {
     await workflowStepStore.sendStepRequirementAndSubscribe(
       workspaceRootPath,
       stepId,
-      contextFilePaths.value,
       userRequirement.value,
       isFirstMessage.value ? selectedModel.value : undefined
     )

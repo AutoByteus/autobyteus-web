@@ -4,7 +4,7 @@ export const SendStepRequirement = gql`
   mutation SendStepRequirement(
     $workspaceRootPath: String!
     $stepId: String!
-    $contextFilePaths: [String!]!
+    $contextFilePaths: [ContextFilePathInput!]!
     $requirement: String!
     $llmModel: LLMModel
   ) {
@@ -19,7 +19,7 @@ export const SendStepRequirement = gql`
 `;
 
 export const ConfigureStepLLM = gql`
-  mutation configureStepLLM(
+  mutation ConfigureStepLLM(
     $workspaceRootPath: String!
     $stepId: String!
     $llmModel: LLMModel!
