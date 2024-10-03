@@ -14,7 +14,7 @@
       ></textarea>
       <div class="absolute bottom-4 right-4 flex items-center">
         <select
-          v-if="isFirstMessage"
+          v-if="isFirstMessage()"
           v-model="selectedModel"
           class="mr-2 p-2 border border-gray-300 rounded-md text-sm"
         >
@@ -56,12 +56,16 @@ const workspaceStore = useWorkspaceStore()
 
 const { userRequirement } = storeToRefs(workflowStepStore)
 const isSending = computed(() => workflowStepStore.isCurrentlySending)
-const isFirstMessage = computed(() => workflowStepStore.isFirstMessage)
 const textarea = ref<HTMLTextAreaElement | null>(null)
 const textareaHeight = ref(100) // Initial height
 const selectedModel = ref<LlmModel>(LlmModel.Claude_3_5Sonnet)
 
 const llmModels = Object.values(LlmModel)
+
+const isFirstMessage = () => {
+  const stepId = workflowStore.selectedStep?.id
+  return stepId ? workflowStepStore.isFirstMessage(stepId) : false
+}
 
 const handleSend = async () => {
   if (!userRequirement.value.trim()) {
@@ -87,7 +91,7 @@ const handleSend = async () => {
       workspaceRootPath,
       stepId,
       userRequirement.value,
-      isFirstMessage.value ? selectedModel.value : undefined
+      isFirstMessage() ? selectedModel.value : undefined
     )
 
     userRequirement.value = ''

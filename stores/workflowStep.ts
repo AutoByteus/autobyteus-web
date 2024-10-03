@@ -263,7 +263,8 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
     currentSelectedLLMModel: (state): LlmModel | null => state.selectedLLMModel,
     isFirstMessage: (state) => (stepId: string): boolean => {
       const conversations = state.conversationsByStep[stepId] || []
-      return conversations.length === 0 || (conversations.length === 1 && conversations[0].messages.length === 0)
+      const activeConversation = conversations.find(c => c.id === state.activeConversationId)
+      return !activeConversation || activeConversation.messages.length === 0
     },
     activeConversation: (state) => (stepId: string): Conversation | null => {
       return state.conversationsByStep[stepId]?.find(c => c.id === state.activeConversationId) || null
