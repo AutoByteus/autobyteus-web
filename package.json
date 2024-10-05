@@ -39,8 +39,13 @@
     "vite-plugin-electron-renderer": "^0.14.5"
   },
   "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/cli": "^3.9.0",
+    "@capacitor/core": "^3.9.0",
     "@nuxt/schema": "^3.13.1",
-    "pinia": "^2.1.7"
+    "axios": "^1.7.7",
+    "pinia": "^2.1.7",
+    "prismjs": "^1.29.0"
   },
   "build": {
     "appId": "com.yourapp.id",
