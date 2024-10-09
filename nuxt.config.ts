@@ -5,7 +5,7 @@ import renderer from 'vite-plugin-electron-renderer'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  modules: ['@nuxtjs/apollo', '@pinia/nuxt'],
+  modules: ['@nuxtjs/apollo', '@pinia/nuxt', '@nuxt/test-utils/module'],
 
   apollo: {
     clients: {

@@ -1,7 +1,9 @@
+// File: /home/ryan-ai/miniHDD/Learning/chatgpt/autobyteus_org_workspace/autobyteus-web/stores/fileExplorer.ts
 import { defineStore } from 'pinia'
-import { useQuery } from '@vue/apollo-composable'
+import { useQuery, useMutation } from '@vue/apollo-composable'
 import { GetFileContent } from '~/graphql/queries/file_explorer_queries'
-import type { GetFileContentQuery, GetFileContentQueryVariables } from '~/generated/graphql'
+import { ApplyFileChange } from '~/graphql/mutations/file_explorer_mutations'
+import type { GetFileContentQuery, GetFileContentQueryVariables, ApplyFileChangeMutation, ApplyFileChangeMutationVariables } from '~/generated/graphql'
 
 interface FileExplorerState {
   openFolders: Record<string, boolean>;
@@ -71,6 +73,29 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         this.contentError[filePath] = error.message
         this.contentLoading[filePath] = false
       })
+    },
+    async applyFileChange(workspaceRootPath: string, filePath: string, content: string) {
+      const { mutate, onDone, onError } = useMutation<ApplyFileChangeMutation, ApplyFileChangeMutationVariables>(ApplyFileChange)
+
+      try {
+        await mutate({ workspaceRootPath, filePath, content })
+        
+        onDone((result) => {
+          if (result.data?.applyFileChange) {
+            // Update the local file content
+            this.fileContents.set(filePath, content)
+            console.log('File change applied successfully')
+          }
+        })
+
+        onError((error) => {
+          console.error('Error applying file change:', error)
+          throw error
+        })
+      } catch (error) {
+        console.error('Failed to apply file change:', error)
+        throw error
+      }
     }
   },
   getters: {

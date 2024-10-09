@@ -45,7 +45,7 @@
             </div>
             <button 
               @click.stop="removeContextFilePath(index)" 
-              class="text-red-500 bg-red-100 hover:bg-red-200 transition-colors duration-300 p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500"
+              class="text-white bg-red-500 hover:bg-red-600 transition-colors duration-300 p-2.5 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500"
               title="Remove this file"
               aria-label="Remove file"
               :disabled="uploadingFiles.includes(filePath.path)"

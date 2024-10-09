@@ -96,6 +96,7 @@ export enum LlmModel {
 export type Mutation = {
   __typename?: 'Mutation';
   addWorkspace: Scalars['JSON']['output'];
+  applyFileChange: Scalars['String']['output'];
   configureStepLlm: Scalars['String']['output'];
   sendStepRequirement: Scalars['String']['output'];
   startWorkflow: Scalars['Boolean']['output'];
@@ -103,6 +104,13 @@ export type Mutation = {
 
 
 export type MutationAddWorkspaceArgs = {
+  workspaceRootPath: Scalars['String']['input'];
+};
+
+
+export type MutationApplyFileChangeArgs = {
+  content: Scalars['String']['input'];
+  filePath: Scalars['String']['input'];
   workspaceRootPath: Scalars['String']['input'];
 };
 
@@ -173,6 +181,15 @@ export type WorkspaceTool = {
   promptTemplate: Scalars['String']['output'];
 };
 
+export type ApplyFileChangeMutationVariables = Exact<{
+  workspaceRootPath: Scalars['String']['input'];
+  filePath: Scalars['String']['input'];
+  content: Scalars['String']['input'];
+}>;
+
+
+export type ApplyFileChangeMutation = { __typename?: 'Mutation', applyFileChange: string };
+
 export type SendStepRequirementMutationVariables = Exact<{
   workspaceRootPath: Scalars['String']['input'];
   stepId: Scalars['String']['input'];
@@ -231,6 +248,39 @@ export type StepResponseSubscriptionVariables = Exact<{
 export type StepResponseSubscription = { __typename?: 'Subscription', stepResponse: string };
 
 
+export const ApplyFileChangeDocument = gql`
+    mutation ApplyFileChange($workspaceRootPath: String!, $filePath: String!, $content: String!) {
+  applyFileChange(
+    workspaceRootPath: $workspaceRootPath
+    filePath: $filePath
+    content: $content
+  )
+}
+    `;
+
+/**
+ * __useApplyFileChangeMutation__
+ *
+ * To run a mutation, you first call `useApplyFileChangeMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useApplyFileChangeMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useApplyFileChangeMutation({
+ *   variables: {
+ *     workspaceRootPath: // value for 'workspaceRootPath'
+ *     filePath: // value for 'filePath'
+ *     content: // value for 'content'
+ *   },
+ * });
+ */
+export function useApplyFileChangeMutation(options: VueApolloComposable.UseMutationOptions<ApplyFileChangeMutation, ApplyFileChangeMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<ApplyFileChangeMutation, ApplyFileChangeMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<ApplyFileChangeMutation, ApplyFileChangeMutationVariables>(ApplyFileChangeDocument, options);
+}
+export type ApplyFileChangeMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<ApplyFileChangeMutation, ApplyFileChangeMutationVariables>;
 export const SendStepRequirementDocument = gql`
     mutation SendStepRequirement($workspaceRootPath: String!, $stepId: String!, $contextFilePaths: [ContextFilePathInput!]!, $requirement: String!, $llmModel: LLMModel) {
   sendStepRequirement(
