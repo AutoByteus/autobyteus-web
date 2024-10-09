@@ -30,19 +30,21 @@ export function extractContentBetweenTags(text: string): string {
 }
 
 // Function to parse individual file entries
-export function parseFileEntry(entry: string): ParsedFile {
+export function parseFileEntry(entry: string): ParsedFile | null {
   const filePathRegex = /^File:\s*(.+)$/m;
-  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/;
-
   const pathMatch = entry.match(filePathRegex);
-  const contentMatch = entry.match(codeBlockRegex);
 
-  if (!pathMatch || !contentMatch) {
-    throw new Error('Invalid file entry format');
+  if (!pathMatch) {
+    return null;
   }
 
   const path = pathMatch[1].trim();
-  const content = contentMatch[2].trim();
+  const contentStartIndex = entry.indexOf('\n', pathMatch.index) + 1;
+  let content = entry.slice(contentStartIndex).trim();
+
+  // Remove language identifier and backticks
+  content = content.replace(/^```\w*\n/, '').replace(/```$/, '').trim();
+
   const language = getLanguage(path);
 
   return {
@@ -55,11 +57,12 @@ export function parseFileEntry(entry: string): ParsedFile {
 // Function to extract code blocks from tagged content
 export function extractCodeBlocksFromTags(content: string): ParsedFile[] {
   const extractedContent = extractContentBetweenTags(content);
-  const fileEntries = extractedContent.split(/(?=File:)/);
+  const fileEntries = extractedContent.split(/(?=^File:)/m);
 
   return fileEntries
     .filter(entry => entry.trim() !== '')
-    .map(entry => parseFileEntry(entry));
+    .map(entry => parseFileEntry(entry))
+    .filter((entry): entry is ParsedFile => entry !== null);
 }
 
 // Function to extract XML string

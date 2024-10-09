@@ -1,4 +1,4 @@
-<!-- File: /home/ryan-ai/miniHDD/Learning/chatgpt/autobyteus_org_workspace/autobyteus-web/components/workflow/Conversation.vue -->
+<!-- File: autobyteus-web/components/workflow/Conversation.vue -->
 
 <template>
   <div class="space-y-4 mb-4">
@@ -31,7 +31,7 @@
             <div v-if="item.type === 'text'" v-html="formatText(item.content)" class="mb-4"></div>
             <div v-else-if="item.type === 'code'">
               <div class="flex justify-between items-center bg-gray-200 p-2 rounded-t-md">
-                <span class="font-bold">{{ item.path }}</span>
+                <span class="font-bold">File: {{ item.path }}</span>
                 <button
                   @click="handleApplyFileChange(item.path, item.content)"
                   class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded"
