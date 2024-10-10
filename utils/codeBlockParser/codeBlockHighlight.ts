@@ -36,11 +36,11 @@ export function parseAIResponse(text: string): ParsedAIResponse {
       }
 
       // Highlight the code based on its language
-      const highlightedCode =
+      const highlightedContent =
         codeBlock.language.toLowerCase() === 'vue'
-          ? highlightVueCode(codeBlock.content)
+          ? highlightVueCode(codeBlock.originalContent)
           : Prism.highlight(
-              codeBlock.content.trim(),
+              codeBlock.originalContent.trim(),
               Prism.languages[codeBlock.language.toLowerCase()] || Prism.languages.plaintext,
               codeBlock.language.toLowerCase()
             );
@@ -50,14 +50,14 @@ export function parseAIResponse(text: string): ParsedAIResponse {
         type: 'file_content',
         files: [{
           ...codeBlock,
-          content: highlightedCode,
+          highlightedContent,
         }],
       });
 
       // Update the remaining text
-      const codeContentIndex = remainingText.indexOf(codeBlock.content);
+      const codeContentIndex = remainingText.indexOf(codeBlock.originalContent);
       if (codeContentIndex !== -1) {
-        remainingText = remainingText.slice(codeContentIndex + codeBlock.content.length);
+        remainingText = remainingText.slice(codeContentIndex + codeBlock.originalContent.length);
       }
     }
   });

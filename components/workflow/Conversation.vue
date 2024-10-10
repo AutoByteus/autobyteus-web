@@ -40,13 +40,13 @@
                 <div class="flex justify-between items-center bg-gray-200 p-2 rounded-t-md">
                   <span class="font-bold">File: {{ file.path }}</span>
                   <button
-                    @click="handleApplyFileChange(file.path, file.content)"
+                    @click="handleApplyFileChange(file.path, file.originalContent)"
                     class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded"
                   >
                     Apply
                   </button>
                 </div>
-                <pre :class="'language-' + file.language"><code v-html="file.content"></code></pre>
+                <pre :class="'language-' + file.language"><code v-html="file.highlightedContent"></code></pre>
               </div>
             </div>
           </template>
@@ -87,9 +87,9 @@ const formatTimestamp = (date: Date) => {
 };
 
 // Handle applying file changes
-const handleApplyFileChange = async (filePath: string, content: string) => {
+const handleApplyFileChange = async (filePath: string, originalContent: string) => {
   try {
-    await fileExplorerStore.applyFileChange(workspaceStore.currentSelectedWorkspacePath, filePath, content);
+    await fileExplorerStore.applyFileChange(workspaceStore.currentSelectedWorkspacePath, filePath, originalContent);
   } catch (error) {
     console.error('Failed to apply file change:', error);
   }

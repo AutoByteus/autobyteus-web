@@ -7,9 +7,9 @@ import {
   extractCodeBlocksFromXML,
   getLanguage,
   parseAIResponse,
-} from '~/utils/codeBlockParser';
+} from '~/utils/codeBlockParser/codeBlockHighlight';
 import Prism from 'prismjs';
-import { highlightVueCode } from '~/utils/codeHighlight';
+import { highlightVueCode } from '~/utils/codeBlockParser/vueCodeHighlight';
 
 // Mock dependencies
 vi.mock('prismjs', () => ({
@@ -380,3 +380,4 @@ test('parseAIResponse should handle extraction failures gracefully', () => {
   const parsed = parseAIResponse(aiResponse);
   expect(parsed).toHaveLength(0);
 });
+

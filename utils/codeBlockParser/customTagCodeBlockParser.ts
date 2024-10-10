@@ -24,25 +24,30 @@ function parseFileEntry(entry: string): ParsedFile | null {
 
   const path = pathMatch[1].trim();
   const contentStartIndex = entry.indexOf('\n', pathMatch.index) + 1;
-  let content = entry.slice(contentStartIndex).trim();
+  let originalContent = entry.slice(contentStartIndex).trim();
 
-  content = content.replace(/^```\w*\n/, '').replace(/```$/, '').trim();
+  originalContent = originalContent.replace(/^```\w*\n/, '').replace(/```$/, '').trim();
 
   const language = getLanguage(path);
 
   return {
     path,
-    content,
+    originalContent,
     language
   };
 }
 
 export function extractCodeBlocksFromCustomTags(content: string): ParsedFile[] {
-  const extractedContent = extractContentBetweenTags(content);
-  const fileEntries = extractedContent.split(/(?=^File:)/m);
+  try {
+    const extractedContent = extractContentBetweenTags(content);
+    const fileEntries = extractedContent.split(/(?=^File:)/m);
 
-  return fileEntries
-    .filter(entry => entry.trim() !== '')
-    .map(entry => parseFileEntry(entry))
-    .filter((entry): entry is ParsedFile => entry !== null);
+    return fileEntries
+      .filter(entry => entry.trim() !== '')
+      .map(entry => parseFileEntry(entry))
+      .filter((entry): entry is ParsedFile => entry !== null);
+  } catch (error) {
+    console.error('Error extracting code blocks from custom tags:', error);
+    return [];
+  }
 }

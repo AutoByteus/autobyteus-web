@@ -17,60 +17,65 @@ function extractXMLString(text: string): string {
 function parseFileEntry(file: Element): ParsedFile | null {
   const path = file.getAttribute('path') || '';
   const contentNode = file.getElementsByTagName('content')[0];
-  let codeContent = '';
+  let originalContent = '';
 
   if (contentNode) {
     const cdataSections = contentNode.childNodes;
     for (let j = 0; j < cdataSections.length; j++) {
       const node = cdataSections[j];
       if (node.nodeType === Node.CDATA_SECTION_NODE) {
-        codeContent += node.nodeValue || '';
+        originalContent += node.nodeValue || '';
       } else {
-        codeContent += node.textContent || '';
+        originalContent += node.textContent || '';
       }
     }
   }
 
-  if (!path || !codeContent) {
+  if (!path || !originalContent) {
     return null;
   }
 
   return {
     path,
-    content: codeContent.trim(),
+    originalContent: originalContent.trim(),
     language: getLanguage(path)
   };
 }
 
 export function extractCodeBlocksFromXML(content: string): ParsedFile[] {
-  const xmlContent = extractXMLString(content);
+  try {
+    const xmlContent = extractXMLString(content);
 
-  if (typeof DOMParser !== 'undefined') {
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(xmlContent, 'application/xml');
+    if (typeof DOMParser !== 'undefined') {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlContent, 'application/xml');
 
-    const parseError = xmlDoc.getElementsByTagName('parsererror');
-    if (parseError.length > 0) {
-      throw new Error('Error parsing XML.');
-    }
-
-    const files = xmlDoc.getElementsByTagName('file');
-    const result: ParsedFile[] = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const parsedFile = parseFileEntry(files[i]);
-      if (parsedFile) {
-        result.push(parsedFile);
+      const parseError = xmlDoc.getElementsByTagName('parsererror');
+      if (parseError.length > 0) {
+        throw new Error('Error parsing XML.');
       }
-    }
 
-    if (result.length === 0) {
-      throw new Error('No code blocks extracted from XML.');
-    }
+      const files = xmlDoc.getElementsByTagName('file');
+      const result: ParsedFile[] = [];
 
-    return result;
-  } else {
-    console.warn('DOMParser not available. XML parsing might not work as expected.');
-    throw new Error('DOMParser not available.');
+      for (let i = 0; i < files.length; i++) {
+        const parsedFile = parseFileEntry(files[i]);
+        if (parsedFile) {
+          result.push(parsedFile);
+        }
+      }
+
+      if (result.length === 0) {
+        throw new Error('No code blocks extracted from XML.');
+      }
+
+      return result;
+    } else {
+      console.warn('DOMParser not available. XML parsing might not work as expected.');
+      throw new Error('DOMParser not available.');
+    }
+  } catch (error) {
+    console.error('Error extracting code blocks from XML:', error);
+    return [];
   }
 }
