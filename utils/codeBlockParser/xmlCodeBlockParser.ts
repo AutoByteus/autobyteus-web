@@ -1,5 +1,5 @@
-import type { ParsedFile } from '~/utils/codeBlockParser/types';
-import { getLanguage } from '~/utils/codeBlockParser/languageDetector';
+import type { ParsedFile } from './types';
+import { getLanguage } from './languageDetector';
 
 function extractXMLString(text: string): string {
   const startTag = '<final_codes>';
@@ -20,13 +20,11 @@ function parseFileEntry(file: Element): ParsedFile | null {
   let originalContent = '';
 
   if (contentNode) {
-    const cdataSections = contentNode.childNodes;
-    for (let j = 0; j < cdataSections.length; j++) {
-      const node = cdataSections[j];
-      if (node.nodeType === Node.CDATA_SECTION_NODE) {
+    const childNodes = contentNode.childNodes;
+    for (let i = 0; i < childNodes.length; i++) {
+      const node = childNodes[i];
+      if (node.nodeType === Node.CDATA_SECTION_NODE || node.nodeType === Node.TEXT_NODE) {
         originalContent += node.nodeValue || '';
-      } else {
-        originalContent += node.textContent || '';
       }
     }
   }
@@ -45,35 +43,29 @@ function parseFileEntry(file: Element): ParsedFile | null {
 export function extractCodeBlocksFromXML(content: string): ParsedFile[] {
   try {
     const xmlContent = extractXMLString(content);
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlContent, 'application/xml');
 
-    if (typeof DOMParser !== 'undefined') {
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlContent, 'application/xml');
-
-      const parseError = xmlDoc.getElementsByTagName('parsererror');
-      if (parseError.length > 0) {
-        throw new Error('Error parsing XML.');
-      }
-
-      const files = xmlDoc.getElementsByTagName('file');
-      const result: ParsedFile[] = [];
-
-      for (let i = 0; i < files.length; i++) {
-        const parsedFile = parseFileEntry(files[i]);
-        if (parsedFile) {
-          result.push(parsedFile);
-        }
-      }
-
-      if (result.length === 0) {
-        throw new Error('No code blocks extracted from XML.');
-      }
-
-      return result;
-    } else {
-      console.warn('DOMParser not available. XML parsing might not work as expected.');
-      throw new Error('DOMParser not available.');
+    const parseError = xmlDoc.getElementsByTagName('parsererror');
+    if (parseError.length > 0) {
+      throw new Error('Error parsing XML.');
     }
+
+    const files = xmlDoc.getElementsByTagName('file');
+    const result: ParsedFile[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const parsedFile = parseFileEntry(files[i]);
+      if (parsedFile) {
+        result.push(parsedFile);
+      }
+    }
+
+    if (result.length === 0) {
+      throw new Error('No code blocks extracted from XML.');
+    }
+
+    return result;
   } catch (error) {
     console.error('Error extracting code blocks from XML:', error);
     return [];

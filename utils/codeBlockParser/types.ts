@@ -1,5 +1,3 @@
-// This file defines the types used for parsing and representing AI responses
-
 export interface ParsedFile {
   path: string;
   originalContent: string;
@@ -7,30 +5,22 @@ export interface ParsedFile {
   language: string;
 }
 
-// AIResponseSegment represents different types of content in an AI response
-export type AIResponseSegment =
-  | AIResponseTextSegment
-  | FileContentSegment
-  // Add more segment types here in the future, e.g., AIResponseCommandSegment
-
-// Base interface for all AI response segments
-interface BaseAIResponseSegment {
-  type: string;
+export interface FileGroup {
+  files: ParsedFile[];
 }
 
-// Represents a segment of plain text in the AI response
-export interface AIResponseTextSegment extends BaseAIResponseSegment {
+export interface AIResponseTextSegment {
   type: 'text';
   content: string;
 }
 
-// Represents a segment containing file content (code blocks) in the AI response
-export interface FileContentSegment extends BaseAIResponseSegment {
+export interface FileContentSegment {
   type: 'file_content';
-  files: ParsedFile[];
+  fileGroup: FileGroup;
 }
 
-// Represents the entire parsed AI response
+export type AIResponseSegment = AIResponseTextSegment | FileContentSegment;
+
 export interface ParsedAIResponse {
   segments: AIResponseSegment[];
 }

@@ -1,13 +1,7 @@
-import type { ParsedFile } from '~/utils/codeBlockParser/types';
-import { extractCodeBlocksFromCustomTags } from '~/utils/codeBlockParser/customTagCodeBlockParser';
-import { extractCodeBlocksFromXML } from '~/utils/codeBlockParser/xmlCodeBlockParser';
+import { extractCodeBlocksFromXML } from './xmlCodeBlockParser';
+import type { FileGroup } from './types';
 
-export function extractCodeBlocks(content: string): ParsedFile[] {
-  if (content.includes('<final_codes>')) {
-    return extractCodeBlocksFromXML(content);
-  } else if (content.includes('$FinalCodesStart$')) {
-    return extractCodeBlocksFromCustomTags(content);
-  } else {
-    throw new Error('No recognized code block format found');
-  }
+export function extractFileGroup(content: string): FileGroup {
+  const parsedFiles = extractCodeBlocksFromXML(content);
+  return { files: parsedFiles };
 }

@@ -36,7 +36,7 @@
             <div v-if="segment.type === 'text'" v-html="formatText(segment.content)" class="mb-4"></div>
             <!-- Render file content segment -->
             <div v-else-if="segment.type === 'file_content'">
-              <div v-for="file in segment.files" :key="file.path">
+              <div v-for="file in segment.fileGroup.files" :key="file.path">
                 <div class="flex justify-between items-center bg-gray-200 p-2 rounded-t-md">
                   <span class="font-bold">File: {{ file.path }}</span>
                   <button
