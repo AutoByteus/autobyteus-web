@@ -1,4 +1,5 @@
 <!-- File: autobyteus-web/components/workflow/Conversation.vue -->
+<!-- This component renders a conversation between a user and an AI -->
 
 <template>
   <div class="space-y-4 mb-4">
@@ -10,6 +11,7 @@
         message.type === 'user' ? 'ml-auto bg-blue-100 text-blue-800' : 'mr-auto bg-gray-100 text-gray-800'
       ]"
     >
+      <!-- Render user message -->
       <div v-if="message.type === 'user'">
         <div v-if="message.contextFilePaths && message.contextFilePaths.length > 0">
           <strong>Context Files:</strong>
@@ -24,22 +26,28 @@
           <div>{{ message.text }}</div>
         </div>
       </div>
+      <!-- Render AI message -->
       <div v-else>
         <strong>AI:</strong>
         <div>
-          <template v-for="(item, itemIndex) in parseAIResponse(message.text)" :key="itemIndex">
-            <div v-if="item.type === 'text'" v-html="formatText(item.content)" class="mb-4"></div>
-            <div v-else-if="item.type === 'code'">
-              <div class="flex justify-between items-center bg-gray-200 p-2 rounded-t-md">
-                <span class="font-bold">File: {{ item.path }}</span>
-                <button
-                  @click="handleApplyFileChange(item.path, item.content)"
-                  class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded"
-                >
-                  Apply
-                </button>
+          <!-- Render each segment of the AI response -->
+          <template v-for="(segment, segmentIndex) in parseAIResponse(message.text).segments" :key="segmentIndex">
+            <!-- Render text segment -->
+            <div v-if="segment.type === 'text'" v-html="formatText(segment.content)" class="mb-4"></div>
+            <!-- Render file content segment -->
+            <div v-else-if="segment.type === 'file_content'">
+              <div v-for="file in segment.files" :key="file.path">
+                <div class="flex justify-between items-center bg-gray-200 p-2 rounded-t-md">
+                  <span class="font-bold">File: {{ file.path }}</span>
+                  <button
+                    @click="handleApplyFileChange(file.path, file.content)"
+                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded"
+                  >
+                    Apply
+                  </button>
+                </div>
+                <pre :class="'language-' + file.language"><code v-html="file.content"></code></pre>
               </div>
-              <pre :class="'language-' + item.language"><code v-html="item.highlightedCode"></code></pre>
             </div>
           </template>
         </div>
@@ -62,7 +70,7 @@ import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-markup';
 import 'prismjs/components/prism-markup-templating';
 import 'prismjs/components/prism-php';
-import { parseAIResponse } from '~/utils/codeBlockParser';
+import { parseAIResponse } from '~/utils/codeBlockParser/codeBlockHighlight';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { useWorkspaceStore } from '~/stores/workspace';
 
@@ -73,10 +81,12 @@ const props = defineProps<{
 const fileExplorerStore = useFileExplorerStore();
 const workspaceStore = useWorkspaceStore();
 
+// Format the timestamp for display
 const formatTimestamp = (date: Date) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
+// Handle applying file changes
 const handleApplyFileChange = async (filePath: string, content: string) => {
   try {
     await fileExplorerStore.applyFileChange(workspaceStore.currentSelectedWorkspacePath, filePath, content);
@@ -85,11 +95,12 @@ const handleApplyFileChange = async (filePath: string, content: string) => {
   }
 };
 
+// Format text by replacing newlines with <br> tags
 const formatText = (text: string) => {
-  // Replace newlines with <br> tags
   return text.replace(/\n/g, '<br>');
 };
 
+// Highlight code blocks on component mount and update
 onMounted(() => {
   Prism.highlightAll();
 });

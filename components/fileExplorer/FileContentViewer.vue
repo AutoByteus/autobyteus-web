@@ -21,8 +21,8 @@
         <strong class="font-bold">Error!</strong>
         <span class="block sm:inline">{{ getContentError(activeFile) }}</span>
       </div>
-      <div v-else-if="getFileContent(activeFile)" class="bg-gray-50 p-4 rounded-lg text-gray-600 whitespace-pre-wrap">
-        {{ getFileContent(activeFile) }}
+      <div v-else-if="getFileContent(activeFile)" class="bg-gray-50 p-4 rounded-lg text-gray-600">
+        <pre><code :class="'language-' + getFileLanguage(activeFile)" v-html="highlightedContent"></code></pre>
       </div>
     </div>
     <div v-else class="text-center py-4">
@@ -32,8 +32,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch, onMounted } from 'vue';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
+import Prism from 'prismjs';
+import 'prismjs/themes/prism.css';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-markup';
+import 'prismjs/components/prism-markup-templating';
+import 'prismjs/components/prism-php';
+import { getLanguage } from '~/utils/codeBlockParser/languageDetector';
+import { highlightVueCode } from '~/utils/codeBlockParser/vueCodeHighlight';
 
 const fileExplorerStore = useFileExplorerStore();
 
@@ -48,8 +58,43 @@ const closeFile = (filePath: string) => fileExplorerStore.closeFile(filePath);
 const getFileContent = (filePath: string) => fileExplorerStore.getFileContent(filePath);
 const isContentLoading = (filePath: string) => fileExplorerStore.isContentLoading(filePath);
 const getContentError = (filePath: string) => fileExplorerStore.getContentError(filePath);
+
+const getFileLanguage = (filePath: string) => getLanguage(filePath);
+
+const highlightedContent = computed(() => {
+  if (!activeFile.value) return '';
+  const content = getFileContent(activeFile.value);
+  if (!content) return '';
+  const language = getFileLanguage(activeFile.value);
+  
+  if (language === 'vue') {
+    return highlightVueCode(content);
+  } else {
+    return Prism.highlight(content, Prism.languages[language] || Prism.languages.plaintext, language);
+  }
+});
+
+onMounted(() => {
+  Prism.highlightAll();
+});
+
+watch(activeFile, () => {
+  nextTick(() => {
+    Prism.highlightAll();
+  });
+});
 </script>
 
 <style scoped>
 /* Add any necessary styles here */
+pre {
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
+}
+code {
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+}
 </style>
