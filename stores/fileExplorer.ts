@@ -4,6 +4,8 @@ import { useQuery, useMutation } from '@vue/apollo-composable'
 import { GetFileContent } from '~/graphql/queries/file_explorer_queries'
 import { ApplyFileChange } from '~/graphql/mutations/file_explorer_mutations'
 import type { GetFileContentQuery, GetFileContentQueryVariables, ApplyFileChangeMutation, ApplyFileChangeMutationVariables } from '~/generated/graphql'
+import { ref, Ref } from 'vue'
+import { useWorkspaceStore } from '~/stores/workspace'
 
 interface FileExplorerState {
   openFolders: Record<string, boolean>;
@@ -12,6 +14,10 @@ interface FileExplorerState {
   fileContents: Map<string, string>;
   contentLoading: Record<string, boolean>;
   contentError: Record<string, string | null>;
+  // Updated to track errors per conversationId, messageIndex, and filePath
+  applyChangeError: Record<string, Record<number, Record<string, string | null>>>;
+  // Updated to track loading state per conversationId, messageIndex, and filePath
+  applyChangeLoading: Record<string, Record<number, Record<string, boolean>>>;
 }
 
 export const useFileExplorerStore = defineStore('fileExplorer', {
@@ -21,7 +27,9 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     activeFile: null,
     fileContents: new Map(),
     contentLoading: {},
-    contentError: {}
+    contentError: {},
+    applyChangeError: {},
+    applyChangeLoading: {},
   }),
   actions: {
     toggleFolder(folderPath: string) {
@@ -74,11 +82,34 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         this.contentLoading[filePath] = false
       })
     },
-    async applyFileChange(workspaceRootPath: string, filePath: string, content: string) {
+    async applyFileChange(
+      workspaceRootPath: string,
+      filePath: string,
+      content: string,
+      conversationId: string,
+      messageIndex: number
+    ) {
+      // Initialize nested objects if they don't exist
+      if (!this.applyChangeError[conversationId]) {
+        this.applyChangeError[conversationId] = {}
+      }
+      if (!this.applyChangeError[conversationId][messageIndex]) {
+        this.applyChangeError[conversationId][messageIndex] = {}
+      }
+      if (!this.applyChangeLoading[conversationId]) {
+        this.applyChangeLoading[conversationId] = {}
+      }
+      if (!this.applyChangeLoading[conversationId][messageIndex]) {
+        this.applyChangeLoading[conversationId][messageIndex] = {}
+      }
+
+      this.applyChangeError[conversationId][messageIndex][filePath] = null
+      this.applyChangeLoading[conversationId][messageIndex][filePath] = true
+
       const { mutate, onDone, onError } = useMutation<ApplyFileChangeMutation, ApplyFileChangeMutationVariables>(ApplyFileChange)
 
       try {
-        await mutate({ workspaceRootPath, filePath, content })
+        const response = await mutate({ workspaceRootPath, filePath, content })
         
         onDone((result) => {
           if (result.data?.applyFileChange) {
@@ -88,14 +119,46 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
           }
         })
 
-        onError((error) => {
-          console.error('Error applying file change:', error)
-          throw error
+        onError((err) => {
+          console.error('Error applying file change:', err)
+          this.applyChangeError[conversationId][messageIndex][filePath] = err.message
         })
-      } catch (error) {
-        console.error('Failed to apply file change:', error)
-        throw error
+
+        return response
+      } catch (err) {
+        console.error('Failed to apply file change:', err)
+        this.applyChangeError[conversationId][messageIndex][filePath] = err instanceof Error ? err.message : 'An unknown error occurred'
+        throw err
+      } finally {
+        this.applyChangeLoading[conversationId][messageIndex][filePath] = false
       }
+    },
+    // Added methods to handle per conversationId and messageIndex
+    isApplyChangeInProgress(conversationId: string, messageIndex: number, filePath: string): boolean {
+      return !!(this.applyChangeLoading[conversationId] &&
+        this.applyChangeLoading[conversationId][messageIndex] &&
+        this.applyChangeLoading[conversationId][messageIndex][filePath])
+    },
+    getApplyChangeError(conversationId: string, messageIndex: number, filePath: string): string | null {
+      return this.applyChangeError[conversationId]?.[messageIndex]?.[filePath] || null
+    },
+    setApplyChangeLoading(conversationId: string, messageIndex: number, filePath: string, isLoading: boolean) {
+      if (!this.applyChangeLoading[conversationId]) {
+        this.applyChangeLoading[conversationId] = {}
+      }
+      if (!this.applyChangeLoading[conversationId][messageIndex]) {
+        this.applyChangeLoading[conversationId][messageIndex] = {}
+      }
+      this.applyChangeLoading[conversationId][messageIndex][filePath] = isLoading
+    },
+    setApplyChangeError(conversationId: string, messageIndex: number, filePath: string, error: string | null) {
+      if (!this.applyChangeError[conversationId]) {
+        this.applyChangeError[conversationId] = {}
+      }
+      if (!this.applyChangeError[conversationId][messageIndex]) {
+        this.applyChangeError[conversationId][messageIndex] = {}
+      }
+      this.applyChangeError[conversationId][messageIndex][filePath] = error
     }
   },
   getters: {
@@ -105,6 +168,15 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     getActiveFile: (state): string | null => state.activeFile,
     getFileContent: (state) => (filePath: string): string | null => state.fileContents.get(filePath) || null,
     isContentLoading: (state) => (filePath: string): boolean => !!state.contentLoading[filePath],
-    getContentError: (state) => (filePath: string): string | null => state.contentError[filePath] || null
+    getContentError: (state) => (filePath: string): string | null => state.contentError[filePath] || null,
+    // Updated getters for per conversationId and messageIndex
+    isApplyChangeInProgressGetter: (state) => (conversationId: string, messageIndex: number, filePath: string): boolean => {
+      return !!(state.applyChangeLoading[conversationId] &&
+        state.applyChangeLoading[conversationId][messageIndex] &&
+        state.applyChangeLoading[conversationId][messageIndex][filePath])
+    },
+    getApplyChangeErrorGetter: (state) => (conversationId: string, messageIndex: number, filePath: string): string | null => {
+      return state.applyChangeError[conversationId]?.[messageIndex]?.[filePath] || null
+    }
   }
 })
