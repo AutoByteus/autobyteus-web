@@ -19,7 +19,7 @@ export default defineNuxtConfig({
     clients: {
       default: {
         httpEndpoint: '/graphql',
-        wsEndpoint: '/graphql',
+        wsEndpoint: process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8000/graphql',
         websocketsOnly: false,
       },
     },
