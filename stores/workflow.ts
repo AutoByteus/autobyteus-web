@@ -26,10 +26,10 @@ export const useWorkflowStore = defineStore('workflow', {
     setSelectedStepId(stepId: string) {
       this.selectedStepId = stepId
     },
-    fetchWorkflowConfig(workspaceRootPath: string) {
+    fetchWorkflowConfig(workspaceId: string) {
       const { onResult, onError } = useQuery<GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables>(
         GetWorkflowConfig,
-        { workspaceRootPath }
+        { workspaceId }
       )
 
       onResult((result) => {

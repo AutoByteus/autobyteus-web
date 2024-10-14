@@ -73,10 +73,10 @@ const handleSend = async () => {
     return
   }
 
-  const workspaceRootPath = workspaceStore.currentSelectedWorkspacePath
+  const workspaceId = workspaceStore.currentSelectedWorkspaceId
   const stepId = workflowStore.selectedStep?.id
 
-  if (!workspaceRootPath || !stepId) {
+  if (!workspaceId || !stepId) {
     alert('Workspace or step is not selected.')
     return
   }
@@ -88,7 +88,7 @@ const handleSend = async () => {
     }
 
     await workflowStepStore.sendStepRequirementAndSubscribe(
-      workspaceRootPath,
+      workspaceId,
       stepId,
       userRequirement.value,
       isFirstMessage() ? selectedModel.value : undefined

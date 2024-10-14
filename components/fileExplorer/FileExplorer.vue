@@ -1,12 +1,15 @@
 <template>
   <div class="file-explorer flex flex-col h-full">
     <h2 class="text-xl font-semibold mb-4 flex-shrink-0">Project Files</h2>
+    <div v-if="activeWorkspaceId" class="text-sm text-gray-500 mb-2">
+      Active Workspace ID: {{ activeWorkspaceId }}
+    </div>
     <div class="file-explorer-content flex-grow overflow-y-auto">
       <div v-if="!hasWorkspaces" class="text-gray-500 italic">
         No workspaces available. Add a workspace to see files.
       </div>
-      <div v-else-if="files.length === 0" class="text-gray-500 italic">
-        This workspace is empty. Add files to see them here.
+      <div v-else-if="!files.length" class="text-gray-500 italic">
+        This workspace is empty or no workspace is selected. Add files or select a workspace to see them here.
       </div>
       <div v-else class="space-y-2">
         <FileItem v-for="file in files" :key="file.path" :file="file" />
@@ -23,13 +26,15 @@ import { useWorkspaceStore } from '~/stores/workspace'
 const workspaceStore = useWorkspaceStore()
 
 const files = computed(() => {
-  return workspaceStore.activeWorkspaceTree ? workspaceStore.activeWorkspaceTree.children : []
+  return workspaceStore.currentWorkspaceTree ? workspaceStore.currentWorkspaceTree.children : []
 })
 
-const hasWorkspaces = computed(() => workspaceStore.allWorkspaces.length > 0)
+const hasWorkspaces = computed(() => workspaceStore.allWorkspaceIds.length > 0)
+
+const activeWorkspaceId = computed(() => workspaceStore.currentSelectedWorkspaceId)
 
 onMounted(() => {
-  console.log("Active workspace tree:", workspaceStore.activeWorkspaceTree)
+  console.log("Current workspace tree:", workspaceStore.currentWorkspaceTree)
 })
 </script>
 

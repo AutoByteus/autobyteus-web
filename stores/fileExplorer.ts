@@ -14,9 +14,7 @@ interface FileExplorerState {
   fileContents: Map<string, string>;
   contentLoading: Record<string, boolean>;
   contentError: Record<string, string | null>;
-  // Updated to track errors per conversationId, messageIndex, and filePath
   applyChangeError: Record<string, Record<number, Record<string, string | null>>>;
-  // Updated to track loading state per conversationId, messageIndex, and filePath
   applyChangeLoading: Record<string, Record<number, Record<string, boolean>>>;
 }
 
@@ -63,11 +61,11 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       this.contentError[filePath] = null
 
       const workspaceStore = useWorkspaceStore()
-      const workspaceRootPath = workspaceStore.currentSelectedWorkspacePath
+      const workspaceId = workspaceStore.currentSelectedWorkspaceId
 
       const { onResult, onError } = useQuery<GetFileContentQuery, GetFileContentQueryVariables>(
         GetFileContent,
-        { workspaceRootPath, filePath }
+        { workspaceId, filePath }
       )
       onResult((result) => {
         if (result.data?.fileContent) {
@@ -83,13 +81,12 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       })
     },
     async applyFileChange(
-      workspaceRootPath: string,
+      workspaceId: string,
       filePath: string,
       content: string,
       conversationId: string,
       messageIndex: number
     ) {
-      // Initialize nested objects if they don't exist
       if (!this.applyChangeError[conversationId]) {
         this.applyChangeError[conversationId] = {}
       }
@@ -109,11 +106,10 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       const { mutate, onDone, onError } = useMutation<ApplyFileChangeMutation, ApplyFileChangeMutationVariables>(ApplyFileChange)
 
       try {
-        const response = await mutate({ workspaceRootPath, filePath, content })
+        const response = await mutate({ workspaceId, filePath, content })
         
         onDone((result) => {
           if (result.data?.applyFileChange) {
-            // Update the local file content
             this.fileContents.set(filePath, content)
             console.log('File change applied successfully')
           }
@@ -133,7 +129,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         this.applyChangeLoading[conversationId][messageIndex][filePath] = false
       }
     },
-    // Added methods to handle per conversationId and messageIndex
     isApplyChangeInProgress(conversationId: string, messageIndex: number, filePath: string): boolean {
       return !!(this.applyChangeLoading[conversationId] &&
         this.applyChangeLoading[conversationId][messageIndex] &&
@@ -169,7 +164,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     getFileContent: (state) => (filePath: string): string | null => state.fileContents.get(filePath) || null,
     isContentLoading: (state) => (filePath: string): boolean => !!state.contentLoading[filePath],
     getContentError: (state) => (filePath: string): string | null => state.contentError[filePath] || null,
-    // Updated getters for per conversationId and messageIndex
     isApplyChangeInProgressGetter: (state) => (conversationId: string, messageIndex: number, filePath: string): boolean => {
       return !!(state.applyChangeLoading[conversationId] &&
         state.applyChangeLoading[conversationId][messageIndex] &&

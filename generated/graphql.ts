@@ -95,9 +95,10 @@ export enum LlmModel {
 
 export type Mutation = {
   __typename?: 'Mutation';
-  addWorkspace: Scalars['JSON']['output'];
+  addWorkspace: WorkspaceInfo;
   applyFileChange: Scalars['String']['output'];
   configureStepLlm: Scalars['String']['output'];
+  getFileContent: Scalars['String']['output'];
   sendStepRequirement: Scalars['String']['output'];
   startWorkflow: Scalars['Boolean']['output'];
 };
@@ -111,14 +112,20 @@ export type MutationAddWorkspaceArgs = {
 export type MutationApplyFileChangeArgs = {
   content: Scalars['String']['input'];
   filePath: Scalars['String']['input'];
-  workspaceRootPath: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
 };
 
 
 export type MutationConfigureStepLlmArgs = {
   llmModel: LlmModel;
   stepId: Scalars['String']['input'];
-  workspaceRootPath: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
+};
+
+
+export type MutationGetFileContentArgs = {
+  filePath: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
 };
 
 
@@ -127,12 +134,12 @@ export type MutationSendStepRequirementArgs = {
   llmModel?: InputMaybe<LlmModel>;
   requirement: Scalars['String']['input'];
   stepId: Scalars['String']['input'];
-  workspaceRootPath: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
 };
 
 
 export type MutationStartWorkflowArgs = {
-  workspaceRootPath: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
 };
 
 export type Query = {
@@ -146,12 +153,12 @@ export type Query = {
 
 export type QueryFileContentArgs = {
   filePath: Scalars['String']['input'];
-  workspaceRootPath: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
 };
 
 
 export type QueryGetAvailableWorkspaceToolsArgs = {
-  workspaceRootPath: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
 };
 
 
@@ -161,7 +168,7 @@ export type QuerySearchCodeEntitiesArgs = {
 
 
 export type QueryWorkflowConfigArgs = {
-  workspaceRootPath: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
 };
 
 export type Subscription = {
@@ -172,7 +179,14 @@ export type Subscription = {
 
 export type SubscriptionStepResponseArgs = {
   stepId: Scalars['String']['input'];
-  workspaceRootPath: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
+};
+
+export type WorkspaceInfo = {
+  __typename?: 'WorkspaceInfo';
+  fileExplorer: Scalars['JSON']['output'];
+  name: Scalars['String']['output'];
+  workspaceId: Scalars['String']['output'];
 };
 
 export type WorkspaceTool = {
@@ -182,7 +196,7 @@ export type WorkspaceTool = {
 };
 
 export type ApplyFileChangeMutationVariables = Exact<{
-  workspaceRootPath: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
   filePath: Scalars['String']['input'];
   content: Scalars['String']['input'];
 }>;
@@ -191,7 +205,7 @@ export type ApplyFileChangeMutationVariables = Exact<{
 export type ApplyFileChangeMutation = { __typename?: 'Mutation', applyFileChange: string };
 
 export type SendStepRequirementMutationVariables = Exact<{
-  workspaceRootPath: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
   stepId: Scalars['String']['input'];
   contextFilePaths: Array<ContextFilePathInput> | ContextFilePathInput;
   requirement: Scalars['String']['input'];
@@ -202,7 +216,7 @@ export type SendStepRequirementMutationVariables = Exact<{
 export type SendStepRequirementMutation = { __typename?: 'Mutation', sendStepRequirement: string };
 
 export type ConfigureStepLlmMutationVariables = Exact<{
-  workspaceRootPath: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
   stepId: Scalars['String']['input'];
   llmModel: LlmModel;
 }>;
@@ -215,7 +229,7 @@ export type AddWorkspaceMutationVariables = Exact<{
 }>;
 
 
-export type AddWorkspaceMutation = { __typename?: 'Mutation', addWorkspace: any };
+export type AddWorkspaceMutation = { __typename?: 'Mutation', addWorkspace: { __typename?: 'WorkspaceInfo', workspaceId: string, name: string, fileExplorer: any } };
 
 export type SearchCodeEntitiesQueryVariables = Exact<{
   query: Scalars['String']['input'];
@@ -225,7 +239,7 @@ export type SearchCodeEntitiesQueryVariables = Exact<{
 export type SearchCodeEntitiesQuery = { __typename?: 'Query', searchCodeEntities: any };
 
 export type GetFileContentQueryVariables = Exact<{
-  workspaceRootPath: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
   filePath: Scalars['String']['input'];
 }>;
 
@@ -233,14 +247,14 @@ export type GetFileContentQueryVariables = Exact<{
 export type GetFileContentQuery = { __typename?: 'Query', fileContent: string };
 
 export type GetWorkflowConfigQueryVariables = Exact<{
-  workspaceRootPath: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
 }>;
 
 
 export type GetWorkflowConfigQuery = { __typename?: 'Query', workflowConfig: any };
 
 export type StepResponseSubscriptionVariables = Exact<{
-  workspaceRootPath: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
   stepId: Scalars['String']['input'];
 }>;
 
@@ -249,9 +263,9 @@ export type StepResponseSubscription = { __typename?: 'Subscription', stepRespon
 
 
 export const ApplyFileChangeDocument = gql`
-    mutation ApplyFileChange($workspaceRootPath: String!, $filePath: String!, $content: String!) {
+    mutation ApplyFileChange($workspaceId: String!, $filePath: String!, $content: String!) {
   applyFileChange(
-    workspaceRootPath: $workspaceRootPath
+    workspaceId: $workspaceId
     filePath: $filePath
     content: $content
   )
@@ -271,7 +285,7 @@ export const ApplyFileChangeDocument = gql`
  * @example
  * const { mutate, loading, error, onDone } = useApplyFileChangeMutation({
  *   variables: {
- *     workspaceRootPath: // value for 'workspaceRootPath'
+ *     workspaceId: // value for 'workspaceId'
  *     filePath: // value for 'filePath'
  *     content: // value for 'content'
  *   },
@@ -282,9 +296,9 @@ export function useApplyFileChangeMutation(options: VueApolloComposable.UseMutat
 }
 export type ApplyFileChangeMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<ApplyFileChangeMutation, ApplyFileChangeMutationVariables>;
 export const SendStepRequirementDocument = gql`
-    mutation SendStepRequirement($workspaceRootPath: String!, $stepId: String!, $contextFilePaths: [ContextFilePathInput!]!, $requirement: String!, $llmModel: LLMModel) {
+    mutation SendStepRequirement($workspaceId: String!, $stepId: String!, $contextFilePaths: [ContextFilePathInput!]!, $requirement: String!, $llmModel: LLMModel) {
   sendStepRequirement(
-    workspaceRootPath: $workspaceRootPath
+    workspaceId: $workspaceId
     stepId: $stepId
     contextFilePaths: $contextFilePaths
     requirement: $requirement
@@ -306,7 +320,7 @@ export const SendStepRequirementDocument = gql`
  * @example
  * const { mutate, loading, error, onDone } = useSendStepRequirementMutation({
  *   variables: {
- *     workspaceRootPath: // value for 'workspaceRootPath'
+ *     workspaceId: // value for 'workspaceId'
  *     stepId: // value for 'stepId'
  *     contextFilePaths: // value for 'contextFilePaths'
  *     requirement: // value for 'requirement'
@@ -319,9 +333,9 @@ export function useSendStepRequirementMutation(options: VueApolloComposable.UseM
 }
 export type SendStepRequirementMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<SendStepRequirementMutation, SendStepRequirementMutationVariables>;
 export const ConfigureStepLlmDocument = gql`
-    mutation ConfigureStepLLM($workspaceRootPath: String!, $stepId: String!, $llmModel: LLMModel!) {
+    mutation ConfigureStepLLM($workspaceId: String!, $stepId: String!, $llmModel: LLMModel!) {
   configureStepLlm(
-    workspaceRootPath: $workspaceRootPath
+    workspaceId: $workspaceId
     stepId: $stepId
     llmModel: $llmModel
   )
@@ -341,7 +355,7 @@ export const ConfigureStepLlmDocument = gql`
  * @example
  * const { mutate, loading, error, onDone } = useConfigureStepLlmMutation({
  *   variables: {
- *     workspaceRootPath: // value for 'workspaceRootPath'
+ *     workspaceId: // value for 'workspaceId'
  *     stepId: // value for 'stepId'
  *     llmModel: // value for 'llmModel'
  *   },
@@ -353,7 +367,11 @@ export function useConfigureStepLlmMutation(options: VueApolloComposable.UseMuta
 export type ConfigureStepLlmMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<ConfigureStepLlmMutation, ConfigureStepLlmMutationVariables>;
 export const AddWorkspaceDocument = gql`
     mutation AddWorkspace($workspaceRootPath: String!) {
-  addWorkspace(workspaceRootPath: $workspaceRootPath)
+  addWorkspace(workspaceRootPath: $workspaceRootPath) {
+    workspaceId
+    name
+    fileExplorer
+  }
 }
     `;
 
@@ -407,8 +425,8 @@ export function useSearchCodeEntitiesLazyQuery(variables?: SearchCodeEntitiesQue
 }
 export type SearchCodeEntitiesQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<SearchCodeEntitiesQuery, SearchCodeEntitiesQueryVariables>;
 export const GetFileContentDocument = gql`
-    query GetFileContent($workspaceRootPath: String!, $filePath: String!) {
-  fileContent(workspaceRootPath: $workspaceRootPath, filePath: $filePath)
+    query GetFileContent($workspaceId: String!, $filePath: String!) {
+  fileContent(workspaceId: $workspaceId, filePath: $filePath)
 }
     `;
 
@@ -424,7 +442,7 @@ export const GetFileContentDocument = gql`
  *
  * @example
  * const { result, loading, error } = useGetFileContentQuery({
- *   workspaceRootPath: // value for 'workspaceRootPath'
+ *   workspaceId: // value for 'workspaceId'
  *   filePath: // value for 'filePath'
  * });
  */
@@ -436,8 +454,8 @@ export function useGetFileContentLazyQuery(variables?: GetFileContentQueryVariab
 }
 export type GetFileContentQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetFileContentQuery, GetFileContentQueryVariables>;
 export const GetWorkflowConfigDocument = gql`
-    query GetWorkflowConfig($workspaceRootPath: String!) {
-  workflowConfig(workspaceRootPath: $workspaceRootPath)
+    query GetWorkflowConfig($workspaceId: String!) {
+  workflowConfig(workspaceId: $workspaceId)
 }
     `;
 
@@ -453,7 +471,7 @@ export const GetWorkflowConfigDocument = gql`
  *
  * @example
  * const { result, loading, error } = useGetWorkflowConfigQuery({
- *   workspaceRootPath: // value for 'workspaceRootPath'
+ *   workspaceId: // value for 'workspaceId'
  * });
  */
 export function useGetWorkflowConfigQuery(variables: GetWorkflowConfigQueryVariables | VueCompositionApi.Ref<GetWorkflowConfigQueryVariables> | ReactiveFunction<GetWorkflowConfigQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables>> = {}) {
@@ -464,8 +482,8 @@ export function useGetWorkflowConfigLazyQuery(variables?: GetWorkflowConfigQuery
 }
 export type GetWorkflowConfigQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables>;
 export const StepResponseDocument = gql`
-    subscription StepResponse($workspaceRootPath: String!, $stepId: String!) {
-  stepResponse(workspaceRootPath: $workspaceRootPath, stepId: $stepId)
+    subscription StepResponse($workspaceId: String!, $stepId: String!) {
+  stepResponse(workspaceId: $workspaceId, stepId: $stepId)
 }
     `;
 
@@ -481,7 +499,7 @@ export const StepResponseDocument = gql`
  *
  * @example
  * const { result, loading, error } = useStepResponseSubscription({
- *   workspaceRootPath: // value for 'workspaceRootPath'
+ *   workspaceId: // value for 'workspaceId'
  *   stepId: // value for 'stepId'
  * });
  */

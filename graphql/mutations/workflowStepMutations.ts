@@ -2,14 +2,14 @@ import gql from 'graphql-tag';
 
 export const SendStepRequirement = gql`
   mutation SendStepRequirement(
-    $workspaceRootPath: String!
+    $workspaceId: String!
     $stepId: String!
     $contextFilePaths: [ContextFilePathInput!]!
     $requirement: String!
     $llmModel: LLMModel
   ) {
     sendStepRequirement(
-      workspaceRootPath: $workspaceRootPath
+      workspaceId: $workspaceId
       stepId: $stepId
       contextFilePaths: $contextFilePaths
       requirement: $requirement
@@ -20,12 +20,12 @@ export const SendStepRequirement = gql`
 
 export const ConfigureStepLLM = gql`
   mutation ConfigureStepLLM(
-    $workspaceRootPath: String!
+    $workspaceId: String!
     $stepId: String!
     $llmModel: LLMModel!
   ) {
     configureStepLlm(
-      workspaceRootPath: $workspaceRootPath
+      workspaceId: $workspaceId
       stepId: $stepId
       llmModel: $llmModel
     )

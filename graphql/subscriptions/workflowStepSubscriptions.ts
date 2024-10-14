@@ -1,7 +1,7 @@
 import gql from 'graphql-tag';
 
 export const StepResponseSubscription = gql`
-  subscription StepResponse($workspaceRootPath: String!, $stepId: String!) {
-    stepResponse(workspaceRootPath: $workspaceRootPath, stepId: $stepId)
+  subscription StepResponse($workspaceId: String!, $stepId: String!) {
+    stepResponse(workspaceId: $workspaceId, stepId: $stepId)
   }
 `;

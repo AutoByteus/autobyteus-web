@@ -129,7 +129,7 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
     },
 
     async sendStepRequirementAndSubscribe(
-      workspaceRootPath: string,
+      workspaceId: string,
       stepId: string,
       requirement: string,
       llmModel?: LlmModel
@@ -144,7 +144,7 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
         }))
 
         const result = await sendStepRequirementMutation({
-          workspaceRootPath,
+          workspaceId,
           stepId,
           contextFilePaths: formattedContextFilePaths,
           requirement,
@@ -163,7 +163,7 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
         }
 
         if (!this.isSubscribed) {
-          this.subscribeToStepResponse(workspaceRootPath, stepId)
+          this.subscribeToStepResponse(workspaceId, stepId)
         }
       } catch (error) {
         console.error('Error sending step requirement:', error)
@@ -173,9 +173,9 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
       }
     },
 
-    subscribeToStepResponse(workspaceRootPath: string, stepId: string) {
+    subscribeToStepResponse(workspaceId: string, stepId: string) {
       const { onResult, onError } = useSubscription<StepResponseSubscriptionType, StepResponseSubscriptionVariables>(StepResponseSubscription, {
-        workspaceRootPath,
+        workspaceId,
         stepId
       })
 
@@ -193,7 +193,7 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
     },
 
     async configureStepLLM(
-      workspaceRootPath: string,
+      workspaceId: string,
       stepId: string,
       llmModel: LlmModel
     ): Promise<void> {
@@ -201,7 +201,7 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
       
       try {
         const result = await configureStepLLMMutation({
-          workspaceRootPath,
+          workspaceId,
           stepId,
           llmModel,
         })
@@ -232,10 +232,10 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
 
     async uploadFile(file: File): Promise<string> {
       const workspaceStore = useWorkspaceStore()
-      const workspaceRootPath = workspaceStore.currentSelectedWorkspacePath
+      const workspaceId = workspaceStore.currentSelectedWorkspaceId
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('workspaceRootPath', workspaceRootPath)
+      formData.append('workspaceId', workspaceId)
 
       try {
         const response = await apiService.post<{ filePath: string }>('/upload-file', formData, {
