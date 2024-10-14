@@ -235,7 +235,7 @@ export const useWorkflowStepStore = defineStore('workflowStep', {
       const workspaceId = workspaceStore.currentSelectedWorkspaceId
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('workspaceId', workspaceId)
+      formData.append('workspace_id', workspaceId)
 
       try {
         const response = await apiService.post<{ filePath: string }>('/upload-file', formData, {
