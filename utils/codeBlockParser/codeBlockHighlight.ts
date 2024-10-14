@@ -49,5 +49,10 @@ export function parseAIResponse(text: string): ParsedAIResponse {
     }
   }
 
+  // If no segments were added, push the entire text as 'text' segment
+  if (segments.length === 0) {
+    segments.push({ type: 'text', content: text.trim() });
+  }
+
   return { segments };
 }
