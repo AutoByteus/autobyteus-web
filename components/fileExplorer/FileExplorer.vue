@@ -1,12 +1,6 @@
 <template>
   <div class="file-explorer flex flex-col h-full">
     <h2 class="text-xl font-semibold mb-4 flex-shrink-0">Project Files</h2>
-    <div v-if="activeWorkspaceName" class="text-sm text-gray-500 mb-2">
-      Active Workspace: {{ activeWorkspaceName }}
-    </div>
-    <div v-else class="text-sm text-gray-500 mb-2">
-      No workspace selected
-    </div>
     <div class="file-explorer-content flex-grow overflow-y-auto">
       <div v-if="!hasWorkspaces" class="text-gray-500 italic">
         No workspaces available. Add a workspace to see files.
@@ -33,8 +27,6 @@ const files = computed(() => {
 })
 
 const hasWorkspaces = computed(() => workspaceStore.allWorkspaceIds.length > 0)
-
-const activeWorkspaceName = computed(() => workspaceStore.activeWorkspace?.name || '')
 
 onMounted(() => {
   console.log("Current workspace tree:", workspaceStore.currentWorkspaceTree)
