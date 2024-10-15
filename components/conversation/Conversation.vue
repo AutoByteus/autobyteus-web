@@ -31,8 +31,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { Conversation } from '~/types/conversation';
-import UserMessage from '~/components/workflow/UserMessage.vue';
-import AIMessage from '~/components/workflow//AIMessage.vue';
+import UserMessage from '~/components/conversation/UserMessage.vue';
+import AIMessage from '~/components/conversation/AIMessage.vue';
 
 const props = defineProps<{
   conversation: Conversation;

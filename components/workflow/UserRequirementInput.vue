@@ -47,7 +47,7 @@ import { storeToRefs } from 'pinia'
 import { useWorkflowStore } from '~/stores/workflow'
 import { useWorkflowStepStore } from '~/stores/workflowStep'
 import { useWorkspaceStore } from '~/stores/workspace'
-import ContextFilePathList from '~/components/workflow/ContextFilePathList.vue'
+import ContextFilePathList from '~/components/contextFiles/ContextFilePathList.vue'
 import { LlmModel } from '~/generated/graphql'
 
 const workflowStore = useWorkflowStore()
