@@ -1,11 +1,16 @@
-// File: /home/ryan-ai/miniHDD/Learning/chatgpt/autobyteus_org_workspace/autobyteus-web/stores/fileExplorer.ts
 import { defineStore } from 'pinia'
 import { useQuery, useMutation } from '@vue/apollo-composable'
 import { GetFileContent } from '~/graphql/queries/file_explorer_queries'
 import { ApplyFileChange } from '~/graphql/mutations/file_explorer_mutations'
-import type { GetFileContentQuery, GetFileContentQueryVariables, ApplyFileChangeMutation, ApplyFileChangeMutationVariables } from '~/generated/graphql'
-import { ref, Ref } from 'vue'
+import type { 
+  GetFileContentQuery, 
+  GetFileContentQueryVariables, 
+  ApplyFileChangeMutation, 
+  ApplyFileChangeMutationVariables,
+} from '~/generated/graphql'
 import { useWorkspaceStore } from '~/stores/workspace'
+import { TreeNode } from '~/utils/fileExplorer/TreeNode'
+import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
 
 interface FileExplorerState {
   openFolders: Record<string, boolean>;
@@ -103,30 +108,27 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       this.applyChangeError[conversationId][messageIndex][filePath] = null
       this.applyChangeLoading[conversationId][messageIndex][filePath] = true
 
-      const { mutate, onDone, onError } = useMutation<ApplyFileChangeMutation, ApplyFileChangeMutationVariables>(ApplyFileChange)
+      const { mutate } = useMutation<ApplyFileChangeMutation, ApplyFileChangeMutationVariables>(ApplyFileChange)
 
       try {
-        const response = await mutate({ workspaceId, filePath, content })
+        const result = await mutate({ workspaceId, filePath, content })
         
-        onDone((result) => {
-          if (result.data?.applyFileChange) {
-            this.fileContents.set(filePath, content)
-            console.log('File change applied successfully')
-          }
-        })
+        if (result?.data?.applyFileChange) {
+          this.fileContents.set(filePath, content)
+          console.log('File change applied successfully')
+          // Process the change event
+          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.applyFileChange)
+          const workspaceStore = useWorkspaceStore()
+          workspaceStore.handleFileSystemChange(workspaceId, changeEvent)
+        }
 
-        onError((err) => {
-          console.error('Error applying file change:', err)
-          this.applyChangeError[conversationId][messageIndex][filePath] = err.message
-        })
-
-        return response
+        this.applyChangeLoading[conversationId][messageIndex][filePath] = false
+        return result
       } catch (err) {
         console.error('Failed to apply file change:', err)
         this.applyChangeError[conversationId][messageIndex][filePath] = err instanceof Error ? err.message : 'An unknown error occurred'
-        throw err
-      } finally {
         this.applyChangeLoading[conversationId][messageIndex][filePath] = false
+        throw err
       }
     },
     isApplyChangeInProgress(conversationId: string, messageIndex: number, filePath: string): boolean {
