@@ -9,14 +9,14 @@
           </ul>
         </nav>
         <button 
-          @click="showAPIKeyManager = true"
+          @click="toggleAPIKeyManager"
           class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
         >
           Manage API Keys
         </button>
       </div>
     </div>
-    <Modal v-if="showAPIKeyManager" @close="showAPIKeyManager = false">
+    <Modal v-if="showAPIKeyManager" @close="toggleAPIKeyManager">
       <APIKeyManager />
     </Modal>
   </header>
@@ -28,4 +28,9 @@ import APIKeyManager from '~/components/APIKeyManager.vue'
 import Modal from '~/components/ui/Modal.vue'
 
 const showAPIKeyManager = ref(false)
+
+const toggleAPIKeyManager = () => {
+  showAPIKeyManager.value = !showAPIKeyManager.value
+  console.log('API Key Manager visibility:', showAPIKeyManager.value)
+}
 </script>

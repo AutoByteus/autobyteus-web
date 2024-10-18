@@ -25,8 +25,11 @@ export type ContextFilePathInput = {
 };
 
 export enum LlmModel {
+  BedrockClaude_3_5SonnetApi = 'BEDROCK_CLAUDE_3_5_SONNET_API',
+  Chatgpt_4OLatestApi = 'CHATGPT_4O_LATEST_API',
   Claude_3_5Sonnet = 'CLAUDE_3_5_SONNET',
   Claude_3_5SonnetApi = 'CLAUDE_3_5_SONNET_API',
+  Claude_3_5SonnetLatestApi = 'CLAUDE_3_5_SONNET_LATEST_API',
   Claude_3Haiku = 'CLAUDE_3_HAIKU',
   Claude_3HaikuApi = 'CLAUDE_3_HAIKU_API',
   Claude_3Opus = 'CLAUDE_3_OPUS',
@@ -51,8 +54,8 @@ export enum LlmModel {
   Gemma_2_27BItApi = 'GEMMA_2_27B_IT_API',
   Gemma_7BIt = 'GEMMA_7B_IT',
   Gemma_7BItApi = 'GEMMA_7B_IT_API',
-  Gpt_4Api = 'GPT_4_API',
   Gpt_4o = 'GPT_4o',
+  Gpt_4oApi = 'GPT_4o_API',
   Llama3_8B_8192 = 'LLAMA3_8B_8192',
   Llama3_8B_8192Api = 'LLAMA3_8B_8192_API',
   Llama3_70B_8192 = 'LLAMA3_70B_8192',
@@ -87,8 +90,7 @@ export enum LlmModel {
   Mixtral_8X7BInstructApi = 'MIXTRAL_8X7B_INSTRUCT_API',
   Nemotron_4_340BInstruct = 'NEMOTRON_4_340B_INSTRUCT',
   Nemotron_4_340BInstructApi = 'NEMOTRON_4_340B_INSTRUCT_API',
-  O1MiniApi = 'O1_MINI_API',
-  O1PreviewApi = 'O1_PREVIEW_API',
+  NvidiaLlama_3_1Nemotron_70BInstruct = 'NVIDIA_LLAMA_3_1_NEMOTRON_70B_INSTRUCT',
   O1Mini = 'o1_MINI',
   O1Preview = 'o1_PREVIEW'
 }
@@ -99,7 +101,9 @@ export type Mutation = {
   applyFileChange: Scalars['String']['output'];
   configureStepLlm: Scalars['String']['output'];
   getFileContent: Scalars['String']['output'];
+  getLlmApiKey: Scalars['String']['output'];
   sendStepRequirement: Scalars['String']['output'];
+  setLlmApiKey: Scalars['String']['output'];
   startWorkflow: Scalars['Boolean']['output'];
 };
 
@@ -129,12 +133,23 @@ export type MutationGetFileContentArgs = {
 };
 
 
+export type MutationGetLlmApiKeyArgs = {
+  model: Scalars['String']['input'];
+};
+
+
 export type MutationSendStepRequirementArgs = {
   contextFilePaths: Array<ContextFilePathInput>;
   llmModel?: InputMaybe<LlmModel>;
   requirement: Scalars['String']['input'];
   stepId: Scalars['String']['input'];
   workspaceId: Scalars['String']['input'];
+};
+
+
+export type MutationSetLlmApiKeyArgs = {
+  apiKey: Scalars['String']['input'];
+  model: Scalars['String']['input'];
 };
 
 
@@ -194,6 +209,21 @@ export type WorkspaceTool = {
   name: Scalars['String']['output'];
   promptTemplate: Scalars['String']['output'];
 };
+
+export type SetLlmapiKeyMutationVariables = Exact<{
+  model: Scalars['String']['input'];
+  apiKey: Scalars['String']['input'];
+}>;
+
+
+export type SetLlmapiKeyMutation = { __typename?: 'Mutation', setLlmApiKey: string };
+
+export type GetLlmapiKeyMutationVariables = Exact<{
+  model: Scalars['String']['input'];
+}>;
+
+
+export type GetLlmapiKeyMutation = { __typename?: 'Mutation', getLlmApiKey: string };
 
 export type ApplyFileChangeMutationVariables = Exact<{
   workspaceId: Scalars['String']['input'];
@@ -262,6 +292,61 @@ export type StepResponseSubscriptionVariables = Exact<{
 export type StepResponseSubscription = { __typename?: 'Subscription', stepResponse: string };
 
 
+export const SetLlmapiKeyDocument = gql`
+    mutation SetLLMAPIKey($model: String!, $apiKey: String!) {
+  setLlmApiKey(model: $model, apiKey: $apiKey)
+}
+    `;
+
+/**
+ * __useSetLlmapiKeyMutation__
+ *
+ * To run a mutation, you first call `useSetLlmapiKeyMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useSetLlmapiKeyMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useSetLlmapiKeyMutation({
+ *   variables: {
+ *     model: // value for 'model'
+ *     apiKey: // value for 'apiKey'
+ *   },
+ * });
+ */
+export function useSetLlmapiKeyMutation(options: VueApolloComposable.UseMutationOptions<SetLlmapiKeyMutation, SetLlmapiKeyMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<SetLlmapiKeyMutation, SetLlmapiKeyMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<SetLlmapiKeyMutation, SetLlmapiKeyMutationVariables>(SetLlmapiKeyDocument, options);
+}
+export type SetLlmapiKeyMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<SetLlmapiKeyMutation, SetLlmapiKeyMutationVariables>;
+export const GetLlmapiKeyDocument = gql`
+    mutation GetLLMAPIKey($model: String!) {
+  getLlmApiKey(model: $model)
+}
+    `;
+
+/**
+ * __useGetLlmapiKeyMutation__
+ *
+ * To run a mutation, you first call `useGetLlmapiKeyMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useGetLlmapiKeyMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useGetLlmapiKeyMutation({
+ *   variables: {
+ *     model: // value for 'model'
+ *   },
+ * });
+ */
+export function useGetLlmapiKeyMutation(options: VueApolloComposable.UseMutationOptions<GetLlmapiKeyMutation, GetLlmapiKeyMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<GetLlmapiKeyMutation, GetLlmapiKeyMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<GetLlmapiKeyMutation, GetLlmapiKeyMutationVariables>(GetLlmapiKeyDocument, options);
+}
+export type GetLlmapiKeyMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<GetLlmapiKeyMutation, GetLlmapiKeyMutationVariables>;
 export const ApplyFileChangeDocument = gql`
     mutation ApplyFileChange($workspaceId: String!, $filePath: String!, $content: String!) {
   applyFileChange(
