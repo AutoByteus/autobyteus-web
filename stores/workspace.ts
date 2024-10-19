@@ -3,11 +3,14 @@ import { useMutation } from '@vue/apollo-composable'
 import { AddWorkspace } from '~/graphql/mutations/workspace_mutations'
 import type { AddWorkspaceMutation, AddWorkspaceMutationVariables } from '~/generated/graphql'
 import { TreeNode, convertJsonToTreeNode } from '~/utils/fileExplorer/TreeNode'
+import { createNodeIdToNodeDictionary, handleFileSystemChange } from '~/utils/fileExplorer/fileUtils'
+import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
 
 interface WorkspaceInfo {
   workspaceId: string;
   name: string;
   fileExplorer: TreeNode;
+  nodeIdToNode: Record<string, TreeNode>;
 }
 
 interface WorkspaceState {
@@ -43,7 +46,8 @@ export const useWorkspaceStore = defineStore('workspace', {
         const newWorkspaceInfo: WorkspaceInfo = {
           workspaceId: newWorkspaceData.workspaceId,
           name: newWorkspaceData.name,
-          fileExplorer: treeNode
+          fileExplorer: treeNode,
+          nodeIdToNode: createNodeIdToNodeDictionary(treeNode)
         }
         
         this.workspaces[newWorkspaceInfo.workspaceId] = newWorkspaceInfo
@@ -52,6 +56,14 @@ export const useWorkspaceStore = defineStore('workspace', {
         console.error('Error adding workspace:', error)
         throw error
       }
+    },
+    handleFileSystemChange(workspaceId: string, event: FileSystemChangeEvent) {
+      const workspace = this.workspaces[workspaceId];
+      if (!workspace) {
+        console.error(`Workspace with ID ${workspaceId} not found`);
+        return;
+      }
+      handleFileSystemChange(workspace.fileExplorer, workspace.nodeIdToNode, event);
     }
   },
   getters: {
