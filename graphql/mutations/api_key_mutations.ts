@@ -5,9 +5,3 @@ export const SetLLMAPIKey = gql`
     setLlmApiKey(model: $model, apiKey: $apiKey)
   }
 `;
-
-export const GetLLMAPIKey = gql`
-  mutation GetLLMAPIKey($model: String!) {
-    getLlmApiKey(model: $model)
-  }
-`;
