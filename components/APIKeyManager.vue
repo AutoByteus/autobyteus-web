@@ -1,36 +1,20 @@
 <template>
-  <div class="api-key-manager p-4 bg-white rounded-lg">
+  <div class="api-key-manager p-4 bg-white rounded-lg max-h-[80vh] overflow-y-auto">
     <h2 class="text-xl font-semibold mb-4 text-gray-800">Manage API Keys</h2>
     <div class="flex flex-col space-y-4">
-      <select 
-        v-model="selectedModel" 
-        class="p-2 border rounded-md focus:ring-2 focus:ring-blue-500 text-gray-700"
-      >
-        <option value="" disabled>Select LLM Model</option>
-        <option v-for="model in llmModels" :key="model" :value="model">
-          {{ model }}
-        </option>
-      </select>
-      <input 
-        v-model="apiKey" 
-        type="password" 
-        placeholder="Enter API Key" 
-        class="p-2 border rounded-md focus:ring-2 focus:ring-blue-500 text-gray-700"
-      >
-      <div class="flex space-x-2">
-        <button 
-          @click="saveAPIKey" 
-          class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors flex-grow"
-          :disabled="!selectedModel || !apiKey"
+      <div v-for="(model, index) in llmModels" :key="index" class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+        <input 
+          v-model="apiKeys[model]" 
+          type="password" 
+          :placeholder="`Enter ${model} API Key`" 
+          class="p-2 border rounded-md focus:ring-2 focus:ring-blue-500 text-gray-700 flex-grow"
         >
-          Save API Key
-        </button>
         <button 
-          @click="getAPIKey" 
-          class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors flex-grow"
-          :disabled="!selectedModel"
+          @click="saveAPIKey(model)"
+          class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors w-full sm:w-auto"
+          :disabled="!apiKeys[model]"
         >
-          Get API Key
+          Set API Key
         </button>
       </div>
     </div>
@@ -41,54 +25,41 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import { useAPIKeyStore } from '~/stores/apiKey'
 
 const apiKeyStore = useAPIKeyStore()
 
-const llmModels = ['GPT_3_5_TURBO', 'GPT_4', 'CLAUDE_2']
-const selectedModel = ref('')
-const apiKey = ref('')
+const llmModels = [
+  'OPENAI_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'MISTRAL_API_KEY',
+  'AWS_ACCESS_KEY_ID',
+  'AWS_SECRET_ACCESS_KEY',
+  'GEMINI_API_KEY',
+  'NVIDIA_API_KEY'
+]
+
+const apiKeys = reactive(Object.fromEntries(llmModels.map(model => [model, ''])))
 const message = ref('')
 const error = ref(false)
 
-const saveAPIKey = async () => {
-  if (!selectedModel.value || !apiKey.value) return
+const saveAPIKey = async (model: string) => {
+  if (!apiKeys[model]) return
 
   try {
-    const result = await apiKeyStore.setAPIKey(selectedModel.value, apiKey.value)
+    const result = apiKeyStore.setAPIKey(model, apiKeys[model])
     if (result) {
-      message.value = 'API key saved successfully'
+      message.value = `API key for ${model} saved successfully`
       error.value = false
-      apiKey.value = ''
+      apiKeys[model] = ''
     } else {
-      throw new Error('Failed to save API key')
+      throw new Error(`Failed to save API key for ${model}`)
     }
   } catch (err) {
-    message.value = 'Failed to save API key'
+    message.value = `Failed to save API key for ${model}`
     error.value = true
-  }
-
-  setTimeout(() => {
-    message.value = ''
-  }, 3000)
-}
-
-const getAPIKey = async () => {
-  if (!selectedModel.value) return
-
-  try {
-    const key = await apiKeyStore.getAPIKey(selectedModel.value)
-    if (key && key !== "API key not found for this model.") {
-      apiKey.value = key
-      message.value = 'API key retrieved successfully'
-    } else {
-      message.value = 'No API key found for this model'
-    }
-    error.value = false
-  } catch (err) {
-    message.value = 'Failed to retrieve API key'
-    error.value = true
+    console.error(err)
   }
 
   setTimeout(() => {

@@ -15,7 +15,7 @@ export const useAPIKeyStore = defineStore('apiKey', {
           model,
           apiKey,
         })
-        if (result?.data?.setLlmApiKey) {
+        if (result.data?.setLlmApiKey) {
           this.apiKeys[model] = apiKey
           return true
         }
