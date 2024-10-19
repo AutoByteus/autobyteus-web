@@ -45,8 +45,8 @@ import { useWorkflowStore } from '~/stores/workflow'
 import { useWorkflowStepStore } from '~/stores/workflowStep'
 import PromptEditor from '~/components/prompt/PromptEditor.vue'
 import UserRequirementInput from '~/components/workflow/UserRequirementInput.vue'
-import ConversationHistoryPanel from '~/components/workflow/ConversationHistoryPanel.vue'
-import Conversation from '~/components/workflow/Conversation.vue'
+import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue'
+import Conversation from '~/components/conversation/Conversation.vue'
 
 const workflowStore = useWorkflowStore()
 const workflowStepStore = useWorkflowStepStore()

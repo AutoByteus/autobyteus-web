@@ -7,12 +7,20 @@ import renderer from 'vite-plugin-electron-renderer'
 export default defineNuxtConfig({
   modules: ['@nuxtjs/apollo', '@pinia/nuxt', '@nuxt/test-utils/module'],
 
+  runtimeConfig: {
+    public: {
+      graphqlBaseUrl: process.env.NUXT_PUBLIC_GRAPHQL_BASE_URL || 'http://localhost:8000/graphql',
+      restBaseUrl: process.env.NUXT_PUBLIC_REST_BASE_URL || 'http://localhost:8000/rest',
+      wsBaseUrl: process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8000/graphql',
+    }
+  },
+
   apollo: {
     clients: {
       default: {
-        httpEndpoint: 'http://localhost:8000/graphql',
-        wsEndpoint: 'ws://localhost:8000/graphql', // Add WebSocket endpoint
-        websocketsOnly: false, // Enable both HTTP and WebSocket transports
+        httpEndpoint: '/graphql',
+        wsEndpoint: process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8000/graphql',
+        websocketsOnly: false,
       },
     },
   },
@@ -45,8 +53,15 @@ export default defineNuxtConfig({
     ],
     resolve: {
       alias: {
-        '@electron': join(__dirname, 'electron'), // Ensure the alias matches tsconfig paths
+        '@electron': join(__dirname, 'electron'),
       },
+    },
+  },
+
+  nitro: {
+    routeRules: {
+      '/graphql': { proxy: { to: process.env.NUXT_PUBLIC_GRAPHQL_BASE_URL } },
+      '/rest/**': { proxy: { to: process.env.NUXT_PUBLIC_REST_BASE_URL + '/**' } },
     },
   },
 })

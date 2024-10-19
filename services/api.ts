@@ -1,8 +1,6 @@
 // /services/api.ts
-
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 
-// Define a class to encapsulate Axios instance and related methods
 class ApiService {
   private axiosInstance: AxiosInstance
 
@@ -55,6 +53,5 @@ class ApiService {
 }
 
 // Export a singleton instance
-const apiService = new ApiService(process.env.NUXT_PUBLIC_BACKEND_REST_URL || 'http://localhost:8000/rest')
-
+const apiService = new ApiService('/rest')
 export default apiService

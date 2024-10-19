@@ -1,30 +1,34 @@
 import { defineStore } from 'pinia'
-import { TreeNode, convertJsonToTreeNode } from '~/utils/fileExplorer/TreeNode'
 import { useMutation } from '@vue/apollo-composable'
 import { AddWorkspace } from '~/graphql/mutations/workspace_mutations'
 import type { AddWorkspaceMutation, AddWorkspaceMutationVariables } from '~/generated/graphql'
+import { TreeNode, convertJsonToTreeNode } from '~/utils/fileExplorer/TreeNode'
+import { createNodeIdToNodeDictionary, handleFileSystemChange } from '~/utils/fileExplorer/fileUtils'
+import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
+
+interface WorkspaceInfo {
+  workspaceId: string;
+  name: string;
+  fileExplorer: TreeNode;
+  nodeIdToNode: Record<string, TreeNode>;
+}
 
 interface WorkspaceState {
-  workspaceTrees: Record<string, TreeNode>;
-  selectedWorkspacePath: string;
-  workspaces: string[];
+  workspaces: Record<string, WorkspaceInfo>;
+  selectedWorkspaceId: string;
 }
 
 export const useWorkspaceStore = defineStore('workspace', {
   state: (): WorkspaceState => ({
-    workspaceTrees: {},
-    selectedWorkspacePath: '',
-    workspaces: []
+    workspaces: {},
+    selectedWorkspaceId: ''
   }),
   actions: {
-    setWorkspaceTree(path: string, tree: TreeNode) {
-      this.workspaceTrees[path] = tree
-    },
-    setSelectedWorkspacePath(path: string) {
-      if (this.workspaceTrees[path]) {
-        this.selectedWorkspacePath = path
+    setSelectedWorkspaceId(id: string) {
+      if (this.workspaces[id]) {
+        this.selectedWorkspaceId = id
       } else {
-        console.warn(`Attempted to select non-existent workspace path: ${path}`)
+        console.warn(`Attempted to select non-existent workspace id: ${id}`)
       }
     },
     async addWorkspace(newWorkspacePath: string): Promise<void> {
@@ -36,23 +40,40 @@ export const useWorkspaceStore = defineStore('workspace', {
         if (!result || !result.data?.addWorkspace) {
           throw new Error('Failed to add workspace: No data returned')
         }
-        const newTree = convertJsonToTreeNode(result.data.addWorkspace)
-        this.setWorkspaceTree(newWorkspacePath, newTree)
-        this.workspaces.push(newWorkspacePath)
-        this.setSelectedWorkspacePath(newWorkspacePath)
+        const newWorkspaceData = result.data.addWorkspace
+        const treeNode = convertJsonToTreeNode(newWorkspaceData.fileExplorer)
+        
+        const newWorkspaceInfo: WorkspaceInfo = {
+          workspaceId: newWorkspaceData.workspaceId,
+          name: newWorkspaceData.name,
+          fileExplorer: treeNode,
+          nodeIdToNode: createNodeIdToNodeDictionary(treeNode)
+        }
+        
+        this.workspaces[newWorkspaceInfo.workspaceId] = newWorkspaceInfo
+        this.setSelectedWorkspaceId(newWorkspaceInfo.workspaceId)
       } catch (error) {
         console.error('Error adding workspace:', error)
         throw error
       }
+    },
+    handleFileSystemChange(workspaceId: string, event: FileSystemChangeEvent) {
+      const workspace = this.workspaces[workspaceId];
+      if (!workspace) {
+        console.error(`Workspace with ID ${workspaceId} not found`);
+        return;
+      }
+      handleFileSystemChange(workspace.fileExplorer, workspace.nodeIdToNode, event);
     }
   },
   getters: {
-    activeWorkspaceTree: (state): TreeNode | null => 
-      state.workspaceTrees[state.selectedWorkspacePath] || null,
+    activeWorkspace: (state): WorkspaceInfo | null => 
+      state.workspaces[state.selectedWorkspaceId] || null,
     currentWorkspaceTree(): TreeNode | null {
-      return this.activeWorkspaceTree
+      const activeWorkspace = this.activeWorkspace
+      return activeWorkspace ? activeWorkspace.fileExplorer : null
     },
-    currentSelectedWorkspacePath: (state): string => state.selectedWorkspacePath,
-    allWorkspaces: (state): string[] => state.workspaces
+    currentSelectedWorkspaceId: (state): string => state.selectedWorkspaceId,
+    allWorkspaceIds: (state): string[] => Object.keys(state.workspaces)
   }
 })

@@ -38,7 +38,7 @@ const fetchWorkflow = async () => {
   loading.value = true
   error.value = null
   try {
-    workflowStore.fetchWorkflowConfig(workspaceStore.selectedWorkspacePath)
+    workflowStore.fetchWorkflowConfig(workspaceStore.currentSelectedWorkspaceId)
   } catch (err: any) {
     error.value = err.message || 'Failed to fetch workflow.'
   } finally {
@@ -48,7 +48,7 @@ const fetchWorkflow = async () => {
 
 onMounted(fetchWorkflow)
 
-watch(() => workspaceStore.selectedWorkspacePath, fetchWorkflow)
+watch(() => workspaceStore.currentSelectedWorkspaceId, fetchWorkflow)
 
 const workflow = computed(() => workflowStore.currentWorkflow)
 const selectedStepId = computed(() => workflowStore.currentSelectedStepId)
