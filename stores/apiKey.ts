@@ -1,7 +1,10 @@
+// File: autobyteus-web/stores/apiKey.ts
+
 import { defineStore } from 'pinia'
-import { useMutation } from '@vue/apollo-composable'
+import { useMutation, useQuery } from '@vue/apollo-composable'
 import { SetLLMAPIKey } from '~/graphql/mutations/api_key_mutations'
-import type { SetLlmapiKeyMutation, SetLlmapiKeyMutationVariables } from '~/generated/graphql'
+import { GetLLMAPIKey } from '~/graphql/queries/api_key_queries'
+import type { SetLlmapiKeyMutation, SetLlmapiKeyMutationVariables, GetLlmapiKeyQuery, GetLlmapiKeyQueryVariables } from '~/generated/graphql'
 
 export const useAPIKeyStore = defineStore('apiKey', {
   state: () => ({
@@ -25,8 +28,31 @@ export const useAPIKeyStore = defineStore('apiKey', {
         throw error
       }
     },
-    getAPIKey(model: string): string | undefined {
-      return this.apiKeys[model]
+    async getAPIKey(model: string): Promise<string | undefined> {
+      if (this.apiKeys[model]) {
+        return this.apiKeys[model]
+      }
+
+      const { onResult, onError } = useQuery<GetLlmapiKeyQuery, GetLlmapiKeyQueryVariables>(GetLLMAPIKey, { model })
+
+      return new Promise((resolve, reject) => {
+        onResult((result) => {
+          if (result.data) {
+            const apiKey = result.data.getLlmApiKey
+            if (apiKey) {
+              this.apiKeys[model] = apiKey
+              resolve(apiKey)
+            } else {
+              resolve(undefined)
+            }
+          }
+        })
+
+        onError((error) => {
+          console.error('Failed to get API key:', error)
+          reject(error)
+        })
+      })
     },
     clearAPIKey(model: string): void {
       delete this.apiKeys[model]
