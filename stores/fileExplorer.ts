@@ -21,6 +21,7 @@ interface FileExplorerState {
   contentError: Record<string, string | null>;
   applyChangeError: Record<string, Record<number, Record<string, string | null>>>;
   applyChangeLoading: Record<string, Record<number, Record<string, boolean>>>;
+  pendingChanges: Map<string, string>;
 }
 
 export const useFileExplorerStore = defineStore('fileExplorer', {
@@ -33,6 +34,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     contentError: {},
     applyChangeError: {},
     applyChangeLoading: {},
+    pendingChanges: new Map(),
   }),
   actions: {
     toggleFolder(folderPath: string) {
@@ -48,8 +50,11 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     closeFile(filePath: string) {
       this.openFiles = this.openFiles.filter(file => file !== filePath)
       this.fileContents.delete(filePath)
+      this.pendingChanges.delete(filePath)
       delete this.contentLoading[filePath]
       delete this.contentError[filePath]
+      delete this.applyChangeError[filePath]
+      delete this.applyChangeLoading[filePath]
       if (this.activeFile === filePath) {
         this.activeFile = this.openFiles[this.openFiles.length - 1] || null
       }
@@ -115,6 +120,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         
         if (result?.data?.applyFileChange) {
           this.fileContents.set(filePath, content)
+          this.pendingChanges.delete(filePath)
           console.log('File change applied successfully')
           // Process the change event
           const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.applyFileChange)
@@ -156,6 +162,15 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         this.applyChangeError[conversationId][messageIndex] = {}
       }
       this.applyChangeError[conversationId][messageIndex][filePath] = error
+    },
+    setPendingChange(filePath: string, newContent: string) {
+      this.pendingChanges.set(filePath, newContent)
+    },
+    clearPendingChange(filePath: string) {
+      this.pendingChanges.delete(filePath)
+    },
+    getPendingChange(filePath: string): string | undefined {
+      return this.pendingChanges.get(filePath)
     }
   },
   getters: {
@@ -173,6 +188,9 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     },
     getApplyChangeErrorGetter: (state) => (conversationId: string, messageIndex: number, filePath: string): string | null => {
       return state.applyChangeError[conversationId]?.[messageIndex]?.[filePath] || null
+    },
+    getPendingChangeGetter: (state) => (filePath: string): string | undefined => {
+      return state.pendingChanges.get(filePath)
     }
   }
 })

@@ -15,7 +15,7 @@
       </template>
       <template #panel-workflow>
         <PanelContent title="Workflow">
-          <WorkflowDisplay />
+          <WorkflowLayout />
         </PanelContent>
       </template>
     </PanelContainer>
@@ -27,7 +27,7 @@ import { ref } from "vue";
 import WorkspaceSelector from "~/components/workspace/WorkspaceSelector.vue";
 import FileExplorer from "~/components/fileExplorer/FileExplorer.vue";
 import ContentViewer from "~/components/fileExplorer/FileContentViewer.vue";
-import WorkflowDisplay from "~/components/workflow/WorkflowDisplay.vue";
+import WorkflowLayout from "~/components/workflow/WorkflowLayout.vue";
 import PanelContainer from "~/components/layout/PanelContainer.vue";
 import PanelContent from "~/components/layout/PanelContent.vue";
 

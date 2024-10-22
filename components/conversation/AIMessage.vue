@@ -1,6 +1,5 @@
-<!-- File: autobyteus-web/components/workflow/AIMessage.vue -->
 <!-- This component renders an AI message -->
- <template>
+<template>
   <div>
     <strong>AI:</strong>
     <div>
@@ -11,7 +10,7 @@
             <div class="flex justify-between items-center bg-gray-200 p-2 rounded-t-md">
               <span class="font-bold">File: {{ file.path }}</span>
               <button
-                @click="handleApplyFileChange(conversationId, messageIndex, file.path, file.originalContent)"
+                @click="handleApplyFileChange(conversationId, messageIndex, file.path, file.newContent)"
                 :disabled="isApplyChangeDisabled(conversationId, messageIndex, file.path)"
                 :class="[
                   'font-bold py-1 px-2 rounded transition-colors duration-200',
@@ -93,7 +92,7 @@ const handleApplyFileChange = async (
   conversationId: string,
   messageIndex: number,
   filePath: string,
-  originalContent: string
+  newContent: string
 ) => {
   if (!applyResults.value[conversationId]) {
     applyResults.value[conversationId] = {};
@@ -102,35 +101,9 @@ const handleApplyFileChange = async (
     applyResults.value[conversationId][messageIndex] = {};
   }
 
-  try {
-    await fileExplorerStore.applyFileChange(
-      workspaceStore.currentSelectedWorkspaceId,
-      filePath,
-      originalContent,
-      conversationId,
-      messageIndex
-    );
-    applyResults.value[conversationId][messageIndex][filePath] = { success: true, message: 'Changes applied successfully!' };
-  } catch (error) {
-    console.error('Failed to apply file change:', error);
-    applyResults.value[conversationId][messageIndex][filePath] = { success: false, message: 'Failed to apply changes. Please try again.' };
-    setTimeout(() => {
-      if (
-        applyResults.value[conversationId] &&
-        applyResults.value[conversationId][messageIndex]
-      ) {
-        delete applyResults.value[conversationId][messageIndex][filePath];
-        if (Object.keys(applyResults.value[conversationId][messageIndex]).length === 0) {
-          delete applyResults.value[conversationId][messageIndex];
-        }
-        if (Object.keys(applyResults.value[conversationId]).length === 0) {
-          delete applyResults.value[conversationId];
-        }
-      }
-      fileExplorerStore.setApplyChangeError(conversationId, messageIndex, filePath, null);
-    }, 5000);
-  }
-};
+  // Set the pending change in the store
+  fileExplorerStore.setPendingChange(filePath, newContent);
+}
 
 const formatText = (text: string) => {
   return text.replace(/\n/g, '<br>');
