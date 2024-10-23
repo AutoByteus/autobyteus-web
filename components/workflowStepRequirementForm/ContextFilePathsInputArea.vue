@@ -1,6 +1,6 @@
 <template>
   <div
-    class="mb-4 bg-gray-50 rounded-md overflow-hidden border border-gray-200 hover:shadow-md transition-shadow duration-200"
+    class="w-full bg-white rounded-md border border-gray-200 hover:shadow-md transition-shadow duration-200"
     @dragover.prevent
     @drop.prevent="onFileDrop"
     @paste="onPaste"
@@ -36,9 +36,7 @@
           >
             <div class="flex items-center space-x-2 flex-grow">
               <i :class="['fas', filePath.type === 'image' ? 'fa-image' : 'fa-file', 'text-gray-500 w-4 flex-shrink-0']"></i>
-              <span class="text-sm text-gray-600 truncate">
-                {{ filePath.path }}
-              </span>
+              <span class="text-sm text-gray-600 truncate">{{ filePath.path }}</span>
               <span v-if="uploadingFiles.includes(filePath.path)" class="text-xs text-blue-500">
                 <i class="fas fa-spinner fa-spin mr-1"></i>Uploading...
               </span>
@@ -176,5 +174,9 @@ const onPaste = async (event: ClipboardEvent) => {
 
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out;
+}
+
+.min-h-0 {
+  min-height: 0;
 }
 </style>

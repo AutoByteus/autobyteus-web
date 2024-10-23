@@ -1,11 +1,11 @@
 <template>
-  <div class="file-explorer flex flex-col h-full">
-    <h2 class="text-xl font-semibold mb-4 flex-shrink-0">Project Files</h2>
+  <div class="file-explorer flex flex-col h-full bg-white">
+    <h2 class="text-xl font-semibold mb-4 flex-shrink-0 px-2">Project Files</h2>
     <div class="file-explorer-content flex-grow overflow-y-auto">
-      <div v-if="!hasWorkspaces" class="text-gray-500 italic">
+      <div v-if="!hasWorkspaces" class="text-gray-500 italic px-2">
         No workspaces available. Add a workspace to see files.
       </div>
-      <div v-else-if="!files.length" class="text-gray-500 italic">
+      <div v-else-if="!files.length" class="text-gray-500 italic px-2">
         This workspace is empty or no workspace is selected. Add files or select a workspace to see them here.
       </div>
       <div v-else class="space-y-2">

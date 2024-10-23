@@ -1,11 +1,13 @@
 <template>
-  <div class="bg-white rounded-lg border border-gray-200">
-    <div class="p-3 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-      <ContextFilePathsEditor class="max-h-32 overflow-y-auto" />
+  <div class="flex flex-col min-h-0 w-full">
+    <!-- Context Files Section -->
+    <div class="shrink-0 bg-gray-50 p-4 border-b">
+      <ContextFilePathsInputArea />
     </div>
 
-    <div class="relative">
-      <RequirementInputArea 
+    <!-- Input Area -->
+    <div class="flex-1 min-h-0 bg-white p-4 flex flex-col">
+      <RequirementTextInputArea 
         :is-first-message="isFirstMessage()" 
         :is-sending="isSending" 
         :selected-model="selectedModel" 
@@ -15,15 +17,14 @@
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useWorkflowStore } from '~/stores/workflow'
 import { useWorkflowStepStore } from '~/stores/workflowStep'
 import { useWorkspaceStore } from '~/stores/workspace'
-import ContextFilePathsEditor from '~/components/workflowStepRequirementForm/ContextFilePathEditor.vue'
-import RequirementInputArea from '~/components/workflowStepRequirementForm/RequirementInputArea.vue'
+import RequirementTextInputArea from '~/components/workflowStepRequirementForm/RequirementTextInputArea.vue'
+import ContextFilePathsInputArea from '~/components/workflowStepRequirementForm/ContextFilePathsInputArea.vue'
 import { LlmModel } from '~/generated/graphql'
 
 const workflowStore = useWorkflowStore()
@@ -72,14 +73,3 @@ const handleSend = async (requirement: string, model?: LlmModel) => {
   }
 }
 </script>
-
-<style>
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-out;
-}
-</style>

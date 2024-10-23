@@ -1,9 +1,9 @@
 <template>
-  <div>
+  <div class="relative w-full">
     <textarea
       v-model="localRequirement"
       ref="textarea"
-      class="w-full p-4 pr-32 min-h-[120px] max-h-[300px] border-0 rounded-b-lg focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto bg-white transition-all duration-300"
+      class="w-full p-4 pr-32 min-h-[100px] max-h-[200px] border-0 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto bg-white transition-all duration-300"
       :style="{ height: textareaHeight + 'px' }"
       placeholder="Enter your requirement here..."
       @input="adjustTextareaHeight"
@@ -13,7 +13,7 @@
     <div class="absolute bottom-4 right-4 flex items-center space-x-2">
       <GroupedModelSelect
         v-if="isFirstMessage"
-        v-model="selectedModelLocal"
+        v-model="localSelectedModel"
         class="min-w-[180px]"
         @update:modelValue="updateModel"
       />
@@ -50,7 +50,7 @@ const props = defineProps({
     required: true
   },
   selectedModel: {
-    type: String, // Adjust type based on LlmModel enum
+    type: String,
     required: true
   }
 })
@@ -60,7 +60,7 @@ const emit = defineEmits(['send', 'update-model'])
 const localRequirement = ref('')
 const localSelectedModel = ref(props.selectedModel)
 const textarea = ref<HTMLTextAreaElement | null>(null)
-const textareaHeight = ref(100) // Initial height
+const textareaHeight = ref(100)
 
 watch(() => props.selectedModel, (newVal) => {
   localSelectedModel.value = newVal
@@ -100,12 +100,16 @@ onMounted(() => {
 </script>
 
 <style scoped>
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-out;
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

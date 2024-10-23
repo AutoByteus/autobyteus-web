@@ -1,29 +1,40 @@
-<!-- File: autobyteus-web/components/workflow/Conversation.vue -->
-<!-- This component renders a conversation between a user and an AI -->
-
 <template>
-  <div class="space-y-4 mb-4">
+  <div class="space-y-6">
     <div
       v-for="(message, index) in conversation.messages"
       :key="message.timestamp + '-' + message.type + '-' + index"
+      class="flex"
       :class="[
-        'p-3 rounded-lg max-w-3/4 relative shadow-sm hover:shadow-md transition-shadow duration-200',
-        message.type === 'user' ? 'ml-auto bg-blue-100 text-blue-800' : 'mr-auto bg-gray-100 text-gray-800'
+        message.type === 'user' ? 'justify-end' : 'justify-start'
       ]"
     >
-      <UserMessage
-        v-if="message.type === 'user'"
-        :message="message"
-      />
-      <AIMessage
-        v-else
-        :message="message"
-        :conversation-id="conversation.id"
-        :message-index="index"
-      />
-      <span class="text-xs text-gray-500 absolute bottom-1 right-2">
-        {{ formatTimestamp(message.timestamp) }}
-      </span>
+      <div
+        class="relative max-w-2xl rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 p-4"
+        :class="[
+          message.type === 'user' 
+            ? 'bg-blue-50 text-blue-900' 
+            : 'bg-white border border-gray-200 text-gray-900'
+        ]"
+      >
+        <UserMessage
+          v-if="message.type === 'user'"
+          :message="message"
+          class="prose max-w-none"
+        />
+        <AIMessage
+          v-else
+          :message="message"
+          :conversation-id="conversation.id"
+          :message-index="index"
+          class="prose max-w-none"
+        />
+        <span 
+          class="absolute bottom-2 right-4 text-xs text-gray-500"
+          :class="{ 'text-blue-400': message.type === 'user' }"
+        >
+          {{ formatTimestamp(message.timestamp) }}
+        </span>
+      </div>
     </div>
   </div>
 </template>
@@ -38,12 +49,22 @@ const props = defineProps<{
   conversation: Conversation;
 }>();
 
-// Format the timestamp for display
 const formatTimestamp = (date: Date) => {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString([], { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: true 
+  });
 };
 </script>
 
 <style>
-/* Add any additional styles here */
+.prose {
+  max-width: 65ch;
+  line-height: 1.6;
+}
+
+.prose p:last-child {
+  margin-bottom: 0;
+}
 </style>
