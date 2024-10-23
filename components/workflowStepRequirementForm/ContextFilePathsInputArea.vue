@@ -1,12 +1,12 @@
 <template>
   <div
-    class="w-full bg-white rounded-md border border-gray-200 hover:shadow-md transition-shadow duration-200"
+    class="w-full bg-white rounded-md border border-gray-200 hover:shadow-md transition-shadow duration-200 p-4"
     @dragover.prevent
     @drop.prevent="onFileDrop"
     @paste="onPaste"
   >
     <div 
-      class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-100 transition-colors duration-300"
+      class="flex items-center justify-between cursor-pointer hover:bg-gray-100 transition-colors duration-300 p-2"
       @click="toggleCollapse"
     >
       <div class="flex items-center space-x-2">
@@ -27,7 +27,7 @@
       leave-from-class="transform opacity-100 scale-100"
       leave-to-class="transform opacity-0 scale-95"
     >
-      <div v-show="!isCollapsed || contextFilePaths.length === 0" class="p-3 border-t border-gray-200">
+      <div v-show="!isCollapsed || contextFilePaths.length === 0" class="mt-2">
         <ul v-if="contextFilePaths.length > 0" class="space-y-2">
           <li 
             v-for="(filePath, index) in contextFilePaths" 

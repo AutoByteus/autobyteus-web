@@ -1,12 +1,12 @@
 <template>
-  <div class="flex flex-col min-h-0 w-full">
+  <div class="flex flex-col space-y-6 w-full">
     <!-- Context Files Section -->
-    <div class="shrink-0 bg-gray-50 p-4 border-b">
+    <div class="w-full bg-gray-50 p-4 border rounded-lg">
       <ContextFilePathsInputArea />
     </div>
 
     <!-- Input Area -->
-    <div class="flex-1 min-h-0 bg-white p-4 flex flex-col">
+    <div class="w-full bg-white p-4 flex flex-col space-y-4 rounded-lg">
       <RequirementTextInputArea 
         :is-first-message="isFirstMessage()" 
         :is-sending="isSending" 
@@ -17,6 +17,7 @@
     </div>
   </div>
 </template>
+
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
@@ -73,3 +74,7 @@ const handleSend = async (requirement: string, model?: LlmModel) => {
   }
 }
 </script>
+
+<style scoped>
+/* Ensured full width and consistent spacing */
+</style>

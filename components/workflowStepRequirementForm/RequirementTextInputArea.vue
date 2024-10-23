@@ -1,16 +1,16 @@
 <template>
-  <div class="relative w-full">
+  <div class="relative w-full flex flex-col">
     <textarea
       v-model="localRequirement"
       ref="textarea"
-      class="w-full p-4 pr-32 min-h-[100px] max-h-[200px] border-0 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto bg-white transition-all duration-300"
+      class="w-full p-4 pr-40 min-h-[100px] max-h-[200px] border-0 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto bg-white transition-all duration-300"
       :style="{ height: textareaHeight + 'px' }"
       placeholder="Enter your requirement here..."
       @input="adjustTextareaHeight"
       @keydown="handleKeyDown"
     ></textarea>
     
-    <div class="absolute bottom-4 right-4 flex items-center space-x-2">
+    <div class="flex justify-end mt-2 space-x-4">
       <GroupedModelSelect
         v-if="isFirstMessage"
         v-model="localSelectedModel"
