@@ -14,11 +14,11 @@
     </div>
 
     <!-- Controls container with border top for separation -->
-    <div ref="controlsRef" class="flex justify-end items-center p-4 bg-gray-50 border-t border-gray-200">
+    <div ref="controlsRef" class="flex flex-col sm:flex-row justify-end items-stretch sm:items-center p-4 bg-gray-50 border-t border-gray-200 space-y-2 sm:space-y-0">
       <select
         v-if="isFirstMessage()"
         v-model="selectedModel"
-        class="mr-2 p-2 border border-gray-300 rounded-md text-sm bg-white hover:border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+        class="w-full sm:w-auto mb-2 sm:mb-0 sm:mr-2 p-2 border border-gray-300 rounded-md text-sm bg-white hover:border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
       >
         <option v-for="model in llmModels" :key="model" :value="model">
           {{ model }}
@@ -27,7 +27,7 @@
       <button 
         @click="handleSend"
         :disabled="isSending || !userRequirement.trim()"
-        class="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm"
+        class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm"
       >
         <svg v-if="isSending" class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

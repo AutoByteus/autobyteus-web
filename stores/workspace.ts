@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
-import { useMutation } from '@vue/apollo-composable'
+import { useMutation, useQuery } from '@vue/apollo-composable'
 import { AddWorkspace } from '~/graphql/mutations/workspace_mutations'
-import type { AddWorkspaceMutation, AddWorkspaceMutationVariables } from '~/generated/graphql'
+import { GetAllWorkspaces } from '~/graphql/queries/workspace_queries'
+import type { AddWorkspaceMutation, AddWorkspaceMutationVariables, GetAllWorkspacesQuery } from '~/generated/graphql'
 import { TreeNode, convertJsonToTreeNode } from '~/utils/fileExplorer/TreeNode'
 import { createNodeIdToNodeDictionary, handleFileSystemChange } from '~/utils/fileExplorer/fileUtils'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
@@ -56,6 +57,34 @@ export const useWorkspaceStore = defineStore('workspace', {
         console.error('Error adding workspace:', error)
         throw error
       }
+    },
+    fetchAllWorkspaces() {
+      const { onResult, onError } = useQuery<GetAllWorkspacesQuery>(GetAllWorkspaces)
+
+      onResult((result) => {
+        if (result.data?.allWorkspaces) {
+          result.data.allWorkspaces.forEach(ws => {
+            const treeNode = convertJsonToTreeNode(ws.fileExplorer)
+            const workspaceInfo: WorkspaceInfo = {
+              workspaceId: ws.workspaceId,
+              name: ws.name,
+              fileExplorer: treeNode,
+              nodeIdToNode: createNodeIdToNodeDictionary(treeNode)
+            }
+            this.workspaces[workspaceInfo.workspaceId] = workspaceInfo
+          })
+
+          if (result.data.allWorkspaces.length > 0 && !this.selectedWorkspaceId) {
+            this.setSelectedWorkspaceId(result.data.allWorkspaces[0].workspaceId)
+          }
+        }
+      })
+
+      onError((error) => {
+        console.error('Error fetching all workspaces:', error)
+      })
+
+      return { onResult, onError }
     },
     handleFileSystemChange(workspaceId: string, event: FileSystemChangeEvent) {
       const workspace = this.workspaces[workspaceId];

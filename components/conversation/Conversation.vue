@@ -1,4 +1,4 @@
-<!-- File: autobyteus-web/components/workflow/Conversation.vue -->
+<!-- File: autobyteus-web/components/conversation/Conversation.vue -->
 <!-- This component renders a conversation between a user and an AI -->
 
 <template>
@@ -7,7 +7,7 @@
       v-for="(message, index) in conversation.messages"
       :key="message.timestamp + '-' + message.type + '-' + index"
       :class="[
-        'p-3 rounded-lg max-w-3/4 relative shadow-sm hover:shadow-md transition-shadow duration-200',
+        'p-3 rounded-lg max-w-full relative shadow-sm hover:shadow-md transition-shadow duration-200 break-words',
         message.type === 'user' ? 'ml-auto bg-blue-100 text-blue-800' : 'mr-auto bg-gray-100 text-gray-800'
       ]"
     >
@@ -44,6 +44,7 @@ const formatTimestamp = (date: Date) => {
 };
 </script>
 
-<style>
+<style scoped>
 /* Add any additional styles here */
+/* Ensure messages wrap properly on small screens */
 </style>

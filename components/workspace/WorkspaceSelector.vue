@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useWorkspaceStore } from '~/stores/workspace'
 
 const workspaceStore = useWorkspaceStore()
@@ -78,5 +78,9 @@ watch(selectedWorkspaceId, (newValue) => {
   if (newValue) {
     workspaceStore.setSelectedWorkspaceId(newValue)
   }
+})
+
+onMounted(() => {
+  workspaceStore.fetchAllWorkspaces()
 })
 </script>

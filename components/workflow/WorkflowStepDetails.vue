@@ -1,18 +1,21 @@
 <template>
   <div v-if="selectedStep" class="flex flex-col h-full">
-      <div class="flex justify-between items-center mb-4">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 sm:gap-0">
         <h4 class="text-lg font-medium text-gray-700">Conversation</h4>
-        <div>
-          <button @click="createNewConversation" class="mr-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
+        <div class="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
+          <button 
+            @click="createNewConversation" 
+            class="w-full sm:w-auto px-4 py-2 sm:px-3 sm:py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-center">
             New Conversation
           </button>
-          <button @click="showConversationHistory" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
+          <button 
+            @click="showConversationHistory" 
+            class="w-full sm:w-auto px-4 py-2 sm:px-3 sm:py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-center">
             History
           </button>
         </div>
       </div>
   
-      <!-- Remove flex-col and min-h-0 to prevent nested scrolling -->
       <div class="flex-grow">
         <div class="mb-4">
           <Conversation v-if="activeConversation" :conversation="activeConversation" />
@@ -31,8 +34,7 @@
         @activate="activateHistoryConversation"
       />
     </div>
-  </template>
-  
+</template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
