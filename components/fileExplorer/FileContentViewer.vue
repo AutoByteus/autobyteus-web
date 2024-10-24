@@ -27,7 +27,7 @@
           <strong class="font-bold">Error!</strong>
           <span class="block sm:inline">{{ getContentError(activeFile) }}</span>
         </div>
-        <div v-else-if="getFileContent(activeFile)" class="flex-1 bg-gray-50 p-4 rounded-lg text-gray-600 overflow-y-auto">
+        <div v-else-if="getFileContent(activeFile)" class="flex-1 bg-gray-50 p-4 rounded-lg text-gray-600">
           <pre><code :class="'language-' + getFileLanguage(activeFile)" v-html="highlightedContent"></code></pre>
         </div>
       </div>
