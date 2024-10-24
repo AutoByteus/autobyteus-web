@@ -27,7 +27,7 @@
 
     <div class="mt-auto bg-white">
       <h4 class="text-lg font-medium text-gray-700 mb-2">New Message</h4>
-      <UserRequirementInput />
+      <WorkflowStepRequirementForm />
     </div>
 
     <ConversationHistoryPanel 
@@ -44,7 +44,7 @@ import { computed, ref, watch } from 'vue'
 import { useWorkflowStore } from '~/stores/workflow'
 import { useWorkflowStepStore } from '~/stores/workflowStep'
 import PromptEditor from '~/components/prompt/PromptEditor.vue'
-import UserRequirementInput from '~/components/workflow/UserRequirementInput.vue'
+import WorkflowStepRequirementForm from '~/components/stepRequirementForm/WorkflowStepRequirementForm.vue'
 import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue'
 import Conversation from '~/components/conversation/Conversation.vue'
 
