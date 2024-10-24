@@ -1,8 +1,6 @@
 <template>
   <div v-if="selectedStep" class="flex flex-col h-full">
     <div class="flex-grow overflow-y-auto">
-      <h3 class="text-2xl font-bold text-gray-800 mb-4">Selected Step: {{ selectedStep.name }}</h3>
-      
       <div class="mb-4">
         <PromptEditor 
           :promptTemplates="selectedStep.prompt_templates"
