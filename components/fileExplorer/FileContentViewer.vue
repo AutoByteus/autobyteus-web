@@ -1,5 +1,5 @@
 <template>
-  <div id="contentViewer" class="bg-white rounded-lg shadow-md h-full flex flex-col">
+  <div id="contentViewer" class="bg-white rounded-lg shadow-md flex flex-col h-full">
     <div class="flex border-b overflow-x-auto sticky top-0 bg-white z-10 p-2">
       <div 
         v-for="file in openFiles" 
@@ -21,8 +21,8 @@
         </button>
       </div>
     </div>
-    <div class="flex-1 overflow-hidden flex flex-col p-4">
-      <div v-if="activeFile" class="h-full flex flex-col">
+    <div class="flex-1 overflow-y-auto p-4">
+      <div v-if="activeFile">
         <div v-if="isContentLoading(activeFile)" class="text-center py-4">
           <p class="text-gray-600">Loading file content...</p>
         </div>
@@ -30,8 +30,8 @@
           <strong class="font-bold">Error!</strong>
           <span class="block sm:inline">{{ getContentError(activeFile) }}</span>
         </div>
-        <div v-else-if="getFileContent(activeFile)" class="flex-1 bg-gray-50 p-4 rounded-lg text-gray-600">
-          <pre><code :class="'language-' + getFileLanguage(activeFile)" v-html="highlightedContent"></code></pre>
+        <div v-else-if="getFileContent(activeFile)" class="bg-gray-50 p-4 rounded-lg text-gray-600">
+          <pre class="overflow-visible"><code :class="'language-' + getFileLanguage(activeFile)" v-html="highlightedContent"></code></pre>
         </div>
       </div>
       <div v-else class="text-center py-4">
@@ -40,7 +40,6 @@
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
 import { computed, watch, onMounted, nextTick } from 'vue';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
@@ -100,19 +99,15 @@ pre {
   margin: 0;
   padding: 0;
   background-color: transparent;
-  height: 100%;
+  overflow: visible;
 }
 
 code {
   font-family: 'Fira Code', monospace;
   font-size: 14px;
   line-height: 1.5;
-  height: 100%;
   display: block;
-}
-
-#contentViewer {
-  height: calc(100vh - 2rem);
+  white-space: pre-wrap;
 }
 
 .close-button {
@@ -123,7 +118,6 @@ code {
   background-color: rgba(239, 68, 68, 0.1);
 }
 
-/* Add focus styles for accessibility */
 .close-button:focus {
   outline: none;
   box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5);

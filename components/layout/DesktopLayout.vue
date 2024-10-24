@@ -49,7 +49,8 @@ const {
 
 const workflowStyles = computed(() => ({
   flex: '1 1 0%',
-  minWidth: '300px'
+  minWidth: '200px', // Reduced from 300px to allow more flexibility
+  maxWidth: 'calc(100% - 200px)' // Ensure workflow panel doesn't take up too much space
 }))
 </script>
 
