@@ -13,19 +13,21 @@
         </select>
       </div>
       
-      <div class="flex space-x-2">
+      <!-- Modified container for input and button -->
+      <div class="flex flex-col sm:flex-row gap-2">
         <input 
           v-model="newWorkspacePath" 
           type="text" 
           placeholder="Enter new workspace path" 
-          class="flex-grow p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+          class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
           @keyup="handleKeyup"
         >
         <button 
           @click="addWorkspace" 
-          class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
+          class="whitespace-nowrap px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
         >
-          Add New Workspace
+          <span class="block sm:hidden">Add</span>
+          <span class="hidden sm:block">Add New Workspace</span>
         </button>
       </div>
       

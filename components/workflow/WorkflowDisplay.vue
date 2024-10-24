@@ -12,13 +12,12 @@
     <div v-if="workflow" class="flex flex-col flex-grow">
       <!-- Fixed header -->
       <div class="flex-shrink-0 bg-white">
-        <div class="workflow-steps flex overflow-x-auto mb-6 pb-2">
+        <div class="workflow-steps flex flex-wrap gap-3 mb-6">
           <WorkflowStep
             v-for="step in steps"
             :key="step.id"
             :step="step"
             :isSelected="selectedStepId === step.id"
-            class="flex-shrink-0"
           />
         </div>
       </div>
@@ -30,7 +29,6 @@
     </div>
   </div>
 </template>
-  
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
@@ -71,40 +69,3 @@ watch(steps, (stepsArray) => {
   }
 })
 </script>
-<style>
-.workflow-container {
-  scrollbar-width: thin;
-  scrollbar-color: #4A5568 #EDF2F7;
-}
-
-.workflow-container::-webkit-scrollbar {
-  width: 6px;
-}
-
-.workflow-container::-webkit-scrollbar-track {
-  background: #EDF2F7;
-}
-
-.workflow-container::-webkit-scrollbar-thumb {
-  background-color: #4A5568;
-  border-radius: 3px;
-}
-
-.workflow-steps {
-  scrollbar-width: thin;
-  scrollbar-color: #4A5568 #EDF2F7;
-}
-
-.workflow-steps::-webkit-scrollbar {
-  height: 6px;
-}
-
-.workflow-steps::-webkit-scrollbar-track {
-  background: #EDF2F7;
-}
-
-.workflow-steps::-webkit-scrollbar-thumb {
-  background-color: #4A5568;
-  border-radius: 3px;
-}
-</style>

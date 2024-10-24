@@ -18,7 +18,7 @@
     </div>
     
     <!-- Content to Workflow Drag Handle -->
-    <div v-if="showFileContent" class="w-2 bg-gray-300 cursor-col-resize" @mousedown="initDragContentToWorkflow"></div>
+    <div v-if="showFileContent" class="w-2 bg-gray-300 cursor-col-resize" @mousedown="(e) => initDragContentToWorkflow(e, showFileContent)"></div>
     
     <!-- Workflow Display -->
     <div class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0" :style="workflowStyles">
@@ -48,11 +48,8 @@ const {
 } = usePanelResize()
 
 const workflowStyles = computed(() => ({
-  flex: props.showFileContent ? '1 1 0%' : '4 0 0%',
-  minWidth: '300px',
-  maxWidth: props.showFileContent 
-    ? `calc(100% - ${fileExplorerWidth.value + contentViewerWidth.value + 32}px)` 
-    : `calc(100% - ${fileExplorerWidth.value + 16}px)`
+  flex: '1 1 0%',
+  minWidth: '300px'
 }))
 </script>
 

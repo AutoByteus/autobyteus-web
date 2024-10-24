@@ -1,10 +1,13 @@
 <template>
   <div id="contentViewer" class="bg-white rounded-lg shadow-md h-full flex flex-col">
     <div class="flex border-b overflow-x-auto sticky top-0 bg-white z-10 p-2">
-      <button 
+      <div 
         v-for="file in openFiles" 
         :key="file"
         @click="setActiveFile(file)"
+        role="button"
+        tabindex="0"
+        @keyup.enter="setActiveFile(file)"
         :class="['px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 flex items-center gap-2', 
                  file === activeFile ? 'bg-gray-200 text-gray-800' : 'text-gray-600 hover:bg-gray-100']"
       >
@@ -16,7 +19,7 @@
         >
           <span class="text-base leading-none text-red-500 hover:text-red-600">&times;</span>
         </button>
-      </button>
+      </div>
     </div>
     <div class="flex-1 overflow-hidden flex flex-col p-4">
       <div v-if="activeFile" class="h-full flex flex-col">
