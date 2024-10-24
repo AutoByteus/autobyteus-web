@@ -1,12 +1,5 @@
 <template>
-  <div v-if="selectedStep" class="flex flex-col">
-      <div class="mb-4">
-        <PromptEditor 
-          :promptTemplates="selectedStep.prompt_templates"
-          :stepId="selectedStep.id"
-        />
-      </div>
-  
+  <div v-if="selectedStep" class="flex flex-col h-full">
       <div class="flex justify-between items-center mb-4">
         <h4 class="text-lg font-medium text-gray-700">Conversation</h4>
         <div>
@@ -19,10 +12,13 @@
         </div>
       </div>
   
-      <div class="flex flex-col">
-        <Conversation v-if="activeConversation" :conversation="activeConversation" />
+      <!-- Remove flex-col and min-h-0 to prevent nested scrolling -->
+      <div class="flex-grow">
+        <div class="mb-4">
+          <Conversation v-if="activeConversation" :conversation="activeConversation" />
+        </div>
   
-        <div class="mt-4 bg-white">
+        <div class="bg-white">
           <h4 class="text-lg font-medium text-gray-700 mb-2">New Message</h4>
           <WorkflowStepRequirementForm />
         </div>
@@ -42,7 +38,6 @@
 import { computed, ref, watch } from 'vue'
 import { useWorkflowStore } from '~/stores/workflow'
 import { useWorkflowStepStore } from '~/stores/workflowStep'
-import PromptEditor from '~/components/prompt/PromptEditor.vue'
 import WorkflowStepRequirementForm from '~/components/stepRequirementForm/WorkflowStepRequirementForm.vue'
 import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue'
 import Conversation from '~/components/conversation/Conversation.vue'

@@ -1,27 +1,37 @@
 <template>
-  <div class="flex flex-col h-screen bg-gray-100 p-5 sm:p-5 font-sans text-gray-800">
-    <WorkspaceSelector class="bg-gray-200 p-4 rounded-lg mb-6" />
+  <div class="flex flex-col h-full bg-gray-100 p-5 sm:p-5 font-sans text-gray-800">
+    <WorkspaceSelector class="bg-gray-200 p-4 rounded-lg mb-6 flex-shrink-0" />
 
-    <div class="flex-grow flex h-full relative space-x-6">
+    <div class="flex flex-1 relative space-x-6 min-h-0">
       <!-- File Explorer: Adjustable Width -->
-      <div :style="{ width: fileExplorerWidth + 'px' }" class="bg-white p-4 rounded-lg shadow flex-shrink-0 flex flex-col">
-        <FileExplorer />
+      <div :style="{ width: fileExplorerWidth + 'px' }" class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0">
+        <div class="flex-1 overflow-auto">
+          <FileExplorer />
+        </div>
       </div>
       
       <!-- Drag Handle between File Explorer and Content Viewer -->
       <div class="w-2 bg-gray-300 cursor-col-resize" @mousedown="initDragFileToContent"></div>
       
       <!-- Content Viewer: Adjustable Width -->
-      <div v-if="showFileContent" :style="{ width: contentViewerWidth + 'px' }" class="bg-white p-4 rounded-lg shadow flex-shrink-0 flex flex-col">
-        <ContentViewer />
+      <div v-if="showFileContent" :style="{ width: contentViewerWidth + 'px' }" class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0">
+        <div class="flex-1 overflow-auto">
+          <ContentViewer />
+        </div>
       </div>
       
       <!-- Drag Handle between Content Viewer and Workflow Display -->
       <div v-if="showFileContent" class="w-2 bg-gray-300 cursor-col-resize" @mousedown="initDragContentToWorkflow"></div>
       
       <!-- Workflow Display: Flexible Width -->
-      <div :style="workflowDisplayStyle" class="bg-white p-4 rounded-lg shadow flex-grow">
-        <WorkflowDisplay />
+      <div class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0" :style="{
+        flex: showFileContent ? '1 1 0%' : '4 0 0%',
+        minWidth: '300px',
+        maxWidth: showFileContent ? 'calc(100% - ' + (fileExplorerWidth + contentViewerWidth + 32) + 'px)' : 'calc(100% - ' + (fileExplorerWidth + 16) + 'px)'
+      }">
+        <div class="flex-1 overflow-auto">
+          <WorkflowDisplay />
+        </div>
       </div>
     </div>
   </div>
@@ -123,21 +133,6 @@ const stopDragContentToWorkflow = () => {
   window.removeEventListener("mouseup", stopDragContentToWorkflow);
 };
 
-// Computed style for Workflow Display
-const workflowDisplayStyle = computed(() => {
-  if (showFileContent.value) {
-    return {
-      flex: "1 1 0%",
-      width: "auto",
-    };
-  } else {
-    return {
-      flex: "4 0 0%",
-      width: "auto",
-    };
-  }
-});
-
 // Cleanup on unmount
 onBeforeUnmount(() => {
   window.removeEventListener("mousemove", onDragFileToContent);
@@ -148,12 +143,10 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* Ensure the drag handles span the full height */
 .cursor-col-resize {
   cursor: col-resize;
 }
 
-/* Optional: Improve the appearance of drag handles */
 .bg-gray-300 {
   background-color: #d1d5db;
 }

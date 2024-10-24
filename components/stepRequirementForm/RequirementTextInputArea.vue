@@ -1,19 +1,24 @@
 <template>
-  <div class="relative">
-    <textarea
-      v-model="userRequirement"
-      ref="textarea"
-      class="w-full p-4 pr-24 pb-16 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden bg-white transition-all duration-300"
-      :style="{ height: textareaHeight + 'px' }"
-      placeholder="Enter your requirement here..."
-      @input="adjustTextareaHeight"
-      @keydown="handleKeyDown"
-    ></textarea>
-    <div class="absolute bottom-4 right-4 flex items-center">
+  <div class="flex flex-col bg-white focus-within:ring-2 focus-within:ring-blue-500">
+    <!-- Textarea container -->
+    <div class="flex-grow">
+      <textarea
+        v-model="userRequirement"
+        ref="textarea"
+        class="w-full p-4 border-0 focus:ring-0 focus:outline-none resize-none bg-transparent"
+        :style="{ height: textareaHeight + 'px', minHeight: '150px' }"
+        placeholder="Enter your requirement here..."
+        @input="adjustTextareaHeight"
+        @keydown="handleKeyDown"
+      ></textarea>
+    </div>
+
+    <!-- Controls container with border top for separation -->
+    <div ref="controlsRef" class="flex justify-end items-center p-4 bg-gray-50 border-t border-gray-200">
       <select
         v-if="isFirstMessage()"
         v-model="selectedModel"
-        class="mr-2 p-2 border border-gray-300 rounded-md text-sm"
+        class="mr-2 p-2 border border-gray-300 rounded-md text-sm bg-white hover:border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
       >
         <option v-for="model in llmModels" :key="model" :value="model">
           {{ model }}
@@ -52,7 +57,8 @@ const workspaceStore = useWorkspaceStore()
 const { userRequirement } = storeToRefs(workflowStepStore)
 const isSending = computed(() => workflowStepStore.isCurrentlySending)
 const textarea = ref<HTMLTextAreaElement | null>(null)
-const textareaHeight = ref(100) // Initial height
+const controlsRef = ref<HTMLDivElement | null>(null)
+const textareaHeight = ref(150) // Initial height
 const selectedModel = ref<LlmModel>(LlmModel.Claude_3_5SonnetApi)
 
 const llmModels = Object.values(LlmModel)
@@ -77,7 +83,6 @@ const handleSend = async () => {
   }
 
   try {
-    // Check if there's an active conversation, if not, create a new one
     if (!workflowStepStore.getActiveConversationId(stepId)) {
       workflowStepStore.createNewConversation(stepId)
     }
@@ -99,30 +104,74 @@ const handleSend = async () => {
 
 const adjustTextareaHeight = () => {
   if (textarea.value) {
-    textarea.value.style.height = 'auto'
-    textarea.value.style.height = `${textarea.value.scrollHeight}px`
-    textareaHeight.value = textarea.value.scrollHeight
+    // Reset height to allow proper calculation
+    textarea.value.style.height = '150px'
+    
+    // Get the scroll height and controls height
+    const scrollHeight = textarea.value.scrollHeight
+    const controlsHeight = controlsRef.value?.offsetHeight || 0
+    
+    // Calculate available height (viewport height minus other elements)
+    const maxHeight = window.innerHeight * 0.6 // 60% of viewport height
+    
+    // Calculate new height considering minimum, maximum, and controls
+    const newHeight = Math.min(
+      Math.max(scrollHeight, 150), // Min height 150px
+      maxHeight - controlsHeight - 40 // Subtract controls height and padding
+    )
+    
+    // Apply the new height
+    textarea.value.style.height = `${newHeight}px`
+    textareaHeight.value = newHeight
   }
 }
 
 const handleKeyDown = (event: KeyboardEvent) => {
   if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.altKey) {
-    event.preventDefault() // Prevents adding a newline
+    event.preventDefault()
     handleSend()
   }
+}
+
+// Resize handler for window resize
+const handleResize = () => {
+  adjustTextareaHeight()
 }
 
 onMounted(() => {
   nextTick(() => {
     adjustTextareaHeight()
+    window.addEventListener('resize', handleResize)
   })
+})
+
+// Clean up resize listener
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 
 watch(userRequirement, () => {
   workflowStepStore.updateUserRequirement(userRequirement.value)
+  nextTick(() => {
+    adjustTextareaHeight()
+  })
 })
 </script>
 
 <style scoped>
-/* Add any scoped styles if necessary */
+textarea {
+  outline: none;
+  overflow-y: auto;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+textarea::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+textarea {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
 </style>

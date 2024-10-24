@@ -1,27 +1,35 @@
 <template>
-  <div v-if="error" class="alert alert-error mb-4 p-4 bg-red-100 text-red-700 rounded-md">
+  <div class="flex flex-col h-[calc(100vh-12rem)]">
+    <!-- Alerts at top -->
+    <div v-if="error" class="flex-shrink-0 alert alert-error mb-4 p-4 bg-red-100 text-red-700 rounded-md">
       <i class="fas fa-exclamation-triangle mr-2"></i> {{ error }}
     </div>
-    <div v-if="loading" class="alert alert-info mb-4 p-4 bg-blue-100 text-blue-700 rounded-md">
+    <div v-if="loading" class="flex-shrink-0 alert alert-info mb-4 p-4 bg-blue-100 text-blue-700 rounded-md">
       <i class="fas fa-spinner fa-spin mr-2"></i> Loading...
     </div>
-  
-    <div class="workflow-container flex flex-col h-[calc(100vh-12rem)] overflow-y-auto" v-if="workflow">
-      <div class="workflow-steps flex overflow-x-auto mb-6 pb-2">
-        <WorkflowStep
-          v-for="step in steps"
-          :key="step.id"
-          :step="step"
-          :isSelected="selectedStepId === step.id"
-          class="flex-shrink-0"
-        />
+
+    <!-- Main workflow container -->
+    <div v-if="workflow" class="flex flex-col flex-grow">
+      <!-- Fixed header -->
+      <div class="flex-shrink-0 bg-white">
+        <div class="workflow-steps flex overflow-x-auto mb-6 pb-2">
+          <WorkflowStep
+            v-for="step in steps"
+            :key="step.id"
+            :step="step"
+            :isSelected="selectedStepId === step.id"
+            class="flex-shrink-0"
+          />
+        </div>
       </div>
-  
-      <div class="flex-grow">
+
+      <!-- Single scrollable container -->
+      <div class="flex-grow overflow-y-auto">
         <WorkflowStepDetails />
       </div>
     </div>
-  </template>
+  </div>
+</template>
   
 
 <script setup lang="ts">
@@ -63,7 +71,6 @@ watch(steps, (stepsArray) => {
   }
 })
 </script>
-
 <style>
 .workflow-container {
   scrollbar-width: thin;

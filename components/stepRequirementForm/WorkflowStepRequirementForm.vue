@@ -1,8 +1,7 @@
 <template>
-  <div class="border border-gray-300 rounded-lg shadow-sm">
+  <div class="border border-gray-300 rounded-lg shadow-sm overflow-hidden">
     <ContextFilePathInputAreas />
-
-    <div class="relative mt-4">
+    <div class="border-t border-gray-200">
       <RequirementTextInputArea />
     </div>
   </div>
@@ -12,7 +11,3 @@
 import ContextFilePathInputAreas from '~/components/stepRequirementForm/ContextFilePathInputArea.vue'
 import RequirementTextInputArea from '~/components/stepRequirementForm/RequirementTextInputArea.vue'
 </script>
-
-<style scoped>
-/* Add any scoped styles if necessary */
-</style>
