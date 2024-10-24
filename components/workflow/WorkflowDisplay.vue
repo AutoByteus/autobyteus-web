@@ -1,25 +1,28 @@
 <template>
   <div v-if="error" class="alert alert-error mb-4 p-4 bg-red-100 text-red-700 rounded-md">
-    <i class="fas fa-exclamation-triangle mr-2"></i> {{ error }}
-  </div>
-  <div v-if="loading" class="alert alert-info mb-4 p-4 bg-blue-100 text-blue-700 rounded-md">
-    <i class="fas fa-spinner fa-spin mr-2"></i> Loading...
-  </div>
-
-  <div class="workflow-container" v-if="workflow">
-    <div class="workflow-steps flex overflow-x-auto mb-6 pb-2">
-      <WorkflowStep
-        v-for="step in steps"
-        :key="step.id"
-        :step="step"
-        :isSelected="selectedStepId === step.id"
-        class="flex-shrink-0"
-      />
+      <i class="fas fa-exclamation-triangle mr-2"></i> {{ error }}
     </div>
-
-    <WorkflowStepDetails />
-  </div>
-</template>
+    <div v-if="loading" class="alert alert-info mb-4 p-4 bg-blue-100 text-blue-700 rounded-md">
+      <i class="fas fa-spinner fa-spin mr-2"></i> Loading...
+    </div>
+  
+    <div class="workflow-container flex flex-col h-[calc(100vh-12rem)] overflow-y-auto" v-if="workflow">
+      <div class="workflow-steps flex overflow-x-auto mb-6 pb-2">
+        <WorkflowStep
+          v-for="step in steps"
+          :key="step.id"
+          :step="step"
+          :isSelected="selectedStepId === step.id"
+          class="flex-shrink-0"
+        />
+      </div>
+  
+      <div class="flex-grow">
+        <WorkflowStepDetails />
+      </div>
+    </div>
+  </template>
+  
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
@@ -61,7 +64,25 @@ watch(steps, (stepsArray) => {
 })
 </script>
 
-<style scoped>
+<style>
+.workflow-container {
+  scrollbar-width: thin;
+  scrollbar-color: #4A5568 #EDF2F7;
+}
+
+.workflow-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.workflow-container::-webkit-scrollbar-track {
+  background: #EDF2F7;
+}
+
+.workflow-container::-webkit-scrollbar-thumb {
+  background-color: #4A5568;
+  border-radius: 3px;
+}
+
 .workflow-steps {
   scrollbar-width: thin;
   scrollbar-color: #4A5568 #EDF2F7;

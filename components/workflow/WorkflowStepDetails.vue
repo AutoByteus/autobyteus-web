@@ -1,13 +1,12 @@
 <template>
-  <div v-if="selectedStep" class="flex flex-col h-full">
-    <div class="flex-grow overflow-y-auto">
+  <div v-if="selectedStep" class="flex flex-col">
       <div class="mb-4">
         <PromptEditor 
           :promptTemplates="selectedStep.prompt_templates"
           :stepId="selectedStep.id"
         />
       </div>
-
+  
       <div class="flex justify-between items-center mb-4">
         <h4 class="text-lg font-medium text-gray-700">Conversation</h4>
         <div>
@@ -19,23 +18,25 @@
           </button>
         </div>
       </div>
-
-      <Conversation v-if="activeConversation" :conversation="activeConversation" />
+  
+      <div class="flex flex-col">
+        <Conversation v-if="activeConversation" :conversation="activeConversation" />
+  
+        <div class="mt-4 bg-white">
+          <h4 class="text-lg font-medium text-gray-700 mb-2">New Message</h4>
+          <WorkflowStepRequirementForm />
+        </div>
+      </div>
+  
+      <ConversationHistoryPanel 
+        :isOpen="isHistoryPanelOpen"
+        :conversations="conversationHistory"
+        @close="closeConversationHistory"
+        @activate="activateHistoryConversation"
+      />
     </div>
-
-    <div class="mt-auto bg-white">
-      <h4 class="text-lg font-medium text-gray-700 mb-2">New Message</h4>
-      <WorkflowStepRequirementForm />
-    </div>
-
-    <ConversationHistoryPanel 
-      :isOpen="isHistoryPanelOpen"
-      :conversations="conversationHistory"
-      @close="closeConversationHistory"
-      @activate="activateHistoryConversation"
-    />
-  </div>
-</template>
+  </template>
+  
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
