@@ -1,10 +1,10 @@
 <template>
   <div
-    class="mb-4 bg-gray-50 rounded-md overflow-hidden border border-gray-200 hover:shadow-md transition-shadow duration-200"
-    @dragover.prevent
-    @drop.prevent="onFileDrop"
-    @paste="onPaste"
-  >
+      class="bg-gray-50 hover:shadow-md transition-shadow duration-200"
+      @dragover.prevent
+      @drop.prevent="onFileDrop"
+      @paste="onPaste"
+    >
     <div 
       class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-100 transition-colors duration-300"
       @click="toggleCollapse"
@@ -168,7 +168,7 @@ const onPaste = async (event: ClipboardEvent) => {
 }
 </script>
 
-<style>
+<style scoped>
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }

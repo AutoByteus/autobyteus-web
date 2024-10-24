@@ -5,3 +5,13 @@ export const GetWorkflowConfig = gql`
     workflowConfig(workspaceId: $workspaceId)
   }
 `;
+
+export const GetAllWorkspaces = gql`
+  query GetAllWorkspaces {
+    allWorkspaces {
+      workspaceId
+      name
+      fileExplorer
+    }
+  }
+`;

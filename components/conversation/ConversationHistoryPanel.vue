@@ -1,3 +1,4 @@
+<!-- File: autobyteus-web/components/conversation/ConversationHistoryPanel.vue -->
 <template>
     <div 
       v-if="isOpen"

@@ -1,3 +1,4 @@
+<!-- File: autobyteus-web/components/conversation/ConversationList.vue -->
 <template>
     <div class="mb-4">
       <ul class="space-y-2">

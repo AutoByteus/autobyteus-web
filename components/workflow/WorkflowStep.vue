@@ -1,6 +1,6 @@
 <template>
   <div 
-    class="flex-1 border border-gray-300 rounded-md p-2 cursor-pointer h-15 flex items-center justify-center shadow-sm transition-all duration-300 ease-in-out mr-2 last:mr-0 hover:shadow-md min-w-[120px]"
+    class="flex-grow basis-[200px] border border-gray-300 rounded-md p-2 cursor-pointer h-15 flex items-center justify-center shadow-sm transition-all duration-300 ease-in-out hover:shadow-md"
     :class="{ 'bg-blue-100 border-blue-500 shadow-md': isSelected }"
     @click="selectStep(step)"
   >

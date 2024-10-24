@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "main": "dist-electron/main.js",
-    "dev": "nuxt dev",
+    "dev": "nuxt dev --host 0.0.0.0",
     "build": "nuxt build",
     "test": "vitest",
     "start": "node .nuxt/dist-electron/main.js",
