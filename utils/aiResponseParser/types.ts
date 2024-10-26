@@ -5,7 +5,12 @@ export interface ParsedFile {
   language: string;
 }
 
-export interface FileGroup {
+export interface BashCommands {
+  commands: string[];
+}
+
+export interface ImplementationData {
+  bashCommands: BashCommands;
   files: ParsedFile[];
 }
 
@@ -16,10 +21,17 @@ export interface AIResponseTextSegment {
 
 export interface FileContentSegment {
   type: 'file_content';
-  fileGroup: FileGroup;
+  fileGroup: {
+    files: ParsedFile[];
+  };
 }
 
-export type AIResponseSegment = AIResponseTextSegment | FileContentSegment;
+export interface BashCommandsSegment {
+  type: 'bash_commands';
+  commands: string[];
+}
+
+export type AIResponseSegment = AIResponseTextSegment | FileContentSegment | BashCommandsSegment;
 
 export interface ParsedAIResponse {
   segments: AIResponseSegment[];
