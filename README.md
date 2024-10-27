@@ -66,9 +66,24 @@ yarn electron:build
 The built applications will be available in the `dist` directory.
 
 ## Testing
-Run the test suite:
+Run all tests:
 ```bash
 yarn test
+```
+
+### Running Specific Tests
+To run all tests in a specific test file:
+```bash
+yarn test tests/unit/utils/aiResponseParser/aiResponseSegmentParser.test.ts
+```
+
+To run a specific test within a file:
+```bash
+# Run a specific test by description
+yarn test "tests/unit/utils/aiResponseParser/aiResponseSegmentParser.test.ts" -t "should parse text without implementation tags"
+
+# Run all tests matching a pattern
+yarn test "tests/unit/utils/aiResponseParser/aiResponseSegmentParser.test.ts" -t "should parse text"
 ```
 
 ## GraphQL Codegen

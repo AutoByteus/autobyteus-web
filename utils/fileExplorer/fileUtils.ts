@@ -81,7 +81,7 @@ function handleAddChange(nodeIdToNode: Record<string, TreeNode>, change: AddChan
   if (!parentNode) {
     throw new Error(`Parent node with id ${change.parent_id} not found`);
   }
-  const newNode = change.node;
+  const newNode = TreeNode.fromObject(change.node);
   parentNode.addChild(newNode);
   nodeIdToNode[newNode.id] = newNode;
 }

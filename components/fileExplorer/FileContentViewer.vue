@@ -51,8 +51,8 @@ import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-markup';
 import 'prismjs/components/prism-markup-templating';
 import 'prismjs/components/prism-php';
-import { getLanguage } from '~/utils/codeBlockParser/languageDetector';
-import { highlightVueCode } from '~/utils/codeBlockParser/vueCodeHighlight';
+import { getLanguage } from '~/utils/aiResponseParser/languageDetector';
+import { highlightVueCode } from '~/utils/aiResponseParser/vueCodeHighlight';
 
 const fileExplorerStore = useFileExplorerStore();
 
