@@ -30,7 +30,6 @@
             </li>
             <li>
               <button 
-                ref="workspaceButton"
                 @click="toggleWorkspaceSelector"
                 class="hover:text-blue-300 transition-colors duration-200 px-3 py-2 rounded-md text-sm font-medium relative group inline-flex items-center gap-1"
                 :class="{'text-blue-300': isWorkspaceSelectorVisible}"
@@ -63,7 +62,6 @@
               </button>
               <div
                 v-if="isWorkspaceSelectorVisible"
-                ref="workspaceDropdown"
                 id="workspace-selector"
                 class="absolute top-full mt-1 w-64 transform opacity-100 scale-100 transition-all duration-200 origin-top"
               >
@@ -117,7 +115,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useWorkspaceUIStore } from '~/stores/workspaceUI'
 import APIKeyManager from '~/components/APIKeyManager.vue'
 import Modal from '~/components/ui/Modal.vue'
@@ -125,8 +123,6 @@ import WorkspaceSelector from '~/components/workspace/WorkspaceSelector.vue'
 
 const showAPIKeyManager = ref(false)
 const workspaceUIStore = useWorkspaceUIStore()
-const workspaceButton = ref<HTMLElement | null>(null)
-const workspaceDropdown = ref<HTMLElement | null>(null)
 
 const isWorkspaceSelectorVisible = computed(() => workspaceUIStore.isWorkspaceSelectorVisible)
 
@@ -137,20 +133,4 @@ const toggleAPIKeyManager = () => {
 const toggleWorkspaceSelector = () => {
   workspaceUIStore.toggleWorkspaceSelector()
 }
-
-const handleClickOutside = (event: MouseEvent) => {
-  if (!workspaceButton.value?.contains(event.target as Node) && 
-      !workspaceDropdown.value?.contains(event.target as Node) && 
-      isWorkspaceSelectorVisible.value) {
-    workspaceUIStore.toggleWorkspaceSelector()
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
 </script>
