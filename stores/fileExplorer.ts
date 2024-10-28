@@ -1,16 +1,18 @@
 import { defineStore } from 'pinia'
 import { useQuery, useMutation } from '@vue/apollo-composable'
-import { GetFileContent } from '~/graphql/queries/file_explorer_queries'
+import { GetFileContent, SearchFiles } from '~/graphql/queries/file_explorer_queries'
 import { ApplyFileChange } from '~/graphql/mutations/file_explorer_mutations'
 import type { 
   GetFileContentQuery, 
   GetFileContentQueryVariables, 
   ApplyFileChangeMutation, 
   ApplyFileChangeMutationVariables,
+  SearchFilesQuery,
+  SearchFilesQueryVariables,
 } from '~/generated/graphql'
 import { useWorkspaceStore } from '~/stores/workspace'
-import { TreeNode } from '~/utils/fileExplorer/TreeNode'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
+import { findFileByPath } from '~/utils/fileExplorer/fileUtils'
 
 interface FileExplorerState {
   openFolders: Record<string, boolean>;
@@ -21,6 +23,9 @@ interface FileExplorerState {
   contentError: Record<string, string | null>;
   applyChangeError: Record<string, Record<number, Record<string, string | null>>>;
   applyChangeLoading: Record<string, Record<number, Record<string, boolean>>>;
+  searchResults: any[];
+  searchLoading: boolean;
+  searchError: string | null;
 }
 
 export const useFileExplorerStore = defineStore('fileExplorer', {
@@ -33,6 +38,9 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     contentError: {},
     applyChangeError: {},
     applyChangeLoading: {},
+    searchResults: [],
+    searchLoading: false,
+    searchError: null,
   }),
   actions: {
     toggleFolder(folderPath: string) {
@@ -156,7 +164,43 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         this.applyChangeError[conversationId][messageIndex] = {}
       }
       this.applyChangeError[conversationId][messageIndex][filePath] = error
-    }
+    },
+    async searchFiles(query: string) {
+      this.searchLoading = true
+      this.searchError = null
+      this.searchResults = []
+
+      const workspaceStore = useWorkspaceStore()
+      const workspaceId = workspaceStore.currentSelectedWorkspaceId
+
+      if (!query) {
+        // If query is empty, show top-level files and folders
+        this.searchResults = workspaceStore.currentWorkspaceTree?.children || []
+        this.searchLoading = false
+        return
+      }
+
+      const { onResult, onError } = useQuery<SearchFilesQuery, SearchFilesQueryVariables>(
+        SearchFiles,
+        { workspaceId, query }
+      )
+
+      onResult((result) => {
+        if (result.data?.searchFiles) {
+          const matchedPaths = result.data.searchFiles
+          this.searchResults = matchedPaths.map(path => {
+            return findFileByPath(workspaceStore.currentWorkspaceTree?.children || [], path)
+          }).filter(file => file !== null)
+        }
+        this.searchLoading = false
+      })
+
+      onError((error) => {
+        console.error('Error searching files:', error)
+        this.searchError = error.message
+        this.searchLoading = false
+      })
+    },
   },
   getters: {
     isFolderOpen: (state) => (folderPath: string): boolean => !!state.openFolders[folderPath],
@@ -173,6 +217,9 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     },
     getApplyChangeErrorGetter: (state) => (conversationId: string, messageIndex: number, filePath: string): string | null => {
       return state.applyChangeError[conversationId]?.[messageIndex]?.[filePath] || null
-    }
+    },
+    getSearchResults: (state) => state.searchResults,
+    isSearchLoading: (state) => state.searchLoading,
+    getSearchError: (state) => state.searchError,
   }
 })

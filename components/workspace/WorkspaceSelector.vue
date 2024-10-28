@@ -1,33 +1,29 @@
 <template>
-  <div class="workspace-selector p-4 bg-gray-100 rounded-lg">
-    <div class="flex flex-col space-y-4">
-      <div class="flex space-x-2">
-        <select 
-          v-model="selectedWorkspaceId" 
-          class="flex-grow p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="" disabled>Select a workspace</option>
-          <option v-for="id in workspaceIds" :key="id" :value="id">
-            {{ getWorkspaceName(id) }}
-          </option>
-        </select>
-      </div>
+  <div class="workspace-selector bg-gray-200 rounded-lg">
+    <div class="p-4 space-y-4">
+      <select 
+        v-model="selectedWorkspaceId" 
+        class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 bg-white"
+      >
+        <option value="" disabled>Select a workspace</option>
+        <option v-for="id in workspaceIds" :key="id" :value="id">
+          {{ getWorkspaceName(id) }}
+        </option>
+      </select>
       
-      <!-- Modified container for input and button -->
-      <div class="flex flex-col sm:flex-row gap-2">
+      <div class="flex gap-2">
         <input 
           v-model="newWorkspacePath" 
           type="text" 
           placeholder="Enter new workspace path" 
-          class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+          class="flex-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500 bg-white"
           @keyup="handleKeyup"
         >
         <button 
           @click="addWorkspace" 
           class="whitespace-nowrap px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
         >
-          <span class="block sm:hidden">Add</span>
-          <span class="hidden sm:block">Add New Workspace</span>
+          Add New Workspace
         </button>
       </div>
       
