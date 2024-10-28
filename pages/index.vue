@@ -10,7 +10,7 @@
     >
       <WorkspaceSelector
         v-if="isWorkspaceSelectorVisible"
-        class="bg-gray-200 p-4 rounded-lg mb-6 flex-shrink-0"
+        class="mb-6"
       />
     </Transition>
     

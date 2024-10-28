@@ -60,18 +60,6 @@
                 >
                 </span>
               </button>
-              <div
-                v-if="isWorkspaceSelectorVisible"
-                id="workspace-selector"
-                class="absolute top-full mt-1 w-64 transform opacity-100 scale-100 transition-all duration-200 origin-top"
-              >
-                <div class="relative">
-                  <div class="absolute -top-2 left-5 w-3 h-3 bg-gray-700 transform rotate-45"></div>
-                  <div class="relative bg-gray-700 rounded-lg shadow-lg p-2 z-10">
-                    <WorkspaceSelector />
-                  </div>
-                </div>
-              </div>
             </li>
             <li>
               <NuxtLink 
@@ -119,7 +107,6 @@ import { ref, computed } from 'vue'
 import { useWorkspaceUIStore } from '~/stores/workspaceUI'
 import APIKeyManager from '~/components/APIKeyManager.vue'
 import Modal from '~/components/ui/Modal.vue'
-import WorkspaceSelector from '~/components/workspace/WorkspaceSelector.vue'
 
 const showAPIKeyManager = ref(false)
 const workspaceUIStore = useWorkspaceUIStore()
