@@ -16,21 +16,14 @@
       </div>
     </div>
 
-    <!-- Main content area with flexible spacing -->
-    <div class="flex flex-col h-[calc(100%-2rem)] relative">
-      <!-- Conversation container with flexible growth -->
-      <div class="flex-1 overflow-y-auto mb-4 pr-2">
-        <div class="flex flex-col h-full">
-          <!-- Messages section -->
-          <div class="flex-grow">
-            <Conversation v-if="activeConversation" :conversation="activeConversation" />
-          </div>
-          <!-- Spacer when no messages -->
-          <div v-if="!activeConversation?.messages?.length" class="flex-grow" />
-        </div>
+    <!-- Main content area -->
+    <div class="flex flex-col flex-grow">
+      <!-- Conversation container -->
+      <div class="flex-grow overflow-y-auto min-h-0">
+        <Conversation v-if="activeConversation" :conversation="activeConversation" />
       </div>
 
-      <!-- Form container with consistent positioning -->
+      <!-- Form container -->
       <div class="w-full bg-white pt-4">
         <WorkflowStepRequirementForm />
       </div>
