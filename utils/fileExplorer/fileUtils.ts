@@ -107,3 +107,16 @@ function handleRenameChange(nodeIdToNode: Record<string, TreeNode>, change: Rena
     nodeIdToNode[change.node.id] = node;
   }
 }
+
+export function findFileByPath(nodes: TreeNode[], path: string): TreeNode | null {
+  for (const node of nodes) {
+    if (node.path === path) {
+      return node
+    }
+    if (node.children) {
+      const found = findFileByPath(node.children, path)
+      if (found) return found
+    }
+  }
+  return null
+}
