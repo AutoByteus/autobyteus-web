@@ -11,6 +11,7 @@ import type {
 import { useWorkspaceStore } from '~/stores/workspace'
 import { TreeNode } from '~/utils/fileExplorer/TreeNode'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
+import Fuse from 'fuse.js'
 
 interface FileExplorerState {
   openFolders: Record<string, boolean>;
@@ -21,6 +22,7 @@ interface FileExplorerState {
   contentError: Record<string, string | null>;
   applyChangeError: Record<string, Record<number, Record<string, string | null>>>;
   applyChangeLoading: Record<string, Record<number, Record<string, boolean>>>;
+  fuse?: Fuse<{ name: string; path: string }>;
 }
 
 export const useFileExplorerStore = defineStore('fileExplorer', {
@@ -33,6 +35,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     contentError: {},
     applyChangeError: {},
     applyChangeLoading: {},
+    fuse: undefined,
   }),
   actions: {
     toggleFolder(folderPath: string) {
@@ -156,7 +159,21 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         this.applyChangeError[conversationId][messageIndex] = {}
       }
       this.applyChangeError[conversationId][messageIndex][filePath] = error
-    }
+    },
+    initializeFuse(flattenedFiles: Array<{ name: string; path: string }>) {
+      this.fuse = new Fuse(flattenedFiles, {
+        keys: ['name', 'path'],
+        includeScore: true,
+        threshold: 0.3,
+      })
+    },
+    updateFuseCollection(flattenedFiles: Array<{ name: string; path: string }>) {
+      if (this.fuse) {
+        this.fuse.setCollection(flattenedFiles)
+      } else {
+        this.initializeFuse(flattenedFiles)
+      }
+    },
   },
   getters: {
     isFolderOpen: (state) => (folderPath: string): boolean => !!state.openFolders[folderPath],
@@ -173,6 +190,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     },
     getApplyChangeErrorGetter: (state) => (conversationId: string, messageIndex: number, filePath: string): string | null => {
       return state.applyChangeError[conversationId]?.[messageIndex]?.[filePath] || null
-    }
+    },
+    fuseInstance: (state) => state.fuse,
   }
 })
