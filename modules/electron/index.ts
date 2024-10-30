@@ -8,7 +8,7 @@ import {
   build,
   startup,
 } from 'vite-plugin-electron'
-import { NuxtModule, Nuxt } from '@nuxt/schema'
+import type { NuxtModule, Nuxt } from '@nuxt/schema'
 
 const logger = {
   info: (...args: any[]) => console.log('[Electron Module]', ...args),
