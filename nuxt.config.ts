@@ -36,17 +36,8 @@ export default defineNuxtConfig({
         },
       }
     ],
-    renderer: {
-      nodeIntegration: false,
-    },
   },
   ssr: false,
-  app: {
-    baseURL: isElectronBuild ? './' : '/',
-    // Conditionally set buildAssetsDir based on build target
-    buildAssetsDir: isElectronBuild ? '/' : '_nuxt/',
-    // Ensure trailing slash
-  },
   nitro: {
     preset: 'static',
     output: {
@@ -65,19 +56,6 @@ export default defineNuxtConfig({
     } : {}
   },
   vite: {
-    base: isElectronBuild ? './' : '/',
-    build: {
-      // Ensure assets are output to buildAssetsDir
-      assetsDir: '_nuxt',
-      rollupOptions: {
-        output: {
-          // Remove '_nuxt/' prefix to prevent double nesting
-          assetFileNames: '[name].[hash][extname]',
-          chunkFileNames: '[name].[hash].js',
-          entryFileNames: '[name].[hash].js',
-        }
-      }
-    },
     assetsInclude: ['**/*.jpeg', '**/*.jpg', '**/*.png', '**/*.svg'],
     worker: {
       format: 'es',
