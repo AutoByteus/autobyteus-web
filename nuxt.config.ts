@@ -1,18 +1,58 @@
 import { defineNuxtConfig } from 'nuxt/config'
-import { join } from 'path'
-import electron from 'vite-plugin-electron'
-import renderer from 'vite-plugin-electron-renderer'
+const isElectronBuild = process.env.BUILD_TARGET === 'electron'
+console.log(`isElectronBuild: ${isElectronBuild}`)
 
-// https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  modules: ['@nuxtjs/apollo', '@pinia/nuxt', '@nuxt/test-utils/module'],
-
-  // For static generation (when using generate)
+  modules: [
+    '@nuxtjs/apollo',
+    '@pinia/nuxt',
+    '@nuxt/test-utils/module',
+    './modules/electron'
+  ],
+  electron: {
+    build: [
+      {
+        // Main process entry
+        entry: 'electron/main.ts',
+        vite: {
+          build: {
+            outDir: 'dist/electron',
+            rollupOptions: {
+              external: ['electron']
+            }
+          },
+        },
+      },
+      {
+        // Preload script
+        entry: 'electron/preload.ts',
+        vite: {
+          build: {
+            outDir: 'dist/electron',
+            rollupOptions: {
+              external: ['electron']
+            }
+          },
+        },
+      }
+    ],
+    renderer: {
+      nodeIntegration: false,
+    },
+  },
   ssr: false,
-  
+  app: {
+    baseURL: isElectronBuild ? './' : '/',
+    // Conditionally set buildAssetsDir based on build target
+    buildAssetsDir: isElectronBuild ? '/' : '_nuxt/',
+    // Ensure trailing slash
+  },
   nitro: {
     preset: 'static',
-    // Development proxy settings
+    output: {
+      dir: 'dist',
+      publicDir: 'dist/renderer'
+    },
     devProxy: process.env.NODE_ENV === 'development' ? {
       '/graphql': {
         target: process.env.NUXT_PUBLIC_GRAPHQL_BASE_URL || 'http://localhost:8000/graphql',
@@ -24,32 +64,47 @@ export default defineNuxtConfig({
       }
     } : {}
   },
-
-  runtimeConfig: {
-    public: {
-      graphqlBaseUrl: process.env.NUXT_PUBLIC_GRAPHQL_BASE_URL || 'http://localhost:8000/graphql',
-      restBaseUrl: process.env.NUXT_PUBLIC_REST_BASE_URL || 'http://localhost:8000/rest',
-      wsBaseUrl: process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8000/graphql',
-      // Add this to detect environment
-      isElectron: process.env.NODE_ENV === 'electron'
+  vite: {
+    base: isElectronBuild ? './' : '/',
+    build: {
+      // Ensure assets are output to buildAssetsDir
+      assetsDir: '_nuxt',
+      rollupOptions: {
+        output: {
+          // Remove '_nuxt/' prefix to prevent double nesting
+          assetFileNames: '[name].[hash][extname]',
+          chunkFileNames: '[name].[hash].js',
+          entryFileNames: '[name].[hash].js',
+        }
+      }
+    },
+    assetsInclude: ['**/*.jpeg', '**/*.jpg', '**/*.png', '**/*.svg'],
+    worker: {
+      format: 'es',
+    },
+    define: {
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
     }
   },
-
+  // Rest of your configuration remains the same
+  runtimeConfig: {
+    public: {
+      graphqlBaseUrl: process.env.NUXT_PUBLIC_GRAPHQL_BASE_URL || 'http://localhost:8001/graphql',
+      restBaseUrl: process.env.NUXT_PUBLIC_REST_BASE_URL || 'http://localhost:8001/rest',
+      wsBaseUrl: process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8001/graphql'
+    }
+  },
   apollo: {
     clients: {
       default: {
-        // Use relative URL in development, full URL in production
         httpEndpoint: process.env.NODE_ENV === 'development' 
           ? '/graphql'
           : (process.env.NUXT_PUBLIC_GRAPHQL_BASE_URL || 'http://localhost:8000/graphql'),
-        
-        // Always use full URL for WebSocket
-        wsEndpoint: process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8000/graphql',
+        wsEndpoint: process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8001/graphql',
         websocketsOnly: false,
       },
     },
   },
-
   postcss: {
     plugins: {
       'postcss-import': {},
@@ -58,36 +113,8 @@ export default defineNuxtConfig({
       autoprefixer: {},
     },
   },
-
   compatibilityDate: '2024-07-22',
-
-  vite: {
-    assetsInclude: ['**/*.jpeg', '**/*.jpg', '**/*.png', '**/*.svg'],
-    plugins: [
-      electron({
-        entry: 'electron/main.ts',
-        vite: {
-          build: {
-            outDir: 'dist-electron',
-            sourcemap: true,
-            minify: process.env.NODE_ENV === 'production',
-          },
-        },
-      }),
-      renderer(), // Add back the renderer plugin
-    ],
-    resolve: {
-      alias: {
-        '@electron': join(__dirname, 'electron'),
-        '@': __dirname, // Keep root alias if needed
-      },
-    },
-    // Add environment variables to Vite
-    define: {
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
-    }
-  },
-
-  // Remove routeRules since we're using devProxy for development
-  // and full URLs for production
+  build: {
+    transpile: ['@xenova/transformers'],
+  }
 })

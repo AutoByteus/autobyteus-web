@@ -1,22 +1,44 @@
 {
+  "name": "autobyteus",
+  "version": "1.0.0",
+  "description": "AutoByteUs Desktop Application",
+  "author": {
+    "name": "AutoByteUs Team",
+    "email": "team@autobyteus.com"
+  },
+  "main": "dist/electron/main.js",
   "private": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/ricardobalk/nuxt3-tailwindcss.git"
   },
-  "type": "module",
   "scripts": {
-    "main": "dist-electron/main.js",
     "dev": "nuxt dev --host 0.0.0.0",
     "build": "nuxt build",
     "test": "vitest",
-    "start": "node .nuxt/dist-electron/main.js",
+    "start": "electron .",
     "generate": "nuxt generate",
+    "generate:electron": "BUILD_TARGET=electron nuxt generate",
     "preview": "nuxt preview",
     "codegen": "graphql-codegen --require dotenv/config --config codegen.ts",
-    "electron:dev": "concurrently \"yarn dev\" \"yarn electron:serve\"",
+    "electron:dev": "NODE_ENV=development concurrently \"yarn dev\" \"yarn electron:serve\"",
     "electron:serve": "vite build --config vite-electron.config.ts --watch",
-    "electron:build": "yarn build && vite build --config vite-electron.config.ts && electron-builder"
+    "transpile-electron": "tsc -p electron/tsconfig.json",
+    "build:electron": "yarn generate:electron && yarn transpile-electron && node build.js",
+    "build:electron:linux": "yarn generate:electron && yarn transpile-electron && node build.js --linux",
+    "build:electron:windows": "yarn generate:electron && yarn transpile-electron && node build.js --windows",
+    "build:electron:mac": "yarn generate:electron && yarn transpile-electron && node build.js --mac"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/cli": "^3.9.0",
+    "@capacitor/core": "^3.9.0",
+    "@nuxt/schema": "^3.13.1",
+    "@types/prismjs": "^1.26.4",
+    "axios": "^1.7.7",
+    "electron-is-dev": "^2.0.0",
+    "pinia": "^2.1.7",
+    "prismjs": "^1.29.0"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "^5.0.2",
@@ -34,7 +56,6 @@
     "dotenv": "^16.4.5",
     "electron": "^32.1.0",
     "electron-builder": "^25.0.5",
-    "electron-is-dev": "^2.0.0",
     "happy-dom": "^15.7.4",
     "jsdom": "^25.0.1",
     "nuxt": "^v3.12.3",
@@ -48,38 +69,5 @@
     "vite-plugin-electron-renderer": "^0.14.5",
     "vitest": "^2.1.2",
     "xmldom": "^0.6.0"
-  },
-  "dependencies": {
-    "@capacitor/android": "^6.1.2",
-    "@capacitor/cli": "^3.9.0",
-    "@capacitor/core": "^3.9.0",
-    "@nuxt/schema": "^3.13.1",
-    "@types/prismjs": "^1.26.4",
-    "axios": "^1.7.7",
-    "pinia": "^2.1.7",
-    "prismjs": "^1.29.0"
-  },
-  "build": {
-    "appId": "com.yourapp.id",
-    "productName": "YourAppName",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "dist/**",
-      "dist-electron/**",
-      "node_modules/**",
-      "package.json"
-    ],
-    "mac": {
-      "category": "your.app.category.type",
-      "target": "dmg"
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "linux": {
-      "target": "AppImage"
-    }
   }
 }
