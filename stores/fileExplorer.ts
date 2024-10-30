@@ -201,6 +201,19 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         this.searchLoading = false
       })
     },
+    resetState() {
+      this.openFolders = {}
+      this.openFiles = []
+      this.activeFile = null
+      this.fileContents.clear()
+      this.contentLoading = {}
+      this.contentError = {}
+      this.applyChangeError = {}
+      this.applyChangeLoading = {}
+      this.searchResults = []
+      this.searchLoading = false
+      this.searchError = null
+    }
   },
   getters: {
     isFolderOpen: (state) => (folderPath: string): boolean => !!state.openFolders[folderPath],

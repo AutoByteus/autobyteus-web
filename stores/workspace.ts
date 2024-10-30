@@ -6,6 +6,7 @@ import type { AddWorkspaceMutation, AddWorkspaceMutationVariables, GetAllWorkspa
 import { TreeNode, convertJsonToTreeNode } from '~/utils/fileExplorer/TreeNode'
 import { createNodeIdToNodeDictionary, handleFileSystemChange } from '~/utils/fileExplorer/fileUtils'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
+import { useFileExplorerStore } from '~/stores/fileExplorer' // Added import
 
 interface WorkspaceInfo {
   workspaceId: string;
@@ -28,6 +29,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     setSelectedWorkspaceId(id: string) {
       if (this.workspaces[id]) {
         this.selectedWorkspaceId = id
+        const fileExplorerStore = useFileExplorerStore() // Get the fileExplorer store
+        fileExplorerStore.resetState() // Reset the fileExplorer state
       } else {
         console.warn(`Attempted to select non-existent workspace id: ${id}`)
       }
