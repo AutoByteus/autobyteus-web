@@ -1,10 +1,17 @@
-// /services/api.ts
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
+import { useRuntimeConfig } from '#app'
 
 class ApiService {
   private axiosInstance: AxiosInstance
 
-  constructor(baseURL: string) {
+  constructor() {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.restBaseUrl
+
+    if (!baseURL) {
+      throw new Error('REST base URL is not configured')
+    }
+
     this.axiosInstance = axios.create({
       baseURL,
       // Add other default configurations here
@@ -53,5 +60,5 @@ class ApiService {
 }
 
 // Export a singleton instance
-const apiService = new ApiService('/rest')
+const apiService = new ApiService()
 export default apiService
