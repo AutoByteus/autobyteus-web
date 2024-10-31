@@ -2,6 +2,7 @@
   "name": "autobyteus",
   "version": "1.0.0",
   "description": "AutoByteUs Desktop Application",
+  "license": "MIT",
   "author": {
     "name": "AutoByteUs Team",
     "email": "team@autobyteus.com"
@@ -19,13 +20,15 @@
     "start": "electron .",
     "generate": "nuxt generate",
     "generate:electron": "BUILD_TARGET=electron nuxt generate",
+    "generate:icons": "tsc -p build/tsconfig.json && node build/dist/generateIcons.js",
     "preview": "nuxt preview",
     "codegen": "graphql-codegen --require dotenv/config --config codegen.ts",
     "transpile-electron": "tsc -p electron/tsconfig.json",
-    "build:electron": "yarn generate:electron && yarn transpile-electron && node build.js",
-    "build:electron:linux": "yarn generate:electron && yarn transpile-electron && node build.js --linux",
-    "build:electron:windows": "yarn generate:electron && yarn transpile-electron && node build.js --windows",
-    "build:electron:mac": "yarn generate:electron && yarn transpile-electron && node build.js --mac"
+    "transpile-build": "tsc -p build/tsconfig.json",
+    "build:electron": "yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js",
+    "build:electron:linux": "yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --linux",
+    "build:electron:windows": "yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --windows",
+    "build:electron:mac": "yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --mac"
   },
   "dependencies": {
     "@capacitor/android": "^6.1.2",
@@ -46,6 +49,7 @@
     "@nuxt/test-utils": "^3.14.3",
     "@nuxtjs/apollo": "^5.0.0-alpha.14",
     "@pinia/nuxt": "^0.5.1",
+    "@types/electron-builder": "^5.0.1",
     "@types/node": "^20.4.2",
     "@vitejs/plugin-vue": "^5.1.4",
     "@vue/test-utils": "^2.4.6",
@@ -60,6 +64,7 @@
     "nuxt-electron": "^0.7.0",
     "playwright-core": "^1.48.0",
     "postcss": "^8.4.39",
+    "sharp": "^0.33.2",
     "tailwindcss": "^3.4.5",
     "typescript": "^5.1.6",
     "vite": "^4.4.0",
