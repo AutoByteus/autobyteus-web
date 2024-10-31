@@ -1,10 +1,10 @@
 {
   "name": "autobyteus",
   "version": "1.0.0",
-  "description": "AutoByteUs Desktop Application",
+  "description": "AutoByteus Desktop Application",
   "license": "MIT",
   "author": {
-    "name": "AutoByteUs Team",
+    "name": "AutoByteus Team",
     "email": "team@autobyteus.com"
   },
   "main": "dist/electron/main.js",

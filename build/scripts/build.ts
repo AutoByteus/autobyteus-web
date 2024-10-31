@@ -27,7 +27,7 @@ const platform: PlatformType = getPlatform()
 
 const options: Configuration = {
   appId: 'com.autobyteus.app',
-  productName: 'AutoByteUs',
+  productName: 'AutoByteus',
   directories: {
     output: 'electron-dist'
   },
