@@ -38,32 +38,37 @@ yarn install
 
 ## Development
 
-### Web Development
+### Web Development (Browser-based)
 Start the development server:
 ```bash
 yarn dev
 ```
-The application will be available at `http://localhost:3000`
-
-### Electron Development
-Run the electron development environment:
-```bash
-yarn electron:dev
-```
+The application will be available at `http://localhost:3000` in your web browser. Use this command for normal frontend development when you want to work on the web version of the application.
 
 ## Building
 
 ### Web Build
+For deploying the web version:
 ```bash
 yarn build
 yarn preview  # To preview the build
 ```
 
-### Electron Build
+### Desktop Application Build
+To build the desktop application, use the appropriate command for your operating system:
+
 ```bash
-yarn electron:build
+# For Linux
+yarn build:electron:linux
+
+# For Windows
+yarn build:electron:windows
+
+# For macOS
+yarn build:electron:mac
 ```
-The built applications will be available in the `dist` directory.
+
+The built applications will be available in the `dist` directory. Use these commands when you want to create a standalone desktop application for distribution.
 
 ## Testing
 Run all tests:
@@ -94,12 +99,13 @@ yarn codegen
 
 ## Available Scripts
 
-- `yarn dev`: Start development server
-- `yarn build`: Build for production
+- `yarn dev`: Start development server (browser-based)
+- `yarn build`: Build for web production
 - `yarn test`: Run tests
-- `yarn preview`: Preview production build
-- `yarn electron:dev`: Start electron development
-- `yarn electron:build`: Build electron application
+- `yarn preview`: Preview web production build
+- `yarn build:electron:linux`: Build desktop application for Linux
+- `yarn build:electron:windows`: Build desktop application for Windows
+- `yarn build:electron:mac`: Build desktop application for macOS
 - `yarn codegen`: Generate GraphQL types
 
 ## Project Structure

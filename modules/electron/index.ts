@@ -30,6 +30,11 @@ const viteConfigPromise = new Promise<ResolvedConfig>(resolve => viteConfigResol
 let viteServerResolve: (server: ViteDevServer) => void
 const viteServerPromise = new Promise<ViteDevServer>(resolve => viteServerResolve = resolve)
 
+// Early check for BUILD_TARGET
+const isElectronBuild = process.env.BUILD_TARGET === 'electron'
+
+console.log("isElectronBuild", isElectronBuild)
+
 export default defineNuxtModule<ElectronOptions>({
   meta: {
     name: 'electron',
@@ -38,7 +43,8 @@ export default defineNuxtModule<ElectronOptions>({
       nuxt: '>=3.0.0',
     },
   },
-  hooks: {
+  defaults: {} as ElectronOptions,
+  hooks: isElectronBuild ? {
     async 'vite:extendConfig'(viteInlineConfig) {
       logger.info('Extending Vite config')
       try {
@@ -55,7 +61,7 @@ export default defineNuxtModule<ElectronOptions>({
           },
         })
 
-        if (options.renderer) {
+        if (options?.renderer) {
           logger.info('Configuring electron renderer')
           viteInlineConfig.plugins.push((await import('vite-plugin-electron-renderer')).default(options.renderer))
         }
@@ -86,6 +92,8 @@ export default defineNuxtModule<ElectronOptions>({
             base: viteConfig.base,
             outDir: viteConfig.build?.outDir
           })
+
+          if (!options?.build) return
 
           for (const config of options.build) {
             logger.info('Processing build config for entry:', config.entry)
@@ -136,6 +144,8 @@ export default defineNuxtModule<ElectronOptions>({
         logger.info('Running production build steps')
         try {
           const viteConfig = await viteConfigPromise
+          if (!options?.build) return
+
           for (const config of options.build) {
             logger.info('Building entry:', config.entry)
             config.vite ??= {}
@@ -168,8 +178,18 @@ export default defineNuxtModule<ElectronOptions>({
         throw error
       }
     },
-  },
+  } : {}, // Empty hooks object when not an electron build
   async setup(_options, _nuxt) {
+    if (!isElectronBuild) {
+      logger.info('Skipping electron module setup: BUILD_TARGET is not electron')
+      return
+    }
+
+    if (!_options || !_options.build || _options.build.length === 0) {
+      logger.info('Skipping electron module setup: No electron build options provided')
+      return
+    }
+
     logger.info('Initializing electron module')
     options = _options
     nuxt = _nuxt
@@ -187,18 +207,16 @@ export default defineNuxtModule<ElectronOptions>({
         nuxt.options.ssr = false
         logger.debug('SSR disabled')
         
-        if (process.env.BUILD_TARGET === 'electron') {
-          logger.info('Configuring for Electron build target')
-          nuxt.options.app.baseURL = './'
-          nuxt.options.app.buildAssetsDir = '/'
-          nuxt.options.router.options.hashMode = true
-          
-          logger.debug('Electron build config applied:', {
-            baseURL: nuxt.options.app.baseURL,
-            buildAssetsDir: nuxt.options.app.buildAssetsDir,
-            hashMode: nuxt.options.router.options.hashMode
-          })
-        }
+        logger.info('Configuring for Electron build target')
+        nuxt.options.app.baseURL = './'
+        nuxt.options.app.buildAssetsDir = '/'
+        nuxt.options.router.options.hashMode = true
+        
+        logger.debug('Electron build config applied:', {
+          baseURL: nuxt.options.app.baseURL,
+          buildAssetsDir: nuxt.options.app.buildAssetsDir,
+          hashMode: nuxt.options.router.options.hashMode
+        })
 
         if (!nuxt.options.dev) {
           logger.info('Configuring production settings')

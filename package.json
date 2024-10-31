@@ -21,8 +21,6 @@
     "generate:electron": "BUILD_TARGET=electron nuxt generate",
     "preview": "nuxt preview",
     "codegen": "graphql-codegen --require dotenv/config --config codegen.ts",
-    "electron:dev": "NODE_ENV=development concurrently \"yarn dev\" \"yarn electron:serve\"",
-    "electron:serve": "vite build --config vite-electron.config.ts --watch",
     "transpile-electron": "tsc -p electron/tsconfig.json",
     "build:electron": "yarn generate:electron && yarn transpile-electron && node build.js",
     "build:electron:linux": "yarn generate:electron && yarn transpile-electron && node build.js --linux",
