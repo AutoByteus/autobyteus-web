@@ -25,12 +25,17 @@
         {{ formatTimestamp(message.timestamp) }}
       </span>
     </div>
+      <!-- Display cost after messages -->
+      <div v-if="totalCost !== null" class="mt-4 text-right text-sm text-gray-600">
+        Conversation Cost: ${{ totalCost.toFixed(6) }}
+      </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import type { Conversation } from '~/types/conversation';
+  import { useWorkflowStepStore } from '~/stores/workflowStep';
 import UserMessage from '~/components/conversation/UserMessage.vue';
 import AIMessage from '~/components/conversation/AIMessage.vue';
 
@@ -38,10 +43,16 @@ const props = defineProps<{
   conversation: Conversation;
 }>();
 
-// Format the timestamp for display
+  const workflowStepStore = useWorkflowStepStore();
+  
 const formatTimestamp = (date: Date) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
+  
+  // Get the total cost of the conversation
+  const totalCost = computed(() => {
+    return workflowStepStore.getConversationCost(props.conversation.stepId);
+  });
 </script>
 
 <style scoped>

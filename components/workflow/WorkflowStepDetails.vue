@@ -20,6 +20,10 @@
     <div class="flex flex-col flex-grow">
       <!-- Conversation container -->
       <div class="flex-grow overflow-y-auto min-h-0">
+          <!-- Display the total cost -->
+          <div v-if="totalCost !== null" class="mb-4 text-right text-sm text-gray-600">
+            Total Cost: ${{ totalCost.toFixed(6) }}
+          </div>
         <Conversation v-if="activeConversation" :conversation="activeConversation" />
       </div>
 
@@ -56,6 +60,14 @@ const activeConversation = computed(() => {
   }
   return null
 })
+  
+  // Compute the total cost of the active conversation
+  const totalCost = computed(() => {
+    if (selectedStep.value) {
+      return workflowStepStore.getConversationCost(selectedStep.value.id)
+    }
+    return null
+  })
 
 const isHistoryPanelOpen = ref(false)
 const conversationHistory = computed(() => {

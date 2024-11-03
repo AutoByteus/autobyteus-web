@@ -25,6 +25,10 @@
             <p class="text-sm text-gray-700 truncate">
               {{ getConversationPreview(conversation) }}
             </p>
+          <!-- Display cost in conversation history -->
+          <p class="text-xs text-gray-500 mt-1">
+            Cost: ${{ getConversationCost(conversation.id).toFixed(6) }}
+          </p>
           </li>
         </ul>
         <button 
@@ -39,7 +43,8 @@
   
   <script setup lang="ts">
   import { defineProps, defineEmits } from 'vue'
-  import type { Conversation } from '~/stores/workflowStep'
+import type { Conversation } from '~/types/conversation'
+import { useWorkflowStepStore } from '~/stores/workflowStep'
   
   const props = defineProps<{
     isOpen: boolean
@@ -50,6 +55,8 @@
     (e: 'close'): void
     (e: 'activate', id: string): void
   }>()
+
+const workflowStepStore = useWorkflowStepStore()
   
   const formatTimestamp = (date: Date) => {
     return date.toLocaleString([], { 
@@ -68,6 +75,11 @@
     }
     return 'No messages yet'
   }
+
+// Get the cost for each conversation
+const getConversationCost = (conversationId: string) => {
+  return workflowStepStore.getConversationCostById(conversationId)
+}
   
   const close = () => {
     emit('close')

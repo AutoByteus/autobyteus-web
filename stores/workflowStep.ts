@@ -1,23 +1,20 @@
 import { defineStore } from 'pinia'
     import { useSubscription, useMutation } from '@vue/apollo-composable'
-    import { SendStepRequirement, ConfigureStepLLM, ExecuteBashCommands } from '~/graphql/mutations/workflowStepMutations'
+    import { SendStepRequirement, ConfigureStepLLM } from '~/graphql/mutations/workflowStepMutations'
     import { StepResponseSubscription } from '~/graphql/subscriptions/workflowStepSubscriptions'
     import type {
       SendStepRequirementMutation,
       SendStepRequirementMutationVariables,
       ConfigureStepLlmMutation,
       ConfigureStepLlmMutationVariables,
-      ExecuteBashCommandsMutation,
-      ExecuteBashCommandsMutationVariables,
       LlmModel,
       StepResponseSubscriptionVariables,
       StepResponseSubscription as StepResponseSubscriptionType,
       ContextFilePathInput
     } from '~/generated/graphql'
-    import type { Conversation, Message, ContextFilePath } from '~/types/conversation'
+    import type { Conversation, ContextFilePath } from '~/types/conversation'
     import apiService from '~/services/api'
     import { useWorkspaceStore } from '~/stores/workspace'
-    import { useBashCommandStore } from '~/stores/bashCommand'
     
     interface WorkflowStepState {
       stepResult: string | null;
@@ -29,6 +26,7 @@ import { defineStore } from 'pinia'
       isSubscribed: boolean;
       isSending: boolean;
       selectedLLMModel: LlmModel | null;
+  conversationCosts: Record<string, number>;
     }
     
     export const useWorkflowStepStore = defineStore('workflowStep', {
@@ -42,6 +40,7 @@ import { defineStore } from 'pinia'
         isSubscribed: false,
         isSending: false,
         selectedLLMModel: null,
+    conversationCosts: {},
       }),
       actions: {
         resetStepState(stepId: string) {
@@ -184,7 +183,17 @@ import { defineStore } from 'pinia'
     
           onResult(({ data }) => {
             if (data?.stepResponse) {
-              this.addAIMessage(stepId, data.stepResponse)
+              // stepResponse is a string that needs to be parsed
+              const stepResponseData = JSON.parse(data.stepResponse.response)
+              const { response, cost } = stepResponseData
+
+              this.addAIMessage(stepId, response)
+
+              // Store the cost
+          const activeConversationId = this.activeConversationId
+          if (activeConversationId && typeof cost === 'number') {
+            this.conversationCosts[activeConversationId] = cost
+          }
             }
           })
     
@@ -273,5 +282,15 @@ import { defineStore } from 'pinia'
           return state.conversationsByStep[stepId]?.find(c => c.id === state.activeConversationId) || null
         },
         currentContextPaths: (state): ContextFilePath[] => state.contextFilePaths,
+    getConversationCost: (state) => (stepId: string): number => {
+      const activeConversationId = state.activeConversationId
+      if (activeConversationId) {
+        return state.conversationCosts[activeConversationId] || 0
+      }
+      return 0
+    },
+    getConversationCostById: (state) => (conversationId: string): number => {
+      return state.conversationCosts[conversationId] || 0
+    }
       }
     })
