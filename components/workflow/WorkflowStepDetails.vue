@@ -1,11 +1,13 @@
 <template>
   <div v-if="selectedStep" class="flex flex-col h-full">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 sm:gap-0">
-      <h4 class="text-lg font-medium text-gray-700">Conversation</h4>
+      <h4 class="text-lg font-medium text-gray-700">Conversations</h4>
       <div class="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
         <button 
           @click="initiateNewConversation" 
-          class="w-full sm:w-auto px-4 py-2 sm:px-3 sm:py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-center">
+          class="w-full sm:w-auto px-4 py-2 sm:px-3 sm:py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-center"
+          :disabled="maxConversationsReached"
+        >
           New Conversation
         </button>
         <button 
@@ -18,9 +20,40 @@
 
     <!-- Main content area -->
     <div class="flex flex-col flex-grow">
-      <!-- Conversation container -->
-      <div class="flex-grow overflow-y-auto min-h-0">
-        <Conversation v-if="activeConversation" :conversation="activeConversation" />
+      <!-- Conversation Tabs -->
+      <div class="flex space-x-1 bg-gray-100 p-1 rounded-t overflow-x-auto">
+        <div
+          v-for="conversation in activeConversations"
+          :key="conversation.id"
+          class="flex items-center shrink-0"
+        >
+          <button
+            :class="[
+              'px-4 py-2 rounded-t text-sm font-medium flex items-center',
+              conversation.id === selectedConversationId
+                ? 'bg-white text-blue-600'
+                : 'bg-gray-200 text-gray-600 hover:bg-gray-300',
+              conversation.id.startsWith('temp-') && 'italic'
+            ]"
+            @click="selectConversation(conversation.id)"
+          >
+            <span>{{ getConversationLabel(conversation) }}</span>
+            <span
+              class="ml-2 text-gray-500 hover:text-gray-700"
+              @click.stop="closeConversation(conversation.id)"
+            >
+              ×
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Conversation Content -->
+      <div class="flex-grow overflow-y-auto bg-white min-h-0">
+        <Conversation
+          v-if="selectedConversation"
+          :conversation="selectedConversation"
+        />
       </div>
 
       <!-- Form container -->
@@ -47,20 +80,43 @@ import WorkflowStepRequirementForm from '~/components/stepRequirementForm/Workfl
 import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue';
 import Conversation from '~/components/conversation/Conversation.vue';
 
+const MAX_ACTIVE_CONVERSATIONS = 5;
+
 const workflowStore = useWorkflowStore();
 const conversationStore = useConversationStore();
 const conversationHistoryStore = useConversationHistoryStore();
 
 const selectedStep = computed(() => workflowStore.selectedStep);
-const activeConversation = computed(() => conversationStore.currentConversation);
-
+const activeConversations = computed(() => conversationStore.activeConversations);
+const selectedConversationId = computed(() => conversationStore.selectedConversationId);
+const selectedConversation = computed(() => conversationStore.selectedConversation);
 const isHistoryPanelOpen = ref(false);
 const conversationHistory = computed(() => conversationHistoryStore.getConversations);
 
+const maxConversationsReached = computed(() => 
+  activeConversations.value.length >= MAX_ACTIVE_CONVERSATIONS
+);
+
+const getConversationLabel = (conversation: any) => {
+  if (conversation.id.startsWith('temp-')) {
+    return 'New Conversation';
+  }
+  return `Conversation ${conversation.id.slice(-4)}`;
+};
+
 const initiateNewConversation = () => {
-  conversationStore.resetConversation();
-  conversationHistoryStore.reset();
-  // The actual conversation creation will occur when the user submits a requirement
+  if (!maxConversationsReached.value) {
+    conversationStore.createTemporaryConversation();
+    conversationHistoryStore.reset();
+  }
+};
+
+const selectConversation = (conversationId: string) => {
+  conversationStore.setSelectedConversationId(conversationId);
+};
+
+const closeConversation = (conversationId: string) => {
+  conversationStore.closeConversation(conversationId);
 };
 
 const showConversationHistory = () => {
@@ -75,20 +131,37 @@ const closeConversationHistory = () => {
 };
 
 const activateHistoryConversation = (conversationId: string) => {
-  conversationStore.resetConversation();
-  conversationStore.setConversationId(conversationId);
-  isHistoryPanelOpen.value = false;
+  if (!maxConversationsReached.value) {
+    conversationStore.setConversationFromHistory(conversationId);
+    isHistoryPanelOpen.value = false;
+  }
 };
 
 watch(selectedStep, (newStep, oldStep) => {
   if (newStep && newStep.id !== oldStep?.id) {
-    conversationStore.resetConversation();
+    // Reset everything when changing steps
+    conversationStore.resetConversations();
     conversationHistoryStore.reset();
   }
 }, { immediate: true });
 </script>
 
 <style scoped>
-/* Add any additional styles here */
-/* Ensure messages wrap properly on small screens */
+.conversation-tabs {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.conversation-tabs::-webkit-scrollbar {
+  height: 6px;
+}
+
+.conversation-tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.conversation-tabs::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+}
 </style>

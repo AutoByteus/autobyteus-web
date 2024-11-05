@@ -13,10 +13,11 @@ import type {
 import type { Conversation, Message, ContextFilePath } from '~/types/conversation';
 import apiService from '~/services/api';
 import { useWorkspaceStore } from '~/stores/workspace';
-import { useConversationHistoryStore } from '~/stores/conversationHistory'; // Added import
+import { useConversationHistoryStore } from '~/stores/conversationHistory';
 
 interface ConversationStoreState {
-  currentConversation: Conversation | null;
+  conversations: Map<string, Conversation>;
+  selectedConversationId: string | null;
   contextFilePaths: ContextFilePath[];
   isSubscribed: boolean;
   isSending: boolean;
@@ -25,46 +26,84 @@ interface ConversationStoreState {
 
 export const useConversationStore = defineStore('conversation', {
   state: (): ConversationStoreState => ({
-    currentConversation: null,
+    conversations: new Map(),
+    selectedConversationId: null,
     contextFilePaths: [],
     isSubscribed: false,
     isSending: false,
     userRequirement: '',
   }),
-  
+
+  getters: {
+    activeConversations: (state) => Array.from(state.conversations.values()),
+    selectedConversation: (state) => 
+      state.selectedConversationId 
+        ? state.conversations.get(state.selectedConversationId) 
+        : null,
+    currentContextPaths: (state): ContextFilePath[] => state.contextFilePaths,
+    isCurrentlySending: (state): boolean => state.isSending,
+    isConversationActive: (state): boolean => state.selectedConversationId !== null,
+    conversationMessages: (state): Message[] => 
+      state.selectedConversationId
+        ? state.conversations.get(state.selectedConversationId)?.messages || []
+        : [],
+    currentRequirement: (state): string => state.userRequirement,
+  },
+
   actions: {
-    resetConversation() {
-      this.currentConversation = null;
+    resetConversations() {
+      this.conversations.clear();
+      this.selectedConversationId = null;
+      this.resetInputState();
+    },
+
+    resetInputState() {
       this.contextFilePaths = [];
       this.isSubscribed = false;
       this.isSending = false;
       this.userRequirement = '';
     },
 
+    createTemporaryConversation() {
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const newConversation: Conversation = {
+        id: tempId,
+        messages: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      this.conversations.set(tempId, newConversation);
+      this.selectedConversationId = tempId;
+      this.resetInputState();
+    },
+
     updateUserRequirement(newRequirement: string) {
       this.userRequirement = newRequirement;
     },
 
-    addUserMessage(text: string, contextFilePaths: ContextFilePath[]) {
-      if (this.currentConversation) {
-        this.currentConversation.messages.push({
-          type: 'user',
-          text,
-          contextFilePaths,
-          timestamp: new Date(),
-        });
-        this.currentConversation.updatedAt = new Date();
+    setSelectedConversationId(conversationId: string | null) {
+      this.selectedConversationId = conversationId;
+    },
+
+    addConversation(conversation: Conversation) {
+      this.conversations.set(conversation.id, conversation);
+      this.selectedConversationId = conversation.id;
+    },
+
+    closeConversation(conversationId: string) {
+      this.conversations.delete(conversationId);
+      if (this.selectedConversationId === conversationId) {
+        const nextConversation = this.activeConversations[0];
+        this.selectedConversationId = nextConversation?.id || null;
       }
     },
 
-    addAIMessage(message: string) {
-      if (this.currentConversation) {
-        this.currentConversation.messages.push({
-          type: 'ai',
-          text: message,
-          timestamp: new Date(),
-        });
-        this.currentConversation.updatedAt = new Date();
+    addMessageToConversation(conversationId: string, message: Message) {
+      const conversation = this.conversations.get(conversationId);
+      if (conversation) {
+        conversation.messages.push(message);
+        conversation.updatedAt = new Date().toISOString();
+        this.conversations.set(conversationId, { ...conversation });
       }
     },
 
@@ -88,7 +127,7 @@ export const useConversationStore = defineStore('conversation', {
           stepId,
           contextFilePaths: formattedContextFilePaths,
           requirement: this.userRequirement,
-          conversationId: this.currentConversation?.id || null,
+          conversationId: this.selectedConversationId?.startsWith('temp-') ? null : this.selectedConversationId,
           llmModel: llmModel || null,
         };
 
@@ -96,29 +135,35 @@ export const useConversationStore = defineStore('conversation', {
 
         if (result?.data?.sendStepRequirement) {
           const conversation_id = result.data.sendStepRequirement;
+          
+          // If we had a temporary conversation, remove it
+          if (this.selectedConversationId?.startsWith('temp-')) {
+            this.conversations.delete(this.selectedConversationId);
+          }
 
-          if (!this.currentConversation || this.currentConversation.id !== conversation_id) {
-            this.currentConversation = {
+          if (!this.conversations.has(conversation_id)) {
+            const newConversation: Conversation = {
               id: conversation_id,
               messages: [],
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             };
+            this.addConversation(newConversation);
           }
 
-          if (llmModel) {
-            this.addUserMessage(this.userRequirement, this.contextFilePaths);
-            this.clearContextFilePaths();
-          } else {
-            this.addUserMessage(this.userRequirement, this.contextFilePaths);
-          }
+          this.addMessageToConversation(conversation_id, {
+            type: 'user',
+            text: this.userRequirement,
+            contextFilePaths: this.contextFilePaths,
+            timestamp: new Date(),
+          });
 
+          this.clearContextFilePaths();
           this.subscribeToStepResponse(workspaceId, stepId, conversation_id);
-          this.userRequirement = ''; // Clear the requirement after sending
+          this.userRequirement = '';
 
-          // Add the new conversation to history by fetching the updated history
           const conversationHistoryStore = useConversationHistoryStore();
-          await conversationHistoryStore.fetchConversationHistory(); // Ensure the new conversation is included
+          await conversationHistoryStore.fetchConversationHistory();
         } else {
           throw new Error('Failed to send step requirement');
         }
@@ -131,15 +176,23 @@ export const useConversationStore = defineStore('conversation', {
     },
 
     subscribeToStepResponse(workspaceId: string, stepId: string, conversationId: string) {
-      const { onResult, onError } = useSubscription<StepResponseSubscriptionType, StepResponseSubscriptionVariables>(StepResponseSubscription, {
-        workspaceId,
-        stepId,
-        conversationId,
-      });
+      const { onResult, onError } = useSubscription<StepResponseSubscriptionType, StepResponseSubscriptionVariables>(
+        StepResponseSubscription,
+        {
+          workspaceId,
+          stepId,
+          conversationId,
+        }
+      );
 
       onResult(({ data }) => {
         if (data?.stepResponse) {
-          this.addAIMessage(data.stepResponse);
+          const { conversationId, message } = data.stepResponse;
+          this.addMessageToConversation(conversationId, {
+            type: 'ai',
+            text: message,
+            timestamp: new Date(),
+          });
         }
       });
 
@@ -183,27 +236,21 @@ export const useConversationStore = defineStore('conversation', {
     },
 
     activateConversation(conversationId: string) {
-      console.log(`Activating conversation with ID: ${conversationId}`);
-      // Optional: Additional logic can be added here if needed
-    },
-
-    // Added method to set conversation by ID
-    setConversationId(conversationId: string) {
-      const conversationHistoryStore = useConversationHistoryStore();
-      const conversation = conversationHistoryStore.getConversations.find(conv => conv.id === conversationId);
-      if (conversation) {
-        this.currentConversation = { ...conversation };
+      if (this.conversations.has(conversationId)) {
+        this.selectedConversationId = conversationId;
       } else {
         console.warn(`Conversation with ID ${conversationId} not found.`);
       }
     },
-  },
 
-  getters: {
-    currentContextPaths: (state): ContextFilePath[] => state.contextFilePaths,
-    isCurrentlySending: (state): boolean => state.isSending,
-    isConversationActive: (state): boolean => state.currentConversation !== null,
-    conversationMessages: (state): Message[] => state.currentConversation?.messages || [],
-    currentRequirement: (state): string => state.userRequirement,
+    setConversationFromHistory(conversationId: string) {
+      const conversationHistoryStore = useConversationHistoryStore();
+      const conversation = conversationHistoryStore.getConversations.find(conv => conv.id === conversationId);
+      if (conversation) {
+        this.addConversation({ ...conversation });
+      } else {
+        console.warn(`Conversation with ID ${conversationId} not found in history.`);
+      }
+    },
   },
 });

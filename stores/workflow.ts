@@ -26,8 +26,6 @@ export const useWorkflowStore = defineStore('workflow', {
     },
     setSelectedStepId(stepId: string) {
       this.selectedStepId = stepId;
-      const conversationStore = useConversationStore();
-      conversationStore.resetConversation();
     },
     async fetchWorkflowConfig(workspaceId: string) {
       this.executionStatus = 'Not Started';
