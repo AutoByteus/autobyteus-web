@@ -3,12 +3,12 @@
     <!-- Textarea container -->
     <div class="flex-grow">
       <textarea
-        v-model="userRequirement"
+        :value="userRequirement"
+        @input="updateRequirement"
         ref="textarea"
         class="w-full p-4 border-0 focus:ring-0 focus:outline-none resize-none bg-transparent"
         :style="{ height: textareaHeight + 'px', minHeight: '150px' }"
         placeholder="Enter your requirement here..."
-        @input="adjustTextareaHeight"
         @keydown="handleKeyDown"
       ></textarea>
     </div>
@@ -43,119 +43,121 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useWorkflowStore } from '~/stores/workflow'
-import { useWorkflowStepStore } from '~/stores/workflowStep'
-import { useWorkspaceStore } from '~/stores/workspace'
-import { LlmModel } from '~/generated/graphql'
+import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue';
+import { useConversationStore } from '~/stores/conversationStore';
+import { useConversationHistoryStore } from '~/stores/conversationHistory';
+import { useWorkspaceStore } from '~/stores/workspace';
+import { useWorkflowStore } from '~/stores/workflow';
+import { LlmModel } from '~/generated/graphql';
 
-const workflowStore = useWorkflowStore()
-const workflowStepStore = useWorkflowStepStore()
-const workspaceStore = useWorkspaceStore()
+const conversationStore = useConversationStore();
+const conversationHistoryStore = useConversationHistoryStore();
+const workspaceStore = useWorkspaceStore();
+const workflowStore = useWorkflowStore();
 
-const { userRequirement } = storeToRefs(workflowStepStore)
-const isSending = computed(() => workflowStepStore.isCurrentlySending)
-const textarea = ref<HTMLTextAreaElement | null>(null)
-const controlsRef = ref<HTMLDivElement | null>(null)
-const textareaHeight = ref(150) // Initial height
-const selectedModel = ref<LlmModel>(LlmModel.Claude_3_5SonnetApi)
+const userRequirement = computed(() => conversationStore.currentRequirement);
+const isSending = computed(() => conversationStore.isCurrentlySending);
+const textarea = ref<HTMLTextAreaElement | null>(null);
+const controlsRef = ref<HTMLDivElement | null>(null);
+const textareaHeight = ref(150); // Initial height
+const selectedModel = ref<LlmModel>(LlmModel.Claude_3_5SonnetApi);
 
-const llmModels = Object.values(LlmModel)
+const llmModels = Object.values(LlmModel);
 
 const isFirstMessage = () => {
-  const stepId = workflowStore.selectedStep?.id
-  return stepId ? workflowStepStore.isFirstMessage(stepId) : false
-}
+  return !conversationStore.currentConversation || conversationStore.conversationMessages.length === 0;
+};
+
+const updateRequirement = (event: Event) => {
+  const target = event.target as HTMLTextAreaElement;
+  conversationStore.updateUserRequirement(target.value);
+  adjustTextareaHeight();
+};
 
 const handleSend = async () => {
   if (!userRequirement.value.trim()) {
-    alert('Please enter a user requirement before sending.')
-    return
+    alert('Please enter a user requirement before sending.');
+    return;
   }
 
-  const workspaceId = workspaceStore.currentSelectedWorkspaceId
-  const stepId = workflowStore.selectedStep?.id
+  const workspaceId = workspaceStore.currentSelectedWorkspaceId;
+  const selectedStep = workflowStore.selectedStep;
 
-  if (!workspaceId || !stepId) {
-    alert('Workspace or step is not selected.')
-    return
+  if (!workspaceId || !selectedStep) {
+    alert('Workspace or step is not selected.');
+    return;
   }
 
   try {
-    if (!workflowStepStore.getActiveConversationId(stepId)) {
-      workflowStepStore.createNewConversation(stepId)
-    }
+    const llmModelToSend = isFirstMessage() ? selectedModel.value : undefined;
 
-    await workflowStepStore.sendStepRequirementAndSubscribe(
+    await conversationStore.sendStepRequirementAndSubscribe(
       workspaceId,
-      stepId,
+      selectedStep.id,
       userRequirement.value,
-      isFirstMessage() ? selectedModel.value : undefined
-    )
+      llmModelToSend
+    );
 
-    userRequirement.value = ''
-    adjustTextareaHeight()
+    adjustTextareaHeight();
   } catch (error) {
-    console.error('Error sending requirement:', error)
-    alert('Failed to send requirement. Please try again.')
+    console.error('Error sending requirement:', error);
+    alert('Failed to send requirement. Please try again.');
   }
-}
+};
 
 const adjustTextareaHeight = () => {
   if (textarea.value) {
     // Reset height to allow proper calculation
-    textarea.value.style.height = '150px'
+    textarea.value.style.height = '150px';
     
     // Get the scroll height and controls height
-    const scrollHeight = textarea.value.scrollHeight
-    const controlsHeight = controlsRef.value?.offsetHeight || 0
+    const scrollHeight = textarea.value.scrollHeight;
+    const controlsHeight = controlsRef.value?.offsetHeight || 0;
     
     // Calculate available height (viewport height minus other elements)
-    const maxHeight = window.innerHeight * 0.6 // 60% of viewport height
+    const maxHeight = window.innerHeight * 0.6; // 60% of viewport height
     
     // Calculate new height considering minimum, maximum, and controls
     const newHeight = Math.min(
       Math.max(scrollHeight, 150), // Min height 150px
       maxHeight - controlsHeight - 40 // Subtract controls height and padding
-    )
+    );
     
     // Apply the new height
-    textarea.value.style.height = `${newHeight}px`
-    textareaHeight.value = newHeight
+    textarea.value.style.height = `${newHeight}px`;
+    textareaHeight.value = newHeight;
   }
-}
+};
 
 const handleKeyDown = (event: KeyboardEvent) => {
   if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.altKey) {
-    event.preventDefault()
-    handleSend()
+    event.preventDefault();
+    handleSend();
   }
-}
+};
 
 // Resize handler for window resize
 const handleResize = () => {
-  adjustTextareaHeight()
-}
+  adjustTextareaHeight();
+};
 
 onMounted(() => {
   nextTick(() => {
-    adjustTextareaHeight()
-    window.addEventListener('resize', handleResize)
-  })
-})
+    adjustTextareaHeight();
+    window.addEventListener('resize', handleResize);
+  });
+});
 
 // Clean up resize listener
 onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-})
+  window.removeEventListener('resize', handleResize);
+});
 
 watch(userRequirement, () => {
-  workflowStepStore.updateUserRequirement(userRequirement.value)
   nextTick(() => {
-    adjustTextareaHeight()
-  })
-})
+    adjustTextareaHeight();
+  });
+});
 </script>
 
 <style scoped>

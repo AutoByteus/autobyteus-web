@@ -18,7 +18,7 @@
       <AIMessage
         v-else
         :message="message"
-        :conversation-id="conversation.id"
+        :conversation-id="conversationId"
         :message-index="index"
       />
       <span class="text-xs text-gray-500 absolute bottom-1 right-2">
@@ -29,18 +29,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed } from 'vue';
 import type { Conversation } from '~/types/conversation';
 import UserMessage from '~/components/conversation/UserMessage.vue';
 import AIMessage from '~/components/conversation/AIMessage.vue';
+import { useConversationStore } from '~/stores/conversationStore';
 
 const props = defineProps<{
   conversation: Conversation;
 }>();
 
-// Format the timestamp for display
-const formatTimestamp = (date: Date) => {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const conversationStore = useConversationStore();
+
+const conversationId = computed(() => conversationStore.currentConversation?.id || '');
+
+const formatTimestamp = (date: string) => {
+  const parsedDate = new Date(date);
+  return parsedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 </script>
 

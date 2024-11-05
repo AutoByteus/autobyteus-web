@@ -1,10 +1,10 @@
 <template>
   <div
-      class="bg-gray-50 hover:shadow-md transition-shadow duration-200"
-      @dragover.prevent
-      @drop.prevent="onFileDrop"
-      @paste="onPaste"
-    >
+    class="bg-gray-50 hover:shadow-md transition-shadow duration-200"
+    @dragover.prevent
+    @drop.prevent="onFileDrop"
+    @paste="onPaste"
+  >
     <div 
       class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-100 transition-colors duration-300"
       @click="toggleCollapse"
@@ -74,98 +74,97 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useWorkflowStepStore } from '~/stores/workflowStep'
-import { getFilePathsFromFolder, determineFileType } from '~/utils/fileExplorer/fileUtils'
-import type { TreeNode } from '~/utils/fileExplorer/TreeNode'
-import type { ContextFilePath } from '~/types/conversation'
+import { ref, computed } from 'vue';
+import { useConversationStore } from '~/stores/conversationStore';
+import { getFilePathsFromFolder, determineFileType } from '~/utils/fileExplorer/fileUtils';
+import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
 
-const workflowStepStore = useWorkflowStepStore()
+const conversationStore = useConversationStore();
 
-const contextFilePaths = computed(() => workflowStepStore.currentContextPaths)
-const isCollapsed = ref(contextFilePaths.value.length === 0)
-const uploadingFiles = ref<string[]>([])
+const contextFilePaths = computed(() => conversationStore.currentContextPaths);
+const isCollapsed = ref(contextFilePaths.value.length === 0);
+const uploadingFiles = ref<string[]>([]);
 
 const toggleCollapse = () => {
   if (contextFilePaths.value.length > 0) {
-    isCollapsed.value = !isCollapsed.value
+    isCollapsed.value = !isCollapsed.value;
   }
-}
+};
 
 const addContextFilePath = (filePath: string, fileType: 'text' | 'image') => {
-  workflowStepStore.addContextFilePath({ path: filePath, type: fileType })
-  isCollapsed.value = false
-}
+  conversationStore.addContextFilePath({ path: filePath, type: fileType });
+  isCollapsed.value = false;
+};
 
 const removeContextFilePath = (index: number) => {
-  workflowStepStore.removeContextFilePath(index)
+  conversationStore.removeContextFilePath(index);
   if (contextFilePaths.value.length === 0) {
-    isCollapsed.value = true
+    isCollapsed.value = true;
   }
-}
+};
 
 const clearAllContextFilePaths = () => {
-  workflowStepStore.clearContextFilePaths()
-  isCollapsed.value = true
-}
+  conversationStore.clearContextFilePaths();
+  isCollapsed.value = true;
+};
 
 const onFileDrop = async (event: DragEvent) => {
-  const dragData = event.dataTransfer?.getData('application/json')
+  const dragData = event.dataTransfer?.getData('application/json');
   if (dragData) {
-    const droppedNode: TreeNode = JSON.parse(dragData)
-    const filePaths = getFilePathsFromFolder(droppedNode)
+    const droppedNode: TreeNode = JSON.parse(dragData);
+    const filePaths = getFilePathsFromFolder(droppedNode);
     for (const filePath of filePaths) {
-      const fileType = await determineFileType(filePath)
-      addContextFilePath(filePath, fileType)
+      const fileType = await determineFileType(filePath);
+      addContextFilePath(filePath, fileType);
     }
   } else if (event.dataTransfer?.files.length) {
     for (const file of event.dataTransfer.files) {
-      const tempPath = URL.createObjectURL(file)
-      const fileType = file.type.startsWith('image/') ? 'image' : 'text'
-      addContextFilePath(tempPath, fileType)
-      uploadingFiles.value.push(tempPath)
+      const tempPath = URL.createObjectURL(file);
+      const fileType = file.type.startsWith('image/') ? 'image' : 'text';
+      addContextFilePath(tempPath, fileType);
+      uploadingFiles.value.push(tempPath);
       
       try {
-        const uploadedFilePath = await workflowStepStore.uploadFile(file)
-        uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath)
-        workflowStepStore.removeContextFilePath(contextFilePaths.value.findIndex(cf => cf.path === tempPath))
-        addContextFilePath(uploadedFilePath, fileType)
+        const uploadedFilePath = await conversationStore.uploadFile(file);
+        uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath);
+        conversationStore.removeContextFilePath(contextFilePaths.value.findIndex(cf => cf.path === tempPath));
+        addContextFilePath(uploadedFilePath, fileType);
       } catch (error) {
-        console.error('Error uploading file:', error)
-        workflowStepStore.removeContextFilePath(contextFilePaths.value.findIndex(cf => cf.path === tempPath))
-        uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath)
+        console.error('Error uploading file:', error);
+        conversationStore.removeContextFilePath(contextFilePaths.value.findIndex(cf => cf.path === tempPath));
+        uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath);
       }
     }
   }
-  isCollapsed.value = false
-}
+  isCollapsed.value = false;
+};
 
 const onPaste = async (event: ClipboardEvent) => {
-  const items = event.clipboardData?.items
+  const items = event.clipboardData?.items;
   if (items) {
     for (const item of items) {
       if (item.type.startsWith('image/')) {
-        const blob = item.getAsFile()
+        const blob = item.getAsFile();
         if (blob) {
-          const tempPath = URL.createObjectURL(blob)
-          addContextFilePath(tempPath, 'image')
-          uploadingFiles.value.push(tempPath)
+          const tempPath = URL.createObjectURL(blob);
+          addContextFilePath(tempPath, 'image');
+          uploadingFiles.value.push(tempPath);
           
           try {
-            const uploadedFilePath = await workflowStepStore.uploadFile(blob)
-            uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath)
-            workflowStepStore.removeContextFilePath(contextFilePaths.value.findIndex(cf => cf.path === tempPath))
-            addContextFilePath(uploadedFilePath, 'image')
+            const uploadedFilePath = await conversationStore.uploadFile(blob);
+            uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath);
+            conversationStore.removeContextFilePath(contextFilePaths.value.findIndex(cf => cf.path === tempPath));
+            addContextFilePath(uploadedFilePath, 'image');
           } catch (error) {
-            console.error('Error uploading pasted image:', error)
-            workflowStepStore.removeContextFilePath(contextFilePaths.value.findIndex(cf => cf.path === tempPath))
-            uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath)
+            console.error('Error uploading pasted image:', error);
+            conversationStore.removeContextFilePath(contextFilePaths.value.findIndex(cf => cf.path === tempPath));
+            uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath);
           }
         }
       }
     }
   }
-}
+};
 </script>
 
 <style scoped>

@@ -1,4 +1,4 @@
-<!-- File: autobyteus-web/components/workflow/UserMessage.vue -->
+<!-- File: autobyteus-web/components/conversation/UserMessage.vue -->
 <!-- This component renders a user message -->
 
 <template>
@@ -21,7 +21,11 @@
 <script setup lang="ts">
 import type { UserMessage } from '~/types/conversation';
 
-defineProps<{
+const props = defineProps<{
   message: UserMessage;
 }>();
 </script>
+
+<style scoped>
+/* Add any additional styles here */
+</style>

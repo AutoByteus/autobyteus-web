@@ -4,7 +4,7 @@
       <h4 class="text-lg font-medium text-gray-700">Conversation</h4>
       <div class="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
         <button 
-          @click="createNewConversation" 
+          @click="initiateNewConversation" 
           class="w-full sm:w-auto px-4 py-2 sm:px-3 sm:py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-center">
           New Conversation
         </button>
@@ -39,56 +39,56 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useWorkflowStore } from '~/stores/workflow'
-import { useWorkflowStepStore } from '~/stores/workflowStep'
-import WorkflowStepRequirementForm from '~/components/stepRequirementForm/WorkflowStepRequirementForm.vue'
-import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue'
-import Conversation from '~/components/conversation/Conversation.vue'
+import { computed, ref, watch } from 'vue';
+import { useWorkflowStore } from '~/stores/workflow';
+import { useConversationStore } from '~/stores/conversationStore';
+import { useConversationHistoryStore } from '~/stores/conversationHistory';
+import WorkflowStepRequirementForm from '~/components/stepRequirementForm/WorkflowStepRequirementForm.vue';
+import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue';
+import Conversation from '~/components/conversation/Conversation.vue';
 
-const workflowStore = useWorkflowStore()
-const workflowStepStore = useWorkflowStepStore()
+const workflowStore = useWorkflowStore();
+const conversationStore = useConversationStore();
+const conversationHistoryStore = useConversationHistoryStore();
 
-const selectedStep = computed(() => workflowStore.selectedStep)
-const activeConversation = computed(() => {
-  if (selectedStep.value) {
-    return workflowStepStore.activeConversation(selectedStep.value.id)
-  }
-  return null
-})
+const selectedStep = computed(() => workflowStore.selectedStep);
+const activeConversation = computed(() => conversationStore.currentConversation);
 
-const isHistoryPanelOpen = ref(false)
-const conversationHistory = computed(() => {
-  if (selectedStep.value) {
-    return workflowStepStore.getConversationHistory(selectedStep.value.id)
-  }
-  return []
-})
+const isHistoryPanelOpen = ref(false);
+const conversationHistory = computed(() => conversationHistoryStore.getConversations);
 
-const createNewConversation = () => {
-  if (selectedStep.value) {
-    workflowStepStore.createNewConversation(selectedStep.value.id)
-  }
-}
+const initiateNewConversation = () => {
+  conversationStore.resetConversation();
+  conversationHistoryStore.reset();
+  // The actual conversation creation will occur when the user submits a requirement
+};
 
 const showConversationHistory = () => {
-  isHistoryPanelOpen.value = true
-}
+  if (selectedStep.value && selectedStep.value.name) {
+    conversationHistoryStore.setStepName(selectedStep.value.name);
+  }
+  isHistoryPanelOpen.value = true;
+};
 
 const closeConversationHistory = () => {
-  isHistoryPanelOpen.value = false
-}
+  isHistoryPanelOpen.value = false;
+};
 
 const activateHistoryConversation = (conversationId: string) => {
-  if (selectedStep.value) {
-    workflowStepStore.activateConversation(selectedStep.value.id, conversationId)
-  }
-  isHistoryPanelOpen.value = false
-}
+  conversationStore.resetConversation();
+  conversationStore.setConversationId(conversationId);
+  isHistoryPanelOpen.value = false;
+};
 
 watch(selectedStep, (newStep, oldStep) => {
   if (newStep && newStep.id !== oldStep?.id) {
-    workflowStepStore.resetStepState(newStep.id)
+    conversationStore.resetConversation();
+    conversationHistoryStore.reset();
   }
-}, { immediate: true })
+}, { immediate: true });
 </script>
+
+<style scoped>
+/* Add any additional styles here */
+/* Ensure messages wrap properly on small screens */
+</style>

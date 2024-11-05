@@ -33,15 +33,18 @@ import { usePrismHighlighter } from '~/composables/usePrismHighlighter';
 import TextSegment from '~/components/conversation/segments/TextSegment.vue';
 import FileContentSegment from '~/components/conversation/segments/FileContentSegment.vue';
 import BashCommandSegment from '~/components/conversation/segments/BashCommandSegment.vue';
+import { computed } from 'vue';
 
 const props = defineProps<{
   message: AIMessage;
-  conversationId: string;
+  conversationId: string | null;
   messageIndex: number;
 }>();
 
 // Initialize Prism highlighter
 usePrismHighlighter();
+
+const conversationIdComputed = computed(() => props.conversationId);
 </script>
 
 <style scoped>

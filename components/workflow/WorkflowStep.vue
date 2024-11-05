@@ -11,16 +11,19 @@
 </template>
 
 <script setup lang="ts">
-import { useWorkflowStore } from '~/stores/workflow'
-import type { Step } from '../../types/workflow'
+import { useWorkflowStore } from '~/stores/workflow';
+import { useConversationStore } from '~/stores/conversationStore';
+import type { Step } from '../../types/workflow';
 
 const props = defineProps<{ 
   step: Step; 
   isSelected: boolean;
-}>()
-const workflowStore = useWorkflowStore()
+}>();
+const workflowStore = useWorkflowStore();
+const conversationStore = useConversationStore();
 
 const selectStep = (step: Step) => {
-  workflowStore.setSelectedStepId(step.id)
-}
+  workflowStore.setSelectedStepId(step.id);
+  conversationStore.resetConversation();
+};
 </script>
