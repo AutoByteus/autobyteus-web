@@ -24,6 +24,28 @@
           {{ model }}
         </option>
       </select>
+      
+      <!-- Audio recorder wrapper -->
+      <div class="w-full sm:w-auto mb-2 sm:mb-0 sm:mr-2">
+        <AudioRecorder
+          v-if="showAudioRecorder"
+          :onRecordingComplete="handleAudioRecordingComplete"
+          @close="showAudioRecorder = false"
+        />
+      </div>
+      
+      <!-- Voice record toggle button -->
+      <button
+        @click="toggleAudioRecorder"
+        class="w-full sm:w-auto mb-2 sm:mb-0 sm:mr-2 px-4 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transition-all duration-300 flex items-center justify-center shadow-sm"
+      >
+        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+        </svg>
+        <span>Voice</span>
+      </button>
+
+      <!-- Send button -->
       <button 
         @click="handleSend"
         :disabled="isSending || !userRequirement.trim()"
@@ -49,6 +71,7 @@ import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useWorkflowStore } from '~/stores/workflow';
 import { LlmModel } from '~/generated/graphql';
+import AudioRecorder from '~/components/AudioRecorder.vue';
 
 const conversationStore = useConversationStore();
 const conversationHistoryStore = useConversationHistoryStore();
@@ -59,8 +82,9 @@ const userRequirement = computed(() => conversationStore.currentRequirement);
 const isSending = computed(() => conversationStore.isCurrentlySending);
 const textarea = ref<HTMLTextAreaElement | null>(null);
 const controlsRef = ref<HTMLDivElement | null>(null);
-const textareaHeight = ref(150); // Initial height
+const textareaHeight = ref(150);
 const selectedModel = ref<LlmModel>(LlmModel.Claude_3_5SonnetApi);
+const showAudioRecorder = ref(false);
 
 const llmModels = Object.values(LlmModel);
 
@@ -72,6 +96,27 @@ const updateRequirement = (event: Event) => {
   const target = event.target as HTMLTextAreaElement;
   conversationStore.updateUserRequirement(target.value);
   adjustTextareaHeight();
+};
+
+const toggleAudioRecorder = () => {
+  showAudioRecorder.value = !showAudioRecorder.value;
+};
+
+const handleAudioRecordingComplete = async (blob: Blob) => {
+  try {
+    // Convert blob to base64
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onloadend = () => {
+      const base64data = reader.result as string;
+      // Here you would typically send this data to your backend
+      console.log('Audio recording complete, base64 data available');
+    };
+    showAudioRecorder.value = false;
+  } catch (error) {
+    console.error('Error handling audio recording:', error);
+    alert('Failed to process audio recording. Please try again.');
+  }
 };
 
 const handleSend = async () => {
@@ -107,23 +152,14 @@ const handleSend = async () => {
 
 const adjustTextareaHeight = () => {
   if (textarea.value) {
-    // Reset height to allow proper calculation
     textarea.value.style.height = '150px';
-    
-    // Get the scroll height and controls height
     const scrollHeight = textarea.value.scrollHeight;
     const controlsHeight = controlsRef.value?.offsetHeight || 0;
-    
-    // Calculate available height (viewport height minus other elements)
-    const maxHeight = window.innerHeight * 0.6; // 60% of viewport height
-    
-    // Calculate new height considering minimum, maximum, and controls
+    const maxHeight = window.innerHeight * 0.6;
     const newHeight = Math.min(
-      Math.max(scrollHeight, 150), // Min height 150px
-      maxHeight - controlsHeight - 40 // Subtract controls height and padding
+      Math.max(scrollHeight, 150),
+      maxHeight - controlsHeight - 40
     );
-    
-    // Apply the new height
     textarea.value.style.height = `${newHeight}px`;
     textareaHeight.value = newHeight;
   }
@@ -136,7 +172,6 @@ const handleKeyDown = (event: KeyboardEvent) => {
   }
 };
 
-// Resize handler for window resize
 const handleResize = () => {
   adjustTextareaHeight();
 };
@@ -148,7 +183,6 @@ onMounted(() => {
   });
 });
 
-// Clean up resize listener
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
 });
