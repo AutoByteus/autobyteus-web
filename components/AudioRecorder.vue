@@ -12,14 +12,11 @@
     </button>
     <audio v-if="recordedBlobUrl" :src="recordedBlobUrl" controls class="mt-4"></audio>
     
-    <!-- Transcription Results -->
-    <div v-if="transcriptionStore.isTranscribing" class="mt-4">
+    <!-- Show transcription results only when not recording and transcription exists -->
+    <div v-if="!recording && transcriptionStore.isTranscribing" class="mt-4">
       <p class="text-gray-600">Transcribing audio...</p>
     </div>
-    <div v-else-if="transcriptionStore.transcription" class="mt-4 p-4 bg-gray-50 rounded-md">
-      <p class="text-gray-800">{{ transcriptionStore.transcription }}</p>
-    </div>
-    <div v-if="transcriptionStore.error" class="mt-4 p-4 bg-red-50 text-red-600 rounded-md">
+    <div v-if="!recording && transcriptionStore.error" class="mt-4 p-4 bg-red-50 text-red-600 rounded-md">
       {{ transcriptionStore.error }}
     </div>
   </div>
@@ -61,10 +58,11 @@ const getMimeType = () => {
 };
 
 const startRecording = async () => {
+  // Reset all states before starting new recording
   recordedBlob.value = null;
   recordedBlobUrl.value = null;
   duration.value = 0;
-  transcriptionStore.$reset();
+  transcriptionStore.$reset(); // Reset transcription store
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -82,7 +80,7 @@ const startRecording = async () => {
       chunks.value = [];
       props.onRecordingComplete(blob);
       
-      // Start transcription
+      // Start transcription only after recording is complete
       await transcriptionStore.transcribeAudio(blob);
     });
     mediaRecorder.value.start();

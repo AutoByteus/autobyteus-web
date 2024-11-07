@@ -14,9 +14,16 @@ export const useTranscriptionStore = defineStore('transcription', {
   }),
 
   actions: {
+    $reset() {
+      this.transcription = null;
+      this.isTranscribing = false;
+      this.error = null;
+    },
+
     async transcribeAudio(blob: Blob) {
       this.isTranscribing = true;
       this.error = null;
+      this.transcription = null; // Reset transcription before starting new one
 
       try {
         const audioContent = await this.blobToBase64(blob);
