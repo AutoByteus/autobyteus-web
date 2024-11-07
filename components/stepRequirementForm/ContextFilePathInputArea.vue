@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useConversationStore } from '~/stores/conversationStore';
 import { getFilePathsFromFolder, determineFileType } from '~/utils/fileExplorer/fileUtils';
 import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
@@ -84,6 +84,13 @@ const conversationStore = useConversationStore();
 const contextFilePaths = computed(() => conversationStore.currentContextPaths);
 const isCollapsed = ref(contextFilePaths.value.length === 0);
 const uploadingFiles = ref<string[]>([]);
+
+// Watch for changes in contextFilePaths and ensure section is expanded when new results arrive
+watch(contextFilePaths, (newPaths) => {
+  if (newPaths.length > 0) {
+    isCollapsed.value = false;
+  }
+});
 
 const toggleCollapse = () => {
   if (contextFilePaths.value.length > 0) {
