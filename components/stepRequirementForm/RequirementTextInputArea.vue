@@ -25,24 +25,24 @@
         </option>
       </select>
       
-      <!-- Audio recorder wrapper -->
-      <div class="w-full sm:w-auto mb-2 sm:mb-0 sm:mr-2">
-        <AudioRecorder
-          v-if="showAudioRecorder"
-          :onRecordingComplete="handleAudioRecordingComplete"
-          @close="showAudioRecorder = false"
-        />
-      </div>
+      <!-- Audio recorder component -->
+      <AudioRecorder
+        :recording="recording"
+        :onRecordingComplete="handleAudioRecordingComplete"
+      />
       
       <!-- Voice record toggle button -->
       <button
-        @click="toggleAudioRecorder"
-        class="w-full sm:w-auto mb-2 sm:mb-0 sm:mr-2 px-4 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transition-all duration-300 flex items-center justify-center shadow-sm"
+        @click="toggleRecording"
+        :class="[
+          'w-full sm:w-auto mb-2 sm:mb-0 sm:mr-2 px-4 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all duration-300 flex items-center justify-center shadow-sm text-white',
+          recording ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+        ]"
       >
-        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <svg :class="{'animate-pulse': recording}" class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
         </svg>
-        <span>Voice</span>
+        <span>{{ recording ? 'Recording...' : 'Start Recording' }}</span>
       </button>
 
       <!-- Search Context Button -->
@@ -87,12 +87,12 @@ import { useWorkspaceStore } from '~/stores/workspace';
 import { useWorkflowStore } from '~/stores/workflow';
 import { LlmModel } from '~/generated/graphql';
 import AudioRecorder from '~/components/AudioRecorder.vue';
-import { useTranscriptionStore } from '~/stores/transcriptionStore'; // Import transcription store
+import { useTranscriptionStore } from '~/stores/transcriptionStore';
 
 const conversationStore = useConversationStore();
 const workspaceStore = useWorkspaceStore();
 const workflowStore = useWorkflowStore();
-const transcriptionStore = useTranscriptionStore(); // Initialize transcription store
+const transcriptionStore = useTranscriptionStore();
 
 const userRequirement = computed(() => conversationStore.currentRequirement);
 const isSending = computed(() => conversationStore.isCurrentlySending);
@@ -100,7 +100,7 @@ const textarea = ref<HTMLTextAreaElement | null>(null);
 const controlsRef = ref<HTMLDivElement | null>(null);
 const textareaHeight = ref(150);
 const selectedModel = ref<LlmModel>(LlmModel.Claude_3_5SonnetApi);
-const showAudioRecorder = ref(false);
+const recording = ref(false);
 const isSearching = ref(false);
 
 const llmModels = Object.values(LlmModel);
@@ -115,8 +115,8 @@ const updateRequirement = (event: Event) => {
   adjustTextareaHeight();
 };
 
-const toggleAudioRecorder = () => {
-  showAudioRecorder.value = !showAudioRecorder.value;
+const toggleRecording = () => {
+  recording.value = !recording.value;
 };
 
 const handleAudioRecordingComplete = async (blob: Blob) => {
@@ -129,7 +129,6 @@ const handleAudioRecordingComplete = async (blob: Blob) => {
       // Here you would typically send this data to your backend
       console.log('Audio recording complete, base64 data available');
     };
-    showAudioRecorder.value = false;
   } catch (error) {
     console.error('Error handling audio recording:', error);
     alert('Failed to process audio recording. Please try again.');
@@ -227,8 +226,6 @@ onMounted(() => {
     (newTranscription) => {
       if (newTranscription) {
         conversationStore.updateUserRequirement(newTranscription);
-        // Optionally, clear the transcription after updating
-        // transcriptionStore.clearTranscription(); // If such a method exists
       }
     }
   );
@@ -260,5 +257,24 @@ textarea::-webkit-scrollbar {
 textarea {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
+}
+
+svg.animate-pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 </style>

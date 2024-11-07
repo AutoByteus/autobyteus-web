@@ -1,15 +1,5 @@
 <template>
   <div class="flex flex-col justify-center items-center">
-    <button
-      type="button"
-      @click="handleToggleRecording"
-      :class="[
-        'm-2 inline-flex justify-center rounded-md border border-transparent px-4 py-2 text-sm font-medium text-white focus:outline-none transition-all duration-200',
-        recording ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600',
-      ]"
-    >
-      {{ recording ? `Stop Recording (${formatAudioTimestamp(duration)})` : 'Start Recording' }}
-    </button>
     <audio v-if="recordedBlobUrl" :src="recordedBlobUrl" controls class="mt-4"></audio>
     
     <!-- Show transcription results only when not recording and transcription exists -->
@@ -23,11 +13,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue';
-import { formatAudioTimestamp } from '~/utils/AudioUtils';
+import { ref, watch, onUnmounted } from 'vue';
 import { useTranscriptionStore } from '~/stores/transcriptionStore';
 
 const props = defineProps({
+  recording: {
+    type: Boolean,
+    required: true,
+  },
   onRecordingComplete: {
     type: Function,
     required: true,
@@ -35,8 +28,6 @@ const props = defineProps({
 });
 
 const transcriptionStore = useTranscriptionStore();
-const recording = ref(false);
-const duration = ref(0);
 const recordedBlob = ref<Blob | null>(null);
 const recordedBlobUrl = ref<string | null>(null);
 const mediaRecorder = ref<MediaRecorder | null>(null);
@@ -61,7 +52,6 @@ const startRecording = async () => {
   // Reset all states before starting new recording
   recordedBlob.value = null;
   recordedBlobUrl.value = null;
-  duration.value = 0;
   transcriptionStore.$reset(); // Reset transcription store
 
   try {
@@ -82,13 +72,13 @@ const startRecording = async () => {
       
       // Start transcription only after recording is complete
       await transcriptionStore.transcribeAudio(blob);
+      
+      // Stop all tracks to release the microphone
+      stream.getTracks().forEach(track => track.stop());
     });
     mediaRecorder.value.start();
-    recording.value = true;
 
-    timer = window.setInterval(() => {
-      duration.value += 1;
-    }, 1000);
+    // Optional: Emit an event or handle timer if needed
   } catch (error) {
     console.error('Error accessing microphone:', error);
   }
@@ -97,25 +87,28 @@ const startRecording = async () => {
 const stopRecording = () => {
   if (mediaRecorder.value && mediaRecorder.value.state === 'recording') {
     mediaRecorder.value.stop();
-    recording.value = false;
-    if (timer !== null) {
-      clearInterval(timer);
-      timer = null;
-    }
   }
 };
 
-const handleToggleRecording = () => {
-  if (recording.value) {
-    stopRecording();
-  } else {
+// Watch for changes in the recording prop to start or stop recording
+watch(() => props.recording, (newRecording) => {
+  if (newRecording) {
     startRecording();
-  }
-};
-
-onUnmounted(() => {
-  if (recording.value) {
+  } else {
     stopRecording();
   }
 });
+
+// Cleanup on component unmount
+onUnmounted(() => {
+  if (mediaRecorder.value && mediaRecorder.value.state === 'recording') {
+    mediaRecorder.value.stop();
+  }
+});
 </script>
+
+<style scoped>
+audio {
+  width: 100%;
+}
+</style>
