@@ -1,14 +1,17 @@
 import { defineStore } from 'pinia';
-import { useMutation, useSubscription } from '@vue/apollo-composable';
+import { useMutation, useSubscription, useQuery } from '@vue/apollo-composable';
 import { SendStepRequirement } from '~/graphql/mutations/workflowStepMutations';
 import { StepResponseSubscription } from '~/graphql/subscriptions/workflowStepSubscriptions';
+import { SearchContextFiles } from '~/graphql/queries/context_search_queries';
 import type {
   SendStepRequirementMutation,
   SendStepRequirementMutationVariables,
   StepResponseSubscriptionVariables,
   StepResponseSubscription as StepResponseSubscriptionType,
   ContextFilePathInput,
-  LlmModel
+  LlmModel,
+  SearchContextFilesQuery,
+  SearchContextFilesQueryVariables
 } from '~/generated/graphql';
 import type { Conversation, Message, ContextFilePath } from '~/types/conversation';
 import apiService from '~/services/api';
@@ -114,7 +117,7 @@ export const useConversationStore = defineStore('conversation', {
       llmModel?: LlmModel
     ): Promise<void> {
       const { mutate: sendStepRequirementMutation } = useMutation<SendStepRequirementMutation, SendStepRequirementMutationVariables>(SendStepRequirement);
-
+      
       this.isSending = true;
       try {
         const formattedContextFilePaths: ContextFilePathInput[] = this.contextFilePaths.map(cf => ({
@@ -136,7 +139,6 @@ export const useConversationStore = defineStore('conversation', {
         if (result?.data?.sendStepRequirement) {
           const conversation_id = result.data.sendStepRequirement;
           
-          // If we had a temporary conversation, remove it
           if (this.selectedConversationId?.startsWith('temp-')) {
             this.conversations.delete(this.selectedConversationId);
           }
@@ -252,5 +254,44 @@ export const useConversationStore = defineStore('conversation', {
         console.warn(`Conversation with ID ${conversationId} not found in history.`);
       }
     },
+
+    async searchContextFiles(requirement: string): Promise<void> {
+      const workspaceStore = useWorkspaceStore();
+      const workspaceId = workspaceStore.currentSelectedWorkspaceId;
+    
+      if (!workspaceId) {
+        throw new Error('No workspace selected');
+      }
+    
+      try {
+        const { onResult, onError } = useQuery<SearchContextFilesQuery, SearchContextFilesQueryVariables>(
+          SearchContextFiles,
+          {
+            workspaceId,
+            query: requirement
+          }
+        );
+    
+        onResult((result) => {
+          if (result.data?.hackathonSearch) {
+            this.contextFilePaths = result.data.hackathonSearch.map(path => ({
+              path,
+              type: 'text'  // All files are text files
+            }));
+          } else {
+            this.contextFilePaths = [];
+          }
+        });
+    
+        onError((error) => {
+          console.error('Error searching context files:', error);
+          throw error;
+        });
+    
+      } catch (err) {
+        console.error('Error searching context files:', err);
+        throw err;
+      }
+    }
   },
 });

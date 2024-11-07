@@ -11,12 +11,24 @@
       {{ recording ? `Stop Recording (${formatAudioTimestamp(duration)})` : 'Start Recording' }}
     </button>
     <audio v-if="recordedBlobUrl" :src="recordedBlobUrl" controls class="mt-4"></audio>
+    
+    <!-- Transcription Results -->
+    <div v-if="transcriptionStore.isTranscribing" class="mt-4">
+      <p class="text-gray-600">Transcribing audio...</p>
+    </div>
+    <div v-else-if="transcriptionStore.transcription" class="mt-4 p-4 bg-gray-50 rounded-md">
+      <p class="text-gray-800">{{ transcriptionStore.transcription }}</p>
+    </div>
+    <div v-if="transcriptionStore.error" class="mt-4 p-4 bg-red-50 text-red-600 rounded-md">
+      {{ transcriptionStore.error }}
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onUnmounted } from 'vue';
 import { formatAudioTimestamp } from '~/utils/AudioUtils';
+import { useTranscriptionStore } from '~/stores/transcriptionStore';
 
 const props = defineProps({
   onRecordingComplete: {
@@ -25,6 +37,7 @@ const props = defineProps({
   },
 });
 
+const transcriptionStore = useTranscriptionStore();
 const recording = ref(false);
 const duration = ref(0);
 const recordedBlob = ref<Blob | null>(null);
@@ -51,6 +64,7 @@ const startRecording = async () => {
   recordedBlob.value = null;
   recordedBlobUrl.value = null;
   duration.value = 0;
+  transcriptionStore.$reset();
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -67,6 +81,9 @@ const startRecording = async () => {
       recordedBlobUrl.value = URL.createObjectURL(blob);
       chunks.value = [];
       props.onRecordingComplete(blob);
+      
+      // Start transcription
+      await transcriptionStore.transcribeAudio(blob);
     });
     mediaRecorder.value.start();
     recording.value = true;

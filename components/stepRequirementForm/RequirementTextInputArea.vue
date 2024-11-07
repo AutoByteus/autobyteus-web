@@ -45,6 +45,22 @@
         <span>Voice</span>
       </button>
 
+      <!-- Search Context Button -->
+      <button
+        @click="handleSearchContext"
+        :disabled="isSending || !userRequirement.trim() || isSearching"
+        class="w-full sm:w-auto mb-2 sm:mb-0 sm:mr-2 px-4 py-2 bg-green-500 text-white text-sm rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-all duration-300 flex items-center justify-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <svg v-if="isSearching" class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <svg v-else class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <span>{{ isSearching ? 'Searching...' : 'Search Context' }}</span>
+      </button>
+
       <!-- Send button -->
       <button 
         @click="handleSend"
@@ -55,7 +71,7 @@
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
         </svg>
-        <svg v-else class="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+        <svg v-else class="h-4 w-4 mr-2" fill="none" viewBox="0 0 20 20">
           <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
         </svg>
         <span>{{ isSending ? 'Sending...' : 'Send' }}</span>
@@ -67,16 +83,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue';
 import { useConversationStore } from '~/stores/conversationStore';
-import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useWorkflowStore } from '~/stores/workflow';
 import { LlmModel } from '~/generated/graphql';
 import AudioRecorder from '~/components/AudioRecorder.vue';
+import { useTranscriptionStore } from '~/stores/transcriptionStore'; // Import transcription store
 
 const conversationStore = useConversationStore();
-const conversationHistoryStore = useConversationHistoryStore();
 const workspaceStore = useWorkspaceStore();
 const workflowStore = useWorkflowStore();
+const transcriptionStore = useTranscriptionStore(); // Initialize transcription store
 
 const userRequirement = computed(() => conversationStore.currentRequirement);
 const isSending = computed(() => conversationStore.isCurrentlySending);
@@ -85,11 +101,12 @@ const controlsRef = ref<HTMLDivElement | null>(null);
 const textareaHeight = ref(150);
 const selectedModel = ref<LlmModel>(LlmModel.Claude_3_5SonnetApi);
 const showAudioRecorder = ref(false);
+const isSearching = ref(false);
 
 const llmModels = Object.values(LlmModel);
 
 const isFirstMessage = () => {
-  return !conversationStore.currentConversation || conversationStore.conversationMessages.length === 0;
+  return !conversationStore.selectedConversation || conversationStore.conversationMessages.length === 0;
 };
 
 const updateRequirement = (event: Event) => {
@@ -150,6 +167,28 @@ const handleSend = async () => {
   }
 };
 
+const handleSearchContext = async () => {
+  if (!userRequirement.value.trim()) {
+    alert('Please enter a requirement to search context.');
+    return;
+  }
+
+  isSearching.value = true;
+  try {
+    await conversationStore.searchContextFiles(userRequirement.value);
+    // Scroll to context files area for better UX
+    document.querySelector('.context-files-area')?.scrollIntoView({ 
+      behavior: 'smooth',
+      block: 'start'
+    });
+  } catch (error) {
+    console.error('Error searching context:', error);
+    alert('Failed to search context. Please try again.');
+  } finally {
+    isSearching.value = false;
+  }
+};
+
 const adjustTextareaHeight = () => {
   if (textarea.value) {
     textarea.value.style.height = '150px';
@@ -181,6 +220,18 @@ onMounted(() => {
     adjustTextareaHeight();
     window.addEventListener('resize', handleResize);
   });
+
+  // Watch for transcription results and update user requirement
+  watch(
+    () => transcriptionStore.transcription,
+    (newTranscription) => {
+      if (newTranscription) {
+        conversationStore.updateUserRequirement(newTranscription);
+        // Optionally, clear the transcription after updating
+        // transcriptionStore.clearTranscription(); // If such a method exists
+      }
+    }
+  );
 });
 
 onUnmounted(() => {
