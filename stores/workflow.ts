@@ -20,13 +20,24 @@ export const useWorkflowStore = defineStore('workflow', {
     executionStatus: 'Not Started',
     executionLogs: ''
   }),
+
   actions: {
     setWorkflow(workflow: Workflow) {
       this.workflow = workflow;
     },
+
     setSelectedStepId(stepId: string) {
-      this.selectedStepId = stepId;
+      const conversationStore = useConversationStore();
+      const previousStepId = this.selectedStepId;
+
+      // Only proceed if selecting a different step
+      if (previousStepId !== stepId) {
+        this.selectedStepId = stepId;
+        // Always create a new temporary conversation when switching steps
+        conversationStore.createTemporaryConversation();
+      }
     },
+
     async fetchWorkflowConfig(workspaceId: string) {
       this.executionStatus = 'Not Started';
       this.executionLogs = '';
@@ -34,6 +45,7 @@ export const useWorkflowStore = defineStore('workflow', {
         GetWorkflowConfig,
         { workspaceId }
       );
+
       onResult((result) => {
         if (result.data?.workflowConfig) {
           try {
@@ -44,11 +56,14 @@ export const useWorkflowStore = defineStore('workflow', {
           }
         }
       });
+
       onError((error) => {
         console.error('Failed to fetch workflowConfig', error);
       });
+
       return { onResult, onError };
     },
+
     updateStepPrompt({ stepId, modelName, newPrompt }: { stepId: string, modelName: string, newPrompt: string }) {
       if (this.workflow && stepId) {
         const step = this.workflow.steps[stepId];
@@ -61,6 +76,7 @@ export const useWorkflowStore = defineStore('workflow', {
         console.error('No workflow or stepId provided for updating prompt');
       }
     },
+
     startExecution() {
       this.executionStatus = 'Running';
       this.executionLogs = 'Execution started...\n';
@@ -69,11 +85,13 @@ export const useWorkflowStore = defineStore('workflow', {
         this.executionLogs += 'Execution completed successfully.';
       }, 3000);
     },
+
     resetExecution() {
       this.executionStatus = 'Not Started';
       this.executionLogs = '';
     },
   },
+
   getters: {
     currentWorkflow: (state): Workflow | null => state.workflow,
     currentSelectedStepId: (state): string | null => state.selectedStepId,

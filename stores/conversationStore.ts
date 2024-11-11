@@ -101,6 +101,10 @@ export const useConversationStore = defineStore('conversation', {
       }
     },
 
+    removeConversation(conversationId: string) {
+      this.closeConversation(conversationId);
+    },
+
     addMessageToConversation(conversationId: string, message: Message) {
       const conversation = this.conversations.get(conversationId);
       if (conversation) {

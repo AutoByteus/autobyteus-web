@@ -1,5 +1,5 @@
 import gql from 'graphql-tag';
-
+    
 export const SendStepRequirement = gql`
   mutation SendStepRequirement(
     $workspaceId: String!
@@ -16,6 +16,20 @@ export const SendStepRequirement = gql`
       requirement: $requirement
       conversationId: $conversationId
       llmModel: $llmModel
+    )
+  }
+`;
+
+export const CloseConversation = gql`
+  mutation CloseConversation(
+    $workspaceId: String!
+    $stepId: String!
+    $conversationId: String!
+  ) {
+    closeConversation(
+      workspaceId: $workspaceId
+      stepId: $stepId
+      conversationId: $conversationId
     )
   }
 `;

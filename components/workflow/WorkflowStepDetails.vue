@@ -21,40 +21,7 @@
     <!-- Main content area -->
     <div class="flex flex-col flex-grow">
       <!-- Conversation Tabs -->
-      <div class="flex space-x-1 bg-gray-100 p-1 rounded-t overflow-x-auto">
-        <div
-          v-for="conversation in activeConversations"
-          :key="conversation.id"
-          class="flex items-center shrink-0"
-        >
-          <button
-            :class="[
-              'px-4 py-2 rounded-t text-sm font-medium flex items-center',
-              conversation.id === selectedConversationId
-                ? 'bg-white text-blue-600'
-                : 'bg-gray-200 text-gray-600 hover:bg-gray-300',
-              conversation.id.startsWith('temp-') && 'italic'
-            ]"
-            @click="selectConversation(conversation.id)"
-          >
-            <span>{{ getConversationLabel(conversation) }}</span>
-            <span
-              class="ml-2 text-gray-500 hover:text-gray-700"
-              @click.stop="closeConversation(conversation.id)"
-            >
-              ×
-            </span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Conversation Content -->
-      <div class="flex-grow overflow-y-auto bg-white min-h-0">
-        <Conversation
-          v-if="selectedConversation"
-          :conversation="selectedConversation"
-        />
-      </div>
+      <ConversationTabs />
 
       <!-- Form container -->
       <div class="w-full bg-white pt-4">
@@ -78,7 +45,7 @@ import { useConversationStore } from '~/stores/conversationStore';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import WorkflowStepRequirementForm from '~/components/stepRequirementForm/WorkflowStepRequirementForm.vue';
 import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue';
-import Conversation from '~/components/conversation/Conversation.vue';
+import ConversationTabs from '~/components/conversation/ConversationTabs.vue';
 
 const MAX_ACTIVE_CONVERSATIONS = 5;
 
@@ -88,8 +55,6 @@ const conversationHistoryStore = useConversationHistoryStore();
 
 const selectedStep = computed(() => workflowStore.selectedStep);
 const activeConversations = computed(() => conversationStore.activeConversations);
-const selectedConversationId = computed(() => conversationStore.selectedConversationId);
-const selectedConversation = computed(() => conversationStore.selectedConversation);
 const isHistoryPanelOpen = ref(false);
 const conversationHistory = computed(() => conversationHistoryStore.getConversations);
 
@@ -97,26 +62,11 @@ const maxConversationsReached = computed(() =>
   activeConversations.value.length >= MAX_ACTIVE_CONVERSATIONS
 );
 
-const getConversationLabel = (conversation: any) => {
-  if (conversation.id.startsWith('temp-')) {
-    return 'New Conversation';
-  }
-  return `Conversation ${conversation.id.slice(-4)}`;
-};
-
 const initiateNewConversation = () => {
   if (!maxConversationsReached.value) {
     conversationStore.createTemporaryConversation();
     conversationHistoryStore.reset();
   }
-};
-
-const selectConversation = (conversationId: string) => {
-  conversationStore.setSelectedConversationId(conversationId);
-};
-
-const closeConversation = (conversationId: string) => {
-  conversationStore.closeConversation(conversationId);
 };
 
 const showConversationHistory = () => {
@@ -137,13 +87,13 @@ const activateHistoryConversation = (conversationId: string) => {
   }
 };
 
+// Watcher to handle step activation and create a single temporary conversation
 watch(selectedStep, (newStep, oldStep) => {
   if (newStep && newStep.id !== oldStep?.id) {
-    // Reset everything when changing steps
-    conversationStore.resetConversations();
     conversationHistoryStore.reset();
+    workflowStore.setSelectedStepId(newStep.id);
   }
-}, { immediate: true });
+}, { immediate: false });
 </script>
 
 <style scoped>

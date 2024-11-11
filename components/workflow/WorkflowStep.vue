@@ -23,7 +23,7 @@ const workflowStore = useWorkflowStore();
 const conversationStore = useConversationStore();
 
 const selectStep = (step: Step) => {
-  workflowStore.setSelectedStepId(step.id);
   conversationStore.resetConversations();
+  workflowStore.setSelectedStepId(step.id);
 };
 </script>
