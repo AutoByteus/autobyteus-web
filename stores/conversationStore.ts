@@ -54,7 +54,8 @@ export const useConversationStore = defineStore('conversation', {
         : [],
     currentRequirement: (state): string => {
       const transcriptionStore = useTranscriptionStore(); // Access the transcription store
-      return state.userRequirement + ' ' + transcriptionStore.transcription; // Combine user input and transcribed text
+      const transcription = transcriptionStore.transcription.trim();
+      return transcription ? `${state.userRequirement} ${transcription}`.trim() : state.userRequirement;
     },
   },
 
@@ -282,7 +283,7 @@ export const useConversationStore = defineStore('conversation', {
       const conversationHistoryStore = useConversationHistoryStore();
       const conversation = conversationHistoryStore.getConversations.find(conv => conv.id === conversationId);
       if (conversation) {
-        this.addConversation({ ...conversation });
+        this.conversations.set(conversation.id, { ...conversation });
       } else {
         console.warn(`Conversation with ID ${conversationId} not found in history.`);
       }
