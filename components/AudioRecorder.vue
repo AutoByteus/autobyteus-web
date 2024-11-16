@@ -1,114 +1,220 @@
 <template>
-  <div class="flex flex-col justify-center items-center">
-    <audio v-if="recordedBlobUrl" :src="recordedBlobUrl" controls class="mt-4"></audio>
-    
-    <!-- Show transcription results only when not recording and transcription exists -->
-    <div v-if="!recording && transcriptionStore.isTranscribing" class="mt-4">
-      <p class="text-gray-600">Transcribing audio...</p>
+  <div class="space-y-4">
+    <div class="flex items-center space-x-2">
+      <button
+        @click="handleRecordingToggle"
+        :disabled="disabled || isCleaningUp"
+        :class="[
+          'flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all duration-200 shadow-sm text-white min-h-[40px]',
+          audioStore.isRecording ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
+          (disabled || isCleaningUp) ? 'opacity-50 cursor-not-allowed' : ''
+        ]"
+      >
+        <svg 
+          :class="{'animate-pulse': audioStore.isRecording}" 
+          class="h-4 w-4 mr-2 flex-shrink-0" 
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path 
+            stroke-linecap="round" 
+            stroke-linejoin="round" 
+            stroke-width="2" 
+            d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+          />
+        </svg>
+        <span class="whitespace-nowrap">
+          {{ buttonText }}
+        </span>
+      </button>
+
+      <button
+        v-if="audioStore.audioChunks.length > 0"
+        @click="audioStore.toggleChunksVisibility()"
+        :disabled="isCleaningUp"
+        class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        <span>{{ audioStore.showChunks ? 'Hide Chunks' : 'Show Chunks' }}</span>
+        <svg
+          :class="{ 'rotate-180': audioStore.showChunks }"
+          class="w-4 h-4 ml-2 transition-transform duration-200"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      <button
+        v-if="audioStore.audioChunks.length > 0"
+        @click="audioStore.clearAllChunks()"
+        :disabled="isCleaningUp"
+        class="flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500"
+      >
+        <span>Clear All</span>
+      </button>
     </div>
-    <div v-if="!recording && transcriptionStore.error" class="mt-4 p-4 bg-red-50 text-red-600 rounded-md">
-      {{ transcriptionStore.error }}
+
+    <div 
+      v-if="!audioStore.isRecording && audioStore.combinedError" 
+      class="p-4 bg-red-50 text-red-600 rounded-md"
+    >
+      {{ audioStore.combinedError }}
+    </div>
+
+    <div v-if="audioStore.showChunks && audioStore.audioChunks.length > 0" class="space-y-2">
+      <div class="text-sm font-medium text-gray-700">Recorded Chunks</div>
+      <div class="space-y-2">
+        <div
+          v-for="chunk in [...audioStore.audioChunks].reverse()"
+          :key="chunk.id"
+          class="flex items-center justify-between p-3 bg-white border rounded-md shadow-sm"
+        >
+          <div class="text-sm text-gray-600">
+            {{ new Date(chunk.timestamp).toLocaleTimeString() }}
+          </div>
+          <div class="flex items-center space-x-2">
+            <button
+              @click="audioStore.downloadChunk(chunk.id)"
+              :disabled="isCleaningUp"
+              class="px-2 py-1 text-sm text-blue-600 hover:text-blue-700 focus:outline-none"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </button>
+            <button
+              @click="audioStore.deleteChunk(chunk.id)"
+              :disabled="isCleaningUp"
+              class="px-2 py-1 text-sm text-red-600 hover:text-red-700 focus:outline-none"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue';
-import { useTranscriptionStore } from '~/stores/transcriptionStore';
+import { useWorkspaceStore } from '~/stores/workspace';
+import { useWorkflowStore } from '~/stores/workflow';
+import { useAudioStore } from '~/stores/audioStore';
+import { ref, watch, onUnmounted, computed } from 'vue';
 
-const props = defineProps({
-  recording: {
-    type: Boolean,
-    required: true,
-  },
-  onRecordingComplete: {
-    type: Function,
-    required: true,
-  },
+const props = defineProps<{
+  disabled?: boolean
+}>();
+
+const workspaceStore = useWorkspaceStore();
+const workflowStore = useWorkflowStore();
+const audioStore = useAudioStore();
+
+const errorMessage = ref<string | null>(null);
+const isCleaningUp = ref(false);
+const cleanupTimeout = ref<NodeJS.Timeout | null>(null);
+
+const buttonText = computed(() => {
+  if (isCleaningUp.value) return 'Finalizing...';
+  return audioStore.isRecording ? 'Recording...' : 'Start Recording';
 });
 
-const transcriptionStore = useTranscriptionStore();
-const recordedBlob = ref<Blob | null>(null);
-const recordedBlobUrl = ref<string | null>(null);
-const mediaRecorder = ref<MediaRecorder | null>(null);
-const chunks = ref<Blob[]>([]);
-let timer: number | null = null;
+const handleRecordingToggle = async () => {
+  const workspaceId = workspaceStore.currentSelectedWorkspaceId;
+  const stepId = workflowStore.selectedStep?.id;
 
-const getMimeType = () => {
-  const types = [
-    'audio/webm;codecs=opus',
-    'audio/ogg;codecs=opus',
-    'audio/wav',
-  ];
-  for (let i = 0; i < types.length; i++) {
-    if (MediaRecorder.isTypeSupported(types[i])) {
-      return types[i];
-    }
+  if (!workspaceId || !stepId) {
+    alert('Workspace or step is not selected.');
+    return;
   }
-  return '';
-};
-
-const startRecording = async () => {
-  // Reset all states before starting new recording
-  recordedBlob.value = null;
-  recordedBlobUrl.value = null;
-  transcriptionStore.$reset(); // Reset transcription store
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const mimeType = getMimeType();
-    mediaRecorder.value = new MediaRecorder(stream, { mimeType });
-    mediaRecorder.value.addEventListener('dataavailable', (event) => {
-      if (event.data.size > 0) {
-        chunks.value.push(event.data);
+    if (!audioStore.isRecording) {
+      await audioStore.startRecording(workspaceId, stepId);
+    } else {
+      isCleaningUp.value = true;
+      await audioStore.stopRecording(workspaceId, stepId);
+      // Wait for the final transcription before marking as not cleaning up
+      startCleanupTimeout();
+    }
+  } catch (error: any) {
+    console.error('Recording error:', error);
+    errorMessage.value = error.message || 'An unexpected error occurred during recording.';
+    isCleaningUp.value = false;
+  }
+};
+
+const startCleanupTimeout = () => {
+  // Clear any existing timeout
+  if (cleanupTimeout.value) {
+    clearTimeout(cleanupTimeout.value);
+  }
+
+  // Set a new timeout for 5 seconds to ensure we don't wait indefinitely
+  cleanupTimeout.value = setTimeout(() => {
+    isCleaningUp.value = false;
+  }, 5000);
+};
+
+// Watch for transcription messages
+watch(
+  () => audioStore.lastTranscriptionReceived,
+  (newValue) => {
+    if (newValue && isCleaningUp.value) {
+      isCleaningUp.value = false;
+      if (cleanupTimeout.value) {
+        clearTimeout(cleanupTimeout.value);
       }
-    });
-    mediaRecorder.value.addEventListener('stop', async () => {
-      const blob = new Blob(chunks.value, { type: mimeType });
-      recordedBlob.value = blob;
-      recordedBlobUrl.value = URL.createObjectURL(blob);
-      chunks.value = [];
-      props.onRecordingComplete(blob);
-      
-      // Start transcription only after recording is complete
-      await transcriptionStore.transcribeAudio(blob);
-      
-      // Stop all tracks to release the microphone
-      stream.getTracks().forEach(track => track.stop());
-    });
-    mediaRecorder.value.start();
-
-    // Optional: Emit an event or handle timer if needed
-  } catch (error) {
-    console.error('Error accessing microphone:', error);
+    }
   }
-};
+);
 
-const stopRecording = () => {
-  if (mediaRecorder.value && mediaRecorder.value.state === 'recording') {
-    mediaRecorder.value.stop();
+watch(
+  () => audioStore.combinedError,
+  (newError) => {
+    errorMessage.value = newError;
   }
-};
+);
 
-// Watch for changes in the recording prop to start or stop recording
-watch(() => props.recording, (newRecording) => {
-  if (newRecording) {
-    startRecording();
-  } else {
-    stopRecording();
+onUnmounted(async () => {
+  const workspaceId = workspaceStore.currentSelectedWorkspaceId;
+  const stepId = workflowStore.selectedStep?.id;
+  
+  if (cleanupTimeout.value) {
+    clearTimeout(cleanupTimeout.value);
   }
-});
 
-// Cleanup on component unmount
-onUnmounted(() => {
-  if (mediaRecorder.value && mediaRecorder.value.state === 'recording') {
-    mediaRecorder.value.stop();
+  if (isCleaningUp.value) {
+    // Wait for a short time to allow final transcription
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }
+  
+  await audioStore.cleanup(workspaceId, stepId);
 });
 </script>
 
 <style scoped>
-audio {
-  width: 100%;
+.animate-pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 </style>

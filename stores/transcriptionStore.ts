@@ -1,89 +1,205 @@
 import { defineStore } from 'pinia';
+import type { WebSocketMessage } from '~/types/transcription';
+import { useRuntimeConfig } from '#app';
 
 interface TranscriptionState {
-  transcription: string | null;
-  isTranscribing: boolean;
+  transcription: string;
   error: string | null;
+  lastTimestamp: number | null;
+  sessionId: string | null;
+  isConnected: boolean;
+  worker: Worker | null;
 }
 
 export const useTranscriptionStore = defineStore('transcription', {
   state: (): TranscriptionState => ({
-    transcription: null,
-    isTranscribing: false,
+    transcription: '',
     error: null,
+    lastTimestamp: null,
+    sessionId: null,
+    isConnected: false,
+    worker: null
   }),
 
   actions: {
-    $reset() {
-      this.transcription = null;
-      this.isTranscribing = false;
-      this.error = null;
-    },
-
-    async transcribeAudio(blob: Blob) {
-      this.isTranscribing = true;
-      this.error = null;
-      this.transcription = null; // Reset transcription before starting new one
-
+    initializeWorker() {
       try {
-        const audioContent = await this.blobToBase64(blob);
-        const config = useRuntimeConfig();
-        
-        const response = await fetch(
-          `https://speech.googleapis.com/v1/speech:recognize?key=${config.public.googleSpeechApiKey}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              config: {
-                encoding: 'WEBM_OPUS',
-                sampleRateHertz: 48000,
-                languageCode: 'en-US',
-              },
-              audio: {
-                content: audioContent,
-              },
-            }),
-          }
-        );
+        this.worker = new Worker(new URL('~/workers/transcriptionWorker.ts', import.meta.url), {
+          type: 'module'
+        });
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        if (data.results && data.results.length > 0) {
-          this.transcription = data.results
-            .map((result: any) => result.alternatives[0].transcript)
-            .join('\n');
-        } else {
-          this.error = 'No transcription result found.';
-        }
-      } catch (error) {
-        this.error = `Transcription error: ${error instanceof Error ? error.message : 'Unknown error'}`;
-        console.error('Transcription error:', error);
-      } finally {
-        this.isTranscribing = false;
+        this.setupWorkerHandlers();
+      } catch (err) {
+        console.error('Failed to initialize Web Worker:', err);
+        this.error = 'Failed to initialize transcription service';
+        throw new Error('Failed to initialize transcription service');
       }
     },
 
-    blobToBase64(blob: Blob): Promise<string> {
+    setupWorkerHandlers() {
+      if (!this.worker) return;
+
+      this.worker.onmessage = (event) => {
+        const { type, payload } = event.data;
+        switch (type) {
+          case 'CONNECTED':
+            console.log('Worker WebSocket connected.');
+            this.isConnected = true;
+            this.error = null;
+            break;
+          case 'DISCONNECTED':
+            console.log('Worker WebSocket disconnected.', payload);
+            this.isConnected = false;
+            break;
+          case 'MESSAGE':
+            this.handleWorkerMessage(payload);
+            break;
+          case 'ERROR':
+            console.error('Worker error:', payload);
+            this.error = payload;
+            break;
+          default:
+            console.warn('Unknown message type from worker:', type);
+        }
+      };
+
+      this.worker.onerror = (err) => {
+        console.error('Worker error:', err);
+        this.error = 'Transcription service error';
+        this.isConnected = false;
+      };
+    },
+
+    handleWorkerMessage(message: WebSocketMessage) {
+      switch (message.type) {
+        case 'transcription':
+          this.transcription += message.text + ' ';
+          this.lastTimestamp = message.timestamp;
+          break;
+        case 'warning':
+          console.warn('Transcription warning:', message.message);
+          this.error = message.message;
+          break;
+        case 'session_init':
+          this.sessionId = message.session_id;
+          console.log('Session initialized with ID:', this.sessionId);
+          break;
+        default:
+          console.error('Unknown message type:', message);
+      }
+    },
+
+    connectWebSocket(workspaceId: string, stepId: string): Promise<void> {
       return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          if (typeof reader.result === 'string') {
-            const base64data = reader.result.split(',')[1];
-            resolve(base64data);
-          } else {
-            reject(new Error('Failed to convert blob to base64'));
+        if (this.isConnected) {
+          resolve();
+          return;
+        }
+
+        if (!this.worker) {
+          try {
+            this.initializeWorker();
+          } catch (initError) {
+            reject(initError);
+            return;
+          }
+        }
+
+        if (!this.worker) {
+          reject(new Error('Transcription service is not available'));
+          return;
+        }
+
+        const config = useRuntimeConfig();
+        const transcriptionWsEndpoint = config.public.audio.transcriptionWsEndpoint;
+        
+        if (!transcriptionWsEndpoint) {
+          const errorMsg = 'Transcription service configuration is missing';
+          this.error = errorMsg;
+          reject(new Error(errorMsg));
+          return;
+        }
+
+        const handleConnected = (event: MessageEvent) => {
+          const { type } = event.data;
+          if (type === 'CONNECTED') {
+            this.worker?.removeEventListener('message', handleConnected);
+            resolve();
           }
         };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
+
+        const handleError = (event: MessageEvent) => {
+          const { type, payload } = event.data;
+          if (type === 'ERROR') {
+            this.worker?.removeEventListener('message', handleError);
+            reject(new Error(payload));
+          }
+        };
+
+        this.worker.addEventListener('message', handleConnected);
+        this.worker.addEventListener('message', handleError);
+
+        this.worker.postMessage({ 
+          type: 'CONNECT', 
+          payload: { 
+            workspaceId, 
+            stepId, 
+            transcriptionWsEndpoint 
+          } 
+        });
       });
     },
-  },
+
+    disconnectWebSocket() {
+      if (this.worker) {
+        this.worker.postMessage({ type: 'DISCONNECT' });
+      }
+      this.isConnected = false;
+    },
+
+    async sendAudioChunk(workspaceId: string, stepId: string, audioChunk: ArrayBuffer) {
+      if (!this.worker) {
+        this.error = 'Transcription service is not available';
+        throw new Error(this.error);
+      }
+
+      if (!this.isConnected) {
+        this.error = 'WebSocket is not connected';
+        throw new Error(this.error);
+      }
+
+      try {
+        // Send ArrayBuffer directly without converting to Blob
+        this.worker.postMessage({ 
+          type: 'SEND_AUDIO', 
+          payload: { wavData: audioChunk } 
+        }, [audioChunk]);
+
+      } catch (err) {
+        console.error('Error processing audio chunk:', err);
+        this.error = 'Failed to process audio data';
+        throw new Error(this.error);
+      }
+    },
+
+    async finalize(workspaceId: string, stepId: string) {
+      this.disconnectWebSocket();
+    },
+
+    reset() {
+      this.transcription = '';
+      this.error = null;
+      this.lastTimestamp = null;
+      this.sessionId = null;
+      this.isConnected = false;
+    },
+
+    cleanup() {
+      if (this.worker) {
+        this.disconnectWebSocket();
+        this.worker.terminate();
+        this.worker = null;
+      }
+    }
+  }
 });

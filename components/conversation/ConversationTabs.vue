@@ -40,21 +40,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useConversationStore } from '~/stores/conversationStore';
-import { useWorkspaceStore } from '~/stores/workspace';
-import { useWorkflowStore } from '~/stores/workflow';
 import Conversation from './Conversation.vue';
-import { CloseConversation } from '~/graphql/mutations/workflowStepMutations';
-import { useMutation } from '@vue/apollo-composable';
 
 const conversationStore = useConversationStore();
-const workspaceStore = useWorkspaceStore();
-const workflowStore = useWorkflowStore();
 
 const activeConversations = computed(() => conversationStore.activeConversations);
 const selectedConversationId = computed(() => conversationStore.selectedConversationId);
 const selectedConversation = computed(() => conversationStore.selectedConversation);
-const workspaceId = computed(() => workspaceStore.currentSelectedWorkspaceId);
-const stepId = computed(() => workflowStore.currentSelectedStepId);
 
 const getConversationLabel = (conversation: any) => {
   if (conversation.id.startsWith('temp-')) {
@@ -63,26 +55,9 @@ const getConversationLabel = (conversation: any) => {
   return `Conversation ${conversation.id.slice(-4)}`;
 };
 
-const { mutate: closeConversationMutation } = useMutation(CloseConversation);
-
 const handleCloseConversation = async (conversation: any) => {
-  const currentWorkspaceId = workspaceId.value;
-  const currentStepId = stepId.value;
-  const conversationId = conversation.id;
-  
-  if (!currentWorkspaceId || !currentStepId) {
-    console.error('Missing workspace ID or step ID');
-    return;
-  }
-  
   try {
-    await closeConversationMutation({
-      workspaceId: currentWorkspaceId,
-      stepId: currentStepId,
-      conversationId
-    });
-    
-    conversationStore.removeConversation(conversationId);
+    await conversationStore.closeConversation(conversation.id);
   } catch (error) {
     console.error('Error closing conversation:', error);
     // Optional: Show error notification to user

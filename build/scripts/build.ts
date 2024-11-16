@@ -1,6 +1,9 @@
 import { build, Configuration, Platform, Arch } from 'electron-builder'
 import { generateIcons } from './generateIcons'
 
+// Ensure we're in production mode
+process.env.NODE_ENV = 'production'
+
 type PlatformType = 'LINUX' | 'WINDOWS' | 'MAC' | 'ALL'
 
 interface BuildConfig {
@@ -24,6 +27,10 @@ function getPlatform(): PlatformType {
 }
 
 const platform: PlatformType = getPlatform()
+
+// Log environment information
+console.log('Building with environment:', process.env.NODE_ENV)
+console.log('Using environment file:', process.env.NODE_ENV === 'production' ? '.env.production' : '.env')
 
 const options: Configuration = {
   appId: 'com.autobyteus.app',

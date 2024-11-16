@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { useMutation, useSubscription, useQuery } from '@vue/apollo-composable';
-import { SendStepRequirement } from '~/graphql/mutations/workflowStepMutations';
+import { SendStepRequirement, CloseConversation } from '~/graphql/mutations/workflowStepMutations';
 import { StepResponseSubscription } from '~/graphql/subscriptions/workflowStepSubscriptions';
 import { SearchContextFiles } from '~/graphql/queries/context_search_queries';
 import type {
@@ -17,6 +17,8 @@ import type { Conversation, Message, ContextFilePath } from '~/types/conversatio
 import apiService from '~/services/api';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
+import { useWorkflowStore } from '~/stores/workflow';
+import { useTranscriptionStore } from '~/stores/transcriptionStore'; // Import the transcription store
 
 interface ConversationStoreState {
   conversations: Map<string, Conversation>;
@@ -50,7 +52,10 @@ export const useConversationStore = defineStore('conversation', {
       state.selectedConversationId
         ? state.conversations.get(state.selectedConversationId)?.messages || []
         : [],
-    currentRequirement: (state): string => state.userRequirement,
+    currentRequirement: (state): string => {
+      const transcriptionStore = useTranscriptionStore(); // Access the transcription store
+      return state.userRequirement + ' ' + transcriptionStore.transcription; // Combine user input and transcribed text
+    },
   },
 
   actions: {
@@ -93,11 +98,35 @@ export const useConversationStore = defineStore('conversation', {
       this.selectedConversationId = conversation.id;
     },
 
-    closeConversation(conversationId: string) {
-      this.conversations.delete(conversationId);
-      if (this.selectedConversationId === conversationId) {
-        const nextConversation = this.activeConversations[0];
-        this.selectedConversationId = nextConversation?.id || null;
+    async closeConversation(conversationId: string) {
+      const workspaceStore = useWorkspaceStore();
+      const workflowStore = useWorkflowStore();
+      const currentWorkspaceId = workspaceStore.currentSelectedWorkspaceId;
+      const currentStepId = workflowStore.currentSelectedStepId;
+
+      if (!currentWorkspaceId || !currentStepId) {
+        console.error('Missing workspace ID or step ID');
+        return;
+      }
+
+      try {
+        const { mutate: closeConversationMutation } = useMutation(CloseConversation);
+        
+        await closeConversationMutation({
+          workspaceId: currentWorkspaceId,
+          stepId: currentStepId,
+          conversationId
+        });
+
+        // Remove from local state
+        this.conversations.delete(conversationId);
+        if (this.selectedConversationId === conversationId) {
+          const nextConversation = this.activeConversations[0];
+          this.selectedConversationId = nextConversation?.id || null;
+        }
+      } catch (error) {
+        console.error('Error closing conversation:', error);
+        throw error;
       }
     },
 

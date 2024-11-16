@@ -33,6 +33,13 @@ const baseConfig = {
     assetsInclude: ['**/*.jpeg', '**/*.jpg', '**/*.png', '**/*.svg'],
     worker: {
       format: 'es',
+      plugins: [],
+      rollupOptions: {
+        output: {
+          format: 'es',
+          entryFileNames: 'workers/[name].js'
+        }
+      }
     },
     define: {
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
@@ -44,7 +51,20 @@ const baseConfig = {
       graphqlBaseUrl: process.env.NUXT_PUBLIC_GRAPHQL_BASE_URL || 'http://localhost:8001/graphql',
       restBaseUrl: process.env.NUXT_PUBLIC_REST_BASE_URL || 'http://localhost:8001/rest',
       wsBaseUrl: process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8001/graphql',
-      googleSpeechApiKey: process.env.GOOGLE_SPEECH_API_KEY || ''
+      googleSpeechApiKey: process.env.GOOGLE_SPEECH_API_KEY || '',
+      
+      // Audio recording configuration
+      audio: {
+        sampleRate: 16000,
+        chunkDuration: 7,
+        channels: 1,
+        transcriptionWsEndpoint: process.env.NUXT_PUBLIC_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8001/ws/transcribe',
+        constraints: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      }
     }
   },
 
@@ -53,7 +73,7 @@ const baseConfig = {
       default: {
         httpEndpoint: process.env.NODE_ENV === 'development' 
           ? '/graphql'
-          : (process.env.NUXT_PUBLIC_GRAPHQL_BASE_URL || 'http://localhost:8000/graphql'),
+          : (process.env.NUXT_PUBLIC_GRAPHQL_BASE_URL || 'http://localhost:8001/graphql'),
         wsEndpoint: process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8001/graphql',
         websocketsOnly: false,
       },

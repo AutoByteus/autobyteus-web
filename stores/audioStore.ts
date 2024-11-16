@@ -1,0 +1,169 @@
+import { defineStore } from 'pinia';
+import { useTranscriptionStore } from '~/stores/transcriptionStore';
+
+interface AudioChunk {
+  id: string;
+  pcmData: Int16Array;    // For backend processing
+  wavData: Uint8Array;    // For playback/download
+  sampleRate: number;
+  timestamp: number;
+  chunkNumber: number;
+}
+
+interface AudioStoreState {
+  isRecording: boolean;
+  error: string | null;
+  audioContext: AudioContext | null;
+  audioWorklet: AudioWorkletNode | null;
+  stream: MediaStream | null;
+  audioChunks: AudioChunk[];
+  showChunks: boolean;
+  chunkCounter: number;
+}
+
+export const useAudioStore = defineStore('audio', {
+  state: (): AudioStoreState => ({
+    isRecording: false,
+    error: null,
+    audioContext: null,
+    audioWorklet: null,
+    stream: null,
+    audioChunks: [],
+    showChunks: false,
+    chunkCounter: 1
+  }),
+
+  getters: {
+    combinedError(): string | null {
+      const transcriptionStore = useTranscriptionStore();
+      return this.error || transcriptionStore.error;
+    }
+  },
+
+  actions: {
+    getAudioConstraints() {
+      return {
+        audio: {
+          channelCount: 1,
+          sampleRate: 16000,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      };
+    },
+
+    toggleChunksVisibility() {
+      this.showChunks = !this.showChunks;
+    },
+
+    async downloadChunk(chunkId: string) {
+      const chunk = this.audioChunks.find(c => c.id === chunkId);
+      if (chunk) {
+        // Use the WAV data directly from the chunk
+        const wavBlob = new Blob([chunk.wavData], { type: 'audio/wav' });
+        const url = URL.createObjectURL(wavBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chunk_${chunk.chunkNumber}.wav`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    },
+
+    deleteChunk(chunkId: string) {
+      this.audioChunks = this.audioChunks.filter(chunk => chunk.id !== chunkId);
+    },
+
+    clearAllChunks() {
+      this.audioChunks = [];
+      this.chunkCounter = 1;
+    },
+
+    async startRecording(workspaceId: string, stepId: string): Promise<void> {
+      try {
+        this.error = null;
+
+        const transcriptionStore = useTranscriptionStore();
+        await transcriptionStore.connectWebSocket(workspaceId, stepId);
+
+        this.stream = await navigator.mediaDevices.getUserMedia(this.getAudioConstraints());
+        
+        this.audioContext = new AudioContext({
+          sampleRate: 16000,
+          latencyHint: 'interactive'
+        });
+
+        await this.audioContext.audioWorklet.addModule(new URL('~/workers/audio-processor.worklet.ts', import.meta.url));
+        
+        const source = this.audioContext.createMediaStreamSource(this.stream);
+        this.audioWorklet = new AudioWorkletNode(this.audioContext, 'audio-chunk-processor');
+
+        this.audioWorklet.port.onmessage = async (event) => {
+          if (event.data.type === 'chunk') {
+            const chunk: AudioChunk = {
+              id: crypto.randomUUID(),
+              pcmData: new Int16Array(event.data.pcmData), // Ensure pcmData is correctly typed
+              wavData: new Uint8Array(event.data.wavData),
+              sampleRate: event.data.sampleRate,
+              timestamp: Date.now(),
+              chunkNumber: this.chunkCounter++
+            };
+
+            this.audioChunks.push(chunk);
+            // Send ArrayBuffer directly to backend without converting to Blob
+            await transcriptionStore.sendAudioChunk(workspaceId, stepId, chunk.wavData.buffer);
+          }
+        };
+
+        source.connect(this.audioWorklet);
+        this.audioWorklet.connect(this.audioContext.destination);
+        
+        this.isRecording = true;
+
+      } catch (err: any) {
+        this.error = err.message;
+        console.error('Recording start error:', err);
+        await this.stopRecording(workspaceId, stepId);
+        throw err;
+      }
+    },
+
+    async stopRecording(workspaceId: string, stepId: string): Promise<void> {
+      try {
+        if (this.audioWorklet) {
+          this.audioWorklet.disconnect();
+          this.audioWorklet = null;
+        }
+
+        if (this.audioContext) {
+          await this.audioContext.close();
+          this.audioContext = null;
+        }
+
+        if (this.stream) {
+          this.stream.getTracks().forEach(track => track.stop());
+          this.stream = null;
+        }
+
+        this.isRecording = false;
+
+        const transcriptionStore = useTranscriptionStore();
+        await transcriptionStore.finalize(workspaceId, stepId);
+      } catch (err: any) {
+        this.error = err.message;
+        console.error('Recording stop error:', err);
+        throw err;
+      }
+    },
+
+    async cleanup(workspaceId: string | null = null, stepId: string | null = null): Promise<void> {
+      if (this.isRecording && workspaceId && stepId) {
+        await this.stopRecording(workspaceId, stepId);
+      }
+      this.clearAllChunks();
+    }
+  }
+});
