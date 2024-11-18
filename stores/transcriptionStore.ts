@@ -54,7 +54,6 @@ import { defineStore } from 'pinia';
           this.worker.onmessage = (event) => {
             const { type, payload } = event.data;
             console.log('Worker message received:', type);
-            const audioStore = useAudioStore();
             switch (type) {
               case 'CONNECTED':
                 console.log('Worker WebSocket connected.');
@@ -86,7 +85,6 @@ import { defineStore } from 'pinia';
         },
     
         handleWorkerMessage(message: WebSocketMessage) {
-          console.log('Handling worker message:', message);
           const conversationStore = useConversationStore();
           
           switch (message.type) {
@@ -103,7 +101,6 @@ import { defineStore } from 'pinia';
                 conversationStore.updateUserRequirement(
                   currentRequirement ? `${currentRequirement} ${message.text}` : message.text
                 );
-                console.log('Updated user requirement in conversation store.');
               } catch (error) {
                 console.error('Error updating user requirement:', error);
               }
@@ -221,14 +218,12 @@ import { defineStore } from 'pinia';
           }
     
           try {
-            console.log('Sending audio chunk to worker.');
             this.worker.postMessage({ 
               type: 'SEND_AUDIO', 
               payload: { wavData: audioChunk } 
             }, [audioChunk]);
     
             this.sentChunksCount += 1;
-            console.log('Audio chunk sent. Total sent:', this.sentChunksCount);
     
           } catch (err) {
             console.error('Error processing audio chunk:', err);
@@ -251,7 +246,6 @@ import { defineStore } from 'pinia';
         },
     
         reset() {
-          console.log('reset called.');
           const conversationStore = useConversationStore();
           this.transcription = '';
           this.error = null;
@@ -263,22 +257,18 @@ import { defineStore } from 'pinia';
           this.allTranscriptionsReceived = false;
           this.waitForAllResolve = null;
           conversationStore.updateUserRequirement('');
-          console.log('Transcription state reset.');
         },
     
         cleanup() {
-          console.log('cleanup called.');
           if (this.worker) {
             this.disconnectWebSocket();
             this.worker.terminate();
-            console.log('Worker terminated.');
             this.worker = null;
           }
           this.reset();
         },
     
         waitForAllTranscriptions(): Promise<void> {
-          console.log('waitForAllTranscriptions called.');
           return new Promise((resolve) => {
             if (this.receivedChunksCount >= this.sentChunksCount) {
               console.log('All transcriptions already received.');
@@ -286,18 +276,14 @@ import { defineStore } from 'pinia';
               return;
             }
             this.waitForAllResolve = resolve;
-            console.log('Waiting for all transcriptions to be received.');
           });
         },
     
         checkAllTranscriptionsReceived() {
-          console.log('checkAllTranscriptionsReceived called.');
           if (this.receivedChunksCount >= this.sentChunksCount && this.waitForAllResolve) {
-            console.log('All transcriptions received. Resolving promise.');
             this.waitForAllResolve();
             this.waitForAllResolve = null;
           } else {
-            console.log('Not all transcriptions received yet.');
           }
         }
       }
