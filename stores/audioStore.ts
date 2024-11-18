@@ -96,7 +96,7 @@ export const useAudioStore = defineStore('audio', {
           latencyHint: 'interactive'
         });
 
-        await this.audioContext.audioWorklet.addModule(new URL('~/workers/audio-processor.worklet.ts', import.meta.url));
+        await this.audioContext.audioWorklet.addModule(new URL('@/workers/audio-processor.worklet.js', import.meta.url));
         
         const source = this.audioContext.createMediaStreamSource(this.stream);
         this.audioWorklet = new AudioWorkletNode(this.audioContext, 'audio-chunk-processor');

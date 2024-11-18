@@ -1,17 +1,13 @@
 class AudioChunkProcessor extends AudioWorkletProcessor {
-  private buffer: Float32Array;
-  private sampleCount: number;
-  private readonly chunkSize: number;
-  private readonly sampleRate: number = 16000;
-
   constructor() {
     super();
+    this.sampleRate = 16000; // Target sample rate
     this.chunkSize = this.sampleRate * 7; // 7 seconds of audio
     this.buffer = new Float32Array(this.chunkSize);
     this.sampleCount = 0;
   }
 
-  private createWavHeader(pcmLength: number): ArrayBuffer {
+  createWavHeader(pcmLength) {
     const header = new ArrayBuffer(44);
     const view = new DataView(header);
     
@@ -69,7 +65,7 @@ class AudioChunkProcessor extends AudioWorkletProcessor {
     return header;
   }
 
-  process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: Record<string, Float32Array>) {
+  process(inputs, outputs, parameters) {
     const input = inputs[0][0];
     if (!input) return true;
 
@@ -101,7 +97,7 @@ class AudioChunkProcessor extends AudioWorkletProcessor {
       wavData.set(new Uint8Array(wavHeader), 0);
       wavData.set(new Uint8Array(pcmBuffer.buffer), wavHeader.byteLength);
 
-      // Send only WAV data - it contains all necessary information
+      // Send WAV data
       this.port.postMessage({
         type: 'chunk',
         wavData: wavData,
