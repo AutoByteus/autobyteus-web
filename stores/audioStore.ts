@@ -5,13 +5,14 @@ import { useRuntimeConfig } from '#app';
 interface AudioChunk {
   id: string;
   wavData: Uint8Array;
-  sampleRate: number;
+  targetSampleRate: number;
   timestamp: number;
   chunkNumber: number;
 }
 
 interface AudioStoreState {
   isRecording: boolean;
+  isStopping: boolean;
   error: string | null;
   audioContext: AudioContext | null;
   audioWorklet: AudioWorkletNode | null;
@@ -19,18 +20,23 @@ interface AudioStoreState {
   audioChunks: AudioChunk[];
   showChunks: boolean;
   chunkCounter: number;
+  waitingToClose: boolean;
+  flushPromiseResolve: (() => void) | null;
 }
 
 export const useAudioStore = defineStore('audio', {
   state: (): AudioStoreState => ({
     isRecording: false,
+    isStopping: false,
     error: null,
     audioContext: null,
     audioWorklet: null,
     stream: null,
     audioChunks: [],
     showChunks: false,
-    chunkCounter: 1
+    chunkCounter: 1,
+    waitingToClose: false,
+    flushPromiseResolve: null
   }),
 
   getters: {
@@ -46,7 +52,7 @@ export const useAudioStore = defineStore('audio', {
       return {
         audio: {
           channelCount: config.public.audio.channels,
-          sampleRate: config.public.audio.sampleRate,
+          sampleRate: config.public.audio.targetSampleRate,
           ...config.public.audio.constraints
         }
       };
@@ -78,6 +84,7 @@ export const useAudioStore = defineStore('audio', {
     clearAllChunks() {
       this.audioChunks = [];
       this.chunkCounter = 1;
+      this.waitingToClose = false;
     },
 
     async startRecording(workspaceId: string, stepId: string): Promise<void> {
@@ -88,51 +95,57 @@ export const useAudioStore = defineStore('audio', {
         await transcriptionStore.connectWebSocket(workspaceId, stepId);
 
         this.stream = await navigator.mediaDevices.getUserMedia(this.getAudioConstraints());
-        
+
         const config = useRuntimeConfig();
-        const sampleRate = config.public.audio.sampleRate;
-        
+        const targetSampleRate = config.public.audio.targetSampleRate;
+
         this.audioContext = new AudioContext({
-          sampleRate: sampleRate,
+          sampleRate: targetSampleRate,
           latencyHint: 'interactive'
         });
 
         await this.audioContext.audioWorklet.addModule(new URL('@/workers/audio-processor.worklet.js', import.meta.url));
-        
+
         const source = this.audioContext.createMediaStreamSource(this.stream);
-        
+
         const chunkDuration = config.public.audio.chunkDuration;
-        
+
         this.audioWorklet = new AudioWorkletNode(this.audioContext, 'audio-chunk-processor', {
           processorOptions: {
-            sampleRate: sampleRate,
+            targetSampleRate: targetSampleRate,
             chunkDuration: chunkDuration
           }
         });
 
         this.audioWorklet.port.onmessage = async (event) => {
-          if (event.data.type === 'chunk') {
+          const { type, wavData, isFinal } = event.data;
+          if (type === 'chunk') {
             const chunk: AudioChunk = {
               id: crypto.randomUUID(),
-              wavData: new Uint8Array(event.data.wavData),
-              sampleRate: event.data.sampleRate,
+              wavData: new Uint8Array(wavData),
+              targetSampleRate: event.data.targetSampleRate,
               timestamp: Date.now(),
               chunkNumber: this.chunkCounter++
             };
 
             this.audioChunks.push(chunk);
             await transcriptionStore.sendAudioChunk(workspaceId, stepId, chunk.wavData.buffer);
+          } else if (type === 'flush_done') {
+            if (this.flushPromiseResolve) {
+              this.flushPromiseResolve();
+              this.flushPromiseResolve = null;
+            }
           }
         };
 
         source.connect(this.audioWorklet);
         this.audioWorklet.connect(this.audioContext.destination);
-        
+
         this.isRecording = true;
+        this.waitingToClose = false;
 
       } catch (err: any) {
         this.error = err.message;
-        console.error('Recording start error:', err);
         await this.stopRecording(workspaceId, stepId);
         throw err;
       }
@@ -140,9 +153,29 @@ export const useAudioStore = defineStore('audio', {
 
     async stopRecording(workspaceId: string, stepId: string): Promise<void> {
       try {
+        this.isStopping = true;
+
+        // First stop the media stream to prevent new audio input
+        if (this.stream) {
+          this.stream.getTracks().forEach(track => track.stop());
+          this.stream = null;
+        }
+
         if (this.audioWorklet) {
-          this.audioWorklet.disconnect();
-          this.audioWorklet = null;
+          this.audioWorklet.port.postMessage({ type: 'FLUSH' });
+          console.log('FLUSH message sent.');
+
+          this.waitingToClose = true;
+
+          const flushPromise = new Promise<void>((resolve) => {
+            this.flushPromiseResolve = resolve;
+          });
+
+          await flushPromise;
+          console.log('Worker flush_done.');
+
+          const transcriptionStore = useTranscriptionStore();
+          await transcriptionStore.finalize();
         }
 
         if (this.audioContext) {
@@ -150,19 +183,12 @@ export const useAudioStore = defineStore('audio', {
           this.audioContext = null;
         }
 
-        if (this.stream) {
-          this.stream.getTracks().forEach(track => track.stop());
-          this.stream = null;
-        }
-
         this.isRecording = false;
-
-        const transcriptionStore = useTranscriptionStore();
-        await transcriptionStore.finalize(workspaceId, stepId);
+        this.isStopping = false;
 
       } catch (err: any) {
         this.error = err.message;
-        console.error('Recording stop error:', err);
+        this.isStopping = false;
         throw err;
       }
     },

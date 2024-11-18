@@ -1,12 +1,21 @@
 class AudioChunkProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
-    const { sampleRate, chunkDuration } = options.processorOptions;
-    this.sampleRate = sampleRate || 16000; // Use provided sample rate or default to 16000
-    this.chunkDuration = chunkDuration || 7; // Use provided chunk duration or default to 7 seconds
-    this.chunkSize = this.sampleRate * this.chunkDuration;
+    const { targetSampleRate, chunkDuration } = options.processorOptions;
+    this.targetSampleRate = targetSampleRate || 16000;
+    this.chunkDuration = chunkDuration || 7;
+    this.chunkSize = this.targetSampleRate * this.chunkDuration;
     this.buffer = new Float32Array(this.chunkSize);
     this.sampleCount = 0;
+    this.isInputStopped = false;
+
+    this.port.onmessage = (event) => {
+      const { type } = event.data;
+      if (type === 'FLUSH') {
+        this.isInputStopped = true;
+        this.tryFlushAndFinalize();
+      }
+    };
   }
 
   createWavHeader(pcmLength) {
@@ -44,10 +53,10 @@ class AudioChunkProcessor extends AudioWorkletProcessor {
     view.setUint16(22, 1, true);
     
     // Sample rate
-    view.setUint32(24, this.sampleRate, true);
+    view.setUint32(24, this.targetSampleRate, true);
     
     // Byte rate
-    view.setUint32(28, this.sampleRate * 2, true);
+    view.setUint32(28, this.targetSampleRate * 2, true);
     
     // Block align
     view.setUint16(32, 2, true);
@@ -67,48 +76,88 @@ class AudioChunkProcessor extends AudioWorkletProcessor {
     return header;
   }
 
-  process(inputs, outputs, parameters) {
-    const input = inputs[0][0];
-    if (!input) return true;
-
-    // Resample audio if necessary
-    const inputSampleRate = sampleRate;
-    const ratio = this.sampleRate / inputSampleRate;
-    
-    for (let i = 0; i < input.length; i++) {
-      const targetIndex = Math.floor(i * ratio);
-      if (this.sampleCount < this.chunkSize && targetIndex < this.chunkSize) {
-        this.buffer[this.sampleCount++] = input[i];
-      }
-    }
-
-    // If buffer is full, process and send
-    if (this.sampleCount >= this.chunkSize) {
+  tryFlushAndFinalize() {
+    if (this.sampleCount > 0) {
       // Convert Float32Array to 16-bit PCM
-      const pcmBuffer = new Int16Array(this.buffer.length);
-      for (let i = 0; i < this.buffer.length; i++) {
+      const pcmBuffer = new Int16Array(this.sampleCount);
+      for (let i = 0; i < this.sampleCount; i++) {
         const s = Math.max(-1, Math.min(1, this.buffer[i]));
         pcmBuffer[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
       }
 
       // Create WAV header
-      const wavHeader = this.createWavHeader(pcmBuffer.length);
-      
-      // Create WAV data by combining header and PCM
+      const wavHeader = this.createWavHeader(this.sampleCount);
+
+      // Create WAV data
       const wavData = new Uint8Array(wavHeader.byteLength + pcmBuffer.buffer.byteLength);
       wavData.set(new Uint8Array(wavHeader), 0);
       wavData.set(new Uint8Array(pcmBuffer.buffer), wavHeader.byteLength);
 
-      // Send WAV data
+      // Send final chunk
       this.port.postMessage({
         type: 'chunk',
         wavData: wavData,
-        sampleRate: this.sampleRate
+        targetSampleRate: this.targetSampleRate,
+        isFinal: true
       }, [wavData.buffer]);
 
-      // Create new buffer
+      // Reset buffer
       this.buffer = new Float32Array(this.chunkSize);
       this.sampleCount = 0;
+    }
+
+    // Notify completion
+    this.port.postMessage({ type: 'flush_done' });
+  }
+
+  process(inputs, outputs, parameters) {
+    // If input is stopped and no data in buffer, we're done
+    if (this.isInputStopped && this.sampleCount === 0) {
+      return false;
+    }
+
+    const input = inputs[0][0];
+    if (!input && this.isInputStopped) {
+      this.tryFlushAndFinalize();
+      return false;
+    }
+
+    if (!input) return true;
+
+    // Only process new input if not stopped
+    if (!this.isInputStopped) {
+      const ratio = this.targetSampleRate / sampleRate;
+      
+      for (let i = 0; i < input.length; i++) {
+        const targetIndex = Math.floor(i * ratio);
+        if (this.sampleCount < this.chunkSize && targetIndex < this.chunkSize) {
+          this.buffer[this.sampleCount++] = input[i];
+        }
+      }
+
+      // Process full buffer
+      if (this.sampleCount >= this.chunkSize) {
+        const pcmBuffer = new Int16Array(this.buffer.length);
+        for (let i = 0; i < this.buffer.length; i++) {
+          const s = Math.max(-1, Math.min(1, this.buffer[i]));
+          pcmBuffer[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+
+        const wavHeader = this.createWavHeader(pcmBuffer.length);
+        const wavData = new Uint8Array(wavHeader.byteLength + pcmBuffer.buffer.byteLength);
+        wavData.set(new Uint8Array(wavHeader), 0);
+        wavData.set(new Uint8Array(pcmBuffer.buffer), wavHeader.byteLength);
+
+        this.port.postMessage({
+          type: 'chunk',
+          wavData: wavData,
+          targetSampleRate: this.targetSampleRate,
+          isFinal: false
+        }, [wavData.buffer]);
+
+        this.buffer = new Float32Array(this.chunkSize);
+        this.sampleCount = 0;
+      }
     }
 
     return true;
