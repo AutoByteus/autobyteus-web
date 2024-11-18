@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia';
 import { useTranscriptionStore } from '~/stores/transcriptionStore';
+import { useRuntimeConfig } from '#app';
 
 interface AudioChunk {
   id: string;
-  pcmData: Int16Array;    // For backend processing
-  wavData: Uint8Array;    // For playback/download
+  wavData: Uint8Array;
   sampleRate: number;
   timestamp: number;
   chunkNumber: number;
@@ -42,13 +42,12 @@ export const useAudioStore = defineStore('audio', {
 
   actions: {
     getAudioConstraints() {
+      const config = useRuntimeConfig();
       return {
         audio: {
-          channelCount: 1,
-          sampleRate: 16000,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
+          channelCount: config.public.audio.channels,
+          sampleRate: config.public.audio.sampleRate,
+          ...config.public.audio.constraints
         }
       };
     },
@@ -60,7 +59,6 @@ export const useAudioStore = defineStore('audio', {
     async downloadChunk(chunkId: string) {
       const chunk = this.audioChunks.find(c => c.id === chunkId);
       if (chunk) {
-        // Use the WAV data directly from the chunk
         const wavBlob = new Blob([chunk.wavData], { type: 'audio/wav' });
         const url = URL.createObjectURL(wavBlob);
         const a = document.createElement('a');
@@ -91,21 +89,31 @@ export const useAudioStore = defineStore('audio', {
 
         this.stream = await navigator.mediaDevices.getUserMedia(this.getAudioConstraints());
         
+        const config = useRuntimeConfig();
+        const sampleRate = config.public.audio.sampleRate;
+        
         this.audioContext = new AudioContext({
-          sampleRate: 16000,
+          sampleRate: sampleRate,
           latencyHint: 'interactive'
         });
 
         await this.audioContext.audioWorklet.addModule(new URL('@/workers/audio-processor.worklet.js', import.meta.url));
         
         const source = this.audioContext.createMediaStreamSource(this.stream);
-        this.audioWorklet = new AudioWorkletNode(this.audioContext, 'audio-chunk-processor');
+        
+        const chunkDuration = config.public.audio.chunkDuration;
+        
+        this.audioWorklet = new AudioWorkletNode(this.audioContext, 'audio-chunk-processor', {
+          processorOptions: {
+            sampleRate: sampleRate,
+            chunkDuration: chunkDuration
+          }
+        });
 
         this.audioWorklet.port.onmessage = async (event) => {
           if (event.data.type === 'chunk') {
             const chunk: AudioChunk = {
               id: crypto.randomUUID(),
-              pcmData: new Int16Array(event.data.pcmData), // Ensure pcmData is correctly typed
               wavData: new Uint8Array(event.data.wavData),
               sampleRate: event.data.sampleRate,
               timestamp: Date.now(),
@@ -113,7 +121,6 @@ export const useAudioStore = defineStore('audio', {
             };
 
             this.audioChunks.push(chunk);
-            // Send ArrayBuffer directly to backend without converting to Blob
             await transcriptionStore.sendAudioChunk(workspaceId, stepId, chunk.wavData.buffer);
           }
         };
@@ -152,6 +159,7 @@ export const useAudioStore = defineStore('audio', {
 
         const transcriptionStore = useTranscriptionStore();
         await transcriptionStore.finalize(workspaceId, stepId);
+
       } catch (err: any) {
         this.error = err.message;
         console.error('Recording stop error:', err);

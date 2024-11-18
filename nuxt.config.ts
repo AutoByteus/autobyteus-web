@@ -56,7 +56,7 @@ const baseConfig = {
       // Audio recording configuration
       audio: {
         sampleRate: 16000,
-        chunkDuration: 7,
+        chunkDuration: 3,
         channels: 1,
         transcriptionWsEndpoint: process.env.NUXT_PUBLIC_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8001/ws/transcribe',
         constraints: {

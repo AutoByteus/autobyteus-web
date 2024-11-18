@@ -1,8 +1,10 @@
 class AudioChunkProcessor extends AudioWorkletProcessor {
-  constructor() {
+  constructor(options) {
     super();
-    this.sampleRate = 16000; // Target sample rate
-    this.chunkSize = this.sampleRate * 7; // 7 seconds of audio
+    const { sampleRate, chunkDuration } = options.processorOptions;
+    this.sampleRate = sampleRate || 16000; // Use provided sample rate or default to 16000
+    this.chunkDuration = chunkDuration || 7; // Use provided chunk duration or default to 7 seconds
+    this.chunkSize = this.sampleRate * this.chunkDuration;
     this.buffer = new Float32Array(this.chunkSize);
     this.sampleCount = 0;
   }
@@ -69,7 +71,7 @@ class AudioChunkProcessor extends AudioWorkletProcessor {
     const input = inputs[0][0];
     if (!input) return true;
 
-    // Resample audio to 16kHz if necessary
+    // Resample audio if necessary
     const inputSampleRate = sampleRate;
     const ratio = this.sampleRate / inputSampleRate;
     

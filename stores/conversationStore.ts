@@ -18,7 +18,7 @@ import apiService from '~/services/api';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import { useWorkflowStore } from '~/stores/workflow';
-import { useTranscriptionStore } from '~/stores/transcriptionStore'; // Import the transcription store
+import { useTranscriptionStore } from '~/stores/transcriptionStore';
 
 interface ConversationStoreState {
   conversations: Map<string, Conversation>;
@@ -41,22 +41,18 @@ export const useConversationStore = defineStore('conversation', {
 
   getters: {
     activeConversations: (state) => Array.from(state.conversations.values()),
-    selectedConversation: (state) => 
-      state.selectedConversationId 
-        ? state.conversations.get(state.selectedConversationId) 
+    selectedConversation: (state) =>
+      state.selectedConversationId
+        ? state.conversations.get(state.selectedConversationId)
         : null,
     currentContextPaths: (state): ContextFilePath[] => state.contextFilePaths,
     isCurrentlySending: (state): boolean => state.isSending,
     isConversationActive: (state): boolean => state.selectedConversationId !== null,
-    conversationMessages: (state): Message[] => 
+    conversationMessages: (state): Message[] =>
       state.selectedConversationId
         ? state.conversations.get(state.selectedConversationId)?.messages || []
         : [],
-    currentRequirement: (state): string => {
-      const transcriptionStore = useTranscriptionStore(); // Access the transcription store
-      const transcription = transcriptionStore.transcription.trim();
-      return transcription ? `${state.userRequirement} ${transcription}`.trim() : state.userRequirement;
-    },
+    currentRequirement: (state): string => state.userRequirement, // Updated getter
   },
 
   actions: {
@@ -112,7 +108,7 @@ export const useConversationStore = defineStore('conversation', {
 
       try {
         const { mutate: closeConversationMutation } = useMutation(CloseConversation);
-        
+
         await closeConversationMutation({
           workspaceId: currentWorkspaceId,
           stepId: currentStepId,
@@ -151,7 +147,7 @@ export const useConversationStore = defineStore('conversation', {
       llmModel?: LlmModel
     ): Promise<void> {
       const { mutate: sendStepRequirementMutation } = useMutation<SendStepRequirementMutation, SendStepRequirementMutationVariables>(SendStepRequirement);
-      
+
       this.isSending = true;
       try {
         const formattedContextFilePaths: ContextFilePathInput[] = this.contextFilePaths.map(cf => ({
@@ -172,7 +168,7 @@ export const useConversationStore = defineStore('conversation', {
 
         if (result?.data?.sendStepRequirement) {
           const conversation_id = result.data.sendStepRequirement;
-          
+
           if (this.selectedConversationId?.startsWith('temp-')) {
             this.conversations.delete(this.selectedConversationId);
           }
@@ -292,11 +288,11 @@ export const useConversationStore = defineStore('conversation', {
     async searchContextFiles(requirement: string): Promise<void> {
       const workspaceStore = useWorkspaceStore();
       const workspaceId = workspaceStore.currentSelectedWorkspaceId;
-    
+
       if (!workspaceId) {
         throw new Error('No workspace selected');
       }
-    
+
       try {
         const { onResult, onError } = useQuery<SearchContextFilesQuery, SearchContextFilesQueryVariables>(
           SearchContextFiles,
@@ -305,7 +301,7 @@ export const useConversationStore = defineStore('conversation', {
             query: requirement
           }
         );
-    
+
         onResult((result) => {
           if (result.data?.hackathonSearch) {
             this.contextFilePaths = result.data.hackathonSearch.map(path => ({
@@ -316,12 +312,12 @@ export const useConversationStore = defineStore('conversation', {
             this.contextFilePaths = [];
           }
         });
-    
+
         onError((error) => {
           console.error('Error searching context files:', error);
           throw error;
         });
-    
+
       } catch (err) {
         console.error('Error searching context files:', err);
         throw err;
