@@ -27,7 +27,6 @@
       
       <!-- Audio recorder component -->
       <AudioRecorder
-        @transcription-update="handleTranscriptionUpdate"
         :disabled="isSending"
       />
       
@@ -100,13 +99,6 @@ const updateRequirement = (event: Event) => {
   adjustTextareaHeight();
 };
 
-const handleTranscriptionUpdate = (transcription: string) => {
-  conversationStore.updateUserRequirement(transcription);
-  nextTick(() => {
-    adjustTextareaHeight();
-  });
-};
-
 const handleSend = async () => {
   if (!userRequirement.value.trim()) {
     alert('Please enter a user requirement before sending.');
@@ -148,7 +140,7 @@ const handleSearchContext = async () => {
   try {
     await conversationStore.searchContextFiles(userRequirement.value);
     // Scroll to context files area for better UX
-    document.querySelector('.context-files-area')?.scrollIntoView({ 
+    document.querySelector('.context-files-area')?.scrollIntoView({
       behavior: 'smooth',
       block: 'start'
     });

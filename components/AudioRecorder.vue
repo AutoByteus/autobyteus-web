@@ -3,11 +3,11 @@
     <div class="flex items-center space-x-2">
       <button
         @click="handleRecordingToggle"
-        :disabled="disabled || isCleaningUp"
+        :disabled="disabled || audioStore.isStopping"
         :class="[
           'flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all duration-200 shadow-sm text-white min-h-[40px]',
           audioStore.isRecording ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
-          (disabled || isCleaningUp) ? 'opacity-50 cursor-not-allowed' : ''
+          (disabled || audioStore.isStopping) ? 'opacity-50 cursor-not-allowed' : ''
         ]"
       >
         <svg 
@@ -32,7 +32,7 @@
       <button
         v-if="audioStore.audioChunks.length > 0"
         @click="audioStore.toggleChunksVisibility()"
-        :disabled="isCleaningUp"
+        :disabled="audioStore.isStopping"
         class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         <span>{{ audioStore.showChunks ? 'Hide Chunks' : 'Show Chunks' }}</span>
@@ -50,7 +50,7 @@
       <button
         v-if="audioStore.audioChunks.length > 0"
         @click="audioStore.clearAllChunks()"
-        :disabled="isCleaningUp"
+        :disabled="audioStore.isStopping"
         class="flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500"
       >
         <span>Clear All</span>
@@ -78,7 +78,7 @@
           <div class="flex items-center space-x-2">
             <button
               @click="audioStore.downloadChunk(chunk.id)"
-              :disabled="isCleaningUp"
+              :disabled="audioStore.isStopping"
               class="px-2 py-1 text-sm text-blue-600 hover:text-blue-700 focus:outline-none"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,7 +87,7 @@
             </button>
             <button
               @click="audioStore.deleteChunk(chunk.id)"
-              :disabled="isCleaningUp"
+              :disabled="audioStore.isStopping"
               class="px-2 py-1 text-sm text-red-600 hover:text-red-700 focus:outline-none"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,11 +116,9 @@ const workflowStore = useWorkflowStore();
 const audioStore = useAudioStore();
 
 const errorMessage = ref<string | null>(null);
-const isCleaningUp = ref(false);
-const cleanupTimeout = ref<NodeJS.Timeout | null>(null);
 
 const buttonText = computed(() => {
-  if (isCleaningUp.value) return 'Finalizing...';
+  if (audioStore.isStopping) return 'Stopping...';
   return audioStore.isRecording ? 'Recording...' : 'Start Recording';
 });
 
@@ -137,42 +135,13 @@ const handleRecordingToggle = async () => {
     if (!audioStore.isRecording) {
       await audioStore.startRecording(workspaceId, stepId);
     } else {
-      isCleaningUp.value = true;
       await audioStore.stopRecording(workspaceId, stepId);
-      // Wait for the final transcription before marking as not cleaning up
-      startCleanupTimeout();
     }
   } catch (error: any) {
     console.error('Recording error:', error);
     errorMessage.value = error.message || 'An unexpected error occurred during recording.';
-    isCleaningUp.value = false;
   }
 };
-
-const startCleanupTimeout = () => {
-  // Clear any existing timeout
-  if (cleanupTimeout.value) {
-    clearTimeout(cleanupTimeout.value);
-  }
-
-  // Set a new timeout for 5 seconds to ensure we don't wait indefinitely
-  cleanupTimeout.value = setTimeout(() => {
-    isCleaningUp.value = false;
-  }, 5000);
-};
-
-// Watch for transcription messages
-watch(
-  () => audioStore.lastTranscriptionReceived,
-  (newValue) => {
-    if (newValue && isCleaningUp.value) {
-      isCleaningUp.value = false;
-      if (cleanupTimeout.value) {
-        clearTimeout(cleanupTimeout.value);
-      }
-    }
-  }
-);
 
 watch(
   () => audioStore.combinedError,
@@ -184,16 +153,6 @@ watch(
 onUnmounted(async () => {
   const workspaceId = workspaceStore.currentSelectedWorkspaceId;
   const stepId = workflowStore.selectedStep?.id;
-  
-  if (cleanupTimeout.value) {
-    clearTimeout(cleanupTimeout.value);
-  }
-
-  if (isCleaningUp.value) {
-    // Wait for a short time to allow final transcription
-    await new Promise(resolve => setTimeout(resolve, 2000));
-  }
-  
   await audioStore.cleanup(workspaceId, stepId);
 });
 </script>
