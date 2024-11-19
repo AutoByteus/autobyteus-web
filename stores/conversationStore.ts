@@ -52,7 +52,11 @@ export const useConversationStore = defineStore('conversation', {
       state.selectedConversationId
         ? state.conversations.get(state.selectedConversationId)?.messages || []
         : [],
-    currentRequirement: (state): string => state.userRequirement, // Updated getter
+    currentRequirement: (state): string => state.userRequirement,
+    totalCost: (state): number => {
+      const conversation = state.selectedConversation;
+      return conversation ? conversation.totalCost : 0;
+    },
   },
 
   actions: {
@@ -76,6 +80,7 @@ export const useConversationStore = defineStore('conversation', {
         messages: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        totalCost: 0,
       };
       this.conversations.set(tempId, newConversation);
       this.selectedConversationId = tempId;
@@ -131,11 +136,14 @@ export const useConversationStore = defineStore('conversation', {
       this.closeConversation(conversationId);
     },
 
-    addMessageToConversation(conversationId: string, message: Message) {
+    addMessageToConversation(conversationId: string, message: Message, cost?: number) {
       const conversation = this.conversations.get(conversationId);
       if (conversation) {
         conversation.messages.push(message);
         conversation.updatedAt = new Date().toISOString();
+        if (typeof cost === 'number') {
+          conversation.totalCost = cost;
+        }
         this.conversations.set(conversationId, { ...conversation });
       }
     },
@@ -179,6 +187,7 @@ export const useConversationStore = defineStore('conversation', {
               messages: [],
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
+              totalCost: 0,
             };
             this.addConversation(newConversation);
           }
@@ -219,12 +228,12 @@ export const useConversationStore = defineStore('conversation', {
 
       onResult(({ data }) => {
         if (data?.stepResponse) {
-          const { conversationId, message } = data.stepResponse;
+          const { conversationId, message, cost } = data.stepResponse;
           this.addMessageToConversation(conversationId, {
             type: 'ai',
             text: message,
             timestamp: new Date(),
-          });
+          }, cost);
         }
       });
 
@@ -280,6 +289,7 @@ export const useConversationStore = defineStore('conversation', {
       const conversation = conversationHistoryStore.getConversations.find(conv => conv.id === conversationId);
       if (conversation) {
         this.conversations.set(conversation.id, { ...conversation });
+        this.selectedConversationId = conversation.id;
       } else {
         console.warn(`Conversation with ID ${conversationId} not found in history.`);
       }

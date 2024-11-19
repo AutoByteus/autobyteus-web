@@ -3,6 +3,9 @@
 
 <template>
   <div class="space-y-4 mb-4">
+    <div class="cost-display bg-gray-100 p-2 rounded text-gray-700">
+      Total Cost: ${{ totalCost.toFixed(6) }}
+    </div>
     <div
       v-for="(message, index) in conversation.messages"
       :key="message.timestamp + '-' + message.type + '-' + index"
@@ -43,6 +46,8 @@ const conversationStore = useConversationStore();
 
 const conversationId = computed(() => conversationStore.currentConversation?.id || '');
 
+const totalCost = computed(() => conversationStore.currentConversation?.totalCost || 0);
+
 const formatTimestamp = (date: string) => {
   const parsedDate = new Date(date);
   return parsedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -52,4 +57,8 @@ const formatTimestamp = (date: string) => {
 <style scoped>
 /* Add any additional styles here */
 /* Ensure messages wrap properly on small screens */
+.cost-display {
+  text-align: center;
+  font-weight: bold;
+}
 </style>
