@@ -33,6 +33,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.conversations = [];
       this.totalPages = 1;
       this.fetchConversationHistory();
+      this.fetchTotalCost();
     },
     async fetchTotalCost(timeFrame: string = 'week') {
       if (!this.stepName) {
@@ -142,6 +143,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
             return aiMessage;
           }
         }),
+        totalCost: stepConversation.totalCost || 0,
         createdAt: stepConversation.createdAt,
         updatedAt: stepConversation.createdAt,
       };

@@ -6,6 +6,7 @@
   >
     <div class="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
       <h2 class="text-2xl font-bold mb-4">Conversation History</h2>
+      
       <div v-if="conversationHistoryStore.loading" class="text-center">
         <p>Loading...</p>
       </div>
@@ -62,7 +63,6 @@ const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'activate', conversationId: string): void;
 }>();
-
 const conversationHistoryStore = useConversationHistoryStore();
 
 const conversations = computed(() => conversationHistoryStore.getConversations);

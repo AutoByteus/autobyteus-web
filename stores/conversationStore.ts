@@ -43,7 +43,7 @@ export const useConversationStore = defineStore('conversation', {
     activeConversations: (state) => Array.from(state.conversations.values()),
     selectedConversation: (state) =>
       state.selectedConversationId
-        ? state.conversations.get(state.selectedConversationId)
+    ? state.conversations.get(state.selectedConversationId) || null
         : null,
     currentContextPaths: (state): ContextFilePath[] => state.contextFilePaths,
     isCurrentlySending: (state): boolean => state.isSending,
