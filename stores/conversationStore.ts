@@ -65,6 +65,21 @@ export const useConversationStore = defineStore('conversation', {
       this.selectedConversationId = null;
       this.resetInputState();
     },
+    addMessageToConversation(
+      conversationId: string,
+      message: Message,
+      cost?: number
+    ) {
+      const conversation = this.conversations.get(conversationId);
+      if (conversation) {
+        conversation.messages.push(message);
+        conversation.updatedAt = new Date().toISOString();
+        if (typeof cost === 'number') {
+          conversation.totalCost = cost;
+        }
+        this.conversations.set(conversationId, { ...conversation });
+      }
+    },
 
     resetInputState() {
       this.contextFilePaths = [];
@@ -286,6 +301,7 @@ export const useConversationStore = defineStore('conversation', {
 
     setConversationFromHistory(conversationId: string) {
       const conversationHistoryStore = useConversationHistoryStore();
+      await conversationHistoryStore.fetchTotalCost();
       const conversation = conversationHistoryStore.getConversations.find(conv => conv.id === conversationId);
       if (conversation) {
         this.conversations.set(conversation.id, { ...conversation });

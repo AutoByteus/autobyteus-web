@@ -1,12 +1,13 @@
 import { defineStore } from 'pinia';
 import { useQuery } from '@vue/apollo-composable';
-import { GET_CONVERSATION_HISTORY } from '~/graphql/queries/conversation_queries';
+import { GET_CONVERSATION_HISTORY, GET_COST_SUMMARY } from '~/graphql/queries/conversation_queries';
 import type { GetConversationHistoryQuery, GetConversationHistoryQueryVariables } from '~/generated/graphql';
 import type { Conversation, Message, UserMessage, AIMessage } from '~/types/conversation';
 
 interface ConversationHistoryState {
   stepName: string | null;
   conversations: Conversation[];
+  totalCost: number;
   currentPage: number;
   pageSize: number;
   totalPages: number;
@@ -18,6 +19,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
   state: (): ConversationHistoryState => ({
     stepName: null,
     conversations: [],
+    totalCost: 0,
     currentPage: 1,
     pageSize: 10,
     totalPages: 1,
@@ -31,6 +33,31 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.conversations = [];
       this.totalPages = 1;
       this.fetchConversationHistory();
+    },
+    async fetchTotalCost(timeFrame: string = 'week') {
+      if (!this.stepName) {
+        this.error = 'Step name is not set.';
+        return;
+      }
+      const variables: GetCostSummaryQueryVariables = {
+        stepName: this.stepName,
+        timeFrame,
+      };
+      const { onResult, onError } = useQuery<GetCostSummaryQuery, GetCostSummaryQueryVariables>(
+        GET_COST_SUMMARY,
+        variables,
+        {
+          fetchPolicy: 'network-only',
+        }
+      );
+      onResult((result) => {
+        if (result.data?.getCostSummary !== undefined) {
+          this.totalCost = result.data.getCostSummary;
+        }
+      });
+      onError((error) => {
+        this.error = error.message || 'An error occurred while fetching total cost.';
+      });
     },
     async fetchConversationHistory(page: number = this.currentPage, pageSize: number = this.pageSize) {
       if (!this.stepName) {
