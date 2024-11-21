@@ -207,11 +207,13 @@ export const useConversationStore = defineStore('conversation', {
             this.addConversation(newConversation);
           }
 
+          // Assign cost as 0 for user message; backend handles actual cost calculation
           this.addMessageToConversation(conversation_id, {
             type: 'user',
             text: this.userRequirement,
             contextFilePaths: this.contextFilePaths,
             timestamp: new Date(),
+            cost: 0  // Initialize cost
           });
 
           this.clearContextFilePaths();

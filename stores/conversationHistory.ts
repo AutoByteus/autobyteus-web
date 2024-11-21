@@ -132,6 +132,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
                 type: 'text',
               })) || [],
               timestamp: new Date(msg.timestamp),
+              cost: msg.cost || 0,  // Include cost
             };
             return userMessage;
           } else {
@@ -139,6 +140,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
               type: 'ai',
               text: msg.message || '',
               timestamp: new Date(msg.timestamp),
+              cost: msg.cost || 0,  // Include cost
             };
             return aiMessage;
           }

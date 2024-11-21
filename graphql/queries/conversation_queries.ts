@@ -7,7 +7,7 @@ export const GET_CONVERSATION_HISTORY = gql`
         stepConversationId
         stepName
         createdAt
-        totalCost  # Added totalCost field
+        totalCost
         messages {
           messageId
           role
@@ -15,6 +15,7 @@ export const GET_CONVERSATION_HISTORY = gql`
           timestamp
           contextPaths
           originalMessage
+          cost  # Added cost field
         }
       }
       totalConversations
