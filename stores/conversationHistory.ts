@@ -13,6 +13,7 @@ interface ConversationHistoryState {
   totalPages: number;
   loading: boolean;
   error: string | null;
+  timeFrame: string; // Add timeFrame to state
 }
 
 export const useConversationHistoryStore = defineStore('conversationHistory', {
@@ -25,6 +26,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
     totalPages: 1,
     loading: false,
     error: null,
+    timeFrame: 'week', // Default to 'week'
   }),
   actions: {
     setStepName(stepName: string) {
@@ -35,11 +37,12 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.fetchConversationHistory();
       this.fetchTotalCost();
     },
-    async fetchTotalCost(timeFrame: string = 'week') {
+    async fetchTotalCost(timeFrame: string = this.timeFrame) {
       if (!this.stepName) {
         this.error = 'Step name is not set.';
         return;
       }
+      this.timeFrame = timeFrame; // Update timeFrame in state
       const variables: GetCostSummaryQueryVariables = {
         stepName: this.stepName,
         timeFrame,
@@ -118,6 +121,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.totalPages = 1;
       this.loading = false;
       this.error = null;
+      this.timeFrame = 'week';
     },
     mapToConversation(stepConversation: GetConversationHistoryQuery['getConversationHistory']['conversations'][number]): Conversation {
       return {

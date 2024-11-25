@@ -54,8 +54,10 @@ export const useConversationStore = defineStore('conversation', {
         : [],
     currentRequirement: (state): string => state.userRequirement,
     totalCost: (state): number => {
-      const conversation = state.selectedConversation;
-      return conversation ? conversation.totalCost : 0;
+      const conversation = state.selectedConversationId
+        ? state.conversations.get(state.selectedConversationId)
+        : null;
+      return conversation ? (conversation.totalCost ?? 0) : 0;
     },
   },
 
@@ -150,19 +152,6 @@ export const useConversationStore = defineStore('conversation', {
     removeConversation(conversationId: string) {
       this.closeConversation(conversationId);
     },
-
-    addMessageToConversation(conversationId: string, message: Message, cost?: number) {
-      const conversation = this.conversations.get(conversationId);
-      if (conversation) {
-        conversation.messages.push(message);
-        conversation.updatedAt = new Date().toISOString();
-        if (typeof cost === 'number') {
-          conversation.totalCost = cost;
-        }
-        this.conversations.set(conversationId, { ...conversation });
-      }
-    },
-
     async sendStepRequirementAndSubscribe(
       workspaceId: string,
       stepId: string,
@@ -301,7 +290,7 @@ export const useConversationStore = defineStore('conversation', {
       }
     },
 
-    setConversationFromHistory(conversationId: string) {
+    async setConversationFromHistory(conversationId: string) {
       const conversationHistoryStore = useConversationHistoryStore();
       await conversationHistoryStore.fetchTotalCost();
       const conversation = conversationHistoryStore.getConversations.find(conv => conv.id === conversationId);
