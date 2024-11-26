@@ -9,15 +9,16 @@
         />
         
         <FileContentSegment
-          v-else-if="segment.type === 'file_content'"
-          :file-group="segment.fileGroup"
+          v-else-if="segment.type === 'file'"
+          :file="segment"
           :conversation-id="conversationId"
           :message-index="messageIndex"
         />
 
         <BashCommandSegment
-          v-else-if="segment.type === 'bash_commands'"
-          :commands="segment.commands"
+          v-else-if="segment.type === 'bash_command'"
+          :command="segment.command"
+          :description="segment.description"
           :conversation-id="conversationId"
           :message-index="messageIndex"
         />
@@ -33,18 +34,15 @@ import { usePrismHighlighter } from '~/composables/usePrismHighlighter';
 import TextSegment from '~/components/conversation/segments/TextSegment.vue';
 import FileContentSegment from '~/components/conversation/segments/FileContentSegment.vue';
 import BashCommandSegment from '~/components/conversation/segments/BashCommandSegment.vue';
-import { computed } from 'vue';
 
 const props = defineProps<{
   message: AIMessage;
-  conversationId: string | null;
+  conversationId: string;
   messageIndex: number;
 }>();
 
 // Initialize Prism highlighter
 usePrismHighlighter();
-
-const conversationIdComputed = computed(() => props.conversationId);
 </script>
 
 <style scoped>

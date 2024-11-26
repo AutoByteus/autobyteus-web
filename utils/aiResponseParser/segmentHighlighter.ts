@@ -1,6 +1,6 @@
 import Prism from 'prismjs';
-import { highlightVueCode } from './vueCodeHighlight';
-import type { ParsedAIResponse } from './types';
+import { highlightVueCode } from './vueCodeHighlight.js';
+import type { ParsedAIResponse } from './types.js';
 
 /**
  * Highlights the code content within the parsed AI response segments.
@@ -9,21 +9,18 @@ import type { ParsedAIResponse } from './types';
  */
 export function highlightSegments(parsed: ParsedAIResponse): ParsedAIResponse {
   const highlightedSegments = parsed.segments.map(segment => {
-    if (segment.type === 'file_content') {
-      const highlightedFiles = segment.fileGroup.files.map(file => ({
-        ...file,
-        highlightedContent:
-          file.language.toLowerCase() === 'vue'
-            ? highlightVueCode(file.originalContent)
-            : Prism.highlight(
-                file.originalContent,
-                Prism.languages[file.language.toLowerCase()] || Prism.languages.plaintext,
-                file.language.toLowerCase()
-              ),
-      }));
+    if (segment.type === 'file') {
+      const highlightedContent =
+        segment.language.toLowerCase() === 'vue'
+          ? highlightVueCode(segment.originalContent)
+          : Prism.highlight(
+              segment.originalContent,
+              Prism.languages[segment.language.toLowerCase()] || Prism.languages.plaintext,
+              segment.language.toLowerCase()
+            );
       return {
         ...segment,
-        fileGroup: { files: highlightedFiles },
+        highlightedContent,
       };
     }
     return segment;

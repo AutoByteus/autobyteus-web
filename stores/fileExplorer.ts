@@ -23,6 +23,7 @@ interface FileExplorerState {
   contentError: Record<string, string | null>;
   applyChangeError: Record<string, Record<number, Record<string, string | null>>>;
   applyChangeLoading: Record<string, Record<number, Record<string, boolean>>>;
+  appliedChanges: Record<string, Record<number, Record<string, boolean>>>;
   searchResults: any[];
   searchLoading: boolean;
   searchError: string | null;
@@ -38,6 +39,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     contentError: {},
     applyChangeError: {},
     applyChangeLoading: {},
+    appliedChanges: {},
     searchResults: [],
     searchLoading: false,
     searchError: null,
@@ -58,6 +60,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       this.fileContents.delete(filePath)
       delete this.contentLoading[filePath]
       delete this.contentError[filePath]
+      delete this.appliedChanges[filePath]
       if (this.activeFile === filePath) {
         this.activeFile = this.openFiles[this.openFiles.length - 1] || null
       }
@@ -128,6 +131,15 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
           const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.applyFileChange)
           const workspaceStore = useWorkspaceStore()
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent)
+          
+          // Mark the change as applied
+          if (!this.appliedChanges[conversationId]) {
+            this.appliedChanges[conversationId] = {}
+          }
+          if (!this.appliedChanges[conversationId][messageIndex]) {
+            this.appliedChanges[conversationId][messageIndex] = {}
+          }
+          this.appliedChanges[conversationId][messageIndex][filePath] = true
         }
 
         this.applyChangeLoading[conversationId][messageIndex][filePath] = false
@@ -143,6 +155,9 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       return !!(this.applyChangeLoading[conversationId] &&
         this.applyChangeLoading[conversationId][messageIndex] &&
         this.applyChangeLoading[conversationId][messageIndex][filePath])
+    },
+    isChangeApplied(conversationId: string, messageIndex: number, filePath: string): boolean {
+      return this.appliedChanges[conversationId]?.[messageIndex]?.[filePath] || false
     },
     getApplyChangeError(conversationId: string, messageIndex: number, filePath: string): string | null {
       return this.applyChangeError[conversationId]?.[messageIndex]?.[filePath] || null
@@ -210,6 +225,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       this.contentError = {}
       this.applyChangeError = {}
       this.applyChangeLoading = {}
+      this.appliedChanges = {}
       this.searchResults = []
       this.searchLoading = false
       this.searchError = null
@@ -227,6 +243,9 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       return !!(state.applyChangeLoading[conversationId] &&
         state.applyChangeLoading[conversationId][messageIndex] &&
         state.applyChangeLoading[conversationId][messageIndex][filePath])
+    },
+    isChangeAppliedGetter: (state) => (conversationId: string, messageIndex: number, filePath: string): boolean => {
+      return state.appliedChanges[conversationId]?.[messageIndex]?.[filePath] || false
     },
     getApplyChangeErrorGetter: (state) => (conversationId: string, messageIndex: number, filePath: string): string | null => {
       return state.applyChangeError[conversationId]?.[messageIndex]?.[filePath] || null

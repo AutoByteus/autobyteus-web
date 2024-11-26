@@ -3,31 +3,21 @@ import { parseAIResponse } from '~/utils/aiResponseParser/aiResponseSegmentParse
 
 describe('aiResponseSegmentParser', () => {
   describe('parseAIResponse', () => {
-    it('should parse text without implementation tags into a single text segment', () => {
-      const rawText = "This is a simple AI response without any implementation details.";
-      const result = parseAIResponse(rawText);
-      
-      expect(result).toEqual({
-        segments: [
-          { type: 'text', content: "This is a simple AI response without any implementation details." }
-        ]
-      });
-    });
-
-    it('should parse text with implementation tags into text and implementation segments', () => {
+    it('should parse text with individual bash commands and files into separate segments', () => {
       const rawText = `
         Here is some introductory text.
-        <implementation>
-          <bash_commands>
-            npm install
-            npm run build
-          </bash_commands>
-          <files>
-            <file path="path/to/file1.py">
-              <content><![CDATA[# Python file content]]></content>
-            </file>
-          </files>
-        </implementation>
+        <bash command="npm install" description="Install dependencies" />
+        <file path="src/utils/formatter.ts">
+          <![CDATA[
+export const formatDate = (date: Date): string => {
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }).format(date)
+}
+          ]]>
+        </file>
         Concluding remarks.
       `;
       const result = parseAIResponse(rawText);
@@ -35,89 +25,173 @@ describe('aiResponseSegmentParser', () => {
       expect(result).toEqual({
         segments: [
           { type: 'text', content: "Here is some introductory text." },
-          {
-            type: 'bash_commands',
-            commands: ['npm install', 'npm run build']
+          { 
+            type: 'bash_command', 
+            command: "npm install", 
+            description: "Install dependencies" 
           },
-          {
-            type: 'file_content',
-            fileGroup: {
-              files: [
-                {
-                  path: 'path/to/file1.py',
-                  originalContent: '# Python file content',
-                  language: 'python'
-                }
-              ]
-            }
+          { 
+            type: 'file', 
+            path: "src/utils/formatter.ts", 
+            originalContent: `export const formatDate = (date: Date): string => {
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }).format(date)
+}`, 
+            language: "typescript" 
           },
-          { type: 'text', content: "Concluding remarks." }
-        ]
+          { type: 'text', content: "Concluding remarks." },
+        ],
       });
     });
 
-    it('should handle multiple implementation segments correctly', () => {
+    it('should correctly parse interleaved text, bash commands, and files', () => {
       const rawText = `
-        First part of the response.
-        <implementation>
-          <bash_commands>
-            yarn install
-          </bash_commands>
-        </implementation>
-        Middle text.
-        <implementation>
-          <files>
-            <file path="path/to/app.vue">
-              <content><![CDATA[<template><div>Hello</div></template>]]></content>
-            </file>
-          </files>
-        </implementation>
-        Final part.
+        Starting the setup process.
+        <bash command="git clone https://github.com/example/repo.git" description="Clone the repository" />
+        <file path="repo/README.md">
+          <![CDATA[
+# Project Repository
+
+This repository contains the project source code.
+          ]]>
+        </file>
+        <bash command="cd repo" description="Navigate into the repository directory" />
+        <file path="repo/src/index.js">
+          <![CDATA[
+import express from 'express';
+
+const app = express();
+
+app.get('/', (req, res) => {
+  res.send('Hello World!');
+});
+
+app.listen(3000, () => {
+  console.log('Server is running on port 3000');
+});
+          ]]>
+        </file>
+        Setup complete.
       `;
       const result = parseAIResponse(rawText);
       
       expect(result).toEqual({
         segments: [
-          { type: 'text', content: "First part of the response." },
-          {
-            type: 'bash_commands',
-            commands: ['yarn install']
+          { type: 'text', content: "Starting the setup process." },
+          { 
+            type: 'bash_command', 
+            command: "git clone https://github.com/example/repo.git", 
+            description: "Clone the repository" 
           },
-          { type: 'text', content: "Middle text." },
-          {
-            type: 'file_content',
-            fileGroup: {
-              files: [
-                {
-                  path: 'path/to/app.vue',
-                  originalContent: '<template><div>Hello</div></template>',
-                  language: 'vue'
-                }
-              ]
-            }
+          { 
+            type: 'file', 
+            path: "repo/README.md", 
+            originalContent: `# Project Repository
+
+This repository contains the project source code.`, 
+            language: "markdown" 
           },
-          { type: 'text', content: "Final part." }
-        ]
+          { 
+            type: 'bash_command', 
+            command: "cd repo", 
+            description: "Navigate into the repository directory" 
+          },
+          { 
+            type: 'file', 
+            path: "repo/src/index.js", 
+            originalContent: `import express from 'express';
+
+const app = express();
+
+app.get('/', (req, res) => {
+  res.send('Hello World!');
+});
+
+app.listen(3000, () => {
+  console.log('Server is running on port 3000');
+});`, 
+            language: "javascript" 
+          },
+          { type: 'text', content: "Setup complete." },
+        ],
       });
     });
 
-    it('should handle empty implementation tags gracefully', () => {
+    it('should handle multiple interleaved segments correctly', () => {
       const rawText = `
-        Start text.
-        <implementation>
-          <bash_commands></bash_commands>
-          <files></files>
-        </implementation>
-        End text.
+        Initializing environment.
+        <file path="config/.env">
+          <![CDATA[
+DB_HOST=localhost
+DB_USER=root
+DB_PASS=s1mpl3
+          ]]>
+        </file>
+        <bash command="npm run migrate" description="Run database migrations" />
+        This is some additional setup information.
+        <bash command="npm start" description="Start the application" />
+        <file path="src/app.ts">
+          <![CDATA[
+import express from 'express';
+
+const app = express();
+
+app.get('/', (req, res) => {
+  res.send('App is running!');
+});
+
+app.listen(4000, () => {
+  console.log('App listening on port 4000');
+});
+          ]]>
+        </file>
+        Environment setup finished.
       `;
       const result = parseAIResponse(rawText);
       
       expect(result).toEqual({
         segments: [
-          { type: 'text', content: "Start text." },
-          { type: 'text', content: "" },
-          { type: 'text', content: "End text." }
-        ]
+          { type: 'text', content: "Initializing environment." },
+          { 
+            type: 'file', 
+            path: "config/.env", 
+            originalContent: `DB_HOST=localhost
+DB_USER=root
+DB_PASS=s1mpl3`, 
+            language: "plaintext" 
+          },
+          { 
+            type: 'bash_command', 
+            command: "npm run migrate", 
+            description: "Run database migrations" 
+          },
+          { type: 'text', content: "This is some additional setup information." },
+          { 
+            type: 'bash_command', 
+            command: "npm start", 
+            description: "Start the application" 
+          },
+          { 
+            type: 'file', 
+            path: "src/app.ts", 
+            originalContent: `import express from 'express';
+
+const app = express();
+
+app.get('/', (req, res) => {
+  res.send('App is running!');
+});
+
+app.listen(4000, () => {
+  console.log('App listening on port 4000');
+});`, 
+            language: "typescript" 
+          },
+          { type: 'text', content: "Environment setup finished." },
+        ],
       });
     });
   });

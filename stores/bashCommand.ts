@@ -8,7 +8,7 @@ import type {
 import { useWorkspaceStore } from '~/stores/workspace'
 
 interface BashCommandState {
-  commandResults: Record<string, Record<number, Record<number, { success: boolean; message: string }>>>
+  commandResults: Record<string, Record<number, { success: boolean; message: string }>>
   commandErrors: Record<string, Record<number, string | null>>
 }
 
@@ -22,28 +22,30 @@ export const useBashCommandStore = defineStore('bashCommand', {
       workspaceId: string,
       command: string,
       conversationId: string,
-      messageIndex: number,
-      cmdIndex: number
+      messageIndex: number
     ): Promise<void> {
       const { mutate: executeBashCommandsMutation } = useMutation<ExecuteBashCommandsMutation, ExecuteBashCommandsMutationVariables>(EXECUTE_BASH_COMMANDS)
       const workspaceStore = useWorkspaceStore()
+      
       if (!this.commandResults[conversationId]) {
         this.commandResults[conversationId] = {}
       }
       if (!this.commandResults[conversationId][messageIndex]) {
         this.commandResults[conversationId][messageIndex] = {}
       }
+      
       // Initialize command state
-      this.commandResults[conversationId][messageIndex][cmdIndex] = { success: false, message: '' }
+      this.commandResults[conversationId][messageIndex] = { success: false, message: '' }
       this.commandErrors[conversationId] = this.commandErrors[conversationId] || {}
       this.commandErrors[conversationId][messageIndex] = null
+      
       try {
         const result = await executeBashCommandsMutation({
           workspaceId,
           command
         })
         if (result?.data?.executeBashCommands?.success) {
-          this.commandResults[conversationId][messageIndex][cmdIndex] = { success: true, message: result.data.executeBashCommands.message }
+          this.commandResults[conversationId][messageIndex] = { success: true, message: result.data.executeBashCommands.message }
         } else {
           throw new Error(result?.data?.executeBashCommands?.message || 'Failed to execute bash command')
         }
@@ -53,12 +55,12 @@ export const useBashCommandStore = defineStore('bashCommand', {
         throw error
       }
     },
-    isApplyCommandInProgress(conversationId: string, messageIndex: number, cmdIndex: number): boolean {
-      return !this.commandResults[conversationId]?.[messageIndex]?.[cmdIndex]?.success &&
-             this.commandResults[conversationId]?.[messageIndex]?.[cmdIndex]?.message === ''
+    isApplyCommandInProgress(conversationId: string, messageIndex: number): boolean {
+      const result = this.commandResults[conversationId]?.[messageIndex]
+      return result ? !result.success && result.message === '' : false
     },
-    isCommandExecuted(conversationId: string, messageIndex: number, cmdIndex: number): boolean {
-      return this.commandResults[conversationId]?.[messageIndex]?.[cmdIndex]?.success || false
+    isCommandExecuted(conversationId: string, messageIndex: number): boolean {
+      return this.commandResults[conversationId]?.[messageIndex]?.success || false
     },
     getApplyCommandError(conversationId: string, messageIndex: number): string | null {
       return this.commandErrors[conversationId]?.[messageIndex] || null
@@ -69,8 +71,8 @@ export const useBashCommandStore = defineStore('bashCommand', {
     },
   },
   getters: {
-    getCommandResult: (state) => (conversationId: string, messageIndex: number, cmdIndex: number) => {
-      return state.commandResults[conversationId]?.[messageIndex]?.[cmdIndex] || { success: false, message: '' }
+    getCommandResult: (state) => (conversationId: string, messageIndex: number) => {
+      return state.commandResults[conversationId]?.[messageIndex] || { success: false, message: '' }
     }
   }
 })
