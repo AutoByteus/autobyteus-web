@@ -6,6 +6,7 @@
         <TextSegment
           v-if="segment.type === 'text'"
           :content="segment.content"
+          :highlightedContent="segment.highlightedContent"
         />
         
         <FileContentSegment
@@ -14,7 +15,6 @@
           :conversation-id="conversationId"
           :message-index="messageIndex"
         />
-
         <BashCommandSegment
           v-else-if="segment.type === 'bash_command'"
           :command="segment.command"

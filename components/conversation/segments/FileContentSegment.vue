@@ -40,9 +40,7 @@
       </button>
     </div>
     <MarkdownRenderer v-if="isMarkdownFile" :content="file.originalContent" />
-    <pre v-else :class="'language-' + file.language + ' w-full overflow-x-auto'">
-      <code v-html="file.highlightedContent"></code>
-    </pre>
+    <pre v-else :class="'language-' + file.language + ' w-full overflow-x-auto'"><code v-html="file.highlightedContent"></code></pre>
     <div v-if="error" class="mt-2 p-2 rounded bg-red-100 text-red-800">
       {{ error }}
     </div>
@@ -105,10 +103,5 @@ const isMarkdownFile = computed(() => {
 </script>
 
 <style scoped>
-.markdown-body {
-  font-family: Arial, sans-serif;
-  line-height: 1.5;
-}
-
 /* Additional styles for markdown elements */
 </style>
