@@ -15,6 +15,12 @@ export function getLanguage(filePath: string): string {
       return 'php';
     case 'rb':
       return 'ruby';
+    case 'css':
+      return 'css';
+    case 'json':
+      return 'json';
+    case 'md':
+      return 'markdown';
     default:
       return 'plaintext';
   }

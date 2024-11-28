@@ -1,15 +1,13 @@
 <template>
-  <div class="mb-4 break-words" v-html="formattedText"></div>
+  <div class="mb-4">
+    <MarkdownRenderer :content="content" />
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import MarkdownRenderer from '~/components/conversation/segments/renderer/MarkdownRenderer.vue';
 
-const props = defineProps<{
+defineProps<{
   content: string;
 }>();
-
-const formattedText = computed(() => {
-  return props.content.replace(/\n/g, '<br>');
-});
 </script>
