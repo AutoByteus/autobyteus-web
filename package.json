@@ -51,6 +51,7 @@
     "@nuxtjs/apollo": "^5.0.0-alpha.14",
     "@pinia/nuxt": "^0.5.1",
     "@pinia/testing": "^0.1.7",
+    "@tailwindcss/typography": "^0.5.15",
     "@types/electron-builder": "^5.0.1",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^20.4.2",

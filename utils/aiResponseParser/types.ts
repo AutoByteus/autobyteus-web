@@ -13,7 +13,6 @@ export interface ParsedFile {
 export interface AIResponseTextSegment {
   type: 'text';
   content: string;
-  highlightedContent?: string;
 }
 
 export interface BashCommandSegment {
