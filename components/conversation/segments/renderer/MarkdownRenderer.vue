@@ -44,20 +44,24 @@ const renderedMarkdown = computed(() => {
   @apply max-w-full h-auto;
 }
 
-/* Add specific markdown overrides if needed */
+/* Updated markdown list styles */
 .markdown-body {
   @apply text-base leading-relaxed;
 }
 
 .markdown-body ul {
-  @apply list-disc list-inside my-4;
+  @apply list-disc list-outside pl-8 my-4;
 }
 
 .markdown-body ol {
-  @apply list-decimal list-inside my-4;
+  @apply list-decimal list-outside pl-8 my-4;
 }
 
 .markdown-body li {
   @apply my-1;
+}
+
+.markdown-body li > p {
+  @apply inline;
 }
 </style>
