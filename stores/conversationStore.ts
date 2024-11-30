@@ -74,6 +74,10 @@ export const useConversationStore = defineStore('conversation', {
     ) {
       const conversation = this.conversations.get(conversationId);
       if (conversation) {
+      // Ensure message.cost is a number
+      if (typeof message.cost !== 'number') {
+        message.cost = 0;
+      }
         conversation.messages.push(message);
         conversation.updatedAt = new Date().toISOString();
         if (typeof cost === 'number') {
@@ -179,34 +183,34 @@ export const useConversationStore = defineStore('conversation', {
         const result = await sendStepRequirementMutation(mutationVariables);
 
         if (result?.data?.sendStepRequirement) {
-          const conversation_id = result.data.sendStepRequirement;
+          const { conversationId, cost } = result.data.sendStepRequirement;
 
           if (this.selectedConversationId?.startsWith('temp-')) {
             this.conversations.delete(this.selectedConversationId);
           }
 
-          if (!this.conversations.has(conversation_id)) {
+if (!this.conversations.has(conversationId)) {
             const newConversation: Conversation = {
-              id: conversation_id,
+    id: conversationId,
               messages: [],
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
-              totalCost: 0,
+              totalCost: cost || 0,
             };
             this.addConversation(newConversation);
           }
 
           // Assign cost as 0 for user message; backend handles actual cost calculation
-          this.addMessageToConversation(conversation_id, {
+this.addMessageToConversation(conversationId, {
             type: 'user',
             text: this.userRequirement,
             contextFilePaths: this.contextFilePaths,
             timestamp: new Date(),
-            cost: 0  // Initialize cost
+            cost: cost || 0, // Use the cost returned from the mutation
           });
 
           this.clearContextFilePaths();
-          this.subscribeToStepResponse(workspaceId, stepId, conversation_id);
+          this.subscribeToStepResponse(workspaceId, stepId, conversationId);
           this.userRequirement = '';
 
           const conversationHistoryStore = useConversationHistoryStore();

@@ -127,6 +127,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       return {
         id: stepConversation.stepConversationId,
         messages: stepConversation.messages.map(msg => {
+        const cost = typeof msg.cost === 'number' ? msg.cost : 0;
           if (msg.role === 'user') {
             const userMessage: UserMessage = {
               type: 'user',
@@ -149,7 +150,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
             return aiMessage;
           }
         }),
-        totalCost: stepConversation.totalCost || 0,
+      totalCost: typeof stepConversation.totalCost === 'number' ? stepConversation.totalCost : 0,
         createdAt: stepConversation.createdAt,
         updatedAt: stepConversation.createdAt,
       };
