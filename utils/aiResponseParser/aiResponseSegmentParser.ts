@@ -1,9 +1,21 @@
-import { parseXmlImplementation } from './xmlImplementationParser';
-import type { AIResponseSegment, ParsedAIResponse } from './types';
+import { parseXmlSegment } from './xmlImplementationParser.js';
+import { highlightSegments } from './segmentHighlighter.js';
+import type { AIResponseSegment, ParsedAIResponse, BashCommand, ParsedFile } from './types.js';
 
 /**
- * Parses the AI response text into structured segments without performing any highlighting.
- * @param text - The AI response text containing possible implementation XML.
+ * Handles the raw AI response by parsing and then highlighting it.
+ * @param rawContent - The raw AI response text.
+ * @returns A ParsedAIResponse object containing highlighted segments.
+ */
+export function handleAIResponse(rawContent: string): ParsedAIResponse {
+  const parsed = parseAIResponse(rawContent);
+  const highlighted = highlightSegments(parsed);
+  return highlighted;
+}
+
+/**
+ * Parses the AI response text into a sequential list of segments, handling individual bash commands and files.
+ * @param text - The AI response text containing possible bash commands and file definitions.
  * @returns A ParsedAIResponse object containing the segmented content.
  */
 export function parseAIResponse(text: string): ParsedAIResponse {
@@ -11,10 +23,12 @@ export function parseAIResponse(text: string): ParsedAIResponse {
   let remainingText = text;
 
   while (remainingText.length > 0) {
-    const xmlStartIndex = remainingText.indexOf('<implementation>');
+    const bashStartIndex = remainingText.indexOf('<bash');
+    const fileStartIndex = remainingText.indexOf('<file');
+    const nextTagIndex = findNextTagIndex(bashStartIndex, fileStartIndex);
+    let tagType: 'bash' | 'file' | null = null;
 
-    // If no more implementation blocks found, add remaining text as a segment and break
-    if (xmlStartIndex === -1) {
+    if (nextTagIndex === -1) {
       const finalText = remainingText.trim();
       if (finalText.length > 0) {
         segments.push({ type: 'text', content: finalText });
@@ -22,70 +36,89 @@ export function parseAIResponse(text: string): ParsedAIResponse {
       break;
     }
 
-    // Add text before the implementation block if exists
-    if (xmlStartIndex > 0) {
-      const precedingText = remainingText.slice(0, xmlStartIndex).trim();
+    if (nextTagIndex > 0) {
+      const precedingText = remainingText.slice(0, nextTagIndex).trim();
       if (precedingText.length > 0) {
         segments.push({ type: 'text', content: precedingText });
       }
     }
 
-    // Find the end of current implementation block
-    const xmlEndIndex = remainingText.indexOf('</implementation>', xmlStartIndex);
-    
-    if (xmlEndIndex === -1) {
-      // If no closing tag found, treat the rest as text
-      const remaining = remainingText.slice(xmlStartIndex).trim();
-      if (remaining.length > 0) {
-        segments.push({ type: 'text', content: remaining });
-      }
-      break;
+    if (bashStartIndex !== -1 && bashStartIndex === nextTagIndex) {
+      tagType = 'bash';
+    } else if (fileStartIndex !== -1 && fileStartIndex === nextTagIndex) {
+      tagType = 'file';
     }
 
-    // Extract and parse the implementation block
-    const implementationContent = remainingText.slice(
-      xmlStartIndex, 
-      xmlEndIndex + '</implementation>'.length
-    );
+    if (tagType === 'bash') {
+      const bashEndIndex = remainingText.indexOf('/>', bashStartIndex);
+      if (bashEndIndex === -1) {
+        const remaining = remainingText.slice(bashStartIndex).trim();
+        if (remaining.length > 0) {
+          segments.push({ type: 'text', content: remaining });
+        }
+        break;
+      }
 
-    try {
-      const implementation = parseXmlImplementation(implementationContent);
-      let addedSegments = 0;
-      
-      if (implementation.bashCommands.commands.length > 0) {
+      const bashContent = remainingText.slice(bashStartIndex, bashEndIndex + '/>'.length);
+      try {
+        const bashCommand: BashCommand = parseXmlSegment(bashContent) as BashCommand;
+        if (bashCommand.command.trim() !== '') {
+          segments.push({
+            type: 'bash_command',
+            command: bashCommand.command,
+            description: bashCommand.description,
+          });
+        }
+      } catch (error) {
+        console.error('Bash command extraction failed:', error);
+        segments.push({ type: 'text', content: bashContent.trim() });
+      }
+
+      remainingText = remainingText.slice(bashEndIndex + '/>'.length).trim();
+    } else if (tagType === 'file') {
+      const fileEndIndex = remainingText.indexOf('</file>', fileStartIndex);
+      if (fileEndIndex === -1) {
+        const remaining = remainingText.slice(fileStartIndex).trim();
+        if (remaining.length > 0) {
+          segments.push({ type: 'text', content: remaining });
+        }
+        break;
+      }
+
+      const fileContent = remainingText.slice(fileStartIndex, fileEndIndex + '</file>'.length);
+      try {
+        const file: ParsedFile = parseXmlSegment(fileContent) as ParsedFile;
         segments.push({
-          type: 'bash_commands',
-          commands: implementation.bashCommands.commands,
+          type: 'file',
+          path: file.path,
+          originalContent: file.originalContent,
+          language: file.language,
         });
-        addedSegments++;
+      } catch (error) {
+        console.error('File content extraction failed:', error);
+        segments.push({ type: 'text', content: fileContent.trim() });
       }
 
-      if (implementation.files.length > 0) {
-        segments.push({
-          type: 'file_content',
-          fileGroup: { files: implementation.files },
-        });
-        addedSegments++;
-      }
-
-      // If no segments were added from the implementation block, add an empty text segment
-      if (addedSegments === 0) {
-        segments.push({ type: 'text', content: '' });
-      }
-
-    } catch (error) {
-      console.error('Implementation extraction failed:', error);
-      segments.push({ type: 'text', content: implementationContent.trim() });
+      remainingText = remainingText.slice(fileEndIndex + '</file>'.length).trim();
     }
-
-    // Update the remaining text
-    remainingText = remainingText.slice(xmlEndIndex + '</implementation>'.length).trim();
   }
 
-  // If no segments were created, add the entire text as a single segment
   if (segments.length === 0) {
     segments.push({ type: 'text', content: text.trim() });
   }
 
   return { segments };
+}
+
+/**
+ * Determines the next tag index between bash and file tags.
+ * @param bashIndex - The index of the next <bash> tag.
+ * @param fileIndex - The index of the next <file> tag.
+ * @returns The smallest index or -1 if neither is found.
+ */
+function findNextTagIndex(bashIndex: number, fileIndex: number): number {
+  if (bashIndex === -1 && fileIndex === -1) return -1;
+  if (bashIndex === -1) return fileIndex;
+  if (fileIndex === -1) return bashIndex;
+  return Math.min(bashIndex, fileIndex);
 }

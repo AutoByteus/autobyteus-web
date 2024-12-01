@@ -27,12 +27,37 @@ module.exports = {
           925: "#0d0d0d",
         },
       },
+      typography: {
+        DEFAULT: {
+          css: {
+            maxWidth: 'none',
+            color: 'inherit',
+            a: {
+              color: 'inherit',
+              textDecoration: 'underline',
+              fontWeight: '500',
+            },
+            ul: {
+              listStyleType: 'disc',
+              paddingLeft: '1.5em'
+            },
+            ol: {
+              paddingLeft: '1.5em'
+            },
+            li: {
+              marginTop: '0.25em',
+              marginBottom: '0.25em'
+            }
+          }
+        }
+      }
     },
   },
   variants: {
     extend: {},
   },
   plugins: [
+    require('@tailwindcss/typography'),
     plugin(function({ addUtilities }) {
       addUtilities({
         '.bg-green-striped': {

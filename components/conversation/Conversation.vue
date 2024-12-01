@@ -1,11 +1,11 @@
 <template>
   <div class="space-y-4 mb-4">
     <div class="cost-display bg-gray-100 p-2 rounded text-gray-700">
-      Total Cost: ${{ totalCost.toFixed(6) }}
+        Total Cost: ${{ (totalCost || 0).toFixed(6) }}
     </div>
     <div v-if="conversation">
       <div class="cost-display bg-gray-100 p-2 rounded text-gray-700">
-        Conversation Cost: ${{ totalCost.toFixed(6) }}
+          Conversation Cost: ${{ (totalCost || 0).toFixed(6) }}
       </div>
       <div
         v-for="(message, index) in conversation.messages"
@@ -30,7 +30,7 @@
         </span>
         <!-- Display cost per message -->
         <div class="text-xs text-gray-500 absolute top-1 right-2">
-          Cost: ${{ message.cost.toFixed(6) }}
+            Cost: ${{ (message.cost || 0).toFixed(6) }}
         </div>
       </div>
     </div>

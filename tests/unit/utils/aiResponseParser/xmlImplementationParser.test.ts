@@ -1,217 +1,92 @@
 import { describe, it, expect } from 'vitest';
-import { parseXmlImplementation } from '~/utils/aiResponseParser/xmlImplementationParser';
+import { parseXmlSegment } from '~/utils/aiResponseParser/xmlImplementationParser';
 
 describe('xmlImplementationParser', () => {
-  describe('parseXmlImplementation', () => {
-    it('should parse valid XML with bash commands and files correctly', () => {
-      const xmlContent = `
-        <implementation>
-          <bash_commands>
-            Setup environment
-            npm install
-            npm run build
-          </bash_commands>
-          <files>
-            <file path="path/to/file1.py">
-              <content><![CDATA[# Python file content]]></content>
-            </file>
-            <file path="path/to/file2.js">
-              <content><![CDATA[// JavaScript file content]]></content>
-            </file>
-          </files>
-        </implementation>
-      `;
-      const result = parseXmlImplementation(xmlContent);
-
+  describe('parseXmlSegment', () => {
+    it('should parse valid <bash> XML correctly', () => {
+      const xmlContent = `<bash command="mkdir -p src/utils" description="Create utils directory" />`;
+      const result = parseXmlSegment(xmlContent);
+      
       expect(result).toEqual({
-        bashCommands: {
-          commands: ['Setup environment', 'npm install', 'npm run build']
-        },
-        files: [
-          {
-            path: 'path/to/file1.py',
-            originalContent: '# Python file content',
-            language: 'python'
-          },
-          {
-            path: 'path/to/file2.js',
-            originalContent: '// JavaScript file content',
-            language: 'javascript'
-          }
-        ]
+        command: 'mkdir -p src/utils',
+        description: 'Create utils directory'
       });
     });
 
-    it('should throw an error for XML without <implementation> tag', () => {
-      const xmlContent = `
-        <data>
-          <bash_commands>
-            Some commands
-          </bash_commands>
-        </data>
+    it('should parse valid <file> XML correctly', () => {
+      const xmlContent = `<file path="src/utils/formatter.ts">
+          <![CDATA[
+export const formatDate = (date: Date): string => {
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }).format(date)
+}
+          ]]>
+        </file>
       `;
-      expect(() => parseXmlImplementation(xmlContent)).toThrow('Required <implementation> tag not found in XML content.');
-    });
-
-    it('should throw an error for malformed XML', () => {
-      const malformedXML = `
-        <implementation>
-          <bash_commands>
-            Missing closing tags
-      `;
-      expect(() => parseXmlImplementation(malformedXML)).toThrow('Failed to parse XML implementation content.');
-    });
-
-    it('should handle empty <bash_commands> and <files> gracefully', () => {
-      const xmlContent = `
-        <implementation>
-          <bash_commands></bash_commands>
-          <files></files>
-        </implementation>
-      `;
-      const result = parseXmlImplementation(xmlContent);
-
+      const result = parseXmlSegment(xmlContent);
+      
       expect(result).toEqual({
-        bashCommands: {
-          commands: []
-        },
-        files: []
+        path: 'src/utils/formatter.ts',
+        originalContent: `export const formatDate = (date: Date): string => {
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }).format(date)
+}`,
+        language: 'typescript'
       });
     });
 
-    it('should correctly extract multiple files with different languages', () => {
-      const xmlContent = `
-        <implementation>
-          <bash_commands>
-            Initialize project
-            yarn install
-          </bash_commands>
-          <files>
-            <file path="path/to/app.vue">
-              <content><![CDATA[<template><div>Hello</div></template>]]></content>
-            </file>
-            <file path="path/to/index.html">
-              <content><![CDATA[<!DOCTYPE html><html></html>]]></content>
-            </file>
-            <file path="path/to/script.php">
-              <content><![CDATA[<?php echo "Hello"; ?>]]></content>
-            </file>
-          </files>
-        </implementation>
-      `;
-      const result = parseXmlImplementation(xmlContent);
-
-      expect(result.files).toEqual([
-        {
-          path: 'path/to/app.vue',
-          originalContent: '<template><div>Hello</div></template>',
-          language: 'vue'
-        },
-        {
-          path: 'path/to/index.html',
-          originalContent: '<!DOCTYPE html><html></html>',
-          language: 'markup'
-        },
-        {
-          path: 'path/to/script.php',
-          originalContent: '<?php echo "Hello"; ?>',
-          language: 'php'
-        }
-      ]);
+    it('should throw an error for XML without <bash> or <file> tags', () => {
+      const xmlContent = `<unknown tag="value" />`;
+      expect(() => parseXmlSegment(xmlContent)).toThrow('Unknown XML segment type.');
     });
 
-    it('should include files with path even if content is missing or empty', () => {
-      const xmlContent = `
-        <implementation>
-          <bash_commands>
-            Some commands
-          </bash_commands>
-          <files>
-            <file path="path/to/file3.js">
-              <!-- Missing content -->
-            </file>
-            <file path="path/to/file4.rb">
-              <content><![CDATA[puts 'Hello World']]></content>
-            </file>
-            <file path="path/to/__init__.py">
-              <content><![CDATA[]]></content>
-            </file>
-          </files>
-        </implementation>
-      `;
-      const result = parseXmlImplementation(xmlContent);
-
-      expect(result.files).toEqual([
-        {
-          path: 'path/to/file3.js',
-          originalContent: '',
-          language: 'javascript'
-        },
-        {
-          path: 'path/to/file4.rb',
-          originalContent: "puts 'Hello World'",
-          language: 'ruby'
-        },
-        {
-          path: 'path/to/__init__.py',
-          originalContent: '',
-          language: 'python'
-        }
-      ]);
+    it('should throw an error for malformed <bash> XML', () => {
+      const malformedXml = `<bash command="npm install" description="Install dependencies">`;
+      expect(() => parseXmlSegment(malformedXml)).toThrow('Failed to parse XML segment content.');
     });
 
-    it('should ignore comment lines in bash_commands', () => {
-      const xmlContent = `
-        <implementation>
-          <bash_commands>
-            # Install required dependencies
-            pip install jinja2
-            # Apply migrations
-            python manage.py makemigrations
-            python manage.py migrate
-          </bash_commands>
-          <files>
-            <file path="path/to/settings.py">
-              <content><![CDATA[# Django settings]]></content>
-            </file>
-          </files>
-        </implementation>
-      `;
-      const result = parseXmlImplementation(xmlContent);
+    it('should throw an error if <bash> tag is missing the "command" attribute', () => {
+      const xmlContent = `<bash description="Missing command attribute" />`;
+      expect(() => parseXmlSegment(xmlContent)).toThrow('Bash command is missing the "command" attribute.');
+    });
 
+    it('should throw an error if <file> tag is missing the "path" attribute', () => {
+      const xmlContent = `
+        <file>
+          <![CDATA[console.log('Hello World');]]>
+        </file>
+      `;
+      expect(() => parseXmlSegment(xmlContent)).toThrow('File is missing the "path" attribute.');
+    });
+
+    it('should handle <file> tags with empty content', () => {
+      const xmlContent = `
+        <file path="src/utils/empty.ts">
+          <![CDATA[]]>
+        </file>
+      `;
+      const result = parseXmlSegment(xmlContent);
+      
       expect(result).toEqual({
-        bashCommands: {
-          commands: ['pip install jinja2', 'python manage.py makemigrations', 'python manage.py migrate']
-        },
-        files: [
-          {
-            path: 'path/to/settings.py',
-            originalContent: '# Django settings',
-            language: 'python'
-          }
-        ]
+        path: 'src/utils/empty.ts',
+        originalContent: '',
+        language: 'typescript'
       });
     });
 
-    it('should handle bash_commands with interleaved comments and commands', () => {
-      const xmlContent = `
-        <implementation>
-          <bash_commands>
-            # Start setup
-            echo "Setting up environment"
-            # Install packages
-            npm install express
-            # End setup
-          </bash_commands>
-        </implementation>
-      `;
-      const result = parseXmlImplementation(xmlContent);
-
+    it('should ignore comment lines in <bash> descriptions', () => {
+      const xmlContent = `<bash command="npm install" description="# Install dependencies" />`;
+      const result = parseXmlSegment(xmlContent);
+      
       expect(result).toEqual({
-        bashCommands: {
-          commands: ['echo "Setting up environment"', 'npm install express']
-        },
-        files: []
+        command: 'npm install',
+        description: '# Install dependencies'
       });
     });
   });
