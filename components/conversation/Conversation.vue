@@ -33,15 +33,12 @@ import { computed } from 'vue';
 import type { Conversation } from '~/types/conversation';
 import UserMessage from '~/components/conversation/UserMessage.vue';
 import AIMessage from '~/components/conversation/AIMessage.vue';
-import { useConversationStore } from '~/stores/conversationStore';
 
 const props = defineProps<{
   conversation: Conversation;
 }>();
 
-const conversationStore = useConversationStore();
-
-const conversationId = computed(() => conversationStore.currentConversation?.id || '');
+const conversationId = computed(() => props.conversation.id);
 
 const formatTimestamp = (date: string) => {
   const parsedDate = new Date(date);
