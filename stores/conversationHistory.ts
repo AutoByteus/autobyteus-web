@@ -78,7 +78,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
         pageSize,
       };
 
-      const { onResult, onError, refetch } = useQuery<GetConversationHistoryQuery, GetConversationHistoryQueryVariables>(
+      const { onResult, onError } = useQuery<GetConversationHistoryQuery, GetConversationHistoryQueryVariables>(
         GET_CONVERSATION_HISTORY,
         variables,
         {

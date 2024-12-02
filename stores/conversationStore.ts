@@ -95,9 +95,18 @@ export const useConversationStore = defineStore('conversation', {
     },
 
     createTemporaryConversation() {
+      const workflowStore = useWorkflowStore();
+      const currentStepId = workflowStore.currentSelectedStepId;
+
+      if (!currentStepId) {
+        console.error('No step selected');
+        return;
+      }
+
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const newConversation: Conversation = {
         id: tempId,
+        stepId: currentStepId, // Associate the temp conversation with the current step
         messages: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -122,12 +131,31 @@ export const useConversationStore = defineStore('conversation', {
     },
 
     async closeConversation(conversationId: string) {
-      const workspaceStore = useWorkspaceStore();
-      const workflowStore = useWorkflowStore();
-      const currentWorkspaceId = workspaceStore.currentSelectedWorkspaceId;
-      const currentStepId = workflowStore.currentSelectedStepId;
+      // Handle temporary conversations without backend call
+      if (conversationId.startsWith('temp-')) {
+        // Temp conversation, remove locally without backend call
+        this.conversations.delete(conversationId);
+        if (this.selectedConversationId === conversationId) {
+          const nextConversation = this.activeConversations[0];
+          this.selectedConversationId = nextConversation?.id || null;
+        }
+        return;
+      }
 
-      if (!currentWorkspaceId || !currentStepId) {
+      const workspaceStore = useWorkspaceStore();
+      const workflowStore = useWorkflowStore(); // Import workflowStore
+      const currentWorkspaceId = workspaceStore.currentSelectedWorkspaceId;
+
+      const conversation = this.conversations.get(conversationId);
+      let stepId = conversation?.stepId;
+
+      if (!stepId) {
+        // Use current stepId from workflowStore if stepId is missing
+        stepId = workflowStore.currentSelectedStepId;
+        console.warn(`stepId was missing for conversation ${conversationId}, using currentSelectedStepId ${stepId}`);
+      }
+
+      if (!currentWorkspaceId || !stepId) {
         console.error('Missing workspace ID or step ID');
         return;
       }
@@ -137,7 +165,7 @@ export const useConversationStore = defineStore('conversation', {
 
         await closeConversationMutation({
           workspaceId: currentWorkspaceId,
-          stepId: currentStepId,
+          stepId: stepId,
           conversationId
         });
 
@@ -191,7 +219,8 @@ export const useConversationStore = defineStore('conversation', {
 
 if (!this.conversations.has(conversationId)) {
             const newConversation: Conversation = {
-    id: conversationId,
+              id: conversationId,
+              stepId: stepId, // Store stepId in the conversation
               messages: [],
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
@@ -297,15 +326,31 @@ this.addMessageToConversation(conversationId, {
     async setConversationFromHistory(conversationId: string) {
       const conversationHistoryStore = useConversationHistoryStore();
       await conversationHistoryStore.fetchTotalCost();
+      const workflowStore = useWorkflowStore();
       const conversation = conversationHistoryStore.getConversations.find(conv => conv.id === conversationId);
+      
       if (conversation) {
-        this.conversations.set(conversation.id, { ...conversation });
+        this.conversations.set(conversation.id, { ...conversation });   
         this.selectedConversationId = conversation.id;
+        // Generate temporary ID using the same pattern as createTemporaryConversation
+        const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const stepId = conversation.stepId || workflowStore.currentSelectedStepId;
+        
+        const newConversation: Conversation = {
+          id: tempId, // Use temporary ID instead of historical ID
+          stepId: stepId,
+          messages: conversation.messages,
+          createdAt: new Date().toISOString(), // Reset creation time to now
+          updatedAt: new Date().toISOString(),
+        };
+        
+        this.conversations.set(tempId, newConversation);
+        this.selectedConversationId = tempId;
       } else {
         console.warn(`Conversation with ID ${conversationId} not found in history.`);
       }
     },
-
+    
     async searchContextFiles(requirement: string): Promise<void> {
       const workspaceStore = useWorkspaceStore();
       const workspaceId = workspaceStore.currentSelectedWorkspaceId;
@@ -327,7 +372,7 @@ this.addMessageToConversation(conversationId, {
           if (result.data?.hackathonSearch) {
             this.contextFilePaths = result.data.hackathonSearch.map(path => ({
               path,
-              type: 'text'  // All files are text files
+              type: 'text'
             }));
           } else {
             this.contextFilePaths = [];
@@ -343,6 +388,10 @@ this.addMessageToConversation(conversationId, {
         console.error('Error searching context files:', err);
         throw err;
       }
+    },
+
+    getConversationById(conversationId: string): Conversation | undefined {
+      return this.conversations.get(conversationId);
     }
   },
 });

@@ -42,7 +42,6 @@ import { computed } from 'vue';
 import type { Conversation } from '~/types/conversation';
 import UserMessage from '~/components/conversation/UserMessage.vue';
 import AIMessage from '~/components/conversation/AIMessage.vue';
-import { useConversationStore } from '~/stores/conversationStore';
 
 const props = defineProps<{
   conversation: Conversation;
@@ -52,7 +51,9 @@ const conversationStore = useConversationStore();
 const conversation = computed(() => conversationStore.selectedConversation);
 const totalCost = computed(() => conversationStore.selectedConversation?.totalCost || 0);
 
-const formatTimestamp = (date: Date | string) => {
+const conversationId = computed(() => props.conversation.id);
+
+const formatTimestamp = (date: string) => {
   const parsedDate = new Date(date);
   return parsedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };

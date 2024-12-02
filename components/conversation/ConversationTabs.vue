@@ -41,8 +41,10 @@
 import { computed } from 'vue';
 import { useConversationStore } from '~/stores/conversationStore';
 import Conversation from './Conversation.vue';
+import { useWorkflowStore } from '~/stores/workflow';
 
 const conversationStore = useConversationStore();
+const workflowStore = useWorkflowStore();
 
 const activeConversations = computed(() => conversationStore.activeConversations);
 const selectedConversationId = computed(() => conversationStore.selectedConversationId);
@@ -66,6 +68,10 @@ const handleCloseConversation = async (conversation: any) => {
 
 const selectConversation = (conversationId: string) => {
   conversationStore.setSelectedConversationId(conversationId);
+  const conversation = conversationStore.getConversationById(conversationId);
+  if (conversation && conversation.stepId) {
+    workflowStore.setSelectedStepId(conversation.stepId);
+  }
 };
 </script>
 

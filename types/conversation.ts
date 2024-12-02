@@ -20,6 +20,7 @@ export type Message = UserMessage | AIMessage;
 
 export interface Conversation {
   id: string;
+  stepId: string; // Added stepId to associate conversation with a step
   messages: Message[];
   createdAt: string;
   updatedAt: string;
