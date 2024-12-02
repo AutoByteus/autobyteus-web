@@ -3,22 +3,37 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import MarkdownIt from 'markdown-it';
+import { computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
+import { useMarkdown } from '~/composables/useMarkdown';
+import { usePlantUML } from '~/composables/usePlantUML';
 
 const props = defineProps<{
   content: string;
 }>();
 
-const md = new MarkdownIt({
-  html: true,
-  breaks: true,
-  linkify: true,
-  typographer: true
-});
+const { renderMarkdown } = useMarkdown();
+const { processPlantUmlDiagrams, reset } = usePlantUML();
 
 const renderedMarkdown = computed(() => {
-  return md.render(props.content);
+  return renderMarkdown(props.content);
+});
+
+// Watch for content changes to reprocess diagrams
+watch(() => props.content, () => {
+  // Reset previous state
+  reset();
+  // Process new diagrams after the next DOM update
+  nextTick(() => {
+    processPlantUmlDiagrams();
+  });
+});
+
+onMounted(() => {
+  processPlantUmlDiagrams();
+});
+
+onBeforeUnmount(() => {
+  reset();
 });
 </script>
 

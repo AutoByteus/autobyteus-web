@@ -37,10 +37,12 @@
     "@nuxt/schema": "^3.13.1",
     "@types/prismjs": "^1.26.4",
     "axios": "^1.7.7",
+    "dompurify": "^3.2.2",
     "electron-is-dev": "^2.0.0",
     "markdown-it": "^14.1.0",
     "pinia": "^2.1.7",
-    "prismjs": "^1.29.0"
+    "prismjs": "^1.29.0",
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "^5.0.2",
@@ -55,6 +57,7 @@
     "@types/electron-builder": "^5.0.1",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^20.4.2",
+    "@types/uuid": "^10.0.0",
     "@vitejs/plugin-vue": "^5.1.4",
     "@vue/test-utils": "^2.4.6",
     "autoprefixer": "^10.4.19",
