@@ -7,6 +7,7 @@ export const GET_CONVERSATION_HISTORY = gql`
         stepConversationId
         stepName
         createdAt
+        totalCost
         messages {
           messageId
           role
@@ -14,11 +15,18 @@ export const GET_CONVERSATION_HISTORY = gql`
           timestamp
           contextPaths
           originalMessage
+          cost  # Added cost field
         }
       }
       totalConversations
       totalPages
       currentPage
     }
+  }
+`;
+
+export const GET_COST_SUMMARY = gql`
+  query GetCostSummary($stepName: String, $timeFrame: String!) {
+    getCostSummary(stepName: $stepName, timeFrame: $timeFrame)
   }
 `;

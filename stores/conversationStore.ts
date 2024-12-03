@@ -43,7 +43,7 @@ export const useConversationStore = defineStore('conversation', {
     activeConversations: (state) => Array.from(state.conversations.values()),
     selectedConversation: (state) =>
       state.selectedConversationId
-        ? state.conversations.get(state.selectedConversationId)
+    ? state.conversations.get(state.selectedConversationId) || null
         : null,
     currentContextPaths: (state): ContextFilePath[] => state.contextFilePaths,
     isCurrentlySending: (state): boolean => state.isSending,
@@ -53,6 +53,12 @@ export const useConversationStore = defineStore('conversation', {
         ? state.conversations.get(state.selectedConversationId)?.messages || []
         : [],
     currentRequirement: (state): string => state.userRequirement,
+    totalCost: (state): number => {
+      const conversation = state.selectedConversationId
+        ? state.conversations.get(state.selectedConversationId)
+        : null;
+      return conversation ? (conversation.totalCost ?? 0) : 0;
+    },
   },
 
   actions: {
@@ -60,6 +66,25 @@ export const useConversationStore = defineStore('conversation', {
       this.conversations.clear();
       this.selectedConversationId = null;
       this.resetInputState();
+    },
+    addMessageToConversation(
+      conversationId: string,
+      message: Message,
+      cost?: number
+    ) {
+      const conversation = this.conversations.get(conversationId);
+      if (conversation) {
+      // Ensure message.cost is a number
+      if (typeof message.cost !== 'number') {
+        message.cost = 0;
+      }
+        conversation.messages.push(message);
+        conversation.updatedAt = new Date().toISOString();
+        if (typeof cost === 'number') {
+          conversation.totalCost = cost;
+        }
+        this.conversations.set(conversationId, { ...conversation });
+      }
     },
 
     resetInputState() {
@@ -85,6 +110,7 @@ export const useConversationStore = defineStore('conversation', {
         messages: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        totalCost: 0,
       };
       this.conversations.set(tempId, newConversation);
       this.selectedConversationId = tempId;
@@ -158,16 +184,6 @@ export const useConversationStore = defineStore('conversation', {
     removeConversation(conversationId: string) {
       this.closeConversation(conversationId);
     },
-
-    addMessageToConversation(conversationId: string, message: Message) {
-      const conversation = this.conversations.get(conversationId);
-      if (conversation) {
-        conversation.messages.push(message);
-        conversation.updatedAt = new Date().toISOString();
-        this.conversations.set(conversationId, { ...conversation });
-      }
-    },
-
     async sendStepRequirementAndSubscribe(
       workspaceId: string,
       stepId: string,
@@ -195,32 +211,35 @@ export const useConversationStore = defineStore('conversation', {
         const result = await sendStepRequirementMutation(mutationVariables);
 
         if (result?.data?.sendStepRequirement) {
-          const conversation_id = result.data.sendStepRequirement;
+          const { conversationId, cost } = result.data.sendStepRequirement;
 
           if (this.selectedConversationId?.startsWith('temp-')) {
             this.conversations.delete(this.selectedConversationId);
           }
 
-          if (!this.conversations.has(conversation_id)) {
+if (!this.conversations.has(conversationId)) {
             const newConversation: Conversation = {
-              id: conversation_id,
+              id: conversationId,
               stepId: stepId, // Store stepId in the conversation
               messages: [],
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
+              totalCost: cost || 0,
             };
             this.addConversation(newConversation);
           }
 
-          this.addMessageToConversation(conversation_id, {
+          // Assign cost as 0 for user message; backend handles actual cost calculation
+this.addMessageToConversation(conversationId, {
             type: 'user',
             text: this.userRequirement,
             contextFilePaths: this.contextFilePaths,
             timestamp: new Date(),
+            cost: cost || 0, // Use the cost returned from the mutation
           });
 
           this.clearContextFilePaths();
-          this.subscribeToStepResponse(workspaceId, stepId, conversation_id);
+          this.subscribeToStepResponse(workspaceId, stepId, conversationId);
           this.userRequirement = '';
 
           const conversationHistoryStore = useConversationHistoryStore();
@@ -248,12 +267,12 @@ export const useConversationStore = defineStore('conversation', {
 
       onResult(({ data }) => {
         if (data?.stepResponse) {
-          const { conversationId, message } = data.stepResponse;
+          const { conversationId, message, cost } = data.stepResponse;
           this.addMessageToConversation(conversationId, {
             type: 'ai',
             text: message,
             timestamp: new Date(),
-          });
+          }, cost);
         }
       });
 
@@ -304,12 +323,15 @@ export const useConversationStore = defineStore('conversation', {
       }
     },
 
-    setConversationFromHistory(conversationId: string) {
+    async setConversationFromHistory(conversationId: string) {
       const conversationHistoryStore = useConversationHistoryStore();
+      await conversationHistoryStore.fetchTotalCost();
       const workflowStore = useWorkflowStore();
       const conversation = conversationHistoryStore.getConversations.find(conv => conv.id === conversationId);
       
       if (conversation) {
+        this.conversations.set(conversation.id, { ...conversation });   
+        this.selectedConversationId = conversation.id;
         // Generate temporary ID using the same pattern as createTemporaryConversation
         const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const stepId = conversation.stepId || workflowStore.currentSelectedStepId;

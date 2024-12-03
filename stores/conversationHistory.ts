@@ -1,28 +1,32 @@
 import { defineStore } from 'pinia';
 import { useQuery } from '@vue/apollo-composable';
-import { GET_CONVERSATION_HISTORY } from '~/graphql/queries/conversation_queries';
+import { GET_CONVERSATION_HISTORY, GET_COST_SUMMARY } from '~/graphql/queries/conversation_queries';
 import type { GetConversationHistoryQuery, GetConversationHistoryQueryVariables } from '~/generated/graphql';
 import type { Conversation, Message, UserMessage, AIMessage } from '~/types/conversation';
 
 interface ConversationHistoryState {
   stepName: string | null;
   conversations: Conversation[];
+  totalCost: number;
   currentPage: number;
   pageSize: number;
   totalPages: number;
   loading: boolean;
   error: string | null;
+  timeFrame: string; // Add timeFrame to state
 }
 
 export const useConversationHistoryStore = defineStore('conversationHistory', {
   state: (): ConversationHistoryState => ({
     stepName: null,
     conversations: [],
+    totalCost: 0,
     currentPage: 1,
     pageSize: 10,
     totalPages: 1,
     loading: false,
     error: null,
+    timeFrame: 'week', // Default to 'week'
   }),
   actions: {
     setStepName(stepName: string) {
@@ -31,6 +35,33 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.conversations = [];
       this.totalPages = 1;
       this.fetchConversationHistory();
+      this.fetchTotalCost();
+    },
+    async fetchTotalCost(timeFrame: string = this.timeFrame) {
+      if (!this.stepName) {
+        this.error = 'Step name is not set.';
+        return;
+      }
+      this.timeFrame = timeFrame; // Update timeFrame in state
+      const variables: GetCostSummaryQueryVariables = {
+        stepName: this.stepName,
+        timeFrame,
+      };
+      const { onResult, onError } = useQuery<GetCostSummaryQuery, GetCostSummaryQueryVariables>(
+        GET_COST_SUMMARY,
+        variables,
+        {
+          fetchPolicy: 'network-only',
+        }
+      );
+      onResult((result) => {
+        if (result.data?.getCostSummary !== undefined) {
+          this.totalCost = result.data.getCostSummary;
+        }
+      });
+      onError((error) => {
+        this.error = error.message || 'An error occurred while fetching total cost.';
+      });
     },
     async fetchConversationHistory(page: number = this.currentPage, pageSize: number = this.pageSize) {
       if (!this.stepName) {
@@ -90,11 +121,13 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.totalPages = 1;
       this.loading = false;
       this.error = null;
+      this.timeFrame = 'week';
     },
     mapToConversation(stepConversation: GetConversationHistoryQuery['getConversationHistory']['conversations'][number]): Conversation {
       return {
         id: stepConversation.stepConversationId,
         messages: stepConversation.messages.map(msg => {
+        const cost = typeof msg.cost === 'number' ? msg.cost : 0;
           if (msg.role === 'user') {
             const userMessage: UserMessage = {
               type: 'user',
@@ -104,6 +137,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
                 type: 'text',
               })) || [],
               timestamp: new Date(msg.timestamp),
+              cost: msg.cost || 0,  // Include cost
             };
             return userMessage;
           } else {
@@ -111,10 +145,12 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
               type: 'ai',
               text: msg.message || '',
               timestamp: new Date(msg.timestamp),
+              cost: msg.cost || 0,  // Include cost
             };
             return aiMessage;
           }
         }),
+      totalCost: typeof stepConversation.totalCost === 'number' ? stepConversation.totalCost : 0,
         createdAt: stepConversation.createdAt,
         updatedAt: stepConversation.createdAt,
       };

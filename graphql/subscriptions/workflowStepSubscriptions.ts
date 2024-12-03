@@ -5,6 +5,7 @@ export const StepResponseSubscription = gql`
     stepResponse(workspaceId: $workspaceId, stepId: $stepId, conversationId: $conversationId) {
       conversationId
       message
+      cost  # Added cost field
     }
   }
 `;
