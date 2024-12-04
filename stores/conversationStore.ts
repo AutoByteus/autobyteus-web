@@ -9,7 +9,6 @@ import type {
   StepResponseSubscriptionVariables,
   StepResponseSubscription as StepResponseSubscriptionType,
   ContextFilePathInput,
-  LlmModel,
   SearchContextFilesQuery,
   SearchContextFilesQueryVariables
 } from '~/generated/graphql';
@@ -172,7 +171,7 @@ export const useConversationStore = defineStore('conversation', {
       workspaceId: string,
       stepId: string,
       requirement: string,
-      llmModel?: LlmModel
+      llmModel?: string
     ): Promise<void> {
       const { mutate: sendStepRequirementMutation } = useMutation<SendStepRequirementMutation, SendStepRequirementMutationVariables>(SendStepRequirement);
 
@@ -204,7 +203,7 @@ export const useConversationStore = defineStore('conversation', {
           if (!this.conversations.has(conversation_id)) {
             const newConversation: Conversation = {
               id: conversation_id,
-              stepId: stepId, // Store stepId in the conversation
+              stepId: stepId,
               messages: [],
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),

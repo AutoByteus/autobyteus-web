@@ -19,8 +19,11 @@
         v-if="isFirstMessage()"
         v-model="selectedModel"
         class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white hover:border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-200"
+        :disabled="isLoadingModels"
       >
-        <option v-for="model in llmModels" :key="model" :value="model">
+        <option v-if="isLoadingModels" value="">Loading models...</option>
+        <option v-else-if="availableModels.length === 0" value="">No models available</option>
+        <option v-for="model in availableModels" :key="model" :value="model">
           {{ model }}
         </option>
       </select>
@@ -72,22 +75,24 @@ import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue';
 import { useConversationStore } from '~/stores/conversationStore';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useWorkflowStore } from '~/stores/workflow';
-import { LlmModel } from '~/generated/graphql';
+import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import AudioRecorder from '~/components/AudioRecorder.vue';
 
 const conversationStore = useConversationStore();
 const workspaceStore = useWorkspaceStore();
 const workflowStore = useWorkflowStore();
+const llmProviderConfigStore = useLLMProviderConfigStore();
 
 const userRequirement = computed(() => conversationStore.currentRequirement);
 const isSending = computed(() => conversationStore.isCurrentlySending);
 const textarea = ref<HTMLTextAreaElement | null>(null);
 const controlsRef = ref<HTMLDivElement | null>(null);
 const textareaHeight = ref(150);
-const selectedModel = ref<LlmModel>(LlmModel.Claude_3_5SonnetApi);
+const selectedModel = ref<string>('');
 const isSearching = ref(false);
+const isLoadingModels = ref(true);
 
-const llmModels = Object.values(LlmModel);
+const availableModels = computed(() => llmProviderConfigStore.models);
 
 const isFirstMessage = () => {
   return !conversationStore.selectedConversation || conversationStore.conversationMessages.length === 0;
@@ -178,10 +183,25 @@ const handleResize = () => {
   adjustTextareaHeight();
 };
 
+const initializeModels = async () => {
+  isLoadingModels.value = true;
+  try {
+    await llmProviderConfigStore.fetchModels();
+    if (availableModels.value.length > 0) {
+      selectedModel.value = availableModels.value[0];
+    }
+  } catch (error) {
+    console.error('Failed to fetch available models:', error);
+  } finally {
+    isLoadingModels.value = false;
+  }
+};
+
 onMounted(() => {
   nextTick(() => {
     adjustTextareaHeight();
     window.addEventListener('resize', handleResize);
+    initializeModels();
   });
 });
 

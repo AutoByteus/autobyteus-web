@@ -7,7 +7,7 @@ export const SendStepRequirement = gql`
     $contextFilePaths: [ContextFilePathInput!]!
     $requirement: String!
     $conversationId: String
-    $llmModel: LLMModel
+    $llmModel: String
   ) {
     sendStepRequirement(
       workspaceId: $workspaceId

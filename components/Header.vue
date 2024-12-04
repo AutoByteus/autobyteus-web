@@ -115,15 +115,21 @@
                 </span>
               </NuxtLink>
             </li>
+            <li>
+              <NuxtLink 
+                to="/settings" 
+                class="hover:text-blue-300 transition-colors duration-200 px-3 py-2 rounded-md text-sm font-medium relative group inline-flex items-center gap-1"
+                :class="{'text-blue-300': $route.path.startsWith('/settings')}"
+              >
+                <span class="i-heroicons-cog-6-tooth-20-solid w-4 h-4 mr-1"></span>
+                Settings
+                <span class="absolute bottom-0 left-0 w-full h-0.5 bg-blue-400 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-200" 
+                      :class="{'scale-x-100': $route.path.startsWith('/settings')}">
+                </span>
+              </NuxtLink>
+            </li>
           </ul>
         </nav>
-        <button 
-          @click="toggleAPIKeyManager"
-          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md flex items-center gap-2"
-        >
-          <span class="i-heroicons-key-20-solid w-4 h-4"></span>
-          Manage API Keys
-        </button>
       </div>
 
       <!-- Mobile Navigation -->
@@ -184,41 +190,35 @@
                   Prompt Engineering
                 </NuxtLink>
               </li>
+              <li>
+                <NuxtLink 
+                  to="/settings" 
+                  class="block px-4 py-3 text-base font-medium hover:bg-gray-700 rounded-md transition-colors duration-200"
+                  :class="{'bg-gray-700': $route.path.startsWith('/settings')}"
+                  @click="closeMobileMenu"
+                >
+                  <span class="inline-flex items-center gap-2">
+                    <span class="i-heroicons-cog-6-tooth-20-solid w-5 h-5"></span>
+                    Settings
+                  </span>
+                </NuxtLink>
+              </li>
             </ul>
           </nav>
-          <div class="px-4">
-            <button 
-              @click="handleMobileAPIKeyManager"
-              class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-md text-base font-medium transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2"
-            >
-              <span class="i-heroicons-key-20-solid w-5 h-5"></span>
-              Manage API Keys
-            </button>
-          </div>
         </div>
       </div>
     </div>
-    <Modal v-if="showAPIKeyManager" @close="toggleAPIKeyManager">
-      <APIKeyManager />
-    </Modal>
   </header>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useWorkspaceUIStore } from '~/stores/workspaceUI'
-import APIKeyManager from '~/components/APIKeyManager.vue'
-import Modal from '~/components/ui/Modal.vue'
 
-const showAPIKeyManager = ref(false)
 const isMobileMenuOpen = ref(false)
 const workspaceUIStore = useWorkspaceUIStore()
 
 const isWorkspaceSelectorVisible = computed(() => workspaceUIStore.isWorkspaceSelectorVisible)
-
-const toggleAPIKeyManager = () => {
-  showAPIKeyManager.value = !showAPIKeyManager.value
-}
 
 const toggleWorkspaceSelector = () => {
   workspaceUIStore.toggleWorkspaceSelector()
@@ -238,11 +238,6 @@ const closeMobileMenu = () => {
   document.body.style.overflow = ''
 }
 
-const handleMobileAPIKeyManager = () => {
-  closeMobileMenu()
-  toggleAPIKeyManager()
-}
-
 // Clean up on component unmount
 onUnmounted(() => {
   document.body.style.overflow = ''
@@ -250,11 +245,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Prevent content shift when scrollbar is hidden */
-.modal-open {
-  padding-right: var(--scrollbar-width, 0px);
-}
-
 /* Mobile menu slide animation */
 #mobile-menu {
   transition: opacity 0.2s ease-in-out;
