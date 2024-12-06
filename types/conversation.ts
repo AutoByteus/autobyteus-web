@@ -13,6 +13,8 @@ export interface UserMessage {
 export interface AIMessage {
   type: 'ai';
   text: string;
+  chunks?: string[];
+  isComplete?: boolean;
   timestamp: Date;
 }
 
@@ -20,7 +22,7 @@ export type Message = UserMessage | AIMessage;
 
 export interface Conversation {
   id: string;
-  stepId: string; // Added stepId to associate conversation with a step
+  stepId: string;
   messages: Message[];
   createdAt: string;
   updatedAt: string;

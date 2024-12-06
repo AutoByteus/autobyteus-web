@@ -2,13 +2,11 @@
   <div>
     <strong>AI:</strong>
     <div>
-      <template v-for="(segment, segmentIndex) in handleAIResponse(message.text).segments" :key="segmentIndex">
+      <template v-for="(segment, segmentIndex) in parsedSegments" :key="segmentIndex">
         <TextSegment
           v-if="segment.type === 'text'"
           :content="segment.content"
-          :highlightedContent="segment.highlightedContent"
         />
-        
         <FileContentSegment
           v-else-if="segment.type === 'file'"
           :file="segment"
@@ -28,12 +26,14 @@
 </template>
 
 <script setup lang="ts">
-import { handleAIResponse } from '~/utils/aiResponseParser/aiResponseHandler';
+import { ref, watch } from 'vue';
 import type { AIMessage } from '~/types/conversation';
+import type { AIResponseSegment } from '~/utils/aiResponseParser/types';
 import { usePrismHighlighter } from '~/composables/usePrismHighlighter';
 import TextSegment from '~/components/conversation/segments/TextSegment.vue';
 import FileContentSegment from '~/components/conversation/segments/FileContentSegment.vue';
 import BashCommandSegment from '~/components/conversation/segments/BashCommandSegment.vue';
+import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
 
 const props = defineProps<{
   message: AIMessage;
@@ -41,8 +41,20 @@ const props = defineProps<{
   messageIndex: number;
 }>();
 
-// Initialize Prism highlighter
 usePrismHighlighter();
+
+const parsedSegments = ref<AIResponseSegment[]>([]);
+
+const parser = new IncrementalAIResponseParser();
+
+watch(
+  () => props.message.chunks,
+  (newChunks) => {
+    const newSegments = parser.processChunks(newChunks);
+    parsedSegments.value = newSegments;
+  },
+  { immediate: true }
+);
 </script>
 
 <style scoped>

@@ -80,7 +80,7 @@ export const useConversationStore = defineStore('conversation', {
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const newConversation: Conversation = {
         id: tempId,
-        stepId: currentStepId, // Associate the temp conversation with the current step
+        stepId: currentStepId,
         messages: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -104,9 +104,7 @@ export const useConversationStore = defineStore('conversation', {
     },
 
     async closeConversation(conversationId: string) {
-      // Handle temporary conversations without backend call
       if (conversationId.startsWith('temp-')) {
-        // Temp conversation, remove locally without backend call
         this.conversations.delete(conversationId);
         if (this.selectedConversationId === conversationId) {
           const nextConversation = this.activeConversations[0];
@@ -116,14 +114,13 @@ export const useConversationStore = defineStore('conversation', {
       }
 
       const workspaceStore = useWorkspaceStore();
-      const workflowStore = useWorkflowStore(); // Import workflowStore
+      const workflowStore = useWorkflowStore();
       const currentWorkspaceId = workspaceStore.currentSelectedWorkspaceId;
 
       const conversation = this.conversations.get(conversationId);
       let stepId = conversation?.stepId;
 
       if (!stepId) {
-        // Use current stepId from workflowStore if stepId is missing
         stepId = workflowStore.currentSelectedStepId;
         console.warn(`stepId was missing for conversation ${conversationId}, using currentSelectedStepId ${stepId}`);
       }
@@ -142,7 +139,6 @@ export const useConversationStore = defineStore('conversation', {
           conversationId
         });
 
-        // Remove from local state
         this.conversations.delete(conversationId);
         if (this.selectedConversationId === conversationId) {
           const nextConversation = this.activeConversations[0];
@@ -247,12 +243,8 @@ export const useConversationStore = defineStore('conversation', {
 
       onResult(({ data }) => {
         if (data?.stepResponse) {
-          const { conversationId, message } = data.stepResponse;
-          this.addMessageToConversation(conversationId, {
-            type: 'ai',
-            text: message,
-            timestamp: new Date(),
-          });
+          const { conversationId, messageChunk, isComplete } = data.stepResponse;
+          this.appendToMessageInConversation(conversationId, messageChunk, isComplete);
         }
       });
 
@@ -261,6 +253,29 @@ export const useConversationStore = defineStore('conversation', {
       });
 
       this.isSubscribed = true;
+    },
+
+    appendToMessageInConversation(conversationId: string, messageChunk: string, isComplete: boolean) {
+      const conversation = this.conversations.get(conversationId);
+      if (conversation) {
+        let lastMessage = conversation.messages[conversation.messages.length - 1];
+        if (lastMessage && lastMessage.type === 'ai' && !lastMessage.isComplete) {
+          lastMessage.chunks.push(messageChunk);
+          lastMessage.isComplete = isComplete;
+          conversation.updatedAt = new Date().toISOString();
+        } else {
+          const newMessage: Message = {
+            type: 'ai',
+            text: '',
+            chunks: [messageChunk],
+            timestamp: new Date(),
+            isComplete: isComplete,
+          };
+          conversation.messages.push(newMessage);
+          conversation.updatedAt = new Date().toISOString();
+        }
+        this.conversations.set(conversationId, { ...conversation });
+      }
     },
 
     async uploadFile(file: File): Promise<string> {
@@ -309,15 +324,14 @@ export const useConversationStore = defineStore('conversation', {
       const conversation = conversationHistoryStore.getConversations.find(conv => conv.id === conversationId);
       
       if (conversation) {
-        // Generate temporary ID using the same pattern as createTemporaryConversation
         const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const stepId = conversation.stepId || workflowStore.currentSelectedStepId;
         
         const newConversation: Conversation = {
-          id: tempId, // Use temporary ID instead of historical ID
+          id: tempId,
           stepId: stepId,
           messages: conversation.messages,
-          createdAt: new Date().toISOString(), // Reset creation time to now
+          createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
         

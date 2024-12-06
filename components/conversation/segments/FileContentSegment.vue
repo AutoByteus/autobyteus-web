@@ -48,17 +48,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { useWorkspaceStore } from '~/stores/workspace';
 import MarkdownRenderer from '~/components/conversation/segments/renderer/MarkdownRenderer.vue';
+import { highlightSegments } from '~/utils/aiResponseParser/segmentHighlighter';
 
 const props = defineProps<{
   file: {
     path: string;
     language: string;
     originalContent: string;
-    highlightedContent: string;
+    highlightedContent?: string;
   };
   conversationId: string;
   messageIndex: number;
@@ -100,6 +101,17 @@ const handleApply = async () => {
 const isMarkdownFile = computed(() => {
   return props.file.path.endsWith('.md');
 });
+
+watch(
+  () => props.file.originalContent,
+  () => {
+    if (!props.file.highlightedContent) {
+      const highlightedSegments = highlightSegments([props.file]);
+      props.file.highlightedContent = highlightedSegments[0].highlightedContent || '';
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <style scoped>

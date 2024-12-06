@@ -1,5 +1,5 @@
-import { getLanguage } from './languageDetector.js';
-import type { ParsedFile, BashCommand } from './types.js';
+import { getLanguage } from '~/utils/aiResponseParser/languageDetector';
+import type { ParsedFile, BashCommand } from '~/utils/aiResponseParser/types';
 
 /**
  * Parses individual XML segments to extract bash commands or file information.
@@ -66,7 +66,6 @@ function extractFile(xmlDocument: Document): ParsedFile {
     throw new Error('File is missing the "path" attribute.');
   }
 
-  // Since the <content> tag is removed, extract CDATA directly from <file>
   const cdataSection = Array.from(fileNode.childNodes).find(node => node.nodeType === Node.CDATA_SECTION_NODE);
   const fileContent = cdataSection && cdataSection.nodeValue ? cdataSection.nodeValue.trim() : '';
 
