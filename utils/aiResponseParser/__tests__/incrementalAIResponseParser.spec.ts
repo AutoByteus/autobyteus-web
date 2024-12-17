@@ -299,4 +299,96 @@ describe('IncrementalAIResponseParser', () => {
     expect(returnedSegments).toBe(segments);
     expect(segments[0]).toEqual({ type: 'text', content: 'Hello World' });
   });
+
+  it('should handle extremely granular chunks for file parsing', () => {
+    // Test opening tag character by character
+    parser.processChunks(['<']);
+    parser.processChunks(['f']);
+    parser.processChunks(['i']);
+    parser.processChunks(['l']);
+    parser.processChunks(['e']);
+    parser.processChunks([' ']);
+    parser.processChunks(['p']);
+    parser.processChunks(['a']);
+    parser.processChunks(['t']);
+    parser.processChunks(['h']);
+    parser.processChunks(['=']);
+    parser.processChunks(['"']);
+    parser.processChunks(['f']);
+    parser.processChunks(['i']);
+    parser.processChunks(['b']);
+    parser.processChunks(['o']);
+    parser.processChunks(['n']);
+    parser.processChunks(['a']);
+    parser.processChunks(['c']);
+    parser.processChunks(['c']);
+    parser.processChunks(['i']);
+    parser.processChunks(['.']);
+    parser.processChunks(['p']);
+    parser.processChunks(['y']);
+    parser.processChunks(['"']);
+    parser.processChunks(['>']);
+
+    // Test file content in small chunks
+    const fileContent = [
+      'def fibonacci(n):\n',
+      '    """',
+      '\n    Generate Fibonacci series up to n terms.',
+      '\n    \n    Args:',
+      '\n    n (int): Number of terms to generate',
+      '\n    \n    Returns:',
+      '\n    list: List containing the Fibonacci series',
+      '\n    """',
+      '\n    if n <= 0:',
+      '\n        return []',
+      '\n    elif n == 1:',
+      '\n        return [0]',
+      '\n    elif n == 2:',
+      '\n        return [0, 1]',
+      '\n    \n    fib = [0, 1]',
+      '\n    for i in range(2, n):',
+      '\n        fib.append(fib[i-1] + fib[i-2])',
+      '\n    return fib\n',
+      '\ndef main():',
+      '\n    while True:',
+      '\n        try:',
+      '\n            n = int(input("Enter the number of Fibonacci terms to generate (or 0 to exit): "))',
+      '\n            if n == 0:',
+      '\n                print("Exiting the program.")',
+      '\n                break',
+      '\n            if n < 0:',
+      '\n                print("Please enter a non-negative integer.")',
+      '\n                continue',
+      '\n            \n            fib_series = fibonacci(n)',
+      '\n            print(f"Fibonacci series with {n} terms:")',
+      '\n            print(", ".join(map(str, fib_series)))',
+      '\n        except ValueError:',
+      '\n            print("Invalid input. Please enter a valid integer.")\n',
+      '\nif __name__ == "__main__":',
+      '\n    main()'
+    ];
+
+    // Process each chunk
+    fileContent.forEach(chunk => parser.processChunks([chunk]));
+
+    // Process closing tag character by character
+    parser.processChunks(['<']);
+    parser.processChunks(['/']);
+    parser.processChunks(['f']);
+    parser.processChunks(['i']);
+    parser.processChunks(['l']);
+    parser.processChunks(['e']);
+    parser.processChunks(['>']);
+
+    // Verify the final result
+    expect(segments).toHaveLength(1);
+    expect(segments[0]).toMatchObject({
+      type: 'file',
+      path: 'fibonacci.py',
+      language: 'python'
+    });
+
+    const expectedContent = fileContent.join('');
+    expect(segments[0].originalContent).toBe(expectedContent);
+  });
 });
