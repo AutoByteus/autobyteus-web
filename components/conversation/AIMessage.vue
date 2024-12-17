@@ -2,13 +2,11 @@
   <div>
     <strong>AI:</strong>
     <div>
-      <template v-for="(segment, segmentIndex) in handleAIResponse(message.text).segments" :key="segmentIndex">
+      <template v-for="(segment, segmentIndex) in message.segments" :key="segmentIndex">
         <TextSegment
           v-if="segment.type === 'text'"
           :content="segment.content"
-          :highlightedContent="segment.highlightedContent"
         />
-        
         <FileContentSegment
           v-else-if="segment.type === 'file'"
           :file="segment"
@@ -28,9 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import { handleAIResponse } from '~/utils/aiResponseParser/aiResponseHandler';
 import type { AIMessage } from '~/types/conversation';
-import { usePrismHighlighter } from '~/composables/usePrismHighlighter';
 import TextSegment from '~/components/conversation/segments/TextSegment.vue';
 import FileContentSegment from '~/components/conversation/segments/FileContentSegment.vue';
 import BashCommandSegment from '~/components/conversation/segments/BashCommandSegment.vue';
@@ -40,9 +36,6 @@ const props = defineProps<{
   conversationId: string;
   messageIndex: number;
 }>();
-
-// Initialize Prism highlighter
-usePrismHighlighter();
 </script>
 
 <style scoped>

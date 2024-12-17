@@ -18,6 +18,8 @@ import { useWorkspaceStore } from '~/stores/workspace';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import { useWorkflowStore } from '~/stores/workflow';
 import { useTranscriptionStore } from '~/stores/transcriptionStore';
+import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
+import type { AIResponseSegment } from '~/utils/aiResponseParser/types';
 
 interface ConversationStoreState {
   conversations: Map<string, Conversation>;
@@ -80,7 +82,7 @@ export const useConversationStore = defineStore('conversation', {
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const newConversation: Conversation = {
         id: tempId,
-        stepId: currentStepId, // Associate the temp conversation with the current step
+        stepId: currentStepId,
         messages: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -104,9 +106,7 @@ export const useConversationStore = defineStore('conversation', {
     },
 
     async closeConversation(conversationId: string) {
-      // Handle temporary conversations without backend call
       if (conversationId.startsWith('temp-')) {
-        // Temp conversation, remove locally without backend call
         this.conversations.delete(conversationId);
         if (this.selectedConversationId === conversationId) {
           const nextConversation = this.activeConversations[0];
@@ -116,14 +116,13 @@ export const useConversationStore = defineStore('conversation', {
       }
 
       const workspaceStore = useWorkspaceStore();
-      const workflowStore = useWorkflowStore(); // Import workflowStore
+      const workflowStore = useWorkflowStore();
       const currentWorkspaceId = workspaceStore.currentSelectedWorkspaceId;
 
       const conversation = this.conversations.get(conversationId);
       let stepId = conversation?.stepId;
 
       if (!stepId) {
-        // Use current stepId from workflowStore if stepId is missing
         stepId = workflowStore.currentSelectedStepId;
         console.warn(`stepId was missing for conversation ${conversationId}, using currentSelectedStepId ${stepId}`);
       }
@@ -142,7 +141,6 @@ export const useConversationStore = defineStore('conversation', {
           conversationId
         });
 
-        // Remove from local state
         this.conversations.delete(conversationId);
         if (this.selectedConversationId === conversationId) {
           const nextConversation = this.activeConversations[0];
@@ -214,8 +212,8 @@ export const useConversationStore = defineStore('conversation', {
           this.addMessageToConversation(conversation_id, {
             type: 'user',
             text: this.userRequirement,
-            contextFilePaths: this.contextFilePaths,
             timestamp: new Date(),
+            contextFilePaths: this.contextFilePaths,
           });
 
           this.clearContextFilePaths();
@@ -247,12 +245,8 @@ export const useConversationStore = defineStore('conversation', {
 
       onResult(({ data }) => {
         if (data?.stepResponse) {
-          const { conversationId, message } = data.stepResponse;
-          this.addMessageToConversation(conversationId, {
-            type: 'ai',
-            text: message,
-            timestamp: new Date(),
-          });
+          const { conversationId, messageChunk, isComplete } = data.stepResponse;
+          this.appendToMessageInConversation(conversationId, messageChunk, isComplete);
         }
       });
 
@@ -261,6 +255,55 @@ export const useConversationStore = defineStore('conversation', {
       });
 
       this.isSubscribed = true;
+    },
+
+    appendToMessageInConversation(conversationId: string, messageChunk: string, isComplete: boolean) {
+      const conversation = this.conversations.get(conversationId);
+      if (conversation) {
+        let lastMessage = conversation.messages[conversation.messages.length - 1];
+
+        if (lastMessage && lastMessage.type === 'ai' && lastMessage.isComplete === false) {
+          // We only feed the new chunk to the parser, not all chunks again
+          lastMessage.chunks = lastMessage.chunks || [];
+          lastMessage.chunks.push(messageChunk);
+          lastMessage.isComplete = isComplete;
+
+          // If no parserInstance, create one now, referencing lastMessage.segments directly
+          if (!lastMessage.parserInstance) {
+            lastMessage.segments = lastMessage.segments || [];
+            lastMessage.parserInstance = new IncrementalAIResponseParser(lastMessage.segments);
+            // Process all existing chunks once if we never processed them before (e.g., this is a resumed message)
+            // But now we just received a new chunk. Let's assume this is the first time parser is created.
+            // We can process all chunks that currently exist to initialize properly.
+            lastMessage.parserInstance.processChunks(lastMessage.chunks);
+          } else {
+            // Process only the new chunk to keep it truly incremental
+            lastMessage.parserInstance.processChunks([messageChunk]);
+          }
+
+          conversation.updatedAt = new Date().toISOString();
+
+        } else {
+          // Create a new AI message with a fresh parser referencing its segments array
+          const segments: AIResponseSegment[] = [];
+          const newMessage: Message = {
+            type: 'ai',
+            text: '',
+            timestamp: new Date(),
+            chunks: [messageChunk],
+            isComplete: isComplete,
+            segments,
+            parserInstance: new IncrementalAIResponseParser(segments)
+          };
+
+          // Process only the new chunk for this brand-new message
+          newMessage.parserInstance.processChunks([messageChunk]);
+          conversation.messages.push(newMessage);
+          conversation.updatedAt = new Date().toISOString();
+        }
+
+        this.conversations.set(conversationId, { ...conversation });
+      }
     },
 
     async uploadFile(file: File): Promise<string> {
@@ -309,18 +352,27 @@ export const useConversationStore = defineStore('conversation', {
       const conversation = conversationHistoryStore.getConversations.find(conv => conv.id === conversationId);
       
       if (conversation) {
-        // Generate temporary ID using the same pattern as createTemporaryConversation
         const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const stepId = conversation.stepId || workflowStore.currentSelectedStepId;
         
         const newConversation: Conversation = {
-          id: tempId, // Use temporary ID instead of historical ID
+          id: tempId,
           stepId: stepId,
           messages: conversation.messages,
-          createdAt: new Date().toISOString(), // Reset creation time to now
+          createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
-        
+
+        // Initialize parser and segments for any AI messages with chunks
+        for (const msg of newConversation.messages) {
+          if (msg.type === 'ai' && msg.chunks && msg.chunks.length > 0) {
+            msg.segments = msg.segments || [];
+            msg.parserInstance = new IncrementalAIResponseParser(msg.segments);
+            // Since we are loading from history, we can process all existing chunks at once now
+            msg.parserInstance.processChunks(msg.chunks);
+          }
+        }
+
         this.conversations.set(tempId, newConversation);
         this.selectedConversationId = tempId;
       } else {

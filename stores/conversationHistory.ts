@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { useQuery } from '@vue/apollo-composable';
 import { GET_CONVERSATION_HISTORY } from '~/graphql/queries/conversation_queries';
 import type { GetConversationHistoryQuery, GetConversationHistoryQueryVariables } from '~/generated/graphql';
-import type { Conversation, Message, UserMessage, AIMessage } from '~/types/conversation';
+import type { Conversation, UserMessage, AIMessage } from '~/types/conversation';
 
 interface ConversationHistoryState {
   stepName: string | null;

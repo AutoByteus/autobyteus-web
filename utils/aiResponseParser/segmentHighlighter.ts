@@ -1,9 +1,9 @@
 import Prism from 'prismjs';
-import { highlightVueCode } from './vueCodeHighlight.js';
-import type { ParsedAIResponse } from './types.js';
+import { highlightVueCode } from '~/utils/aiResponseParser/vueCodeHighlight';
+import type { AIResponseSegment } from '~/utils/aiResponseParser/types';
 
-export function highlightSegments(parsed: ParsedAIResponse): ParsedAIResponse {
-  const highlightedSegments = parsed.segments.map(segment => {
+export function highlightSegments(segments: AIResponseSegment[]): AIResponseSegment[] {
+  return segments.map(segment => {
     if (segment.type === 'file') {
       const highlightedContent =
         segment.language.toLowerCase() === 'vue'
@@ -18,9 +18,6 @@ export function highlightSegments(parsed: ParsedAIResponse): ParsedAIResponse {
         highlightedContent,
       };
     }
-    // Text segments no longer need highlighting since we use MarkdownRenderer
     return segment;
   });
-
-  return { segments: highlightedSegments };
 }

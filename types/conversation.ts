@@ -1,26 +1,34 @@
+import type { AIResponseSegment } from '~/utils/aiResponseParser/types';
+import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
+
 export interface ContextFilePath {
   path: string;
-  type: 'text' | 'image';
+  type: string;
 }
 
-export interface UserMessage {
+export interface BaseMessage {
+  text: string;
+  timestamp: Date;
+}
+
+export interface UserMessage extends BaseMessage {
   type: 'user';
-  text: string;
-  contextFilePaths: ContextFilePath[];
-  timestamp: Date;
+  contextFilePaths?: ContextFilePath[];
 }
 
-export interface AIMessage {
+export interface AIMessage extends BaseMessage {
   type: 'ai';
-  text: string;
-  timestamp: Date;
+  chunks?: string[];
+  segments?: AIResponseSegment[];
+  isComplete?: boolean;
+  parserInstance?: IncrementalAIResponseParser;
 }
 
 export type Message = UserMessage | AIMessage;
 
 export interface Conversation {
   id: string;
-  stepId: string; // Added stepId to associate conversation with a step
+  stepId: string;
   messages: Message[];
   createdAt: string;
   updatedAt: string;

@@ -1,8 +1,8 @@
 import Prism from 'prismjs';
-import 'prismjs/components/prism-markup.js';
-import 'prismjs/components/prism-javascript.js';
-import 'prismjs/components/prism-css.js';
-import 'prismjs/components/prism-typescript.js';
+import 'prismjs/components/prism-markup';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-css';
+import 'prismjs/components/prism-typescript';
 
 /**
  * Highlights Vue code by separately highlighting template, script, and style sections.
