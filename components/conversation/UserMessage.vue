@@ -1,6 +1,3 @@
-<!-- File: autobyteus-web/components/conversation/UserMessage.vue -->
-<!-- This component renders a user message -->
-
 <template>
   <div>
     <div v-if="message.contextFilePaths && message.contextFilePaths.length > 0">

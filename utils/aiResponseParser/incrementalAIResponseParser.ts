@@ -1,29 +1,37 @@
 import { parseXmlSegment } from '~/utils/aiResponseParser/xmlImplementationParser';
-import type { AIResponseSegment, BashCommand, ParsedFile } from '~/utils/aiResponseParser/types';
+import type { AIResponseSegment } from '~/utils/aiResponseParser/types';
 
 export class IncrementalAIResponseParser {
   private buffer: string = '';
-  private segments: AIResponseSegment[] = [];
   private tagStack: string[] = [];
 
-  processChunks(chunks: string[]): AIResponseSegment[] {
-    const combinedText = chunks.join('');
-    const newContent = combinedText.substring(this.buffer.length);
+  constructor(private segments: AIResponseSegment[]) {}
+
+  /**
+   * Process only the new incoming chunks. 
+   * The chunks array passed should contain ONLY new data that hasn't been processed yet.
+   */
+  processChunks(chunks: string[]) {
+    const newContent = chunks.join('');
+
+    // Append the newContent to buffer
+    // We keep the entire processed content in 'buffer', so we can handle partial tags, etc.
+    const startLength = this.buffer.length;
     this.buffer += newContent;
 
-    let idx = 0;
-    while (idx < newContent.length) {
+    let idx = startLength;
+    while (idx < this.buffer.length) {
       if (this.tagStack.length === 0) {
-        const nextTagStart = newContent.indexOf('<', idx);
+        const nextTagStart = this.buffer.indexOf('<', idx);
         if (nextTagStart === -1) {
-          this.appendTextSegment(newContent.substring(idx));
+          this.appendTextSegment(this.buffer.substring(idx));
           break;
         } else {
           if (nextTagStart > idx) {
-            this.appendTextSegment(newContent.substring(idx, nextTagStart));
+            this.appendTextSegment(this.buffer.substring(idx, nextTagStart));
           }
           idx = nextTagStart;
-          const tagMatch = newContent.substring(idx).match(/^<(\w+)/);
+          const tagMatch = this.buffer.substring(idx).match(/^<(\w+)/);
           if (tagMatch) {
             this.tagStack.push(tagMatch[1]);
           } else {
@@ -33,17 +41,19 @@ export class IncrementalAIResponseParser {
       } else {
         const currentTag = this.tagStack[this.tagStack.length - 1];
         const endTag = `</${currentTag}>`;
-        const endTagIdx = newContent.indexOf(endTag, idx);
+        const endTagIdx = this.buffer.indexOf(endTag, idx);
         if (endTagIdx !== -1) {
-          const fullTagContent = newContent.substring(idx, endTagIdx + endTag.length);
+          const fullTagContent = this.buffer.substring(idx, endTagIdx + endTag.length);
           this.parseAndAppendSegment(fullTagContent);
           idx = endTagIdx + endTag.length;
           this.tagStack.pop();
         } else {
-          break; // Wait for more content
+          // Not all data for this tag has arrived yet. Stop parsing until more chunks come in.
+          break;
         }
       }
     }
+
     return this.segments;
   }
 
@@ -76,6 +86,7 @@ export class IncrementalAIResponseParser {
       }
     } catch (error) {
       console.error('Failed to parse segment:', error);
+      // Treat this xmlContent as text if parse fails
       this.appendTextSegment(xmlContent);
     }
   }
