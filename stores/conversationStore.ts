@@ -19,6 +19,7 @@ import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import { useWorkflowStore } from '~/stores/workflow';
 import { useTranscriptionStore } from '~/stores/transcriptionStore';
 import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
+import type { AIResponseSegment } from '~/utils/aiResponseParser/types';
 
 interface ConversationStoreState {
   conversations: Map<string, Conversation>;
@@ -284,7 +285,7 @@ export const useConversationStore = defineStore('conversation', {
 
         } else {
           // Create a new AI message with a fresh parser referencing its segments array
-          const segments: import('~/utils/aiResponseParser/types').AIResponseSegment[] = [];
+          const segments: AIResponseSegment[] = [];
           const newMessage: Message = {
             type: 'ai',
             text: '',

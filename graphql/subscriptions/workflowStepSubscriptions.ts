@@ -4,7 +4,8 @@ export const StepResponseSubscription = gql`
   subscription StepResponse($workspaceId: String!, $stepId: String!, $conversationId: String!) {
     stepResponse(workspaceId: $workspaceId, stepId: $stepId, conversationId: $conversationId) {
       conversationId
-      message
+      messageChunk
+      isComplete
     }
   }
 `;
