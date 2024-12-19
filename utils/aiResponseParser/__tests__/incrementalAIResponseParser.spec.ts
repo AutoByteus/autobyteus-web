@@ -2,7 +2,7 @@ import { IncrementalAIResponseParser } from '../incrementalAIResponseParser';
 import type { AIResponseSegment } from '../types';
 import { describe, it, expect, beforeEach } from 'vitest';
 
-describe('IncrementalAIResponseParser', () => {
+describe('IncrementalAIResponseParser (Integration)', () => {
   let parser: IncrementalAIResponseParser;
   let segments: AIResponseSegment[];
 
@@ -16,7 +16,7 @@ describe('IncrementalAIResponseParser', () => {
     expect(segments).toEqual([
       { type: 'text', content: 'Hello' }
     ]);
-    expect(processedSegments).toBe(segments); // Verify same array reference
+    expect(processedSegments).toBe(segments);
 
     parser.processChunks([' ', 'World']);
     expect(segments).toEqual([
@@ -294,7 +294,6 @@ describe('IncrementalAIResponseParser', () => {
     expect(segments).toHaveLength(1);
     expect(segments[0]).toEqual({ type: 'text', content: 'Hello' });
     
-    // Add a reference check
     const returnedSegments = parser.processChunks([' World']);
     expect(returnedSegments).toBe(segments);
     expect(segments[0]).toEqual({ type: 'text', content: 'Hello World' });
@@ -328,8 +327,15 @@ describe('IncrementalAIResponseParser', () => {
     parser.processChunks(['y']);
     parser.processChunks(['"']);
     parser.processChunks(['>']);
+    // Verify file segment started
+    expect(segments).toHaveLength(1);
+    expect(segments[0]).toMatchObject({
+      type: 'file',
+      path: 'fibonacci.py',
+      language: 'python',
+      originalContent: ''
+    });
 
-    // Test file content in small chunks
     const fileContent = [
       'def fibonacci(n):\n',
       '    """',
@@ -368,7 +374,7 @@ describe('IncrementalAIResponseParser', () => {
       '\n    main()'
     ];
 
-    // Process each chunk
+    // Process the file content in chunks
     fileContent.forEach(chunk => parser.processChunks([chunk]));
 
     // Process closing tag character by character
@@ -380,15 +386,13 @@ describe('IncrementalAIResponseParser', () => {
     parser.processChunks(['e']);
     parser.processChunks(['>']);
 
-    // Verify the final result
     expect(segments).toHaveLength(1);
+    const expectedContent = fileContent.join('');
     expect(segments[0]).toMatchObject({
       type: 'file',
       path: 'fibonacci.py',
-      language: 'python'
+      language: 'python',
+      originalContent: expectedContent
     });
-
-    const expectedContent = fileContent.join('');
-    expect(segments[0].originalContent).toBe(expectedContent);
   });
 });

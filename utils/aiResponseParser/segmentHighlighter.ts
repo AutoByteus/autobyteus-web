@@ -1,23 +1,29 @@
 import Prism from 'prismjs';
 import { highlightVueCode } from '~/utils/aiResponseParser/vueCodeHighlight';
-import type { AIResponseSegment } from '~/utils/aiResponseParser/types';
+import type { FileSegment } from '~/utils/aiResponseParser/types';
 
-export function highlightSegments(segments: AIResponseSegment[]): AIResponseSegment[] {
-  return segments.map(segment => {
-    if (segment.type === 'file') {
-      const highlightedContent =
-        segment.language.toLowerCase() === 'vue'
-          ? highlightVueCode(segment.originalContent)
-          : Prism.highlight(
-              segment.originalContent,
-              Prism.languages[segment.language.toLowerCase()] || Prism.languages.plaintext,
-              segment.language.toLowerCase()
-            );
-      return {
-        ...segment,
-        highlightedContent,
-      };
-    }
-    return segment;
-  });
+/**
+ * Highlights the content of a file segment using Prism syntax highlighting
+ * Special handling is provided for Vue files using the highlightVueCode function
+ * 
+ * @param fileSegment - The file segment to highlight
+ * @returns A new file segment with highlighted content
+ */
+export function highlightFileSegment(fileSegment: FileSegment): FileSegment {
+  if (!fileSegment.originalContent) {
+    return fileSegment;
+  }
+
+  const highlightedContent = fileSegment.language.toLowerCase() === 'vue'
+    ? highlightVueCode(fileSegment.originalContent)
+    : Prism.highlight(
+        fileSegment.originalContent,
+        Prism.languages[fileSegment.language.toLowerCase()] || Prism.languages.plaintext,
+        fileSegment.language.toLowerCase()
+      );
+
+  return {
+    ...fileSegment,
+    highlightedContent,
+  };
 }

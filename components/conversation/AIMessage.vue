@@ -9,7 +9,7 @@
         />
         <FileContentSegment
           v-else-if="segment.type === 'file'"
-          :file="segment"
+          :fileSegment="segment"
           :conversation-id="conversationId"
           :message-index="messageIndex"
         />

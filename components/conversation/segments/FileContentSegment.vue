@@ -1,7 +1,7 @@
 <template>
   <div class="overflow-x-auto mb-4">
     <div class="flex justify-between items-center bg-gray-200 p-2 rounded-t-md">
-      <span class="font-bold">File: {{ file.path }}</span>
+      <span class="font-bold">File: {{ fileSegment.path }}</span>
       <button
         @click="handleApply"
         :disabled="isApplyDisabled"
@@ -39,8 +39,8 @@
         <span v-else>Apply</span>
       </button>
     </div>
-    <MarkdownRenderer v-if="isMarkdownFile" :content="file.originalContent" />
-    <pre v-else :class="'language-' + file.language + ' w-full overflow-x-auto'"><code v-html="file.highlightedContent"></code></pre>
+    <MarkdownRenderer v-if="isMarkdownFile" :content="fileSegment.originalContent" />
+    <pre v-else :class="'language-' + fileSegment.language + ' w-full overflow-x-auto'"><code v-html="highlightedCode"></code></pre>
     <div v-if="error" class="mt-2 p-2 rounded bg-red-100 text-red-800">
       {{ error }}
     </div>
@@ -48,19 +48,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { useWorkspaceStore } from '~/stores/workspace';
 import MarkdownRenderer from '~/components/conversation/segments/renderer/MarkdownRenderer.vue';
-import { highlightSegments } from '~/utils/aiResponseParser/segmentHighlighter';
+import { highlightFileSegment } from '~/utils/aiResponseParser/segmentHighlighter';
+import type { FileSegment } from '~/utils/aiResponseParser/types';
 
 const props = defineProps<{
-  file: {
-    path: string;
-    language: string;
-    originalContent: string;
-    highlightedContent?: string;
-  };
+  fileSegment: FileSegment;
   conversationId: string;
   messageIndex: number;
 }>();
@@ -68,12 +64,24 @@ const props = defineProps<{
 const fileExplorerStore = useFileExplorerStore();
 const workspaceStore = useWorkspaceStore();
 
+const highlightedCode = ref('');
+
+// Watch for changes in originalContent and rehighlight
+watch(
+  () => props.fileSegment.originalContent,
+  (newContent) => {
+    const highlighted = highlightFileSegment(props.fileSegment);
+    highlightedCode.value = highlighted.highlightedContent || '';
+  },
+  { immediate: true }
+);
+
 const isInProgress = computed(() => {
-  return fileExplorerStore.isApplyChangeInProgress(props.conversationId, props.messageIndex, props.file.path);
+  return fileExplorerStore.isApplyChangeInProgress(props.conversationId, props.messageIndex, props.fileSegment.path);
 });
 
 const isApplied = computed(() => {
-  return fileExplorerStore.isChangeApplied(props.conversationId, props.messageIndex, props.file.path);
+  return fileExplorerStore.isChangeApplied(props.conversationId, props.messageIndex, props.fileSegment.path);
 });
 
 const isApplyDisabled = computed(() => {
@@ -81,15 +89,15 @@ const isApplyDisabled = computed(() => {
 });
 
 const error = computed(() => {
-  return fileExplorerStore.getApplyChangeError(props.conversationId, props.messageIndex, props.file.path);
+  return fileExplorerStore.getApplyChangeError(props.conversationId, props.messageIndex, props.fileSegment.path);
 });
 
 const handleApply = async () => {
   try {
     await fileExplorerStore.applyFileChange(
       workspaceStore.currentSelectedWorkspaceId,
-      props.file.path,
-      props.file.originalContent,
+      props.fileSegment.path,
+      props.fileSegment.originalContent,
       props.conversationId,
       props.messageIndex
     );
@@ -99,19 +107,8 @@ const handleApply = async () => {
 };
 
 const isMarkdownFile = computed(() => {
-  return props.file.path.endsWith('.md');
+  return props.fileSegment.path.endsWith('.md');
 });
-
-watch(
-  () => props.file.originalContent,
-  () => {
-    if (!props.file.highlightedContent) {
-      const highlightedSegments = highlightSegments([props.file]);
-      props.file.highlightedContent = highlightedSegments[0].highlightedContent || '';
-    }
-  },
-  { immediate: true }
-);
 </script>
 
 <style scoped>

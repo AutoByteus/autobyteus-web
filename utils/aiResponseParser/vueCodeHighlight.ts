@@ -3,6 +3,7 @@ import 'prismjs/components/prism-markup';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-css';
 import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-jsx';
 
 /**
  * Highlights Vue code by separately highlighting template, script, and style sections.
