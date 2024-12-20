@@ -17,6 +17,8 @@ export function getLanguage(filePath: string): string {
       return 'ruby';
     case 'css':
       return 'css';
+    case 'jsx':
+      return 'javascript';
     case 'json':
       return 'json';
     case 'md':
