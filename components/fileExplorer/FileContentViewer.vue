@@ -1,3 +1,4 @@
+
 <template>
   <div id="contentViewer" class="bg-white rounded-lg shadow-md flex flex-col h-full">
     <div class="flex border-b overflow-x-auto sticky top-0 bg-white z-10 p-2">
@@ -46,6 +47,7 @@ import { useFileExplorerStore } from '~/stores/fileExplorer';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism.css';
 import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-jsx'; // Added JSX support
 import 'prismjs/components/prism-typescript';
 import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-markup';
@@ -93,7 +95,6 @@ watch(activeFile, () => {
   });
 });
 </script>
-
 <style scoped>
 pre {
   margin: 0;
