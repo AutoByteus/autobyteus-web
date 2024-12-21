@@ -1,3 +1,4 @@
+
 <template>
   <div 
     v-if="isOpen"
@@ -13,8 +14,8 @@
         <ConversationList
           :conversations="conversations"
           :activeConversationId="conversationHistoryStore.stepName"
-          @activate="activateConversation"
-          @delete="deleteConversation"
+          @activate="handleActivateConversation"
+          @delete="handleDeleteConversation"
         />
         <div class="flex justify-between items-center mt-4">
           <button 
@@ -50,6 +51,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
+import { useConversationStore } from '~/stores/conversationStore'; // <-- Import store
 import ConversationList from '~/components/conversation/ConversationList.vue';
 import type { Conversation } from '~/types/conversation';
 
@@ -60,20 +62,28 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): void;
-  (e: 'activate', conversationId: string): void;
 }>();
 
 const conversationHistoryStore = useConversationHistoryStore();
+const conversationStore = useConversationStore();
 
 const conversations = computed(() => conversationHistoryStore.getConversations);
 
-const activateConversation = (conversationId: string) => {
-  emit('activate', conversationId);
+const handleActivateConversation = (conversationId: string) => {
+  // Directly set conversation from history using the store
+  conversationStore.setConversationFromHistory(conversationId);
+  // Close panel after activation (optional, but presumably desired)
+  close();
 };
 
-const deleteConversation = (conversationId: string) => {
-  // Implement deletion logic if necessary
-  console.warn(`Delete conversation with ID: ${conversationId}`);
+const handleDeleteConversation = (conversationId: string) => {
+  // Depending on how you want to handle "delete from history" or "delete from store"
+  // For example, you could do:
+  console.log(`Deleting conversation with ID: ${conversationId}`);
+  // If you want to remove it from the store:
+  conversationStore.removeConversation(conversationId);
+  // Optionally refetch the history:
+  conversationHistoryStore.fetchConversationHistory();
 };
 
 const previousPage = async () => {

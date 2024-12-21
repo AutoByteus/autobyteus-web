@@ -12,7 +12,8 @@
         </button>
         <button 
           @click="showConversationHistory" 
-          class="w-full sm:w-auto px-4 py-2 sm:px-3 sm:py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-center">
+          class="w-full sm:w-auto px-4 py-2 sm:px-3 sm:py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-center"
+        >
           History
         </button>
       </div>
@@ -29,11 +30,11 @@
       </div>
     </div>
 
+    <!-- We remove the @activate and rely on ConversationHistoryPanel to handle conversation activation internally -->
     <ConversationHistoryPanel 
       :isOpen="isHistoryPanelOpen"
       :conversations="conversationHistory"
       @close="closeConversationHistory"
-      @activate="activateHistoryConversation"
     />
   </div>
 </template>
@@ -72,10 +73,7 @@ const closeConversationHistory = () => {
   isHistoryPanelOpen.value = false;
 };
 
-const activateHistoryConversation = (conversationId: string) => {
-  conversationStore.setConversationFromHistory(conversationId);
-  isHistoryPanelOpen.value = false;
-};
+// We remove activateHistoryConversation, since we no longer pass @activate from ConversationHistoryPanel
 
 // Watcher to handle step activation and create a single temporary conversation
 watch(selectedStep, (newStep, oldStep) => {
