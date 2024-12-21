@@ -1,4 +1,5 @@
 
+```vue
 <template>
   <div v-if="selectedStep" class="flex flex-col h-full">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 sm:gap-0">
@@ -30,7 +31,7 @@
       </div>
     </div>
 
-    <!-- We remove the @activate and rely on ConversationHistoryPanel to handle conversation activation internally -->
+    <!-- Conversation History Panel -->
     <ConversationHistoryPanel 
       :isOpen="isHistoryPanelOpen"
       :conversations="conversationHistory"
@@ -73,12 +74,10 @@ const closeConversationHistory = () => {
   isHistoryPanelOpen.value = false;
 };
 
-// We remove activateHistoryConversation, since we no longer pass @activate from ConversationHistoryPanel
-
-// Watcher to handle step activation and create a single temporary conversation
+// Watcher to handle step activation and ensure conversations are preserved
 watch(selectedStep, (newStep, oldStep) => {
   if (newStep && newStep.id !== oldStep?.id) {
-    conversationHistoryStore.reset();
+    // No need to reset conversations here as they are now managed per step
     workflowStore.setSelectedStepId(newStep.id);
   }
 }, { immediate: false });
@@ -103,3 +102,4 @@ watch(selectedStep, (newStep, oldStep) => {
   border-radius: 3px;
 }
 </style>
+```

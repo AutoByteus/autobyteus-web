@@ -33,7 +33,9 @@ export const useWorkflowStore = defineStore('workflow', {
       // Only proceed if selecting a different step
       if (previousStepId !== stepId) {
         this.selectedStepId = stepId;
-        // Always create a new temporary conversation when switching steps
+        // Switch conversations to the new step
+        conversationStore.setSelectedConversationId(null); // Deselect current conversation
+        conversationStore.setCurrentStepId(stepId)
         conversationStore.createTemporaryConversation();
       }
     },

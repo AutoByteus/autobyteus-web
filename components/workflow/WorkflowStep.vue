@@ -1,3 +1,5 @@
+
+```vue
 <template>
   <div 
     class="flex-grow basis-[200px] border border-gray-300 rounded-md p-2 cursor-pointer h-15 flex items-center justify-center shadow-sm transition-all duration-300 ease-in-out hover:shadow-md"
@@ -23,7 +25,7 @@ const workflowStore = useWorkflowStore();
 const conversationStore = useConversationStore();
 
 const selectStep = (step: Step) => {
-  conversationStore.resetConversations();
   workflowStore.setSelectedStepId(step.id);
 };
 </script>
+```

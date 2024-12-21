@@ -134,11 +134,19 @@ const onFileDrop = async (event: DragEvent) => {
       try {
         const uploadedFilePath = await conversationStore.uploadFile(file);
         uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath);
-        conversationStore.removeContextFilePath(contextFilePaths.value.findIndex(cf => cf.path === tempPath));
+        // Remove the temporary path
+        const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
+        if (tempIndex !== -1) {
+          conversationStore.removeContextFilePath(tempIndex);
+        }
         addContextFilePath(uploadedFilePath, fileType);
       } catch (error) {
         console.error('Error uploading file:', error);
-        conversationStore.removeContextFilePath(contextFilePaths.value.findIndex(cf => cf.path === tempPath));
+        // Remove the temporary path on error
+        const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
+        if (tempIndex !== -1) {
+          conversationStore.removeContextFilePath(tempIndex);
+        }
         uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath);
       }
     }
@@ -160,11 +168,19 @@ const onPaste = async (event: ClipboardEvent) => {
           try {
             const uploadedFilePath = await conversationStore.uploadFile(blob);
             uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath);
-            conversationStore.removeContextFilePath(contextFilePaths.value.findIndex(cf => cf.path === tempPath));
+            // Remove the temporary path
+            const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
+            if (tempIndex !== -1) {
+              conversationStore.removeContextFilePath(tempIndex);
+            }
             addContextFilePath(uploadedFilePath, 'image');
           } catch (error) {
             console.error('Error uploading pasted image:', error);
-            conversationStore.removeContextFilePath(contextFilePaths.value.findIndex(cf => cf.path === tempPath));
+            // Remove the temporary path on error
+            const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
+            if (tempIndex !== -1) {
+              conversationStore.removeContextFilePath(tempIndex);
+            }
             uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath);
           }
         }
