@@ -1,3 +1,4 @@
+
 import { defineStore } from 'pinia';
 import { useMutation, useSubscription, useQuery } from '@vue/apollo-composable';
 import { SendStepRequirement, CloseConversation } from '~/graphql/mutations/workflowStepMutations';
@@ -272,10 +273,8 @@ export const useConversationStore = defineStore('conversation', {
           if (!lastMessage.parserInstance) {
             lastMessage.segments = lastMessage.segments || [];
             lastMessage.parserInstance = new IncrementalAIResponseParser(lastMessage.segments);
-            // Process all existing chunks once if we never processed them before (e.g., this is a resumed message)
-            // But now we just received a new chunk. Let's assume this is the first time parser is created.
-            // We can process all chunks that currently exist to initialize properly.
-            lastMessage.parserInstance.processChunks(lastMessage.chunks);
+            // Process only the new chunk to keep it truly incremental
+            lastMessage.parserInstance.processChunks([messageChunk]);
           } else {
             // Process only the new chunk to keep it truly incremental
             lastMessage.parserInstance.processChunks([messageChunk]);
@@ -362,16 +361,6 @@ export const useConversationStore = defineStore('conversation', {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
-
-        // Initialize parser and segments for any AI messages with chunks
-        for (const msg of newConversation.messages) {
-          if (msg.type === 'ai' && msg.chunks && msg.chunks.length > 0) {
-            msg.segments = msg.segments || [];
-            msg.parserInstance = new IncrementalAIResponseParser(msg.segments);
-            // Since we are loading from history, we can process all existing chunks at once now
-            msg.parserInstance.processChunks(msg.chunks);
-          }
-        }
 
         this.conversations.set(tempId, newConversation);
         this.selectedConversationId = tempId;
