@@ -1,3 +1,4 @@
+
 <template>
   <div v-if="selectedStep" class="flex flex-col h-full">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 sm:gap-0">
@@ -6,7 +7,6 @@
         <button 
           @click="initiateNewConversation" 
           class="w-full sm:w-auto px-4 py-2 sm:px-3 sm:py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-center"
-          :disabled="maxConversationsReached"
         >
           New Conversation
         </button>
@@ -47,8 +47,6 @@ import WorkflowStepRequirementForm from '~/components/stepRequirementForm/Workfl
 import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue';
 import ConversationTabs from '~/components/conversation/ConversationTabs.vue';
 
-const MAX_ACTIVE_CONVERSATIONS = 5;
-
 const workflowStore = useWorkflowStore();
 const conversationStore = useConversationStore();
 const conversationHistoryStore = useConversationHistoryStore();
@@ -58,15 +56,9 @@ const activeConversations = computed(() => conversationStore.activeConversations
 const isHistoryPanelOpen = ref(false);
 const conversationHistory = computed(() => conversationHistoryStore.getConversations);
 
-const maxConversationsReached = computed(() => 
-  activeConversations.value.length >= MAX_ACTIVE_CONVERSATIONS
-);
-
 const initiateNewConversation = () => {
-  if (!maxConversationsReached.value) {
-    conversationStore.createTemporaryConversation();
-    conversationHistoryStore.reset();
-  }
+  conversationStore.createTemporaryConversation();
+  conversationHistoryStore.reset();
 };
 
 const showConversationHistory = () => {
@@ -81,10 +73,8 @@ const closeConversationHistory = () => {
 };
 
 const activateHistoryConversation = (conversationId: string) => {
-  if (!maxConversationsReached.value) {
-    conversationStore.setConversationFromHistory(conversationId);
-    isHistoryPanelOpen.value = false;
-  }
+  conversationStore.setConversationFromHistory(conversationId);
+  isHistoryPanelOpen.value = false;
 };
 
 // Watcher to handle step activation and create a single temporary conversation

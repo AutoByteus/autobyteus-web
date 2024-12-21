@@ -1,8 +1,10 @@
+
 import { defineStore } from 'pinia';
 import { useQuery } from '@vue/apollo-composable';
 import { GET_CONVERSATION_HISTORY } from '~/graphql/queries/conversation_queries';
 import type { GetConversationHistoryQuery, GetConversationHistoryQueryVariables } from '~/generated/graphql';
 import type { Conversation, UserMessage, AIMessage } from '~/types/conversation';
+import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
 
 interface ConversationHistoryState {
   stepName: string | null;
@@ -51,7 +53,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
         GET_CONVERSATION_HISTORY,
         variables,
         {
-          fetchPolicy: 'network-only', // Ensures the query bypasses the cache and fetches fresh data
+          fetchPolicy: 'network-only',
         }
       );
 
@@ -107,10 +109,21 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
             };
             return userMessage;
           } else {
+            // For AI messages from history, ensure we process the text
+            // by treating it as a single completed chunk.
+            const aiText = msg.message || '';
+            const segments: [] = [];
+            const parser = new IncrementalAIResponseParser(segments);
+            parser.processChunks([aiText]);
+
             const aiMessage: AIMessage = {
               type: 'ai',
-              text: msg.message || '',
+              text: aiText,
               timestamp: new Date(msg.timestamp),
+              chunks: [aiText],
+              segments,
+              isComplete: true,
+              parserInstance: parser,
             };
             return aiMessage;
           }

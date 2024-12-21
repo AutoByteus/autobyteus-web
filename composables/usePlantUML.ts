@@ -1,9 +1,9 @@
+
 import { plantumlService } from '~/services/plantumlService';
 
 export const usePlantUML = () => {
-  // Keep track of processed diagrams
-  const processedDiagrams = new Set<string>();
-  // Store URL objects for cleanup
+  // Track both successful and failed diagrams to prevent reprocessing
+  const processedDiagrams = new Map<string, boolean>(); // diagramId -> success
   const blobUrls = new Set<string>();
 
   const cleanupBlobUrls = () => {
@@ -20,7 +20,7 @@ export const usePlantUML = () => {
       const content = decodeURIComponent(diagram.getAttribute('data-content') || '');
       const diagramId = diagram.getAttribute('data-diagram-id');
       
-      // Skip if already processed
+      // Skip if already attempted (whether successful or failed)
       if (!diagramId || processedDiagrams.has(diagramId)) {
         continue;
       }
@@ -45,8 +45,7 @@ export const usePlantUML = () => {
         img.onload = () => {
           loadingState.style.display = 'none';
           diagramContent.style.display = 'block';
-          // Mark as processed
-          processedDiagrams.add(diagramId);
+          processedDiagrams.set(diagramId, true); // Mark as successfully processed
         };
         
         img.onerror = () => {
@@ -54,6 +53,7 @@ export const usePlantUML = () => {
           errorState.style.display = 'flex';
           URL.revokeObjectURL(imageUrl);
           blobUrls.delete(imageUrl);
+          processedDiagrams.set(diagramId, false); // Mark as failed
         };
         
         img.src = imageUrl;
@@ -66,6 +66,7 @@ export const usePlantUML = () => {
         console.error('Failed to process PlantUML diagram:', error);
         loadingState.style.display = 'none';
         errorState.style.display = 'flex';
+        processedDiagrams.set(diagramId, false); // Mark as failed
       }
     }
   };
