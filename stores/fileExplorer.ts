@@ -1,8 +1,7 @@
-
 import { defineStore } from 'pinia'
 import { useQuery, useMutation } from '@vue/apollo-composable'
 import { GetFileContent, SearchFiles } from '~/graphql/queries/file_explorer_queries'
-import { ApplyFileChange } from '~/graphql/mutations/file_explorer_mutations'
+import { ApplyFileChange, RenameFile, DeleteFile, MoveFile } from '~/graphql/mutations/file_explorer_mutations'
 import type { 
   GetFileContentQuery, 
   GetFileContentQueryVariables, 
@@ -10,6 +9,12 @@ import type {
   ApplyFileChangeMutationVariables,
   SearchFilesQuery,
   SearchFilesQueryVariables,
+  RenameFileMutation,
+  RenameFileMutationVariables,
+  DeleteFileMutation,
+  DeleteFileMutationVariables,
+  MoveFileMutation,
+  MoveFileMutationVariables,
 } from '~/generated/graphql'
 import { useWorkspaceStore } from '~/stores/workspace'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
@@ -155,6 +160,75 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         throw err
       }
     },
+    async renameFile(
+      workspaceId: string,
+      filePath: string,
+      newName: string
+    ): Promise<boolean> {
+      const { mutate } = useMutation<RenameFileMutation, RenameFileMutationVariables>(RenameFile)
+      try {
+        const result = await mutate({ workspaceId, filePath, newName })
+        if (result?.data?.renameFile) {
+          const workspaceStore = useWorkspaceStore()
+          await workspaceStore.refreshWorkspace() // Refresh the workspace tree
+          return true
+        }
+        return false
+      } catch (error: any) {
+        console.error('Failed to rename file:', error)
+        throw new Error(error.message || 'Failed to rename file')
+      }
+    },
+    async deleteFile(
+      workspaceId: string,
+      filePath: string
+    ): Promise<boolean> {
+      const { mutate } = useMutation<DeleteFileMutation, DeleteFileMutationVariables>(DeleteFile)
+      try {
+        const result = await mutate({ workspaceId, filePath })
+        if (result?.data?.deleteFile) {
+          const workspaceStore = useWorkspaceStore()
+          await workspaceStore.refreshWorkspace() // Refresh the workspace tree
+          // If the deleted file is open, close it
+          if (this.openFiles.includes(filePath)) {
+            this.closeFile(filePath)
+          }
+          return true
+        }
+        return false
+      } catch (error: any) {
+        console.error('Failed to delete file:', error)
+        throw new Error(error.message || 'Failed to delete file')
+      }
+    },
+    async moveFile(
+      workspaceId: string,
+      sourcePath: string,
+      destinationPath: string
+    ): Promise<boolean> {
+      const { mutate } = useMutation<MoveFileMutation, MoveFileMutationVariables>(MoveFile)
+      try {
+        const result = await mutate({ workspaceId, sourcePath, destinationPath })
+        if (result?.data?.moveFile) {
+          const workspaceStore = useWorkspaceStore()
+          await workspaceStore.refreshWorkspace() // Refresh the workspace tree
+          // If the moved file is open, update its path in openFiles
+          if (this.openFiles.includes(sourcePath)) {
+            this.openFiles = this.openFiles.map(file => file === sourcePath ? destinationPath : file)
+            this.fileContents.set(destinationPath, this.fileContents.get(sourcePath) || '')
+            this.fileContents.delete(sourcePath)
+            if (this.activeFile === sourcePath) {
+              this.activeFile = destinationPath
+            }
+          }
+          return true
+        }
+        return false
+      } catch (error: any) {
+        console.error('Failed to move file:', error)
+        throw new Error(error.message || 'Failed to move file')
+      }
+    },
     isApplyChangeInProgress(conversationId: string, messageIndex: number, filePath: string): boolean {
       return !!(this.applyChangeLoading[conversationId] &&
         this.applyChangeLoading[conversationId][messageIndex] &&
@@ -165,24 +239,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     },
     getApplyChangeError(conversationId: string, messageIndex: number, filePath: string): string | null {
       return this.applyChangeError[conversationId]?.[messageIndex]?.[filePath] || null
-    },
-    setApplyChangeLoading(conversationId: string, messageIndex: number, filePath: string, isLoading: boolean) {
-      if (!this.applyChangeLoading[conversationId]) {
-        this.applyChangeLoading[conversationId] = {}
-      }
-      if (!this.applyChangeLoading[conversationId][messageIndex]) {
-        this.applyChangeLoading[conversationId][messageIndex] = {}
-      }
-      this.applyChangeLoading[conversationId][messageIndex][filePath] = isLoading
-    },
-    setApplyChangeError(conversationId: string, messageIndex: number, filePath: string, error: string | null) {
-      if (!this.applyChangeError[conversationId]) {
-        this.applyChangeError[conversationId] = {}
-      }
-      if (!this.applyChangeError[conversationId][messageIndex]) {
-        this.applyChangeError[conversationId][messageIndex] = {}
-      }
-      this.applyChangeError[conversationId][messageIndex][filePath] = error
     },
     async searchFiles(query: string) {
       this.searchLoading = true

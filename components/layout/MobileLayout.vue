@@ -1,3 +1,6 @@
+
+```vue
+<!-- File: autobyteus-web/components/layout/MobileLayout.vue -->
 <template>
   <div class="md:hidden flex flex-1 flex-col min-h-0">
     <!-- Mobile Navigation -->
@@ -60,3 +63,4 @@ const availableTabs = computed(() => {
   transition: all 0.3s ease-in-out;
 }
 </style>
+```

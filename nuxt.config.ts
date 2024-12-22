@@ -29,6 +29,11 @@ const baseConfig = {
     } : {}
   },
 
+  plugins: [
+    '~/plugins/vue3-click-away.ts',
+    '~/plugins/vue-toastification.ts', // Add this line
+  ],
+
   vite: {
     assetsInclude: ['**/*.jpeg', '**/*.jpg', '**/*.png', '**/*.svg'],
     worker: {

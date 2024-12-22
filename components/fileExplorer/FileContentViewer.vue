@@ -1,4 +1,3 @@
-
 <template>
   <div id="contentViewer" class="bg-white rounded-lg shadow-md flex flex-col h-full">
     <div class="flex border-b overflow-x-auto sticky top-0 bg-white z-10 p-2">
@@ -74,76 +73,76 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onMounted, nextTick, ref } from 'vue';
-import { useFileExplorerStore } from '~/stores/fileExplorer';
-import Prism from 'prismjs';
-import 'prismjs/themes/prism.css';
-import 'prismjs/components/prism-javascript';
-import 'prismjs/components/prism-jsx';
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-python';
-import 'prismjs/components/prism-markup';
-import 'prismjs/components/prism-markup-templating';
-import 'prismjs/components/prism-php';
-import { getLanguage } from '~/utils/aiResponseParser/languageDetector';
-import { highlightVueCode } from '~/utils/aiResponseParser/vueCodeHighlight';
-import MonacoEditor from '~/components/common/MonacoEditor.vue';
+import { computed, watch, onMounted, nextTick, ref } from 'vue'
+import { useFileExplorerStore } from '~/stores/fileExplorer'
+import Prism from 'prismjs'
+import 'prismjs/themes/prism.css'
+import 'prismjs/components/prism-javascript'
+import 'prismjs/components/prism-jsx'
+import 'prismjs/components/prism-typescript'
+import 'prismjs/components/prism-python'
+import 'prismjs/components/prism-markup'
+import 'prismjs/components/prism-markup-templating'
+import 'prismjs/components/prism-php'
+import { getLanguage } from '~/utils/aiResponseParser/languageDetector'
+import { highlightVueCode } from '~/utils/aiResponseParser/vueCodeHighlight'
+import MonacoEditor from '~/components/common/MonacoEditor.vue'
 
-const fileExplorerStore = useFileExplorerStore();
+const fileExplorerStore = useFileExplorerStore()
 
-const openFiles = computed(() => fileExplorerStore.getOpenFiles);
-const activeFile = computed(() => fileExplorerStore.getActiveFile);
+const openFiles = computed(() => fileExplorerStore.getOpenFiles)
+const activeFile = computed(() => fileExplorerStore.getActiveFile)
 
-const getFileName = (filePath: string) => filePath.split('/').pop() || filePath;
+const getFileName = (filePath: string) => filePath.split('/').pop() || filePath
 
-const setActiveFile = (filePath: string) => fileExplorerStore.setActiveFile(filePath);
-const closeFile = (filePath: string) => fileExplorerStore.closeFile(filePath);
+const setActiveFile = (filePath: string) => fileExplorerStore.setActiveFile(filePath)
+const closeFile = (filePath: string) => fileExplorerStore.closeFile(filePath)
 
-const getFileContent = (filePath: string) => fileExplorerStore.getFileContent(filePath);
-const isContentLoading = (filePath: string) => fileExplorerStore.isContentLoading(filePath);
-const getContentError = (filePath: string) => fileExplorerStore.getContentError(filePath);
+const getFileContent = (filePath: string) => fileExplorerStore.getFileContent(filePath)
+const isContentLoading = (filePath: string) => fileExplorerStore.isContentLoading(filePath)
+const getContentError = (filePath: string) => fileExplorerStore.getContentError(filePath)
 
-const getFileLanguage = (filePath: string) => getLanguage(filePath);
+const getFileLanguage = (filePath: string) => getLanguage(filePath)
 
 const highlightedContent = computed(() => {
-  if (!activeFile.value) return '';
-  const content = getFileContent(activeFile.value);
-  if (!content) return '';
-  const language = getFileLanguage(activeFile.value);
+  if (!activeFile.value) return ''
+  const content = getFileContent(activeFile.value)
+  if (!content) return ''
+  const language = getFileLanguage(activeFile.value)
   
   if (language === 'vue') {
-    return highlightVueCode(content);
+    return highlightVueCode(content)
   } else {
-    return Prism.highlight(content, Prism.languages[language] || Prism.languages.plaintext, language);
+    return Prism.highlight(content, Prism.languages[language] || Prism.languages.plaintext, language)
   }
-});
+})
 
 // Edit mode state
-const isEditing = ref(false);
-const editedContent = ref('');
-const saveError = ref<string | null>(null);
+const isEditing = ref(false)
+const editedContent = ref('')
+const saveError = ref<string | null>(null)
 
 const handleEditorMount = (editor: any) => {
-  editor.focus();
-};
+  editor.focus()
+}
 
 // Enter edit mode
 const enterEditMode = () => {
   if (activeFile.value) {
-    editedContent.value = getFileContent(activeFile.value) || '';
-    isEditing.value = true;
+    editedContent.value = getFileContent(activeFile.value) || ''
+    isEditing.value = true
   }
-};
+}
 
 // Cancel edit
 const cancelEdit = () => {
-  isEditing.value = false;
-  saveError.value = null;
-};
+  isEditing.value = false
+  saveError.value = null
+}
 
 // Save changes
 const saveChanges = async () => {
-  if (!activeFile.value) return;
+  if (!activeFile.value) return
   try {
     await fileExplorerStore.applyFileChange(
       fileExplorerStore.workspaceId, 
@@ -151,23 +150,23 @@ const saveChanges = async () => {
       editedContent.value,
       'conversationId_example', // Replace with actual conversation ID
       0 // Replace with actual message index
-    );
-    isEditing.value = false;
-    saveError.value = null;
+    )
+    isEditing.value = false
+    saveError.value = null
   } catch (error: any) {
-    saveError.value = error.message || 'Failed to save changes';
+    saveError.value = error.message || 'Failed to save changes'
   }
-};
+}
 
 onMounted(() => {
-  Prism.highlightAll();
-});
+  Prism.highlightAll()
+})
 
 watch(activeFile, () => {
   nextTick(() => {
-    Prism.highlightAll();
-  });
-});
+    Prism.highlightAll()
+  })
+})
 </script>
 
 <style scoped>
