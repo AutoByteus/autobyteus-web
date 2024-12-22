@@ -98,12 +98,6 @@ export const useConversationStore = defineStore('conversation', {
         return;
       }
 
-      // Check if step already has conversations
-      if (this.conversationsPerStep.has(currentStepId) && 
-          this.conversationsPerStep.get(currentStepId)!.size > 0) {
-        return; // Don't create a new conversation if step already has one
-      }
-
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const newConversation: Conversation = {
         id: tempId,

@@ -1,3 +1,4 @@
+
 const plugin = require('tailwindcss/plugin');
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -47,6 +48,46 @@ module.exports = {
             li: {
               marginTop: '0.25em',
               marginBottom: '0.25em'
+            },
+            pre: {
+              backgroundColor: 'rgb(243 244 246)',
+              color: '#1f2937',
+              padding: '1rem',
+              borderRadius: '0.5rem',
+              overflow: 'auto',
+              margin: '1.5rem 0',
+            },
+            'pre code': {
+              backgroundColor: 'transparent',
+              borderRadius: '0',
+              padding: '0',
+              color: 'inherit',
+              fontSize: '0.875rem',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+              lineHeight: '1.5',
+            },
+            code: {
+              backgroundColor: 'rgb(243 244 246)',
+              color: '#374151', // Changed from red to a dark gray
+              padding: '0.25rem 0.4rem',
+              borderRadius: '0.25rem',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+            },
+            'code::before': {
+              content: '""',
+            },
+            'code::after': {
+              content: '""',
+            },
+            '.dark pre': {
+              backgroundColor: 'rgb(31 41 55)',
+              color: 'rgb(243 244 246)',
+            },
+            '.dark code': {
+              backgroundColor: 'rgb(31 41 55)',
+              color: '#e5e7eb', // Changed from light red to light gray
             }
           }
         }
@@ -58,7 +99,7 @@ module.exports = {
   },
   plugins: [
     require('@tailwindcss/typography'),
-    plugin(function({ addUtilities }) {
+    plugin(function({ addUtilities, addVariant }) {
       addUtilities({
         '.bg-green-striped': {
           'background-image': `linear-gradient(45deg, #0a2000 10%, transparent 10%,
@@ -67,7 +108,8 @@ module.exports = {
             #0a2000 70%, transparent 70%, transparent 80%, #0a2000 80%, #0a2000 90%,
             transparent 90%, transparent)`,
         },
-      })
+      });
+      addVariant('prose-inline-code', '&.prose :where(:not(pre)>code):not(:where([class~="not-prose"] *))');
     })
   ],
 }
