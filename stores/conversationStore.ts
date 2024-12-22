@@ -256,7 +256,6 @@ export const useConversationStore = defineStore('conversation', {
     async sendStepRequirementAndSubscribe(
       workspaceId: string,
       stepId: string,
-      requirement: string,
       llmModel?: string
     ): Promise<void> {
       const { mutate: sendStepRequirementMutation } = useMutation<SendStepRequirementMutation, SendStepRequirementMutationVariables>(SendStepRequirement);

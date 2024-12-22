@@ -31,8 +31,39 @@
           <strong class="font-bold">Error!</strong>
           <span class="block sm:inline">{{ getContentError(activeFile) }}</span>
         </div>
-        <div v-else-if="getFileContent(activeFile)" class="bg-gray-50 p-4 rounded-lg text-gray-600">
+        <div v-else-if="!isEditing" class="bg-gray-50 p-4 rounded-lg text-gray-600">
           <pre class="overflow-visible"><code :class="'language-' + getFileLanguage(activeFile)" v-html="highlightedContent"></code></pre>
+          <button 
+            @click="enterEditMode" 
+            class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            Edit
+          </button>
+        </div>
+        <div v-else class="bg-gray-50 p-4 rounded-lg text-gray-600 flex flex-col h-full">
+          <MonacoEditor
+            v-model="editedContent"
+            :language="getFileLanguage(activeFile)"
+            height="500px"
+            @editorDidMount="handleEditorMount"
+          />
+          <div class="mt-4 flex space-x-2">
+            <button 
+              @click="saveChanges" 
+              class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              Save
+            </button>
+            <button 
+              @click="cancelEdit" 
+              class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            >
+              Cancel
+            </button>
+          </div>
+          <div v-if="saveError" class="mt-2 text-red-600">
+            {{ saveError }}
+          </div>
         </div>
       </div>
       <div v-else class="text-center py-4">
@@ -41,13 +72,14 @@
     </div>
   </div>
 </template>
+
 <script setup lang="ts">
-import { computed, watch, onMounted, nextTick } from 'vue';
+import { computed, watch, onMounted, nextTick, ref } from 'vue';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism.css';
 import 'prismjs/components/prism-javascript';
-import 'prismjs/components/prism-jsx'; // Added JSX support
+import 'prismjs/components/prism-jsx';
 import 'prismjs/components/prism-typescript';
 import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-markup';
@@ -55,6 +87,7 @@ import 'prismjs/components/prism-markup-templating';
 import 'prismjs/components/prism-php';
 import { getLanguage } from '~/utils/aiResponseParser/languageDetector';
 import { highlightVueCode } from '~/utils/aiResponseParser/vueCodeHighlight';
+import MonacoEditor from '~/components/common/MonacoEditor.vue';
 
 const fileExplorerStore = useFileExplorerStore();
 
@@ -85,6 +118,47 @@ const highlightedContent = computed(() => {
   }
 });
 
+// Edit mode state
+const isEditing = ref(false);
+const editedContent = ref('');
+const saveError = ref<string | null>(null);
+
+const handleEditorMount = (editor: any) => {
+  editor.focus();
+};
+
+// Enter edit mode
+const enterEditMode = () => {
+  if (activeFile.value) {
+    editedContent.value = getFileContent(activeFile.value) || '';
+    isEditing.value = true;
+  }
+};
+
+// Cancel edit
+const cancelEdit = () => {
+  isEditing.value = false;
+  saveError.value = null;
+};
+
+// Save changes
+const saveChanges = async () => {
+  if (!activeFile.value) return;
+  try {
+    await fileExplorerStore.applyFileChange(
+      fileExplorerStore.workspaceId, 
+      activeFile.value, 
+      editedContent.value,
+      'conversationId_example', // Replace with actual conversation ID
+      0 // Replace with actual message index
+    );
+    isEditing.value = false;
+    saveError.value = null;
+  } catch (error: any) {
+    saveError.value = error.message || 'Failed to save changes';
+  }
+};
+
 onMounted(() => {
   Prism.highlightAll();
 });
@@ -95,6 +169,7 @@ watch(activeFile, () => {
   });
 });
 </script>
+
 <style scoped>
 pre {
   margin: 0;
@@ -122,5 +197,9 @@ code {
 .close-button:focus {
   outline: none;
   box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5);
+}
+
+button {
+  cursor: pointer;
 }
 </style>

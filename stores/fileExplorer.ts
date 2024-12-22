@@ -1,3 +1,4 @@
+
 import { defineStore } from 'pinia'
 import { useQuery, useMutation } from '@vue/apollo-composable'
 import { GetFileContent, SearchFiles } from '~/graphql/queries/file_explorer_queries'
@@ -27,6 +28,7 @@ interface FileExplorerState {
   searchResults: any[];
   searchLoading: boolean;
   searchError: string | null;
+  workspaceId: string; // Added workspaceId to manage current workspace
 }
 
 export const useFileExplorerStore = defineStore('fileExplorer', {
@@ -43,6 +45,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     searchResults: [],
     searchLoading: false,
     searchError: null,
+    workspaceId: '', // Initialize workspaceId
   }),
   actions: {
     toggleFolder(folderPath: string) {
@@ -78,6 +81,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
 
       const workspaceStore = useWorkspaceStore()
       const workspaceId = workspaceStore.currentSelectedWorkspaceId
+      this.workspaceId = workspaceId // Set workspaceId
 
       const { onResult, onError } = useQuery<GetFileContentQuery, GetFileContentQueryVariables>(
         GetFileContent,
@@ -187,6 +191,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
 
       const workspaceStore = useWorkspaceStore()
       const workspaceId = workspaceStore.currentSelectedWorkspaceId
+      this.workspaceId = workspaceId // Set workspaceId
 
       if (!query) {
         // If query is empty, show top-level files and folders
@@ -229,6 +234,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       this.searchResults = []
       this.searchLoading = false
       this.searchError = null
+      this.workspaceId = ''
     }
   },
   getters: {

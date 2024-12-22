@@ -124,7 +124,6 @@ const handleSend = async () => {
     await conversationStore.sendStepRequirementAndSubscribe(
       workspaceId,
       selectedStep.id,
-      userRequirement.value,
       llmModelToSend
     );
 

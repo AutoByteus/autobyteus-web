@@ -40,6 +40,8 @@
     "dompurify": "^3.2.2",
     "electron-is-dev": "^2.0.0",
     "markdown-it": "^14.1.0",
+    "markdown-it-prism": "^2.3.0",
+    "monaco-editor": "^0.52.2",
     "pinia": "^2.1.7",
     "prismjs": "^1.29.0",
     "uuid": "^11.0.3"
@@ -49,6 +51,7 @@
     "@graphql-codegen/typescript": "^4.0.9",
     "@graphql-codegen/typescript-operations": "^4.2.3",
     "@graphql-codegen/typescript-vue-apollo": "^4.1.1",
+    "@monaco-editor/loader": "^1.4.0",
     "@nuxt/test-utils": "^3.14.3",
     "@nuxtjs/apollo": "^5.0.0-alpha.14",
     "@pinia/nuxt": "^0.5.1",
