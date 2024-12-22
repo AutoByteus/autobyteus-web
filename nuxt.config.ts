@@ -1,3 +1,4 @@
+
 import { defineNuxtConfig } from 'nuxt/config'
 import { applyElectronConfig } from './nuxt.electron.config'
 
@@ -9,6 +10,17 @@ const baseConfig = {
     '@nuxtjs/apollo',
     '@pinia/nuxt',
     '@nuxt/test-utils/module'
+  ],
+
+  // Updated plugins configuration
+  plugins: [
+    '~/plugins/vue3-click-away.client.ts',
+    '~/plugins/vue-toastification.client.ts',
+  ],
+
+  // Add CSS for vue-toastification
+  css: [
+    'vue-toastification/dist/index.css'
   ],
 
   nitro: {
@@ -28,11 +40,6 @@ const baseConfig = {
       }
     } : {}
   },
-
-  plugins: [
-    '~/plugins/vue3-click-away.ts',
-    '~/plugins/vue-toastification.ts', // Add this line
-  ],
 
   vite: {
     assetsInclude: ['**/*.jpeg', '**/*.jpg', '**/*.png', '**/*.svg'],
@@ -58,7 +65,6 @@ const baseConfig = {
       wsBaseUrl: process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8001/graphql',
       googleSpeechApiKey: process.env.GOOGLE_SPEECH_API_KEY || '',
       
-      // Audio recording configuration
       audio: {
         targetSampleRate: 16000,
         chunkDuration: 5,
