@@ -1,5 +1,4 @@
 
-```vue
 <template>
   <div v-if="selectedStep" class="flex flex-col h-full">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 sm:gap-0">
@@ -74,10 +73,9 @@ const closeConversationHistory = () => {
   isHistoryPanelOpen.value = false;
 };
 
-// Watcher to handle step activation and ensure conversations are preserved
+// Updated watcher to handle step changes
 watch(selectedStep, (newStep, oldStep) => {
   if (newStep && newStep.id !== oldStep?.id) {
-    // No need to reset conversations here as they are now managed per step
     workflowStore.setSelectedStepId(newStep.id);
   }
 }, { immediate: false });
@@ -102,4 +100,3 @@ watch(selectedStep, (newStep, oldStep) => {
   border-radius: 3px;
 }
 </style>
-```

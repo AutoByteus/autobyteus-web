@@ -23,10 +23,10 @@ import type { AIResponseSegment } from '~/utils/aiResponseParser/types';
 
 interface ConversationStoreState {
   conversationsPerStep: Map<string, Map<string, Conversation>>;
-  selectedConversationId: string | null;
+  selectedConversationIds: Map<string, string>;  // stepId -> conversationId
   currentStepId: string | null;
-  conversationRequirements: Map<string, string>;  // Map conversationId to requirement
-  conversationContextPaths: Map<string, ContextFilePath[]>;  // Map conversationId to context paths
+  conversationRequirements: Map<string, string>;
+  conversationContextPaths: Map<string, ContextFilePath[]>;
   isSubscribed: boolean;
   isSending: boolean;
 }
@@ -34,7 +34,7 @@ interface ConversationStoreState {
 export const useConversationStore = defineStore('conversation', {
   state: (): ConversationStoreState => ({
     conversationsPerStep: new Map(),
-    selectedConversationId: null,
+    selectedConversationIds: new Map(),
     currentStepId: null,
     conversationRequirements: new Map(),
     conversationContextPaths: new Map(),
@@ -51,52 +51,104 @@ export const useConversationStore = defineStore('conversation', {
       return [];
     },
 
-    selectedConversation: (state) => {
+    selectedConversationId: (state): string | null => {
+      if (!state.currentStepId) return null;
+      return state.selectedConversationIds.get(state.currentStepId) || null;
+    },
+
+    selectedConversation: (state): Conversation | null => {
       const stepId = state.currentStepId;
-      if (stepId && state.selectedConversationId && state.conversationsPerStep.has(stepId)) {
-        return state.conversationsPerStep.get(stepId)!.get(state.selectedConversationId) || null;
-      }
-      return null;
+      if (!stepId) return null;
+      
+      const conversationId = state.selectedConversationIds.get(stepId);
+      if (!conversationId || !state.conversationsPerStep.has(stepId)) return null;
+      
+      return state.conversationsPerStep.get(stepId)!.get(conversationId) || null;
     },
 
     currentContextPaths: (state): ContextFilePath[] => {
-      if (!state.selectedConversationId) return [];
-      return state.conversationContextPaths.get(state.selectedConversationId) || [];
+      const conversationId = state.selectedConversationIds.get(state.currentStepId!) || null;
+      if (!conversationId) return [];
+      return state.conversationContextPaths.get(conversationId) || [];
     },
 
     isCurrentlySending: (state): boolean => state.isSending,
-    isConversationActive: (state): boolean => state.selectedConversationId !== null,
+
+    isConversationActive: (state): boolean => {
+      const stepId = state.currentStepId;
+      return stepId ? state.selectedConversationIds.has(stepId) : false;
+    },
 
     conversationMessages: (state): Message[] => {
       const stepId = state.currentStepId;
+      if (!stepId) return [];
       
-      if (!stepId || !state.selectedConversationId) return [];
+      const conversationId = state.selectedConversationIds.get(stepId);
+      if (!conversationId) return [];
       
       const conversations = state.conversationsPerStep.get(stepId);
       if (!conversations) return [];
       
-      const conversation = conversations.get(state.selectedConversationId);
+      const conversation = conversations.get(conversationId);
       return conversation ? conversation.messages : [];
     },
 
     currentRequirement: (state): string => {
-      if (!state.selectedConversationId) return '';
-      return state.conversationRequirements.get(state.selectedConversationId) || '';
+      const conversationId = state.selectedConversationIds.get(state.currentStepId!) || null;
+      if (!conversationId) return '';
+      return state.conversationRequirements.get(conversationId) || '';
     },
   },
 
   actions: {
+    hasConversationsForStep(stepId: string): boolean {
+      return this.conversationsPerStep.has(stepId) && 
+             this.conversationsPerStep.get(stepId)!.size > 0;
+    },
+
     setCurrentStepId(stepId: string | null) {
+      const previousStepId = this.currentStepId;
       this.currentStepId = stepId;
+      
+      if (stepId) {
+        // Initialize the conversations map for this step if it doesn't exist
+        if (!this.conversationsPerStep.has(stepId)) {
+          this.conversationsPerStep.set(stepId, new Map());
+        }
+
+        // Get conversations for this step
+        const stepConversations = this.conversationsPerStep.get(stepId)!;
+        
+        // If there are existing conversations
+        if (stepConversations.size > 0) {
+          // If no conversation is selected for this step, select the first one
+          if (!this.selectedConversationIds.has(stepId)) {
+            const firstConversation = Array.from(stepConversations.values())[0];
+            this.selectedConversationIds.set(stepId, firstConversation.id);
+          }
+        } else {
+          // Create a temporary conversation if there are no conversations
+          this.createTemporaryConversation();
+        }
+      } else {
+        // Clear selection when no step is selected
+        this.selectedConversationIds.delete(previousStepId!);
+      }
+    },
+
+    setSelectedConversationId(conversationId: string | null) {
+      if (!this.currentStepId) return;
+      
+      if (conversationId) {
+        this.selectedConversationIds.set(this.currentStepId, conversationId);
+      } else {
+        this.selectedConversationIds.delete(this.currentStepId);
+      }
     },
 
     createTemporaryConversation() {
       const currentStepId = this.currentStepId;
-
-      if (!currentStepId) {
-        console.error('No step selected');
-        return;
-      }
+      if (!currentStepId) return;
 
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const newConversation: Conversation = {
@@ -112,7 +164,7 @@ export const useConversationStore = defineStore('conversation', {
       }
 
       this.conversationsPerStep.get(currentStepId)!.set(tempId, newConversation);
-      this.selectedConversationId = tempId;
+      this.selectedConversationIds.set(currentStepId, tempId);
       
       // Initialize maps for new conversation
       this.conversationRequirements.set(tempId, '');
@@ -120,92 +172,69 @@ export const useConversationStore = defineStore('conversation', {
     },
 
     updateUserRequirement(newRequirement: string) {
-      if (this.selectedConversationId) {
-        this.conversationRequirements.set(this.selectedConversationId, newRequirement);
+      const conversationId = this.selectedConversationIds.get(this.currentStepId!);
+      if (conversationId) {
+        this.conversationRequirements.set(conversationId, newRequirement);
       }
-    },
-
-    setSelectedConversationId(conversationId: string | null) {
-      this.selectedConversationId = conversationId;
     },
 
     addConversation(conversation: Conversation) {
       const stepId = this.currentStepId;
-      if (!stepId) {
-        console.error('No step selected');
-        return;
-      }
+      if (!stepId) return;
 
       if (!this.conversationsPerStep.has(stepId)) {
         this.conversationsPerStep.set(stepId, new Map());
       }
 
       this.conversationsPerStep.get(stepId)!.set(conversation.id, conversation);
-      this.selectedConversationId = conversation.id;
+      this.selectedConversationIds.set(stepId, conversation.id);
     },
 
     async closeConversation(conversationId: string) {
       const stepId = this.currentStepId;
-
-      if (!stepId) {
-        console.error('No step selected');
-        return;
-      }
-
-      if (!this.conversationsPerStep.has(stepId)) {
-        console.error(`No conversations found for step ID ${stepId}`);
-        return;
-      }
-
-      // Clean up conversation data
-      this.conversationRequirements.delete(conversationId);
-      this.conversationContextPaths.delete(conversationId);
-
-      const conversation = this.conversationsPerStep.get(stepId)!.get(conversationId);
-      if (!conversation) {
-        console.error(`Conversation with ID ${conversationId} not found`);
-        return;
-      }
-
-      if (conversationId.startsWith('temp-')) {
-        this.conversationsPerStep.get(stepId)!.delete(conversationId);
-        if (this.selectedConversationId === conversationId) {
-          const nextConversation = Array.from(this.conversationsPerStep.get(stepId)!.values())[0] || null;
-          this.selectedConversationId = nextConversation ? nextConversation.id : null;
-        }
-        return;
-      }
-
-      const workspaceStore = useWorkspaceStore();
-      const currentWorkspaceId = workspaceStore.currentSelectedWorkspaceId;
-
-      if (!currentWorkspaceId || !stepId) {
-        console.error('Missing workspace ID or step ID');
-        return;
-      }
+      if (!stepId) return;
 
       try {
-        const { mutate: closeConversationMutation } = useMutation(CloseConversation);
+        // Remove from conversationsPerStep
+        if (this.conversationsPerStep.has(stepId)) {
+          this.conversationsPerStep.get(stepId)!.delete(conversationId);
+        }
 
-        await closeConversationMutation({
-          workspaceId: currentWorkspaceId,
-          stepId: stepId,
-          conversationId
-        });
+        // Clean up conversation data
+        this.conversationRequirements.delete(conversationId);
+        this.conversationContextPaths.delete(conversationId);
 
-        this.conversationsPerStep.get(stepId)!.delete(conversationId);
-        if (this.selectedConversationId === conversationId) {
-          const nextConversation = Array.from(this.conversationsPerStep.get(stepId)!.values())[0] || null;
-          this.selectedConversationId = nextConversation ? nextConversation.id : null;
+        // Update selected conversation
+        if (this.selectedConversationIds.get(stepId) === conversationId) {
+          const stepConversations = this.conversationsPerStep.get(stepId)!;
+          if (stepConversations.size > 0) {
+            // Select another conversation if available
+            const nextConversation = Array.from(stepConversations.values())[0];
+            this.selectedConversationIds.set(stepId, nextConversation.id);
+          } else {
+            // Create a new conversation if this was the last one
+            this.createTemporaryConversation();
+          }
+        }
+
+        // Handle backend cleanup for non-temporary conversations
+        if (!conversationId.startsWith('temp-')) {
+          const workspaceStore = useWorkspaceStore();
+          const currentWorkspaceId = workspaceStore.currentSelectedWorkspaceId;
+
+          if (currentWorkspaceId && stepId) {
+            const { mutate: closeConversationMutation } = useMutation(CloseConversation);
+            await closeConversationMutation({
+              workspaceId: currentWorkspaceId,
+              stepId: stepId,
+              conversationId
+            });
+          }
         }
       } catch (error) {
         console.error('Error closing conversation:', error);
         throw error;
       }
-    },
-
-    removeConversation(conversationId: string) {
-      this.closeConversation(conversationId);
     },
 
     addMessageToConversation(conversationId: string, message: Message) {
@@ -234,12 +263,13 @@ export const useConversationStore = defineStore('conversation', {
 
       this.isSending = true;
       try {
-        if (!this.selectedConversationId) {
+        const conversationId = this.selectedConversationIds.get(stepId);
+        if (!conversationId) {
           throw new Error('No active conversation');
         }
 
-        const currentContextPaths = this.conversationContextPaths.get(this.selectedConversationId) || [];
-        const currentRequirement = this.conversationRequirements.get(this.selectedConversationId) || '';
+        const currentContextPaths = this.conversationContextPaths.get(conversationId) || [];
+        const currentRequirement = this.conversationRequirements.get(conversationId) || '';
 
         const formattedContextFilePaths: ContextFilePathInput[] = currentContextPaths.map(cf => ({
           path: cf.path,
@@ -251,7 +281,7 @@ export const useConversationStore = defineStore('conversation', {
           stepId,
           contextFilePaths: formattedContextFilePaths,
           requirement: currentRequirement,
-          conversationId: this.selectedConversationId?.startsWith('temp-') ? null : this.selectedConversationId,
+          conversationId: conversationId.startsWith('temp-') ? null : conversationId,
           llmModel: llmModel || null,
         };
 
@@ -260,10 +290,10 @@ export const useConversationStore = defineStore('conversation', {
         if (result?.data?.sendStepRequirement) {
           const conversation_id = result.data.sendStepRequirement;
 
-          if (this.selectedConversationId?.startsWith('temp-')) {
+          if (conversationId.startsWith('temp-')) {
             // Transfer data from temporary conversation to new one
-            const tempRequirement = this.conversationRequirements.get(this.selectedConversationId);
-            const tempContextPaths = this.conversationContextPaths.get(this.selectedConversationId);
+            const tempRequirement = this.conversationRequirements.get(conversationId);
+            const tempContextPaths = this.conversationContextPaths.get(conversationId);
             
             if (tempRequirement) {
               this.conversationRequirements.set(conversation_id, tempRequirement);
@@ -272,7 +302,7 @@ export const useConversationStore = defineStore('conversation', {
               this.conversationContextPaths.set(conversation_id, tempContextPaths);
             }
             
-            this.removeConversation(this.selectedConversationId);
+            await this.closeConversation(conversationId);
           }
 
           if (!this.conversationsPerStep.get(stepId)!.has(conversation_id)) {
@@ -403,24 +433,27 @@ export const useConversationStore = defineStore('conversation', {
     },
 
     addContextFilePath(contextFilePath: ContextFilePath) {
-      if (this.selectedConversationId) {
-        const currentPaths = this.conversationContextPaths.get(this.selectedConversationId) || [];
-        this.conversationContextPaths.set(this.selectedConversationId, [...currentPaths, contextFilePath]);
+      const conversationId = this.selectedConversationIds.get(this.currentStepId!);
+      if (conversationId) {
+        const currentPaths = this.conversationContextPaths.get(conversationId) || [];
+        this.conversationContextPaths.set(conversationId, [...currentPaths, contextFilePath]);
       }
     },
 
     removeContextFilePath(index: number) {
-      if (this.selectedConversationId) {
-        const currentPaths = this.conversationContextPaths.get(this.selectedConversationId) || [];
+      const conversationId = this.selectedConversationIds.get(this.currentStepId!);
+      if (conversationId) {
+        const currentPaths = this.conversationContextPaths.get(conversationId) || [];
         const newPaths = [...currentPaths];
         newPaths.splice(index, 1);
-        this.conversationContextPaths.set(this.selectedConversationId, newPaths);
+        this.conversationContextPaths.set(conversationId, newPaths);
       }
     },
 
     clearContextFilePaths() {
-      if (this.selectedConversationId) {
-        this.conversationContextPaths.set(this.selectedConversationId, []);
+      const conversationId = this.selectedConversationIds.get(this.currentStepId!);
+      if (conversationId) {
+        this.conversationContextPaths.set(conversationId, []);
       }
     },
 
@@ -433,7 +466,7 @@ export const useConversationStore = defineStore('conversation', {
       }
 
       if (this.conversationsPerStep.has(stepId) && this.conversationsPerStep.get(stepId)!.has(conversationId)) {
-        this.selectedConversationId = conversationId;
+        this.selectedConversationIds.set(stepId, conversationId);
       } else {
         console.warn(`Conversation with ID ${conversationId} not found for step ${stepId}.`);
       }
@@ -467,7 +500,7 @@ export const useConversationStore = defineStore('conversation', {
         }
 
         this.conversationsPerStep.get(actualStepId)!.set(tempId, newConversation);
-        this.selectedConversationId = tempId;
+        this.selectedConversationIds.set(actualStepId, tempId);
       } else {
         console.warn(`Conversation with ID ${conversationId} not found in history.`);
       }
@@ -491,18 +524,19 @@ export const useConversationStore = defineStore('conversation', {
         );
 
         onResult((result) => {
-          if (!this.selectedConversationId) return;
+          const conversationId = this.selectedConversationIds.get(this.currentStepId!);
+          if (!conversationId) return;
           
           if (result.data?.hackathonSearch) {
             this.conversationContextPaths.set(
-              this.selectedConversationId,
+              conversationId,
               result.data.hackathonSearch.map(path => ({
                 path,
                 type: 'text'
               }))
             );
           } else {
-            this.conversationContextPaths.set(this.selectedConversationId, []);
+            this.conversationContextPaths.set(conversationId, []);
           }
         });
 

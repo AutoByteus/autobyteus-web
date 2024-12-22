@@ -1,3 +1,4 @@
+
 import { defineStore } from 'pinia';
 import type { Workflow, Step, PromptTemplate } from '~/types/workflow';
 import { useQuery } from '@vue/apollo-composable';
@@ -29,20 +30,19 @@ export const useWorkflowStore = defineStore('workflow', {
     setSelectedStepId(stepId: string) {
       const conversationStore = useConversationStore();
       const previousStepId = this.selectedStepId;
-
+      
       // Only proceed if selecting a different step
       if (previousStepId !== stepId) {
         this.selectedStepId = stepId;
-        // Switch conversations to the new step
-        conversationStore.setSelectedConversationId(null); // Deselect current conversation
-        conversationStore.setCurrentStepId(stepId)
-        conversationStore.createTemporaryConversation();
+        // Let conversation store handle the step change and conversation management
+        conversationStore.setCurrentStepId(stepId);
       }
     },
 
     async fetchWorkflowConfig(workspaceId: string) {
       this.executionStatus = 'Not Started';
       this.executionLogs = '';
+
       const { onResult, onError } = useQuery<GetWorkflowConfigQuery, GetWorkflowConfigQueryVariables>(
         GetWorkflowConfig,
         { workspaceId }
