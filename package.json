@@ -36,6 +36,8 @@
     "@capacitor/core": "^3.9.0",
     "@nuxt/schema": "^3.13.1",
     "@types/prismjs": "^1.26.4",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
     "axios": "^1.7.7",
     "dompurify": "^3.2.2",
     "electron-is-dev": "^2.0.0",
