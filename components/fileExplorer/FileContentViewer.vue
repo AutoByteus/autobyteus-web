@@ -22,8 +22,8 @@
         </button>
       </div>
     </div>
-    <div class="flex-1 overflow-y-auto p-4">
-      <div v-if="activeFile">
+    <div class="flex-1 flex flex-col min-h-0">
+      <div v-if="activeFile" class="flex flex-col h-full">
         <div v-if="isContentLoading(activeFile)" class="text-center py-4">
           <p class="text-gray-600">Loading file content...</p>
         </div>
@@ -31,22 +31,28 @@
           <strong class="font-bold">Error!</strong>
           <span class="block sm:inline">{{ getContentError(activeFile) }}</span>
         </div>
-        <div v-else-if="!isEditing" class="bg-gray-50 p-4 rounded-lg text-gray-600">
-          <pre class="overflow-visible"><code :class="'language-' + getFileLanguage(activeFile)" v-html="highlightedContent"></code></pre>
-          <button 
-            @click="enterEditMode" 
-            class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            Edit
-          </button>
+        <div v-else-if="!isEditing" class="flex flex-col h-full p-4">
+          <div class="flex-1 bg-gray-50 p-4 rounded-lg text-gray-600 relative">
+            <pre class="overflow-visible h-full"><code :class="'language-' + getFileLanguage(activeFile)" v-html="highlightedContent"></code></pre>
+            <div class="absolute bottom-4 right-4">
+              <button 
+                @click="enterEditMode" 
+                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Edit
+              </button>
+            </div>
+          </div>
         </div>
-        <div v-else class="bg-gray-50 p-4 rounded-lg text-gray-600 flex flex-col h-full">
-          <MonacoEditor
-            v-model="editedContent"
-            :language="getFileLanguage(activeFile)"
-            height="500px"
-            @editorDidMount="handleEditorMount"
-          />
+        <div v-else class="flex flex-col h-full p-4">
+          <div class="flex-1 bg-gray-50 rounded-lg overflow-hidden">
+            <MonacoEditor
+              v-model="editedContent"
+              :language="getFileLanguage(activeFile)"
+              @editorDidMount="handleEditorMount"
+              class="h-full w-full"
+            />
+          </div>
           <div class="mt-4 flex space-x-2">
             <button 
               @click="saveChanges" 
@@ -87,7 +93,7 @@ import 'prismjs/components/prism-markup-templating';
 import 'prismjs/components/prism-php';
 import { getLanguage } from '~/utils/aiResponseParser/languageDetector';
 import { highlightVueCode } from '~/utils/aiResponseParser/vueCodeHighlight';
-import MonacoEditor from '~/components/common/MonacoEditor.vue';
+import MonacoEditor from '~/components/fileExplorer/MonacoEditor.vue';
 
 const fileExplorerStore = useFileExplorerStore();
 

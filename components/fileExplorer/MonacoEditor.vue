@@ -1,57 +1,96 @@
 
 <template>
-  <div ref="editorContainer" class="h-full w-full"></div>
+  <div ref="editorContainer" class="monaco-editor-container h-full"></div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import * as monaco from 'monaco-editor'
-import { getLanguage } from '~/utils/aiResponseParser/languageDetector'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
+import loader from '@monaco-editor/loader';
 
-const props = defineProps<{
-  modelValue: string
-  filePath: string
-}>()
-
-const emit = defineEmits<{
-  (e: 'update:modelValue', value: string): void
-}>()
-
-const editorContainer = ref<HTMLElement | null>(null)
-let editor: monaco.editor.IStandaloneCodeEditor | null = null
-
-onMounted(async () => {
-  if (editorContainer.value) {
-    const language = getLanguage(props.filePath)
-    
-    editor = monaco.editor.create(editorContainer.value, {
-      value: props.modelValue,
-      language,
-      theme: 'vs',
-      automaticLayout: true,
-      minimap: { enabled: true },
-      scrollBeyondLastLine: false,
-      fontSize: 14,
-      lineNumbers: 'on',
-      renderLineHighlight: 'all',
-      tabSize: 2,
-    })
-
-    editor.onDidChangeModelContent(() => {
-      emit('update:modelValue', editor?.getValue() || '')
-    })
+const props = defineProps({
+  modelValue: {
+    type: String,
+    default: ''
+  },
+  language: {
+    type: String,
+    default: 'plaintext'
+  },
+  height: {
+    type: String,
+    default: '100%'
+  },
+  theme: {
+    type: String,
+    default: 'vs'
+  },
+  options: {
+    type: Object,
+    default: () => ({})
   }
-})
+});
+
+const emit = defineEmits(['update:modelValue', 'editorDidMount']);
+
+const editorContainer = ref<HTMLElement | null>(null);
+let editor: any = null;
+
+const initMonaco = async () => {
+  if (!editorContainer.value) return;
+  
+  const monaco = await loader.init();
+  
+  editor = monaco.editor.create(editorContainer.value, {
+    value: props.modelValue,
+    language: props.language,
+    theme: props.theme,
+    automaticLayout: true,
+    minimap: { enabled: false },
+    ...props.options
+  });
+
+  editor.onDidChangeModelContent(() => {
+    emit('update:modelValue', editor.getValue());
+  });
+
+  emit('editorDidMount', editor);
+};
 
 watch(() => props.modelValue, (newValue) => {
   if (editor && newValue !== editor.getValue()) {
-    editor.setValue(newValue)
+    editor.setValue(newValue);
   }
-})
+}, { deep: true });
+
+watch(() => props.language, (newValue) => {
+  if (editor) {
+    const model = editor.getModel();
+    if (model) {
+      monaco.editor.setModelLanguage(model, newValue);
+    }
+  }
+});
+
+onMounted(async () => {
+  await initMonaco();
+});
 
 onBeforeUnmount(() => {
   if (editor) {
-    editor.dispose()
+    editor.dispose();
   }
-})
+});
+
+defineExpose({
+  getEditor: () => editor
+});
 </script>
+
+<style scoped>
+.monaco-editor-container {
+  width: 100%;
+  min-height: 300px;
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+</style>
