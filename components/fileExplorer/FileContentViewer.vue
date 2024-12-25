@@ -34,7 +34,7 @@
         <div v-else-if="!isEditing" class="flex flex-col h-full p-4">
           <div class="flex-1 bg-gray-50 p-4 rounded-lg text-gray-600 relative">
             <pre class="overflow-visible h-full"><code :class="'language-' + getFileLanguage(activeFile)" v-html="highlightedContent"></code></pre>
-            <div class="absolute bottom-4 right-4">
+            <div class="absolute bottom-4 left-4">
               <button 
                 @click="enterEditMode" 
                 class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
