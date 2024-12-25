@@ -1,3 +1,4 @@
+
 <template>
   <div class="flex flex-col h-[calc(100vh-12rem)]">
     <!-- Alerts at top -->
@@ -22,16 +23,9 @@
         </div>
       </div>
 
-      <!-- Content and Terminal Container -->
-      <div class="flex-grow flex">
-        <!-- Workflow Step Details -->
-        <div class="flex-grow overflow-y-auto">
-          <WorkflowStepDetails />
-        </div>
-        <!-- Terminal Panel -->
-        <div class="w-1/3 ml-4">
-          <Terminal />
-        </div>
+      <!-- Content Container -->
+      <div class="flex-grow">
+        <WorkflowStepDetails />
       </div>
     </div>
   </div>
@@ -43,7 +37,6 @@ import { useWorkspaceStore } from '~/stores/workspace';
 import { useWorkflowStore } from '~/stores/workflow';
 import WorkflowStepDetails from '~/components/workflow/WorkflowStepDetails.vue';
 import WorkflowStep from '~/components/workflow/WorkflowStep.vue';
-import Terminal from '~/components/workflow/Terminal.vue';
 
 const workspaceStore = useWorkspaceStore();
 const workflowStore = useWorkflowStore();

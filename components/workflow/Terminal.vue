@@ -1,32 +1,21 @@
-
 <template>
-  <div class="terminal-container" ref="terminalContainer">
+<div class="terminal-container h-full" ref="terminalContainer">
     <div ref="terminal"></div>
-    <div class="input-line">
-      <span class="prompt">user@autobyteus-web:~$</span>
-      <input
-        v-model="input"
-        @keydown.enter="handleCommand"
-        ref="inputField"
-        autofocus
-        class="terminal-input"
-        autocomplete="off"
-        spellcheck="false"
-      />
-    </div>
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+<script lang="ts">
+import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { useBashCommandStore } from '~/stores/bashCommand';
 
+const props = defineProps<{
+  isVisible: boolean;
+}>();
+
 const terminalContainer = ref<HTMLDivElement | null>(null);
-const inputField = ref<HTMLInputElement | null>(null);
-const input = ref<string>('');
 const terminal = ref<Terminal | null>(null);
 const fitAddon = new FitAddon();
 const bashCommandStore = useBashCommandStore();
@@ -34,16 +23,14 @@ const bashCommandStore = useBashCommandStore();
 const currentConversationId = ref<string>('default-conversation');
 const currentMessageIndex = ref<number>(0);
 
-const handleCommand = async () => {
-  const command = input.value.trim();
-  if (command === '') return;
+let currentCommand = '';
 
-  terminal.value?.writeln(`user@autobyteus-web:~$ ${command}`);
-  input.value = '';
+const handleCommand = async (command: string) => {
+  if (command.trim() === '') return;
 
   try {
     await bashCommandStore.executeBashCommand(
-      'workspace-id', // Replace with actual workspace ID
+      'workspace-id',
       command,
       currentConversationId.value,
       currentMessageIndex.value
@@ -57,7 +44,22 @@ const handleCommand = async () => {
   } catch (error) {
     terminal.value?.writeln(`Error: ${(error as Error).message}`);
   }
+  terminal.value?.write('\r\nuser@autobyteus-web:~$ ');
 };
+
+// Add click handler to focus terminal
+const focusTerminal = () => {
+  terminal.value?.focus();
+};
+
+watch(() => props.isVisible, (visible) => {
+  if (visible) {
+    nextTick(() => {
+      fitAddon.fit();
+      terminal.value?.focus();
+    });
+  }
+});
 
 onMounted(() => {
   terminal.value = new Terminal({
@@ -68,60 +70,70 @@ onMounted(() => {
       foreground: '#ffffff',
       cursor: '#ffffff',
       selection: '#44475a'
-    }
+    },
+    convertEol: true,    // Add this
+    scrollback: 1000,    // Add this
+    disableStdin: false  // Add this explicitly
   });
+  
   terminal.value.loadAddon(fitAddon);
+  
+  // Make sure terminal is opened before adding event listeners
   terminal.value.open(terminalContainer.value!);
   fitAddon.fit();
+  
+  // Add click handler to terminal container
+  terminalContainer.value?.addEventListener('click', focusTerminal);
+  
   terminal.value.writeln('Welcome to Autobyteus Terminal!');
-  terminal.value.writeln('Type your commands below and press Enter.');
-  inputField.value?.focus();
+  terminal.value.writeln('Type your commands and press Enter.');
+  terminal.value.write('\r\nuser@autobyteus-web:~$ ');
+
+  // Set up key handling
+  terminal.value.onKey(({ key, domEvent }) => {
+    const ev = domEvent;
+    const printable = !ev.altKey && !ev.ctrlKey && !ev.metaKey;
+
+    if (ev.keyCode === 13) { // Enter
+      terminal.value?.write('\r\n');
+      handleCommand(currentCommand);
+      currentCommand = '';
+    } else if (ev.keyCode === 8) { // Backspace
+      if (currentCommand.length > 0) {
+        currentCommand = currentCommand.substring(0, currentCommand.length - 1);
+        terminal.value?.write('\b \b');
+      }
+    } else if (printable) {
+      currentCommand += key;
+      terminal.value?.write(key);
+    }
+  });
+
+  // Focus the terminal immediately
+  nextTick(() => {
+    terminal.value?.focus();
+  });
 
   window.addEventListener('resize', () => {
-    fitAddon.fit();
+    if (props.isVisible) {
+      fitAddon.fit();
+    }
   });
 });
 
 onBeforeUnmount(() => {
+  // Clean up event listeners
+  terminalContainer.value?.removeEventListener('click', focusTerminal);
   terminal.value?.dispose();
 });
 </script>
 
-<style scoped>
+<style>
 .terminal-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
   background-color: #1e1e1e;
-  color: #ffffff;
-  font-family: 'Courier New', Courier, monospace;
   border-radius: 5px;
   overflow: hidden;
-}
-
-.terminal-container > div {
-  flex-grow: 1;
-}
-
-.input-line {
-  display: flex;
-  padding: 5px 10px;
-  background-color: #2d2d2d;
-  align-items: center;
-}
-
-.prompt {
-  margin-right: 10px;
-  color: #00ff00;
-}
-
-.terminal-input {
-  flex-grow: 1;
-  background: transparent;
-  border: none;
-  color: #ffffff;
-  outline: none;
-  font-family: inherit;
-  font-size: 1em;
+  height: 100%;
+  cursor: text; /* Add this to show text cursor */
 }
 </style>

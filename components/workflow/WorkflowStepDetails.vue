@@ -24,9 +24,24 @@
       <!-- Conversation Tabs -->
       <ConversationTabs />
 
-      <!-- Form container -->
-      <div class="w-full bg-white pt-4">
-        <WorkflowStepRequirementForm />
+      <!-- Content Tabs -->
+      <TabList
+        :tabs="contentTabs"
+        :selectedTab="activeContentTab"
+        @select="setActiveContentTab"
+      />
+
+      <!-- Tab Content -->
+      <div class="flex-grow">
+        <!-- Requirement Form -->
+        <div v-show="activeContentTab === 'Requirement Form'" class="w-full bg-white pt-4">
+          <WorkflowStepRequirementForm />
+        </div>
+
+        <!-- Terminal -->
+        <div v-show="activeContentTab === 'Terminal'" class="w-full h-full">
+          <Terminal :isVisible="activeContentTab === 'Terminal'" />
+        </div>
       </div>
     </div>
 
@@ -47,6 +62,8 @@ import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import WorkflowStepRequirementForm from '~/components/stepRequirementForm/WorkflowStepRequirementForm.vue';
 import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue';
 import ConversationTabs from '~/components/conversation/ConversationTabs.vue';
+import Terminal from '~/components/workflow/Terminal.vue';
+import TabList from '~/components/tabs/TabList.vue';
 
 const workflowStore = useWorkflowStore();
 const conversationStore = useConversationStore();
@@ -56,6 +73,17 @@ const selectedStep = computed(() => workflowStore.selectedStep);
 const activeConversations = computed(() => conversationStore.activeConversations);
 const isHistoryPanelOpen = ref(false);
 const conversationHistory = computed(() => conversationHistoryStore.getConversations);
+
+// Tab management
+const activeContentTab = ref('Requirement Form');
+const contentTabs = [
+  { name: 'Requirement Form' },
+  { name: 'Terminal' }
+];
+
+const setActiveContentTab = (tabName: string) => {
+  activeContentTab.value = tabName;
+};
 
 const initiateNewConversation = () => {
   conversationStore.createTemporaryConversation();
@@ -73,30 +101,9 @@ const closeConversationHistory = () => {
   isHistoryPanelOpen.value = false;
 };
 
-// Updated watcher to handle step changes
 watch(selectedStep, (newStep, oldStep) => {
   if (newStep && newStep.id !== oldStep?.id) {
     workflowStore.setSelectedStepId(newStep.id);
   }
 }, { immediate: false });
 </script>
-
-<style scoped>
-.conversation-tabs {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
-}
-
-.conversation-tabs::-webkit-scrollbar {
-  height: 6px;
-}
-
-.conversation-tabs::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.conversation-tabs::-webkit-scrollbar-thumb {
-  background-color: rgba(156, 163, 175, 0.5);
-  border-radius: 3px;
-}
-</style>
