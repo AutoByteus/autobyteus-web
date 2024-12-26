@@ -1,3 +1,4 @@
+
 <template>
   <div class="bg-zinc-800 p-4 rounded-lg border border-zinc-700 shadow-lg">
     <div class="flex items-center justify-between bg-zinc-900/50 p-2 rounded border border-zinc-700">
@@ -65,14 +66,10 @@ const error = computed(() => {
 
 const handleExecute = async () => {
   try {
-    await bashCommandStore.executeBashCommand(
-      workspaceStore.currentSelectedWorkspaceId,
-      props.command,
-      props.conversationId,
-      props.messageIndex
-    );
+    // Enqueue the command to be handled by the terminal
+    bashCommandStore.enqueueCommand(props.command);
   } catch (err) {
-    console.error('Failed to execute bash command:', err);
+    console.error('Failed to enqueue bash command:', err);
   }
 };
 </script>
