@@ -6,7 +6,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, nextTick, watch } from 'vue';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
@@ -20,7 +20,8 @@ const props = defineProps<{
 const terminalContainer = ref<HTMLDivElement | null>(null);
 const terminalElement = ref<HTMLDivElement | null>(null);
 const terminalInstance = ref<Terminal | null>(null);
-const fitAddon = ref(new FitAddon());
+const fitAddon = ref<FitAddon | null>(null);
+const isAddonActivated = ref(false);
 const bashCommandStore = useBashCommandStore();
 const workspaceStore = useWorkspaceStore();
 
@@ -33,18 +34,15 @@ let currentCommand = '';
 
 const pendingCommand = computed(() => bashCommandStore.nextPendingCommand);
 
-// Watch for pending commands using computed
 const processPendingCommand = async () => {
   if (pendingCommand.value && terminalInstance.value) {
     const command = bashCommandStore.dequeueCommand();
     if (command) {
-      // Clear current line if needed
       while (currentCommand.length > 0) {
         terminalInstance.value.write('\b \b');
         currentCommand = currentCommand.slice(0, -1);
       }
       
-      // Write the command
       currentCommand = command;
       terminalInstance.value.write(command);
     }
@@ -86,10 +84,24 @@ const handleCommand = async (command: string) => {
   writePrompt();
 };
 
-onMounted(() => {
-  nextTick(() => {
-    if (!terminalElement.value) return;
+// Utility function for debouncing
+const debounce = (func: Function, wait: number) => {
+  let timeout: NodeJS.Timeout;
+  return function executedFunction(...args: any[]) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+};
 
+const initializeTerminal = () => {
+  if (!terminalElement.value) return;
+
+  try {
+    // Create terminal instance
     terminalInstance.value = new Terminal({
       cursorBlink: true,
       fontFamily: 'Courier New, monospace',
@@ -105,25 +117,34 @@ onMounted(() => {
       disableStdin: false
     });
 
-    terminalInstance.value.loadAddon(fitAddon.value);
+    // Create and activate FitAddon
+    fitAddon.value = new FitAddon();
     terminalInstance.value.open(terminalElement.value);
-    fitAddon.value.fit();
+    
+    // Proper activation sequence
+    try {
+      fitAddon.value.activate(terminalInstance.value);
+      isAddonActivated.value = true;
+      fitAddon.value.fit();
+    } catch (error) {
+      console.warn('Error activating fit addon:', error);
+      isAddonActivated.value = false;
+    }
 
     terminalInstance.value.writeln('Welcome to Autobyteus Terminal!');
     terminalInstance.value.writeln('Type your commands and press Enter.');
     writePrompt();
 
-    // Set up data handling
     terminalInstance.value.onData((data) => {
       const code = data.charCodeAt(0);
       
-      if (code === 8 || code === 127) { // Backspace
+      if (code === 8 || code === 127) {
         if (currentCommand.length > 0) {
           currentCommand = currentCommand.slice(0, -1);
           terminalInstance.value?.write('\b \b');
         }
       }
-      else if (code === 13) { // Enter
+      else if (code === 13) {
         if (currentCommand.trim().length > 0) {
           commandHistory.value.push(currentCommand);
           historyIndex.value = commandHistory.value.length;
@@ -138,7 +159,6 @@ onMounted(() => {
       }
     });
 
-    // Set up key handling
     terminalInstance.value.onKey(e => {
       const ev = e.domEvent;
       
@@ -176,15 +196,59 @@ onMounted(() => {
       }
     });
 
-    // Watch for pending commands
     watch(pendingCommand, () => {
       processPendingCommand();
     });
 
-    // Add resize handler
-    const debouncedFit = debounce(() => {
+  } catch (error) {
+    console.error('Error initializing terminal:', error);
+  }
+};
+
+// Create debounced fit function
+const debouncedFit = debounce(() => {
+  if (isAddonActivated.value && fitAddon.value) {
+    try {
       fitAddon.value.fit();
-    }, 100);
+    } catch (error) {
+      console.warn('Error during fit:', error);
+    }
+  }
+}, 100);
+
+const cleanup = () => {
+  // Remove event listeners
+  window.removeEventListener('resize', debouncedFit);
+  terminalContainer.value?.removeEventListener('click', () => terminalInstance.value?.focus());
+
+  // Safe disposal sequence
+  try {
+    // Only dispose addon if it was properly activated
+    if (isAddonActivated.value && fitAddon.value) {
+      fitAddon.value.dispose();
+    }
+  } catch (error) {
+    console.warn('Error disposing fit addon:', error);
+  }
+
+  try {
+    // Always try to dispose terminal
+    if (terminalInstance.value) {
+      terminalInstance.value.dispose();
+    }
+  } catch (error) {
+    console.warn('Error disposing terminal:', error);
+  }
+
+  // Reset all refs
+  terminalInstance.value = null;
+  fitAddon.value = null;
+  isAddonActivated.value = false;
+};
+
+onMounted(() => {
+  nextTick(() => {
+    initializeTerminal();
     
     window.addEventListener('resize', debouncedFit);
     terminalContainer.value?.addEventListener('click', () => {
@@ -193,23 +257,8 @@ onMounted(() => {
   });
 });
 
-// Utility function for debouncing
-const debounce = (func: Function, wait: number) => {
-  let timeout: NodeJS.Timeout;
-  return function executedFunction(...args: any[]) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-};
-
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', () => fitAddon.value.fit());
-  terminalContainer.value?.removeEventListener('click', () => terminalInstance.value?.focus());
-  terminalInstance.value?.dispose();
+  cleanup();
 });
 </script>
 

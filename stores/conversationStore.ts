@@ -315,11 +315,12 @@ export const useConversationStore = defineStore('conversation', {
             this.addConversation(newConversation);
           }
 
+          // Initially, we won't have token usage for the user message until the final step response is complete.
           this.addMessageToConversation(conversation_id, {
             type: 'user',
             text: currentRequirement,
             timestamp: new Date(),
-            contextFilePaths: currentContextPaths,
+            contextFilePaths: currentContextPaths
           });
 
           this.clearContextFilePaths();
@@ -351,8 +352,28 @@ export const useConversationStore = defineStore('conversation', {
 
       onResult(({ data }) => {
         if (data?.stepResponse) {
-          const { conversationId, messageChunk, isComplete } = data.stepResponse;
-          this.appendToMessageInConversation(conversationId, messageChunk, isComplete);
+          const {
+            conversationId,
+            messageChunk,
+            isComplete,
+            promptTokens,
+            completionTokens,
+            totalTokens,
+            promptCost,
+            completionCost,
+            totalCost
+          } = data.stepResponse;
+
+          this.appendToMessageInConversation(
+            conversationId,
+            messageChunk,
+            isComplete,
+            promptTokens,
+            completionTokens,
+            promptCost,
+            completionCost,
+            totalCost
+          );
         }
       });
 
@@ -363,22 +384,72 @@ export const useConversationStore = defineStore('conversation', {
       this.isSubscribed = true;
     },
 
-    appendToMessageInConversation(conversationId: string, messageChunk: string, isComplete: boolean) {
+    /**
+     * Append streaming chunks to the last AI message. If the final chunk
+     * arrives (isComplete = true) with no message chunk, it only means
+     * we have token usage info for the entire conversation.
+     */
+    appendToMessageInConversation(
+      conversationId: string,
+      messageChunk: string | null,
+      isComplete: boolean,
+      promptTokens?: number,
+      completionTokens?: number,
+      promptCost?: number,
+      completionCost?: number,
+      totalCost?: number
+    ) {
       const stepId = this.currentStepId;
-
       if (!stepId || !this.conversationsPerStep.has(stepId)) {
         console.error('No step selected or conversations not initialized');
         return;
       }
 
       const conversation = this.conversationsPerStep.get(stepId)!.get(conversationId);
-      if (conversation) {
-        let lastMessage = conversation.messages[conversation.messages.length - 1];
+      if (!conversation) return;
 
-        if (lastMessage && lastMessage.type === 'ai' && lastMessage.isComplete === false) {
+      // If we are NOT at the final chunk AND we have a messageChunk,
+      // we should keep streaming the partial text to the AI message.
+      if (!isComplete) {
+        if (messageChunk) {
+          const lastMessage = conversation.messages[conversation.messages.length - 1];
+          if (lastMessage && lastMessage.type === 'ai' && lastMessage.isComplete === false) {
+            // Append chunk to existing AI message
+            lastMessage.chunks = lastMessage.chunks || [];
+            lastMessage.chunks.push(messageChunk);
+
+            if (!lastMessage.parserInstance) {
+              lastMessage.segments = lastMessage.segments || [];
+              lastMessage.parserInstance = new IncrementalAIResponseParser(lastMessage.segments);
+              lastMessage.parserInstance.processChunks([messageChunk]);
+            } else {
+              lastMessage.parserInstance.processChunks([messageChunk]);
+            }
+          } else {
+            // Create a new AI message
+            const segments: AIResponseSegment[] = [];
+            const newMessage: Message = {
+              type: 'ai',
+              text: '',
+              timestamp: new Date(),
+              chunks: [messageChunk],
+              isComplete: false,
+              segments,
+              parserInstance: new IncrementalAIResponseParser(segments)
+            };
+            newMessage.parserInstance.processChunks([messageChunk]);
+            conversation.messages.push(newMessage);
+          }
+        }
+      } else {
+        // If isComplete = true, then we only have usage info (the final chunk may or may not contain message text).
+        // 1) If there's an AI message in progress, mark it isComplete and append any leftover chunk.
+        const lastMessage = conversation.messages[conversation.messages.length - 1];
+        const isAiMessageInProgress = lastMessage && lastMessage.type === 'ai' && lastMessage.isComplete === false;
+        if (isAiMessageInProgress && messageChunk) {
+          // If there's still some text in the final chunk, let's add it before concluding
           lastMessage.chunks = lastMessage.chunks || [];
           lastMessage.chunks.push(messageChunk);
-          lastMessage.isComplete = isComplete;
 
           if (!lastMessage.parserInstance) {
             lastMessage.segments = lastMessage.segments || [];
@@ -387,28 +458,47 @@ export const useConversationStore = defineStore('conversation', {
           } else {
             lastMessage.parserInstance.processChunks([messageChunk]);
           }
-
-          conversation.updatedAt = new Date().toISOString();
-
+        }
+        if (isAiMessageInProgress) {
+          lastMessage.isComplete = true;
         } else {
-          const segments: AIResponseSegment[] = [];
-          const newMessage: Message = {
-            type: 'ai',
-            text: '',
-            timestamp: new Date(),
-            chunks: [messageChunk],
-            isComplete: isComplete,
-            segments,
-            parserInstance: new IncrementalAIResponseParser(segments)
-          };
-
-          newMessage.parserInstance.processChunks([messageChunk]);
-          conversation.messages.push(newMessage);
-          conversation.updatedAt = new Date().toISOString();
+          // If there's no AI message in progress, but we do have a final chunk text, let's create a fresh AI message
+          if (messageChunk) {
+            const segments: AIResponseSegment[] = [];
+            const newAiMessage: Message = {
+              type: 'ai',
+              text: '',
+              timestamp: new Date(),
+              chunks: [messageChunk],
+              isComplete: true,
+              segments,
+              parserInstance: new IncrementalAIResponseParser(segments)
+            };
+            newAiMessage.parserInstance.processChunks([messageChunk]);
+            conversation.messages.push(newAiMessage);
+          }
         }
 
-        this.conversationsPerStep.get(stepId)!.set(conversationId, { ...conversation });
+        // 2) Attach final token usage to the last user message and the last AI message
+        //    The step_response has usage data only in the final chunk.
+        //    We recorded from the backend that prompt usage belongs to the user message,
+        //    and completion usage belongs to the AI message.
+        const lastUserMsg = [...conversation.messages].reverse().find(m => m.type === 'user');
+        if (lastUserMsg && typeof promptTokens === 'number' && typeof promptCost === 'number') {
+          lastUserMsg.promptTokens = promptTokens;
+          lastUserMsg.promptCost = promptCost;
+        }
+
+        const lastAiMsg = [...conversation.messages].reverse().find(m => m.type === 'ai');
+        if (lastAiMsg && typeof completionTokens === 'number' && typeof completionCost === 'number') {
+          lastAiMsg.completionTokens = completionTokens;
+          lastAiMsg.completionCost = completionCost;
+        }
       }
+
+      // Finally, update conversation's timestamp
+      conversation.updatedAt = new Date().toISOString();
+      this.conversationsPerStep.get(stepId)!.set(conversationId, { ...conversation });
     },
 
     async uploadFile(file: File): Promise<string> {
@@ -453,21 +543,6 @@ export const useConversationStore = defineStore('conversation', {
       const conversationId = this.activeConversationIdsByStep.get(this.currentStepId!);
       if (conversationId) {
         this.conversationContextPaths.set(conversationId, []);
-      }
-    },
-
-    activateConversation(conversationId: string) {
-      const stepId = this.currentStepId;
-
-      if (!stepId) {
-        console.warn('No step selected.');
-        return;
-      }
-
-      if (this.conversationsPerStep.has(stepId) && this.conversationsPerStep.get(stepId)!.has(conversationId)) {
-        this.activeConversationIdsByStep.set(stepId, conversationId);
-      } else {
-        console.warn(`Conversation with ID ${conversationId} not found for step ${stepId}.`);
       }
     },
 

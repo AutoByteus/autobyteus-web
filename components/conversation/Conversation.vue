@@ -1,5 +1,5 @@
-<!-- File: autobyteus-web/components/conversation/Conversation.vue -->
-<!-- This component renders a conversation between a user and an AI -->
+
+<!-- This component renders a conversation between a user and an AI, displaying token usage/cost instead of timestamps. -->
 
 <template>
   <div class="space-y-4 mb-4">
@@ -21,8 +21,9 @@
         :conversation-id="conversationId"
         :message-index="index"
       />
-      <span class="text-xs text-gray-500 absolute bottom-1 right-2">
-        {{ formatTimestamp(message.timestamp) }}
+
+      <span class="text-xs text-blue-700 font-medium absolute bottom-1 right-2">
+        {{ formatTokenCost(message) }}
       </span>
     </div>
   </div>
@@ -30,7 +31,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { Conversation } from '~/types/conversation';
+import type { Conversation, Message } from '~/types/conversation';
 import UserMessage from '~/components/conversation/UserMessage.vue';
 import AIMessage from '~/components/conversation/AIMessage.vue';
 
@@ -40,13 +41,24 @@ const props = defineProps<{
 
 const conversationId = computed(() => props.conversation.id);
 
-const formatTimestamp = (date: string) => {
-  const parsedDate = new Date(date);
-  return parsedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const formatTokenCost = (message: Message) => {
+  if (message.type === 'user') {
+    const userMsg = message;
+    if (userMsg.promptTokens != null && userMsg.promptCost != null) {
+      return `${userMsg.promptTokens} tokens / $${userMsg.promptCost.toFixed(4)}`;
+    }
+    return '';
+  } else if (message.type === 'ai') {
+    const aiMsg = message;
+    if (aiMsg.completionTokens != null && aiMsg.completionCost != null) {
+      return `${aiMsg.completionTokens} tokens / $${aiMsg.completionCost.toFixed(4)}`;
+    }
+    return '';
+  }
+  return '';
 };
 </script>
 
 <style scoped>
-/* Add any additional styles here */
 /* Ensure messages wrap properly on small screens */
 </style>

@@ -1,3 +1,4 @@
+
 import gql from 'graphql-tag';
 
 export const StepResponseSubscription = gql`
@@ -6,6 +7,12 @@ export const StepResponseSubscription = gql`
       conversationId
       messageChunk
       isComplete
+      promptTokens
+      completionTokens
+      totalTokens
+      promptCost
+      completionCost
+      totalCost
     }
   }
 `;

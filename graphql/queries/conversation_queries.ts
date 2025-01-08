@@ -1,3 +1,4 @@
+
 import gql from 'graphql-tag';
 
 export const GET_CONVERSATION_HISTORY = gql`
@@ -14,6 +15,8 @@ export const GET_CONVERSATION_HISTORY = gql`
           timestamp
           contextPaths
           originalMessage
+          tokenCount
+          cost
         }
       }
       totalConversations

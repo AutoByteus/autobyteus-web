@@ -106,11 +106,14 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
                 type: 'text',
               })) || [],
               timestamp: new Date(msg.timestamp),
+              // Add token usage fields for user messages
+              promptTokens: msg.tokenCount || undefined,
+              promptCost: msg.cost || undefined
             };
             return userMessage;
           } else {
             // For AI messages from history, ensure we process the text
-            // by treating it as a single completed chunk.
+            // by treating it as a single completed chunk
             const aiText = msg.message || '';
             const segments: [] = [];
             const parser = new IncrementalAIResponseParser(segments);
@@ -124,6 +127,9 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
               segments,
               isComplete: true,
               parserInstance: parser,
+              // Add token usage fields for AI messages
+              completionTokens: msg.tokenCount || undefined,
+              completionCost: msg.cost || undefined
             };
             return aiMessage;
           }
