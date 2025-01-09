@@ -1,6 +1,3 @@
-
-<!-- This component renders a conversation between a user and an AI, displaying token usage/cost instead of timestamps. -->
-
 <template>
   <div class="space-y-4 mb-4">
     <div
@@ -27,6 +24,13 @@
       </span>
     </div>
   </div>
+  <!-- Display total tokens and total cost at the bottom of the conversation -->
+  <div
+    v-if="totalUsage.totalTokens > 0"
+    class="text-xs text-blue-700 font-medium mt-2 text-right"
+  >
+    Total: {{ totalUsage.totalTokens }} tokens / ${{ totalUsage.totalCost.toFixed(4) }}
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -35,8 +39,7 @@ import type { Conversation, Message } from '~/types/conversation';
 import UserMessage from '~/components/conversation/UserMessage.vue';
 import AIMessage from '~/components/conversation/AIMessage.vue';
 
-const props = defineProps<{
-  conversation: Conversation;
+const props = defineProps<{  conversation: Conversation;
 }>();
 
 const conversationId = computed(() => props.conversation.id);
@@ -57,6 +60,32 @@ const formatTokenCost = (message: Message) => {
   }
   return '';
 };
+
+/**
+ * Computes the total tokens and total cost for the entire conversation.
+ */
+const totalUsage = computed(() => {
+  let totalTokens = 0;
+  let totalCost = 0;
+  props.conversation.messages.forEach((message) => {
+    if (message.type === 'user') {
+      if (message.promptTokens) {
+        totalTokens += message.promptTokens;
+      }
+      if (message.promptCost) {
+        totalCost += message.promptCost;
+      }
+    } else if (message.type === 'ai') {
+      if (message.completionTokens) {
+        totalTokens += message.completionTokens;
+      }
+      if (message.completionCost) {
+        totalCost += message.completionCost;
+      }
+    }
+  });
+  return { totalTokens, totalCost };
+});
 </script>
 
 <style scoped>
