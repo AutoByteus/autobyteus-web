@@ -37,10 +37,15 @@ export const useTokenUsageStatisticsStore = defineStore('tokenUsageStatistics', 
         const { onResult, onError } = useQuery<
           GetUsageStatisticsInPeriodQuery,
           GetUsageStatisticsInPeriodQueryVariables
-        >(GET_TOKEN_USAGE_STATISTICS, {
+        >(GET_TOKEN_USAGE_STATISTICS, 
+          {
             startTime,
             endTime,
-          });
+          },
+          {
+            fetchPolicy: 'network-only',
+          }
+        );
 
         return new Promise((resolve, reject) => {
           onResult(({ data }) => {

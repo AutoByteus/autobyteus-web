@@ -44,8 +44,8 @@
             <th class="py-2 px-4 border">LLM Model</th>
             <th class="py-2 px-4 border">Prompt Tokens</th>
             <th class="py-2 px-4 border">Assistant Tokens</th>
-            <th class="py-2 px-4 border">Prompt Cost</th>
-            <th class="py-2 px-4 border">Assistant Cost</th>
+            <th class="py-2 px-4 border">Prompt Tokens Cost</th>
+            <th class="py-2 px-4 border">Assistant Tokens Cost</th>
             <th class="py-2 px-4 border">Total Cost</th>
           </tr>
         </thead>
@@ -90,7 +90,10 @@ const chartLabels = computed(() => store.getStatistics.map(stat => stat.llmModel
 const chartData = computed(() => store.getStatistics.map(stat => stat.totalCost));
 
 const formatNumber = (value: number): string => {
-  return value.toFixed(2);
+  return value.toLocaleString('en-US', { 
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 20  // This will show all decimal places up to 20
+  });
 };
 
 const getTotalPromptTokens = (): number => {
