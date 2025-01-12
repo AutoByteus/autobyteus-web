@@ -1,9 +1,10 @@
 <template>
-  <!-- Adjusting layout to place the new Sidebar on the left and the main content on the right -->
   <div class="flex flex-row h-screen">
-    <Sidebar class="flex-shrink-0" />
+    <!-- Added z-10 to ensure proper stacking -->
+    <Sidebar class="flex-shrink-0 relative z-10" />
     
-    <main class="flex-1 bg-blue-200 overflow-hidden">
+    <!-- Added z-0 to ensure main content stays below -->
+    <main class="flex-1 bg-blue-200 overflow-hidden relative z-0">
       <slot></slot>
     </main>
   </div>

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col bg-gray-800 text-white h-full w-16">
+  <div class="flex flex-col bg-gray-800 text-white h-full w-fit relative z-20">
     <!-- Logo Container -->
     <div class="px-4 py-4 flex justify-center">
       <img 
@@ -12,7 +12,7 @@
     <!-- Navigation -->
     <nav class="flex-1 px-2 mt-4">
       <ul class="space-y-2">
-        <li>
+        <li class="relative">
           <NuxtLink 
             to="/" 
             class="flex justify-center items-center p-3 rounded-md hover:text-blue-300 hover:bg-gray-700 transition-colors group relative"
@@ -26,7 +26,7 @@
             </span>
           </NuxtLink>
         </li>
-        <li>
+        <li class="relative">
           <button 
             @click="toggleWorkspaceSelector"
             class="w-full flex justify-center items-center p-3 rounded-md hover:text-blue-300 hover:bg-gray-700 transition-colors group relative"
@@ -40,7 +40,7 @@
             </span>
           </button>
         </li>
-        <li>
+        <li class="relative">
           <NuxtLink 
             to="/agents" 
             class="flex justify-center items-center p-3 rounded-md hover:text-blue-300 hover:bg-gray-700 transition-colors group relative"
@@ -54,7 +54,7 @@
             </span>
           </NuxtLink>
         </li>
-        <li>
+        <li class="relative">
           <NuxtLink 
             to="/prompt-engineering" 
             class="flex justify-center items-center p-3 rounded-md hover:text-blue-300 hover:bg-gray-700 transition-colors group relative"
@@ -68,7 +68,7 @@
             </span>
           </NuxtLink>
         </li>
-        <li>
+        <li class="relative">
           <NuxtLink 
             to="/settings" 
             class="flex justify-center items-center p-3 rounded-md hover:text-blue-300 hover:bg-gray-700 transition-colors group relative"
@@ -125,3 +125,16 @@ const hideWorkspaceSelector = () => {
   workspaceUIStore.hideWorkspaceSelector()
 }
 </script>
+
+<style>
+/* Ensure tooltips appear above other content */
+.nuxt-link-exact-active::after,
+.nuxt-link-active::after {
+  z-index: 30;
+}
+
+/* Add tooltip styles if needed */
+[title]:hover::after {
+  z-index: 30;
+}
+</style>
