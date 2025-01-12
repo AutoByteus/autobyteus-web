@@ -1,6 +1,8 @@
 <template>
-  <div class="flex flex-col h-screen">
-    <Header class="bg-black-200 flex-shrink-0" />
+  <!-- Adjusting layout to place the new Sidebar on the left and the main content on the right -->
+  <div class="flex flex-row h-screen">
+    <Sidebar class="flex-shrink-0" />
+    
     <main class="flex-1 bg-blue-200 overflow-hidden">
       <slot></slot>
     </main>
@@ -8,7 +10,7 @@
 </template>
 
 <script setup>
-import Header from '@/components/Header.vue';
+import Sidebar from '@/components/Sidebar.vue';
 </script>
 
 <style>

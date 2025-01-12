@@ -3,10 +3,15 @@
     <div class="p-4 space-y-4">
       <select 
         v-model="selectedWorkspaceId" 
-        class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 bg-white"
+        class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
       >
-        <option value="" disabled>Select a workspace</option>
-        <option v-for="id in workspaceIds" :key="id" :value="id">
+        <option value="" disabled class="text-gray-900">Select a workspace</option>
+        <option 
+          v-for="id in workspaceIds" 
+          :key="id" 
+          :value="id"
+          class="text-gray-900"
+        >
           {{ getWorkspaceName(id) }}
         </option>
       </select>
@@ -16,7 +21,7 @@
           v-model="newWorkspacePath" 
           type="text" 
           placeholder="Enter new workspace path" 
-          class="flex-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500 bg-white"
+          class="flex-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
           @keyup="handleKeyup"
         >
         <button 
