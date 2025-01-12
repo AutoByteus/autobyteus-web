@@ -5,7 +5,8 @@
       <img 
         src="/autobyteus-icon.svg"
         alt="AutoByteus Icon" 
-        class="w-8 h-8"
+        class="w-8 h-8 cursor-pointer"
+        @click="toggleWorkflowDisplay"
       />
     </div>
 
@@ -113,8 +114,11 @@ import { computed } from 'vue'
 import { NuxtLink } from '#components'
 import { useWorkspaceUIStore } from '~/stores/workspaceUI'
 import WorkspaceSelector from '~/components/workspace/WorkspaceSelector.vue'
+import { useWorkflowUIStore } from '~/stores/workflowUI'
 
 const workspaceUIStore = useWorkspaceUIStore()
+const workflowUIStore = useWorkflowUIStore()
+
 const isWorkspaceSelectorVisible = computed(() => workspaceUIStore.isWorkspaceSelectorVisible)
 
 const toggleWorkspaceSelector = () => {
@@ -123,6 +127,10 @@ const toggleWorkspaceSelector = () => {
 
 const hideWorkspaceSelector = () => {
   workspaceUIStore.hideWorkspaceSelector()
+}
+
+const toggleWorkflowDisplay = () => {
+  workflowUIStore.toggleWorkflow()
 }
 </script>
 

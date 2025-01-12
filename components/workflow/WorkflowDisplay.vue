@@ -1,4 +1,3 @@
-
 <template>
   <div class="flex flex-col h-[calc(100vh-12rem)]">
     <!-- Alerts at top -->
@@ -10,22 +9,31 @@
     </div>
 
     <!-- Main workflow container -->
-    <div v-if="workflow" class="flex flex-col flex-grow">
-      <!-- Fixed header -->
-      <div class="flex-shrink-0 bg-white">
-        <div class="workflow-steps flex flex-wrap gap-3 mb-6">
-          <WorkflowStep
-            v-for="step in steps"
-            :key="step.id"
-            :step="step"
-            :isSelected="selectedStepId === step.id"
-          />
+    <div v-if="workflow" class="flex flex-col flex-grow relative">
+      <!-- 
+        The new WorkflowSteps component is toggled by isWorkflowOpen. 
+        It displays steps vertically and automatically closes on step selection.
+      -->
+      <transition
+        enter-active-class="transition-opacity duration-300"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-300"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div 
+          v-if="isWorkflowOpen"
+          class="absolute inset-0 bg-white border-r border-gray-200 p-4 z-10 w-full sm:w-60 overflow-auto"
+        >
+          <h2 class="text-lg font-bold mb-4">Select a Step</h2>
+          <WorkflowSteps />
         </div>
-      </div>
+      </transition>
 
-      <!-- Content Container -->
-      <div class="flex-grow">
-        <WorkflowStepDetails />
+      <!-- The rest of the container holds the selected step view (WorkflowStepView). -->
+      <div class="flex-grow p-4">
+        <WorkflowStepView />
       </div>
     </div>
   </div>
@@ -35,11 +43,13 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useWorkflowStore } from '~/stores/workflow';
-import WorkflowStepDetails from '~/components/workflow/WorkflowStepDetails.vue';
-import WorkflowStep from '~/components/workflow/WorkflowStep.vue';
+import { useWorkflowUIStore } from '~/stores/workflowUI';
+import WorkflowStepView from '~/components/workflow/WorkflowStepView.vue';
+import WorkflowSteps from '~/components/workflow/WorkflowSteps.vue';
 
 const workspaceStore = useWorkspaceStore();
 const workflowStore = useWorkflowStore();
+const workflowUIStore = useWorkflowUIStore();
 
 const loading = ref(false);
 const error = ref<string | null>(null);
@@ -72,16 +82,9 @@ watch(
 );
 
 const workflow = computed(() => workflowStore.currentWorkflow);
-const selectedStepId = computed(() => workflowStore.currentSelectedStepId);
-const steps = computed(() => Object.values(workflow.value?.steps || {}));
-
-watch(steps, (stepsArray) => {
-  if (stepsArray.length > 0 && !selectedStepId.value) {
-    workflowStore.setSelectedStepId(stepsArray[0].id);
-  }
-});
+const isWorkflowOpen = computed(() => workflowUIStore.isWorkflowOpen);
 </script>
 
 <style scoped>
-/* Add any additional styles if necessary */
+/* Additional style rules if needed */
 </style>
