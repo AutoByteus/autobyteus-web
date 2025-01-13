@@ -23,23 +23,10 @@
       <!-- Conversation Tabs -->
       <ConversationTabs />
 
-      <!-- Content Tabs -->
-      <TabList
-        :tabs="contentTabs"
-        :selectedTab="activeContentTab"
-        @select="setActiveContentTab"
-      />
-
-      <!-- Tab Content -->
+      <!-- Content Area -->
       <div class="flex-grow">
-        <!-- Requirement Form -->
-        <div v-show="activeContentTab === 'Requirement Form'" class="w-full bg-white pt-4">
+        <div class="w-full bg-white pt-4">
           <WorkflowStepRequirementForm />
-        </div>
-
-        <!-- Terminal -->
-        <div v-show="activeContentTab === 'Terminal'" class="w-full h-full">
-          <Terminal :isVisible="activeContentTab === 'Terminal'" />
         </div>
       </div>
     </div>
@@ -61,8 +48,6 @@ import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import WorkflowStepRequirementForm from '~/components/stepRequirementForm/WorkflowStepRequirementForm.vue';
 import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue';
 import ConversationTabs from '~/components/conversation/ConversationTabs.vue';
-import Terminal from '~/components/workflow/Terminal.vue';
-import TabList from '~/components/tabs/TabList.vue';
 
 const workflowStore = useWorkflowStore();
 const conversationStore = useConversationStore();
@@ -71,17 +56,6 @@ const conversationHistoryStore = useConversationHistoryStore();
 const selectedStep = computed(() => workflowStore.selectedStep);
 const isHistoryPanelOpen = ref(false);
 const conversationHistory = computed(() => conversationHistoryStore.getConversations);
-
-// Tab management
-const activeContentTab = ref('Requirement Form');
-const contentTabs = [
-  { name: 'Requirement Form' },
-  { name: 'Terminal' }
-];
-
-const setActiveContentTab = (tabName: string) => {
-  activeContentTab.value = tabName;
-};
 
 const initiateNewConversation = () => {
   conversationStore.createTemporaryConversation();

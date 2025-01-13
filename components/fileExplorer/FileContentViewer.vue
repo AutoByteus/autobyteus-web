@@ -1,6 +1,9 @@
-
 <template>
-  <div id="contentViewer" class="bg-white rounded-lg shadow-md flex flex-col h-full">
+  <div
+    id="contentViewer"
+    class="bg-white rounded-lg shadow-md flex flex-col h-full"
+  >
+    <!-- Tabs for open files across the top -->
     <div class="flex border-b overflow-x-auto sticky top-0 bg-white z-10 p-2">
       <div 
         v-for="file in openFiles" 
@@ -9,8 +12,10 @@
         role="button"
         tabindex="0"
         @keyup.enter="setActiveFile(file)"
-        :class="['px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 flex items-center gap-2', 
-                 file === activeFile ? 'bg-gray-200 text-gray-800' : 'text-gray-600 hover:bg-gray-100']"
+        :class="[
+          'px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 flex items-center gap-2', 
+          file === activeFile ? 'bg-gray-200 text-gray-800' : 'text-gray-600 hover:bg-gray-100'
+        ]"
       >
         <span class="truncate">{{ getFileName(file) }}</span>
         <button 
@@ -22,18 +27,31 @@
         </button>
       </div>
     </div>
-    <div class="flex-1 flex flex-col min-h-0">
-      <div v-if="activeFile" class="flex flex-col h-full">
-        <div v-if="isContentLoading(activeFile)" class="text-center py-4">
-          <p class="text-gray-600">Loading file content...</p>
-        </div>
-        <div v-else-if="getContentError(activeFile)" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-          <strong class="font-bold">Error!</strong>
-          <span class="block sm:inline">{{ getContentError(activeFile) }}</span>
-        </div>
-        <div v-else-if="!isEditing" class="flex flex-col h-full p-4">
+
+    <!-- If no file is active, show placeholder -->
+    <div v-if="!activeFile" class="flex-1 text-center py-4">
+      <p class="text-gray-600">No file selected</p>
+    </div>
+
+    <!-- If there's an active file, show editor or loading or error -->
+    <div v-else class="flex-1 flex flex-col min-h-0">
+      <div v-if="isContentLoading(activeFile)" class="text-center py-4">
+        <p class="text-gray-600">Loading file content...</p>
+      </div>
+      <div v-else-if="getContentError(activeFile)" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+        <strong class="font-bold">Error!</strong>
+        <span class="block sm:inline">{{ getContentError(activeFile) }}</span>
+      </div>
+      <div v-else>
+        <!-- 
+          Show either read-only code (non-editing) or the Monaco editor (editing).
+          If not editing, there's an "Edit" button. If editing, there's "Save" & "Cancel".
+        -->
+        <div v-if="!isEditing" class="flex flex-col h-full p-4">
           <div class="flex-1 bg-gray-50 p-4 rounded-lg text-gray-600 relative">
             <pre class="overflow-visible h-full"><code :class="'language-' + getFileLanguage(activeFile)" v-html="highlightedContent"></code></pre>
+
+            <!-- Edit button, if not editing -->
             <div class="absolute bottom-4 left-4">
               <button 
                 @click="enterEditMode" 
@@ -44,6 +62,7 @@
             </div>
           </div>
         </div>
+
         <div v-else class="flex flex-col h-full p-4">
           <div class="flex-1 bg-gray-50 rounded-lg overflow-hidden">
             <MonacoEditor
@@ -72,15 +91,23 @@
           </div>
         </div>
       </div>
-      <div v-else class="text-center py-4">
-        <p class="text-gray-600">No file selected</p>
-      </div>
+    </div>
+
+    <!-- If in expanded mode, show a "Minimize" button or a keyboard shortcut tip. -->
+    <div v-if="expandedMode" class="border-t p-2 flex justify-end items-center gap-2">
+      <button
+        @click="$emit('minimize')"
+        class="px-3 py-1 bg-gray-300 rounded hover:bg-gray-400 text-sm text-gray-800"
+      >
+        Minimize Viewer
+      </button>
+      <small class="text-gray-400">or press <kbd>Esc</kbd></small>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onMounted, nextTick, ref } from 'vue';
+import { computed, watch, onMounted, nextTick, ref, onBeforeMount } from 'vue';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism.css';
@@ -95,7 +122,14 @@ import { getLanguage } from '~/utils/aiResponseParser/languageDetector';
 import { highlightVueCode } from '~/utils/aiResponseParser/vueCodeHighlight';
 import MonacoEditor from '~/components/fileExplorer/MonacoEditor.vue';
 
-const fileExplorerStore = useFileExplorerStore();
+const props = defineProps<{  expandedMode?: boolean
+}>()
+
+// Emitted event: 'minimize' for when in expandedMode
+const emit = defineEmits(['minimize'])
+
+// Setup store references
+const fileExplorerStore = useFileExplorerStore()
 
 const openFiles = computed(() => fileExplorerStore.getOpenFiles);
 const activeFile = computed(() => fileExplorerStore.getActiveFile);
@@ -155,8 +189,8 @@ const saveChanges = async () => {
       fileExplorerStore.workspaceId, 
       activeFile.value, 
       editedContent.value,
-      'conversationId_example', // Replace with actual conversation ID
-      0 // Replace with actual message index
+      'conversationId_example', // Replace with actual conversation ID if needed
+      0 // Replace with actual message index if needed
     );
     isEditing.value = false;
     saveError.value = null;
@@ -165,8 +199,21 @@ const saveChanges = async () => {
   }
 };
 
+// Handle Escape key to minimize if we're in expandedMode
+const handleKeydown = (event: KeyboardEvent) => {
+  if (props.expandedMode && event.key === 'Escape') {
+    emit('minimize');
+  }
+};
+
 onMounted(() => {
   Prism.highlightAll();
+  window.addEventListener('keydown', handleKeydown);
+});
+
+onBeforeMount(() => {
+  // Clean up any leftover listeners if re-mounted
+  window.removeEventListener('keydown', handleKeydown);
 });
 
 watch(activeFile, () => {
