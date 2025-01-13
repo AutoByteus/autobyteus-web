@@ -1,91 +1,104 @@
 <template>
-  <!-- 
-    The outer container is sized by the parent (e.g., 320x180).
-    We measure the rendered child content in the <div ref="contentContainer"> 
-    and apply a scale transform so that the entire content fits.
-  -->
-  <div ref="container" class="relative w-full h-full overflow-hidden bg-white">
-    <!-- We wrap the slot in a container that we can measure -->
+  <div ref="container" class="relative w-full overflow-hidden bg-white" :style="{ height: previewHeight ? previewHeight + 'px' : 'auto' }">
+    <!-- Off-screen container for rendering content to capture -->
     <div 
-      ref="contentContainer"
-      class="absolute top-0 left-0"
-      :style="contentStyles"
+      ref="sourceContainer"
+      class="absolute capture-container"
     >
+      <!-- Render the ContentViewer off-screen via slot -->
       <slot />
     </div>
+
+    <!-- Preview container to display the snapshot -->
+    <div 
+      v-if="previewUrl"
+      class="w-full bg-center bg-no-repeat"
+      :style="{ 
+        backgroundImage: `url(${previewUrl})`, 
+        backgroundSize: 'contain', 
+        height: previewHeight ? previewHeight + 'px' : 'auto' 
+      }"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { ref, onMounted, watch, nextTick } from 'vue';
+import html2canvas from 'html2canvas';
+import { useFileExplorerStore } from '~/stores/fileExplorer';
 
 const container = ref<HTMLElement | null>(null);
-const contentContainer = ref<HTMLElement | null>(null);
+const sourceContainer = ref<HTMLElement | null>(null);
+const previewUrl = ref<string>('');
+const previewHeight = ref<number | null>(null);  // Reactive height for the preview container
+const fileExplorerStore = useFileExplorerStore();
 
-// We'll store the current scale in a reactive ref
-const scaleValue = ref(1);
+// Watch for changes in the active file from the store
+const activeFile = fileExplorerStore.getActiveFile;
 
-// We keep track of the content's width/height
-const contentWidth = ref<number>(0);
-const contentHeight = ref<number>(0);
-
-const containerWidth = ref<number>(0);
-const containerHeight = ref<number>(0);
-
-const contentStyles = computed(() => {
-  // We scale the entire content while anchoring at the top-left corner
-  return {
-    transformOrigin: 'top left',
-    transform: `scale(${scaleValue.value})`
-  };
-});
-
-// A function to measure the container and content, then compute the scale
-const measureAndScale = () => {
-  if (!container.value || !contentContainer.value) return;
-
-  const containerRect = container.value.getBoundingClientRect();
-  const contentRect = contentContainer.value.getBoundingClientRect();
-
-  containerWidth.value = containerRect.width;
-  containerHeight.value = containerRect.height;
-
-  // If contentRect is 0x0 before it truly renders, we can do nextTick or watchers.
-  contentWidth.value = contentRect.width;
-  contentHeight.value = contentRect.height;
-
-  // Only scale if content is non-zero in size
-  if (contentWidth.value > 0 && contentHeight.value > 0) {
-    const widthRatio = containerWidth.value / contentWidth.value;
-    const heightRatio = containerHeight.value / contentHeight.value;
-    // We choose the smaller ratio so we don't distort the aspect ratio
-    scaleValue.value = Math.min(widthRatio, heightRatio);
-  } else {
-    scaleValue.value = 1;
+const generatePreview = async () => {
+  if (!sourceContainer.value || !container.value) {
+    console.error('Source container or main container not defined.');
+    return;
+  }
+  
+  try {
+    // Capture the off-screen rendered content
+    const canvas = await html2canvas(sourceContainer.value, {
+      backgroundColor: 'white',
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      allowTaint: true,
+    });
+    
+    // Maintain original aspect ratio using container width
+    const containerWidth = container.value.offsetWidth;
+    const aspectRatio = canvas.height / canvas.width;
+    
+    const scaledCanvas = document.createElement('canvas');
+    const ctx = scaledCanvas.getContext('2d');
+    
+    scaledCanvas.width = containerWidth;
+    scaledCanvas.height = containerWidth * aspectRatio;
+    
+    // Update the preview height for the container
+    previewHeight.value = scaledCanvas.height;
+    
+    if (ctx) {
+      // Apply transformation to correct upside-down image
+      ctx.translate(0, scaledCanvas.height);
+      ctx.scale(1, -1);
+      
+      // Draw the captured image onto the scaled canvas
+      ctx.drawImage(canvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
+      previewUrl.value = scaledCanvas.toDataURL('image/png');
+    } else {
+      console.error('Failed to get canvas context.');
+    }
+  } catch (error) {
+    console.error('Failed to generate preview:', error);
   }
 };
 
-// Re-measure whenever the size might change
-// A more robust solution could use a ResizeObserver or watchers. For a simpler approach here, we rely on mount + nextTick.
 onMounted(() => {
-  // measure once on mount
-  nextTick(measureAndScale);
+  watch(
+    () => activeFile.value, // Watch for changes in the active file
+    async () => {
+      // Wait for the off-screen content to update
+      await nextTick();
+      await generatePreview();
+    },
+    { immediate: true }
+  );
 });
-
-// Optionally watch for changes in containerRect or contentRect if those can change frequently. 
-// For an advanced approach, use a ResizeObserver on container.value and contentContainer.value.
-
 </script>
 
 <style scoped>
-/* 
-  We make sure we have a fully relative container, 
-  so the absolutely-positioned child is measured properly.
-*/
-.relative {
-  position: relative;
-}
-.absolute {
+.capture-container {
   position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 600px; /* Fixed width for consistent capture, adjust as needed */
 }
 </style>

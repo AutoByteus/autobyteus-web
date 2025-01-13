@@ -18,6 +18,7 @@
     >
       <div class="flex-1 overflow-auto relative">
         <ContentViewer 
+          id="originalContentViewer"
           :expandedMode="true" 
           @minimize="handleMinimizeViewer" 
         />
@@ -49,8 +50,7 @@
       </div>
     </template>
 
-    <!-- 
-      3) Show the "minimized" floating viewer if file content is open but NOT expanded 
+    <!-- 3) Show the "minimized" floating viewer if file content is open but NOT expanded 
          and now with proportional scaling via ScaledPreviewContainer.
     -->
     <div 
@@ -58,7 +58,7 @@
       class="fixed bottom-4 right-4 w-80 h-40 bg-white rounded-lg shadow-lg border border-gray-200 cursor-pointer transition-all duration-300 hover:shadow-xl z-20"
       @click="handleExpandViewer"
     >
-      <!-- Proportional scaling container for the preview -->
+      <!-- Proportional scaling container for the preview with off-screen ContentViewer -->
       <ScaledPreviewContainer>
         <ContentViewer :expandedMode="false" />
       </ScaledPreviewContainer>
@@ -76,13 +76,13 @@ import ScaledPreviewContainer from '~/components/common/ScaledPreviewContainer.v
 import { usePanelResize } from '~/composables/usePanelResize'
 import { useFileExplorerStore } from '~/stores/fileExplorer'
 
-const props = defineProps<{  showFileContent: boolean
+const props = defineProps<{  
+  showFileContent: boolean
 }>()
 
 // Panel resizing composable
 const {
   fileExplorerWidth,
-  contentViewerWidth,
   initDragFileToContent,
   initDragContentToWorkflow
 } = usePanelResize()
@@ -112,7 +112,6 @@ const handleExpandViewer = () => {
 const handleMinimizeViewer = () => {
   isViewerExpanded.value = false
 }
-
 </script>
 
 <style scoped>
