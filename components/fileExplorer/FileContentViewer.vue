@@ -2,6 +2,7 @@
   <div
     id="contentViewer"
     class="bg-white rounded-lg shadow-md flex flex-col h-full"
+    ref="contentRef"
   >
     <!-- Tabs for open files across the top -->
     <div class="flex border-b overflow-x-auto sticky top-0 bg-white z-10 p-2">
@@ -93,10 +94,10 @@
       </div>
     </div>
 
-    <!-- If in expanded mode, show a "Minimize" button or a keyboard shortcut tip. -->
-    <div v-if="expandedMode" class="border-t p-2 flex justify-end items-center gap-2">
+    <!-- Show minimize controls when in fullscreen mode -->
+    <div v-if="isFullscreenMode" class="border-t p-2 flex justify-end items-center gap-2">
       <button
-        @click="$emit('minimize')"
+        @click="handleMinimize"
         class="px-3 py-1 bg-gray-300 rounded hover:bg-gray-400 text-sm text-gray-800"
       >
         Minimize Viewer
@@ -108,7 +109,9 @@
 
 <script setup lang="ts">
 import { computed, watch, onMounted, nextTick, ref, onBeforeMount } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
+import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism.css';
 import 'prismjs/components/prism-javascript';
@@ -122,14 +125,14 @@ import { getLanguage } from '~/utils/aiResponseParser/languageDetector';
 import { highlightVueCode } from '~/utils/aiResponseParser/vueCodeHighlight';
 import MonacoEditor from '~/components/fileExplorer/MonacoEditor.vue';
 
-const props = defineProps<{  expandedMode?: boolean
-}>()
-
-// Emitted event: 'minimize' for when in expandedMode
-const emit = defineEmits(['minimize'])
+const emit = defineEmits(['minimize', 'snapshot'])
 
 // Setup store references
 const fileExplorerStore = useFileExplorerStore()
+const fileContentDisplayModeStore = useFileContentDisplayModeStore()
+const { isFullscreenMode } = storeToRefs(fileContentDisplayModeStore)
+
+const contentRef = ref<HTMLElement | null>(null)
 
 const openFiles = computed(() => fileExplorerStore.getOpenFiles);
 const activeFile = computed(() => fileExplorerStore.getActiveFile);
@@ -199,22 +202,30 @@ const saveChanges = async () => {
   }
 };
 
-// Handle Escape key to minimize if we're in expandedMode
-const handleKeydown = (event: KeyboardEvent) => {
-  if (props.expandedMode && event.key === 'Escape') {
-    emit('minimize');
+// Handle minimize with snapshot
+const handleMinimize = async () => {
+  if (contentRef.value) {
+    await nextTick()
+    emit('snapshot', contentRef.value)
   }
-};
+  emit('minimize')
+}
+
+// Handle Escape key
+const handleKeydown = async (event: KeyboardEvent) => {
+  if (isFullscreenMode.value && event.key === 'Escape') {
+    await handleMinimize()
+  }
+}
 
 onMounted(() => {
-  Prism.highlightAll();
-  window.addEventListener('keydown', handleKeydown);
-});
+  Prism.highlightAll()
+  window.addEventListener('keydown', handleKeydown)
+})
 
 onBeforeMount(() => {
-  // Clean up any leftover listeners if re-mounted
-  window.removeEventListener('keydown', handleKeydown);
-});
+  window.removeEventListener('keydown', handleKeydown)
+})
 
 watch(activeFile, () => {
   nextTick(() => {

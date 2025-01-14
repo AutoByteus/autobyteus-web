@@ -1,116 +1,88 @@
 <template>
   <div class="hidden md:flex flex-1 relative space-x-0 min-h-0">
-    <!-- File Explorer on the left side -->
+    <!-- File Explorer -->
     <div :style="{ width: fileExplorerWidth + 'px' }" class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0">
       <div class="flex-1 overflow-auto">
         <FileExplorer />
       </div>
     </div>
     
-    <!-- File to Content Drag Handle -->
     <div class="drag-handle" @mousedown="initDragFileToContent"></div>
 
-    <!-- 1) If the viewer is expanded, show it in place of Workflow + RightSideTabs -->
-    <div 
-      v-if="showFileContent && isViewerExpanded" 
-      class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0"
-      style="flex: 1 1 0%; min-width: 200px; max-width: calc(100% - 200px)"
+    <!-- Main Content Area -->
+    <div v-if="isFullscreenMode" 
+      class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0 flex-1 min-w-[200px] max-w-[calc(100%-200px)]"
     >
-      <div class="flex-1 overflow-auto relative">
+      <div class="flex-1 overflow-auto relative" ref="contentContainerRef">
         <ContentViewer 
-          id="originalContentViewer"
-          :expandedMode="true" 
-          @minimize="handleMinimizeViewer" 
+          :expanded-mode="true"
+          @minimize="handleMinimizeContent"
+          @snapshot="handleContentSnapshot" 
         />
       </div>
     </div>
 
-    <!-- 2) If the viewer is NOT expanded, show Workflow + RightSideTabs as usual -->
     <template v-else>
-      <!-- Content to Workflow Drag Handle -->
-      <div 
-        v-if="showFileContent" 
-        class="drag-handle" 
-        @mousedown="(e) => initDragContentToWorkflow(e, showFileContent)"
-      ></div>
-
-      <!-- Workflow Display (center) -->
-      <div class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0" :style="workflowStyles">
+      <!-- Workflow Area -->
+      <div class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0 flex-1 min-w-[200px] max-w-[calc(100%-200px)]">
         <div class="flex-1 overflow-auto">
           <WorkflowDisplay />
         </div>
       </div>
 
-      <!-- Drag Handle between Workflow and RightSideTabs -->
-      <div class="drag-handle" @mousedown="initDragWorkflowToTerminal"></div>
+      <div class="drag-handle"></div>
 
-      <!-- Right side tab container for Terminal -->
+      <!-- Terminal Area -->
       <div :style="{ width: terminalWidth + 'px' }" class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0">
         <RightSideTabs />
       </div>
     </template>
 
-    <!-- 3) Show the "minimized" floating viewer if file content is open but NOT expanded 
-         and now with proportional scaling via ScaledPreviewContainer.
-    -->
-    <div 
-      v-if="showFileContent && !isViewerExpanded" 
-      class="fixed bottom-4 right-4 w-80 h-40 bg-white rounded-lg shadow-lg border border-gray-200 cursor-pointer transition-all duration-300 hover:shadow-xl z-20"
-      @click="handleExpandViewer"
+    <!-- Content Preview -->
+    <div v-if="isPreviewMode" 
+      class="fixed bottom-4 right-4 w-80 h-40 bg-white rounded-lg shadow-lg border border-gray-200 cursor-pointer 
+        transition-all duration-300 hover:shadow-xl z-20"
+      @click="handleExpandContent"
     >
-      <!-- Proportional scaling container for the preview with off-screen ContentViewer -->
-      <ScaledPreviewContainer>
-        <ContentViewer :expandedMode="false" />
-      </ScaledPreviewContainer>
+      <ScaledPreviewContainer ref="previewContainerRef" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref, nextTick } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useFileExplorerStore } from '~/stores/fileExplorer'
+import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
 import ContentViewer from '~/components/fileExplorer/FileContentViewer.vue'
 import WorkflowDisplay from '~/components/workflow/WorkflowDisplay.vue'
 import RightSideTabs from './RightSideTabs.vue'
 import ScaledPreviewContainer from '~/components/common/ScaledPreviewContainer.vue'
 import { usePanelResize } from '~/composables/usePanelResize'
-import { useFileExplorerStore } from '~/stores/fileExplorer'
 
-const props = defineProps<{  
-  showFileContent: boolean
-}>()
+const fileExplorerStore = useFileExplorerStore()
+const fileContentDisplayModeStore = useFileContentDisplayModeStore()
+const { fileExplorerWidth, initDragFileToContent } = usePanelResize()
 
-// Panel resizing composable
-const {
-  fileExplorerWidth,
-  initDragFileToContent,
-  initDragContentToWorkflow
-} = usePanelResize()
+// Use storeToRefs for reactive store properties
+const { isFullscreenMode, isPreviewMode } = storeToRefs(fileContentDisplayModeStore)
 
-// Terminal width + optional resizing
 const terminalWidth = ref(300)
-const initDragWorkflowToTerminal = (e: MouseEvent) => {
-  // Implement optional resizing logic for Terminal panel here if desired.
+const contentContainerRef = ref<HTMLElement | null>(null)
+const previewContainerRef = ref()
+
+const handleContentSnapshot = async (element: HTMLElement) => {
+  await nextTick()
+  previewContainerRef.value?.captureSnapshot(element)
 }
 
-// Workflow display styling
-const workflowStyles = computed(() => ({
-  flex: '1 1 0%',
-  minWidth: '200px',
-  maxWidth: 'calc(100% - 200px)'
-}))
-
-// Track whether the FileContentViewer is expanded or minimized
-const isViewerExpanded = ref(false)
-
-// Expand the viewer to occupy the full right side
-const handleExpandViewer = () => {
-  isViewerExpanded.value = true
+const handleMinimizeContent = () => {
+  fileContentDisplayModeStore.showPreview()
 }
 
-// Minimize the viewer back to small preview
-const handleMinimizeViewer = () => {
-  isViewerExpanded.value = false
+const handleExpandContent = () => {
+  fileContentDisplayModeStore.showFullscreen()
 }
 </script>
 
@@ -120,7 +92,6 @@ const handleMinimizeViewer = () => {
   background-color: #d1d5db;
   cursor: col-resize;
   transition: background-color 0.2s ease;
-  margin: 0;
 }
 
 .drag-handle:hover {
@@ -129,10 +100,5 @@ const handleMinimizeViewer = () => {
 
 .drag-handle:active {
   background-color: #6b7280;
-}
-
-/* Additional styles for the floating preview */
-.fixed {
-  position: fixed;
 }
 </style>
