@@ -1,4 +1,3 @@
-
 import { defineStore } from 'pinia'
 import { useQuery, useMutation } from '@vue/apollo-composable'
 import { GetFileContent, SearchFiles } from '~/graphql/queries/file_explorer_queries'
@@ -12,6 +11,7 @@ import type {
   SearchFilesQueryVariables,
 } from '~/generated/graphql'
 import { useWorkspaceStore } from '~/stores/workspace'
+import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
 import { findFileByPath } from '~/utils/fileExplorer/fileUtils'
 
@@ -28,7 +28,7 @@ interface FileExplorerState {
   searchResults: any[];
   searchLoading: boolean;
   searchError: string | null;
-  workspaceId: string; // Added workspaceId to manage current workspace
+  workspaceId: string;
 }
 
 export const useFileExplorerStore = defineStore('fileExplorer', {
@@ -45,19 +45,24 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     searchResults: [],
     searchLoading: false,
     searchError: null,
-    workspaceId: '', // Initialize workspaceId
+    workspaceId: '',
   }),
+
   actions: {
     toggleFolder(folderPath: string) {
       this.openFolders[folderPath] = !this.openFolders[folderPath]
     },
+
     openFile(filePath: string) {
       if (!this.openFiles.includes(filePath)) {
         this.openFiles.push(filePath)
         this.fetchFileContent(filePath)
       }
       this.activeFile = filePath
+      const fileContentDisplayModeStore = useFileContentDisplayModeStore()
+      fileContentDisplayModeStore.showFullscreen()
     },
+
     closeFile(filePath: string) {
       this.openFiles = this.openFiles.filter(file => file !== filePath)
       this.fileContents.delete(filePath)
@@ -66,13 +71,19 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       delete this.appliedChanges[filePath]
       if (this.activeFile === filePath) {
         this.activeFile = this.openFiles[this.openFiles.length - 1] || null
+        if (!this.activeFile) {
+          const fileContentDisplayModeStore = useFileContentDisplayModeStore()
+          fileContentDisplayModeStore.hide()
+        }
       }
     },
+
     setActiveFile(filePath: string) {
       if (this.openFiles.includes(filePath)) {
         this.activeFile = filePath
       }
     },
+
     fetchFileContent(filePath: string) {
       if (this.fileContents.has(filePath)) return
 
@@ -81,7 +92,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
 
       const workspaceStore = useWorkspaceStore()
       const workspaceId = workspaceStore.currentSelectedWorkspaceId
-      this.workspaceId = workspaceId // Set workspaceId
+      this.workspaceId = workspaceId
 
       const { onResult, onError } = useQuery<GetFileContentQuery, GetFileContentQueryVariables>(
         GetFileContent,
@@ -100,6 +111,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         this.contentLoading[filePath] = false
       })
     },
+
     async applyFileChange(
       workspaceId: string,
       filePath: string,
@@ -131,12 +143,10 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         if (result?.data?.applyFileChange) {
           this.fileContents.set(filePath, content)
           console.log('File change applied successfully')
-          // Process the change event
           const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.applyFileChange)
           const workspaceStore = useWorkspaceStore()
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent)
           
-          // Mark the change as applied
           if (!this.appliedChanges[conversationId]) {
             this.appliedChanges[conversationId] = {}
           }
@@ -191,10 +201,9 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
 
       const workspaceStore = useWorkspaceStore()
       const workspaceId = workspaceStore.currentSelectedWorkspaceId
-      this.workspaceId = workspaceId // Set workspaceId
+      this.workspaceId = workspaceId
 
       if (!query) {
-        // If query is empty, show top-level files and folders
         this.searchResults = workspaceStore.currentWorkspaceTree?.children || []
         this.searchLoading = false
         return
@@ -221,6 +230,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         this.searchLoading = false
       })
     },
+
     resetState() {
       this.openFolders = {}
       this.openFiles = []
@@ -237,6 +247,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       this.workspaceId = ''
     }
   },
+
   getters: {
     isFolderOpen: (state) => (folderPath: string): boolean => !!state.openFolders[folderPath],
     allOpenFolders: (state): string[] => Object.keys(state.openFolders).filter(folder => state.openFolders[folder]),
