@@ -1,32 +1,34 @@
 <template>
   <div class="flex flex-col bg-gray-800 text-white h-full w-fit relative z-20">
     <!-- Logo Container -->
-    <div class="relative px-4 py-4 group">
+    <div class="px-4 py-4">
       <img 
         src="/autobyteus-icon.svg"
         alt="AutoByteus Icon" 
         class="w-8 h-8 cursor-pointer"
       />
-      <button 
-        @click="toggleWorkflowDisplay"
-        class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 p-1 bg-gray-700 rounded-full text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-all duration-200"
-      >
-        <svg 
-          class="w-3 h-3 transition-transform duration-200" 
-          :class="{ 'rotate-180': isWorkflowOpen }"
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path 
-            stroke-linecap="round" 
-            stroke-linejoin="round" 
-            stroke-width="2" 
-            d="M9 5l7 7-7 7"
-          />
-        </svg>
-      </button>
     </div>
+
+    <!-- Sidebar Toggle Button - Now positioned relative to sidebar -->
+    <button 
+      @click="toggleWorkflowDisplay"
+      class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 p-1 bg-gray-700 rounded-full text-gray-300 hover:text-white hover:bg-gray-600 transition-all duration-200"
+    >
+      <svg 
+        class="w-3 h-3 transition-transform duration-200" 
+        :class="{ 'rotate-180': isWorkflowOpen }"
+        fill="none" 
+        stroke="currentColor" 
+        viewBox="0 0 24 24"
+      >
+        <path 
+          stroke-linecap="round" 
+          stroke-linejoin="round" 
+          stroke-width="2" 
+          d="M9 5l7 7-7 7"
+        />
+      </svg>
+    </button>
 
     <!-- Navigation -->
     <nav class="flex-1 px-2 mt-4">
@@ -133,6 +135,7 @@ import { NuxtLink } from '#components'
 import { useWorkspaceUIStore } from '~/stores/workspaceUI'
 import WorkspaceSelector from '~/components/workspace/WorkspaceSelector.vue'
 import { useWorkflowUIStore } from '~/stores/workflowUI'
+import { storeToRefs } from 'pinia'
 
 const workspaceUIStore = useWorkspaceUIStore()
 const workflowUIStore = useWorkflowUIStore()
