@@ -1,29 +1,19 @@
 <template>
   <div class="md:hidden flex flex-1 flex-col min-h-0">
     <!-- Mobile Navigation -->
-    <div class="flex mb-4 bg-white rounded-lg shadow p-2 gap-2">
+    <div class="flex mb-4 bg-white rounded-lg shadow p-2 gap-2 overflow-x-auto">
       <button 
         v-for="(tab, index) in availableTabs"
         :key="index"
-        @click="activeMobilePanel = tab.id"
+        @click="handleTabClick(tab.id)"
         :class="[
-          'flex-1 py-2 px-4 rounded-md transition-colors',
+          'flex-shrink-0 py-2 px-4 rounded-md transition-colors whitespace-nowrap',
           activeMobilePanel === tab.id ? 'bg-blue-500 text-white' : 'bg-gray-100'
         ]"
       >
         {{ tab.label }}
       </button>
     </div>
-
-    <!-- 
-      For mobile, we'll adapt the same logic in a simpler way:
-       - If a file is open, we show a small 'preview' button at the bottom.
-       - Clicking that button navigates the user to the "content" tab in expanded mode.
-       - The user can then switch back to 'explorer', 'workflow', or 'terminal'.
-      This is simpler than the desktop's floating approach, but it similarly addresses space constraints.
-    -->
-
-    <!-- Minimally, let's keep the original structure. We'll highlight the "Content" tab if a file is open. -->
 
     <!-- Mobile Panels -->
     <div class="flex-1 bg-white rounded-lg shadow overflow-hidden relative">
@@ -37,62 +27,93 @@
         <ContentViewer :expandedMode="true" />
       </div>
 
-      <!-- Workflow Display -->
-      <div v-show="activeMobilePanel === 'workflow'" class="h-full p-4 overflow-auto">
-        <WorkflowDisplay />
+      <!-- Workflow Steps -->
+      <div v-show="activeMobilePanel === 'steps'" class="h-full p-4 overflow-auto">
+        <WorkflowSteps />
       </div>
 
-      <!-- Terminal (using the same RightSideTabs component, but it only has Terminal now) -->
+      <!-- Workflow View -->
+      <div v-show="activeMobilePanel === 'workflow'" class="h-full p-4 overflow-auto">
+        <WorkflowStepView />
+      </div>
+
+      <!-- Terminal -->
       <div v-show="activeMobilePanel === 'terminal'" class="h-full p-4 overflow-auto">
         <RightSideTabs />
       </div>
     </div>
 
-    <!-- Simple floating button if a file is open but user is on a different tab 
-         so user can quickly jump to "Content" tab. -->
-    <button
-      v-if="showFileContent && activeMobilePanel !== 'content'"
-      @click="activeMobilePanel = 'content'"
-      class="fixed bottom-4 right-4 px-4 py-2 bg-blue-500 text-white rounded shadow-lg z-20 text-sm"
-    >
-      Open Editor
-    </button>
+    <!-- Floating action buttons -->
+    <div class="fixed bottom-4 right-4 flex flex-col gap-2">
+      <!-- Content editor button -->
+      <button
+        v-if="showFileContent && activeMobilePanel !== 'content'"
+        @click="activeMobilePanel = 'content'"
+        class="px-4 py-2 bg-blue-500 text-white rounded shadow-lg z-20 text-sm"
+      >
+        Open Editor
+      </button>
+
+      <!-- Workflow step button -->
+      <button
+        v-if="activeMobilePanel === 'workflow' && !selectedStepId"
+        @click="activeMobilePanel = 'steps'"
+        class="px-4 py-2 bg-blue-500 text-white rounded shadow-lg z-20 text-sm"
+      >
+        Select Step
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
 import ContentViewer from '~/components/fileExplorer/FileContentViewer.vue'
-import WorkflowDisplay from '~/components/workflow/WorkflowDisplay.vue'
+import WorkflowSteps from '~/components/workflow/WorkflowSteps.vue'
+import WorkflowStepView from '~/components/workflow/WorkflowStepView.vue'
 import RightSideTabs from './RightSideTabs.vue'
 import { useMobilePanels } from '~/composables/useMobilePanels'
 import { useFileExplorerStore } from '~/stores/fileExplorer'
+import { useWorkflowStore } from '~/stores/workflow'
 
 const props = defineProps<{  
   showFileContent: boolean
 }>()
 
-// On mobile, we have distinct panels for Explorer, Content, Workflow, Terminal
+const workflowStore = useWorkflowStore()
 const { activeMobilePanel } = useMobilePanels()
 
-// Insert 'content' tab dynamically if showFileContent is true
+const selectedStepId = computed(() => workflowStore.currentSelectedStepId)
+
+// Available tabs with new 'steps' tab
 const availableTabs = computed(() => {
   const tabs = [
     { id: 'explorer', label: 'Files' },
+    { id: 'steps', label: 'Steps' },
     { id: 'workflow', label: 'Workflow' },
     { id: 'terminal', label: 'Terminal' }
   ]
+  
   if (props.showFileContent) {
-    // Insert the 'content' tab right after 'explorer'
-    // If it's already there, we won't duplicate it
-    const existingContentTab = tabs.find(tab => tab.id === 'content')
-    if (!existingContentTab) {
-      tabs.splice(1, 0, { id: 'content', label: 'Content' })
-    }
+    // Insert content tab after explorer
+    tabs.splice(1, 0, { id: 'content', label: 'Content' })
   }
+  
   return tabs
 })
+
+// Handle tab clicks with special logic for workflow/steps
+const handleTabClick = (tabId: string) => {
+  // If clicking workflow tab without a selected step,
+  // redirect to steps tab first
+  if (tabId === 'workflow' && !selectedStepId.value) {
+    activeMobilePanel.value = 'steps'
+  } else {
+    activeMobilePanel.value = tabId
+  }
+}
 </script>
 
 <style scoped>
@@ -102,5 +123,10 @@ const availableTabs = computed(() => {
 
 .fixed {
   position: fixed;
+}
+
+/* Enable horizontal scroll for tabs on very small screens */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
 }
 </style>

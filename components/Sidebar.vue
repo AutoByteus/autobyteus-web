@@ -1,13 +1,31 @@
 <template>
   <div class="flex flex-col bg-gray-800 text-white h-full w-fit relative z-20">
     <!-- Logo Container -->
-    <div class="px-4 py-4 flex justify-center">
+    <div class="relative px-4 py-4 group">
       <img 
         src="/autobyteus-icon.svg"
         alt="AutoByteus Icon" 
         class="w-8 h-8 cursor-pointer"
-        @click="toggleWorkflowDisplay"
       />
+      <button 
+        @click="toggleWorkflowDisplay"
+        class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 p-1 bg-gray-700 rounded-full text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-all duration-200"
+      >
+        <svg 
+          class="w-3 h-3 transition-transform duration-200" 
+          :class="{ 'rotate-180': isWorkflowOpen }"
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path 
+            stroke-linecap="round" 
+            stroke-linejoin="round" 
+            stroke-width="2" 
+            d="M9 5l7 7-7 7"
+          />
+        </svg>
+      </button>
     </div>
 
     <!-- Navigation -->
@@ -120,6 +138,7 @@ const workspaceUIStore = useWorkspaceUIStore()
 const workflowUIStore = useWorkflowUIStore()
 
 const isWorkspaceSelectorVisible = computed(() => workspaceUIStore.isWorkspaceSelectorVisible)
+const { isWorkflowOpen } = storeToRefs(workflowUIStore)
 
 const toggleWorkspaceSelector = () => {
   workspaceUIStore.toggleWorkspaceSelector()
