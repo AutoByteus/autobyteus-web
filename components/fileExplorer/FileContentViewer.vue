@@ -43,15 +43,31 @@
         <strong class="font-bold">Error!</strong>
         <span class="block sm:inline">{{ getContentError(activeFile) }}</span>
       </div>
-      <div v-else class="flex-1 bg-gray-50 rounded-lg overflow-hidden relative">
+      <div v-else-if="fileContent !== null" class="flex-1 bg-gray-50 rounded-lg overflow-hidden relative">
         <MonacoEditor
           v-model="fileContent"
           :language="getFileLanguage(activeFile)"
           @editorDidMount="handleEditorMount"
+          @save="handleSave"
           class="h-full w-full"
         />
-        <div v-if="saveError" class="absolute bottom-2 left-2 text-red-600">
+        <div 
+          v-if="saveError" 
+          class="absolute bottom-2 left-2 text-red-600 bg-white px-2 py-1 rounded shadow"
+        >
           {{ saveError }}
+        </div>
+        <div 
+          v-if="isSaving" 
+          class="absolute bottom-2 right-2 text-gray-600 bg-white px-2 py-1 rounded shadow"
+        >
+          Saving...
+        </div>
+        <div 
+          v-if="showSaveSuccess" 
+          class="absolute bottom-2 right-2 text-green-600 bg-white px-2 py-1 rounded shadow"
+        >
+          Changes saved
         </div>
       </div>
     </div>
@@ -77,7 +93,6 @@ import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import { snapshotService } from '~/services/snapshotService'
 import { getLanguage } from '~/utils/aiResponseParser/languageDetector'
 import MonacoEditor from '~/components/fileExplorer/MonacoEditor.vue'
-import { useSaveShortcuts } from '~/composables/useSaveShortcuts'
 
 const fileExplorerStore = useFileExplorerStore()
 const fileContentDisplayModeStore = useFileContentDisplayModeStore()
@@ -88,8 +103,11 @@ const contentRef = ref<HTMLElement | null>(null)
 const openFiles = computed(() => fileExplorerStore.getOpenFiles)
 const activeFile = computed(() => fileExplorerStore.getActiveFile)
 
-const fileContent = ref('')
+const fileContent = ref<string | null>(null)
 const saveError = ref<string | null>(null)
+const isSaving = ref(false)
+const showSaveSuccess = ref(false)
+const saveSuccessTimeout = ref<NodeJS.Timeout | null>(null)
 
 const getFileName = (filePath: string) => filePath.split('/').pop() || filePath
 const setActiveFile = (filePath: string) => fileExplorerStore.setActiveFile(filePath)
@@ -99,26 +117,30 @@ const isContentLoading = (filePath: string) => fileExplorerStore.isContentLoadin
 const getContentError = (filePath: string) => fileExplorerStore.getContentError(filePath)
 const getFileLanguage = (filePath: string) => getLanguage(filePath)
 
-onMounted(() => {
-  // Update editor content whenever the active file changes
-  watch(activeFile, (newVal) => {
-    if (newVal) {
-      fileContent.value = getFileContent(newVal) || ''
+watch(activeFile, (newVal) => {
+  if (newVal) {
+    fileContent.value = null // Reset to null while loading
+    const content = getFileContent(newVal)
+    if (content !== null) {
+      fileContent.value = content
     }
-  }, { immediate: true })
+  } else {
+    fileContent.value = null
+  }
+}, { immediate: true })
 
-  // Shortcut listener for saving
-  useSaveShortcuts(saveChanges)
-
+onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown)
+  if (saveSuccessTimeout.value) {
+    clearTimeout(saveSuccessTimeout.value)
+  }
 })
 
 onBeforeMount(() => {
-  // Ensure no leftover listeners from prior usage
   window.removeEventListener('keydown', handleKeydown)
 })
 
@@ -126,35 +148,60 @@ const handleEditorMount = (editor: any) => {
   editor.focus()
 }
 
-// Method to save changes via the store
-async function saveChanges() {
-  if (!activeFile.value) return
+const handleSave = async () => {
+  console.log('Save handler triggered in FileContentViewer')
+  
+  if (!activeFile.value || !fileContent.value) {
+    console.error('Cannot save: No active file or content')
+    return
+  }
+
+  isSaving.value = true
+  saveError.value = null
+  
   try {
-    await fileExplorerStore.applyFileChange(
-      fileExplorerStore.workspaceId, 
-      activeFile.value, 
-      fileContent.value,
-      'conversationId_example', // Replace with actual conversation ID if needed
-      0 // Replace with actual message index if needed
-    )
-    saveError.value = null
-  } catch (error: any) {
-    saveError.value = error.message || 'Failed to save changes'
+    console.log('Attempting to save file:', activeFile.value)
+    await saveChanges()
+    
+    console.log('Save successful')
+    showSaveSuccess.value = true
+    if (saveSuccessTimeout.value) {
+      clearTimeout(saveSuccessTimeout.value)
+    }
+    saveSuccessTimeout.value = setTimeout(() => {
+      showSaveSuccess.value = false
+    }, 2000)
+  } catch (error) {
+    console.error('Save failed:', error)
+    saveError.value = error instanceof Error ? error.message : 'Failed to save changes'
+    setTimeout(() => {
+      saveError.value = null
+    }, 5000)
+  } finally {
+    isSaving.value = false
   }
 }
 
+async function saveChanges() {
+  if (!activeFile.value || !fileContent.value) return
+  
+  console.log('Saving changes for file:', activeFile.value)
+  
+  await fileExplorerStore.applyBasicFileChange(
+    fileExplorerStore.workspaceId, 
+    activeFile.value, 
+    fileContent.value,
+  )
+}
+
 const handleMinimize = async () => {
-  console.log('Minimize triggered')
   if (!contentRef.value) {
     console.error('No content element to capture')
     return
   }
 
   try {
-    // Capture the snapshot while component is visible
-    console.log('Capturing snapshot before state change')
     await snapshotService.captureSnapshot(contentRef.value)
-    console.log('Snapshot captured, starting minimize')
     fileContentDisplayModeStore.startMinimize()
     await fileContentDisplayModeStore.finishMinimize()
   } catch (error) {
@@ -163,7 +210,6 @@ const handleMinimize = async () => {
   }
 }
 
-// Handle pressing Esc to minimize in fullscreen mode
 const handleKeydown = async (event: KeyboardEvent) => {
   if (isFullscreenMode.value && event.key === 'Escape') {
     await handleMinimize()
@@ -202,5 +248,9 @@ code {
 
 button {
   cursor: pointer;
+}
+
+.save-indicator {
+  transition: opacity 0.3s ease-in-out;
 }
 </style>

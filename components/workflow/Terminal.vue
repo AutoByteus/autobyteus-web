@@ -1,4 +1,3 @@
-
 <template>
   <div class="terminal-container h-full" ref="terminalContainer">
     <div ref="terminalElement"></div>
@@ -12,10 +11,6 @@ import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { useBashCommandStore } from '~/stores/bashCommand';
 import { useWorkspaceStore } from '~/stores/workspace';
-
-const props = defineProps<{
-  isVisible: boolean
-}>();
 
 const terminalContainer = ref<HTMLDivElement | null>(null);
 const terminalElement = ref<HTMLDivElement | null>(null);
@@ -84,7 +79,6 @@ const handleCommand = async (command: string) => {
   writePrompt();
 };
 
-// Utility function for debouncing
 const debounce = (func: Function, wait: number) => {
   let timeout: NodeJS.Timeout;
   return function executedFunction(...args: any[]) {
@@ -101,7 +95,6 @@ const initializeTerminal = () => {
   if (!terminalElement.value) return;
 
   try {
-    // Create terminal instance
     terminalInstance.value = new Terminal({
       cursorBlink: true,
       fontFamily: 'Courier New, monospace',
@@ -117,11 +110,9 @@ const initializeTerminal = () => {
       disableStdin: false
     });
 
-    // Create and activate FitAddon
     fitAddon.value = new FitAddon();
     terminalInstance.value.open(terminalElement.value);
     
-    // Proper activation sequence
     try {
       fitAddon.value.activate(terminalInstance.value);
       isAddonActivated.value = true;
@@ -205,7 +196,6 @@ const initializeTerminal = () => {
   }
 };
 
-// Create debounced fit function
 const debouncedFit = debounce(() => {
   if (isAddonActivated.value && fitAddon.value) {
     try {
@@ -217,13 +207,10 @@ const debouncedFit = debounce(() => {
 }, 100);
 
 const cleanup = () => {
-  // Remove event listeners
   window.removeEventListener('resize', debouncedFit);
   terminalContainer.value?.removeEventListener('click', () => terminalInstance.value?.focus());
 
-  // Safe disposal sequence
   try {
-    // Only dispose addon if it was properly activated
     if (isAddonActivated.value && fitAddon.value) {
       fitAddon.value.dispose();
     }
@@ -232,7 +219,6 @@ const cleanup = () => {
   }
 
   try {
-    // Always try to dispose terminal
     if (terminalInstance.value) {
       terminalInstance.value.dispose();
     }
@@ -240,7 +226,6 @@ const cleanup = () => {
     console.warn('Error disposing terminal:', error);
   }
 
-  // Reset all refs
   terminalInstance.value = null;
   fitAddon.value = null;
   isAddonActivated.value = false;

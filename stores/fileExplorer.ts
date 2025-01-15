@@ -19,7 +19,7 @@ interface FileExplorerState {
   openFolders: Record<string, boolean>;
   openFiles: string[];
   activeFile: string | null;
-  fileContents: Map<string, string>;
+  fileContents: Record<string, string | null>;
   contentLoading: Record<string, boolean>;
   contentError: Record<string, string | null>;
   applyChangeError: Record<string, Record<number, Record<string, string | null>>>;
@@ -29,6 +29,8 @@ interface FileExplorerState {
   searchLoading: boolean;
   searchError: string | null;
   workspaceId: string;
+  basicFileChangeError: Record<string, string | null>;
+  basicFileChangeLoading: Record<string, boolean>;
 }
 
 export const useFileExplorerStore = defineStore('fileExplorer', {
@@ -36,7 +38,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     openFolders: {},
     openFiles: [],
     activeFile: null,
-    fileContents: new Map(),
+    fileContents: {},
     contentLoading: {},
     contentError: {},
     applyChangeError: {},
@@ -46,6 +48,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     searchLoading: false,
     searchError: null,
     workspaceId: '',
+    basicFileChangeError: {},
+    basicFileChangeLoading: {},
   }),
 
   actions: {
@@ -53,10 +57,10 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       this.openFolders[folderPath] = !this.openFolders[folderPath]
     },
 
-    openFile(filePath: string) {
+    async openFile(filePath: string) {
       if (!this.openFiles.includes(filePath)) {
         this.openFiles.push(filePath)
-        this.fetchFileContent(filePath)
+        await this.fetchFileContent(filePath)
       }
       this.activeFile = filePath
       const fileContentDisplayModeStore = useFileContentDisplayModeStore()
@@ -65,7 +69,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
 
     closeFile(filePath: string) {
       this.openFiles = this.openFiles.filter(file => file !== filePath)
-      this.fileContents.delete(filePath)
+      delete this.fileContents[filePath]
       delete this.contentLoading[filePath]
       delete this.contentError[filePath]
       delete this.appliedChanges[filePath]
@@ -84,8 +88,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
 
-    fetchFileContent(filePath: string) {
-      if (this.fileContents.has(filePath)) return
+    async fetchFileContent(filePath: string) {
+      if (this.fileContents[filePath] !== undefined) return
 
       this.contentLoading[filePath] = true
       this.contentError[filePath] = null
@@ -94,22 +98,60 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       const workspaceId = workspaceStore.currentSelectedWorkspaceId
       this.workspaceId = workspaceId
 
-      const { onResult, onError } = useQuery<GetFileContentQuery, GetFileContentQueryVariables>(
-        GetFileContent,
-        { workspaceId, filePath }
-      )
-      onResult((result) => {
-        if (result.data?.fileContent) {
-          this.fileContents.set(filePath, result.data.fileContent)
-          this.contentLoading[filePath] = false
-        }
-      })
+      try {
+        const { onResult, onError } = useQuery<GetFileContentQuery, GetFileContentQueryVariables>(
+          GetFileContent,
+          { workspaceId, filePath }
+        )
 
-      onError((error) => {
-        console.error('Failed to fetch file content', error)
-        this.contentError[filePath] = error.message
+        return new Promise((resolve, reject) => {
+          onResult((result) => {
+            if (result.data?.fileContent) {
+              this.fileContents[filePath] = result.data.fileContent
+              this.contentLoading[filePath] = false
+              resolve(result.data.fileContent)
+            }
+          })
+
+          onError((error) => {
+            console.error('Failed to fetch file content', error)
+            this.contentError[filePath] = error.message
+            this.contentLoading[filePath] = false
+            reject(error)
+          })
+        })
+      } catch (error) {
+        this.contentError[filePath] = error instanceof Error ? error.message : 'Failed to fetch file content'
         this.contentLoading[filePath] = false
-      })
+        throw error
+      }
+    },
+
+    async applyBasicFileChange(workspaceId: string, filePath: string, content: string) {
+      this.basicFileChangeError[filePath] = null
+      this.basicFileChangeLoading[filePath] = true
+
+      const { mutate } = useMutation<ApplyFileChangeMutation, ApplyFileChangeMutationVariables>(ApplyFileChange)
+
+      try {
+        const result = await mutate({ workspaceId, filePath, content })
+        
+        if (result?.data?.applyFileChange) {
+          this.fileContents[filePath] = content
+          console.log('File change applied successfully')
+          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.applyFileChange)
+          const workspaceStore = useWorkspaceStore()
+          workspaceStore.handleFileSystemChange(workspaceId, changeEvent)
+        }
+
+        this.basicFileChangeLoading[filePath] = false
+        return result
+      } catch (err) {
+        console.error('Failed to apply file change:', err)
+        this.basicFileChangeError[filePath] = err instanceof Error ? err.message : 'An unknown error occurred'
+        this.basicFileChangeLoading[filePath] = false
+        throw err
+      }
     },
 
     async applyFileChange(
@@ -141,7 +183,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         const result = await mutate({ workspaceId, filePath, content })
         
         if (result?.data?.applyFileChange) {
-          this.fileContents.set(filePath, content)
+          this.fileContents[filePath] = content
           console.log('File change applied successfully')
           const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.applyFileChange)
           const workspaceStore = useWorkspaceStore()
@@ -165,17 +207,21 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         throw err
       }
     },
+
     isApplyChangeInProgress(conversationId: string, messageIndex: number, filePath: string): boolean {
       return !!(this.applyChangeLoading[conversationId] &&
         this.applyChangeLoading[conversationId][messageIndex] &&
         this.applyChangeLoading[conversationId][messageIndex][filePath])
     },
+
     isChangeApplied(conversationId: string, messageIndex: number, filePath: string): boolean {
       return this.appliedChanges[conversationId]?.[messageIndex]?.[filePath] || false
     },
+
     getApplyChangeError(conversationId: string, messageIndex: number, filePath: string): string | null {
       return this.applyChangeError[conversationId]?.[messageIndex]?.[filePath] || null
     },
+
     setApplyChangeLoading(conversationId: string, messageIndex: number, filePath: string, isLoading: boolean) {
       if (!this.applyChangeLoading[conversationId]) {
         this.applyChangeLoading[conversationId] = {}
@@ -185,6 +231,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
       this.applyChangeLoading[conversationId][messageIndex][filePath] = isLoading
     },
+
     setApplyChangeError(conversationId: string, messageIndex: number, filePath: string, error: string | null) {
       if (!this.applyChangeError[conversationId]) {
         this.applyChangeError[conversationId] = {}
@@ -194,6 +241,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
       this.applyChangeError[conversationId][messageIndex][filePath] = error
     },
+
     async searchFiles(query: string) {
       this.searchLoading = true
       this.searchError = null
@@ -209,33 +257,43 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         return
       }
 
-      const { onResult, onError } = useQuery<SearchFilesQuery, SearchFilesQueryVariables>(
-        SearchFiles,
-        { workspaceId, query }
-      )
+      try {
+        const { onResult, onError } = useQuery<SearchFilesQuery, SearchFilesQueryVariables>(
+          SearchFiles,
+          { workspaceId, query }
+        )
 
-      onResult((result) => {
-        if (result.data?.searchFiles) {
-          const matchedPaths = result.data.searchFiles
-          this.searchResults = matchedPaths.map(path => {
-            return findFileByPath(workspaceStore.currentWorkspaceTree?.children || [], path)
-          }).filter(file => file !== null)
-        }
-        this.searchLoading = false
-      })
+        return new Promise((resolve, reject) => {
+          onResult((result) => {
+            if (result.data?.searchFiles) {
+              const matchedPaths = result.data.searchFiles
+              this.searchResults = matchedPaths.map(path => {
+                return findFileByPath(workspaceStore.currentWorkspaceTree?.children || [], path)
+              }).filter(file => file !== null)
+            }
+            this.searchLoading = false
+            resolve(this.searchResults)
+          })
 
-      onError((error) => {
-        console.error('Error searching files:', error)
-        this.searchError = error.message
+          onError((error) => {
+            console.error('Error searching files:', error)
+            this.searchError = error.message
+            this.searchLoading = false
+            reject(error)
+          })
+        })
+      } catch (error) {
+        this.searchError = error instanceof Error ? error.message : 'Failed to search files'
         this.searchLoading = false
-      })
+        throw error
+      }
     },
 
     resetState() {
       this.openFolders = {}
       this.openFiles = []
       this.activeFile = null
-      this.fileContents.clear()
+      this.fileContents = {}
       this.contentLoading = {}
       this.contentError = {}
       this.applyChangeError = {}
@@ -245,6 +303,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       this.searchLoading = false
       this.searchError = null
       this.workspaceId = ''
+      this.basicFileChangeError = {}
+      this.basicFileChangeLoading = {}
     }
   },
 
@@ -253,7 +313,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     allOpenFolders: (state): string[] => Object.keys(state.openFolders).filter(folder => state.openFolders[folder]),
     getOpenFiles: (state): string[] => state.openFiles,
     getActiveFile: (state): string | null => state.activeFile,
-    getFileContent: (state) => (filePath: string): string | null => state.fileContents.get(filePath) || null,
+    getFileContent: (state) => (filePath: string): string | null => state.fileContents[filePath] || null,
     isContentLoading: (state) => (filePath: string): boolean => !!state.contentLoading[filePath],
     getContentError: (state) => (filePath: string): string | null => state.contentError[filePath] || null,
     isApplyChangeInProgressGetter: (state) => (conversationId: string, messageIndex: number, filePath: string): boolean => {
@@ -270,5 +330,11 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     getSearchResults: (state) => state.searchResults,
     isSearchLoading: (state) => state.searchLoading,
     getSearchError: (state) => state.searchError,
+    isBasicChangeLoadingGetter: (state) => (filePath: string): boolean => {
+      return state.basicFileChangeLoading[filePath] || false
+    },
+    getBasicChangeErrorGetter: (state) => (filePath: string): string | null => {
+      return state.basicFileChangeError[filePath] || null
+    }
   }
 })

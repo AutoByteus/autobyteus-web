@@ -1,4 +1,3 @@
-
 <template>
   <div ref="editorContainer" class="monaco-editor-container h-full"></div>
 </template>
@@ -10,15 +9,11 @@ import loader from '@monaco-editor/loader';
 const props = defineProps({
   modelValue: {
     type: String,
-    default: ''
+    required: true
   },
   language: {
     type: String,
     default: 'plaintext'
-  },
-  height: {
-    type: String,
-    default: '100%'
   },
   theme: {
     type: String,
@@ -30,15 +25,16 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update:modelValue', 'editorDidMount']);
+const emit = defineEmits(['update:modelValue', 'editorDidMount', 'save']);
 
 const editorContainer = ref<HTMLElement | null>(null);
 let editor: any = null;
+let monaco: any = null;
 
 const initMonaco = async () => {
   if (!editorContainer.value) return;
   
-  const monaco = await loader.init();
+  monaco = await loader.init();
   
   editor = monaco.editor.create(editorContainer.value, {
     value: props.modelValue,
@@ -49,21 +45,36 @@ const initMonaco = async () => {
     ...props.options
   });
 
+  // Modified save command handler to ensure event emission
+  editor.addCommand(
+    monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S,
+    () => {
+      console.log('Save command triggered in Monaco Editor');
+      emit('save');
+    }
+  );
+
   editor.onDidChangeModelContent(() => {
-    emit('update:modelValue', editor.getValue());
+    const value = editor.getValue();
+    emit('update:modelValue', value);
   });
 
   emit('editorDidMount', editor);
 };
 
 watch(() => props.modelValue, (newValue) => {
-  if (editor && newValue !== editor.getValue()) {
-    editor.setValue(newValue);
+  if (editor) {
+    const currentValue = editor.getValue();
+    if (newValue !== currentValue) {
+      const position = editor.getPosition();
+      editor.setValue(newValue);
+      editor.setPosition(position);
+    }
   }
-}, { deep: true });
+}, { immediate: true });
 
 watch(() => props.language, (newValue) => {
-  if (editor) {
+  if (editor && monaco) {
     const model = editor.getModel();
     if (model) {
       monaco.editor.setModelLanguage(model, newValue);
@@ -73,6 +84,18 @@ watch(() => props.language, (newValue) => {
 
 onMounted(async () => {
   await initMonaco();
+
+  // Updated event listener with logging
+  if (editorContainer.value) {
+    editorContainer.value.addEventListener('keydown', (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        console.log('Ctrl+S intercepted');
+        e.preventDefault();
+        e.stopPropagation();
+        emit('save');
+      }
+    });
+  }
 });
 
 onBeforeUnmount(() => {
@@ -82,7 +105,8 @@ onBeforeUnmount(() => {
 });
 
 defineExpose({
-  getEditor: () => editor
+  getEditor: () => editor,
+  getMonaco: () => monaco
 });
 </script>
 
