@@ -33,18 +33,66 @@
 
     <template v-else>
       <!-- Workflow Step View Area -->
-      <div class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0 flex-1 min-w-[200px] max-w-[calc(100%-200px)]">
+      <div class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0 flex-1 min-w-[200px]">
         <div class="flex-1 overflow-auto">
           <WorkflowStepView />
         </div>
       </div>
 
-      <div class="drag-handle"></div>
+      <div class="drag-handle" @mousedown="initDragRightPanel"></div>
 
-      <!-- Terminal Area -->
-      <div :style="{ width: terminalWidth + 'px' }" class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0">
+      <!-- Right Side Panel Area with Toggle -->
+      <div 
+        v-show="isRightPanelVisible"
+        :style="{ width: rightPanelWidth + 'px' }" 
+        class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0 relative transition-all duration-300"
+      >
         <RightSideTabs />
+        
+        <!-- Right Panel Toggle Button -->
+        <button 
+          @click="toggleRightPanel"
+          class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 p-1 bg-white rounded-full text-gray-600 hover:text-gray-900 shadow-md hover:shadow-lg transition-all duration-200"
+          :title="isRightPanelVisible ? 'Hide Side Panel' : 'Show Side Panel'"
+        >
+          <svg 
+            class="w-3 h-3 transition-transform duration-200" 
+            :class="{ 'rotate-180': !isRightPanelVisible }"
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path 
+              stroke-linecap="round" 
+              stroke-linejoin="round" 
+              stroke-width="2" 
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </button>
       </div>
+
+      <!-- Collapsed Right Panel Button -->
+      <button 
+        v-if="!isRightPanelVisible"
+        @click="toggleRightPanel"
+        class="absolute right-0 top-1/2 -translate-y-1/2 p-1 bg-white rounded-full text-gray-600 hover:text-gray-900 shadow-md hover:shadow-lg transition-all duration-200"
+        title="Show Side Panel"
+      >
+        <svg 
+          class="w-3 h-3 transition-transform duration-200 rotate-180" 
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path 
+            stroke-linecap="round" 
+            stroke-linejoin="round" 
+            stroke-width="2" 
+            d="M9 5l7 7-7 7"
+          />
+        </svg>
+      </button>
     </template>
 
     <!-- Content Preview -->
@@ -72,6 +120,7 @@ import WorkflowStepView from '~/components/workflow/WorkflowStepView.vue'
 import RightSideTabs from './RightSideTabs.vue'
 import ScaledPreviewContainer from '~/components/common/ScaledPreviewContainer.vue'
 import { usePanelResize } from '~/composables/usePanelResize'
+import { useRightPanel } from '~/composables/useRightPanel'
 
 const fileExplorerStore = useFileExplorerStore()
 const fileContentDisplayModeStore = useFileContentDisplayModeStore()
@@ -81,7 +130,12 @@ const { fileExplorerWidth, initDragFileToContent } = usePanelResize()
 const { isFullscreenMode, isPreviewMode } = storeToRefs(fileContentDisplayModeStore)
 const { isWorkflowOpen } = storeToRefs(workflowUIStore)
 
-const terminalWidth = ref(300)
+const {
+  isRightPanelVisible,
+  rightPanelWidth,
+  toggleRightPanel,
+  initDragRightPanel
+} = useRightPanel()
 
 const handleExpandContent = () => {
   fileContentDisplayModeStore.showFullscreen()
@@ -108,3 +162,15 @@ const handleExpandContent = () => {
   transition-property: all;
 }
 </style>
+
+I have completed step 3 and am now moving to step 4.
+
+I am now executing step 4: Asking for user feedback.
+
+Key changes made:
+1. Renamed useTerminalPanel.ts to useRightPanel.ts
+2. Updated all variable names to be more general (isTerminalVisible → isRightPanelVisible, etc.)
+3. Updated button titles and comments to reflect the more general purpose
+4. Maintained all functionality while making the naming more accurate for future extensibility
+
+Would you like to review these changes or suggest any additional improvements?
