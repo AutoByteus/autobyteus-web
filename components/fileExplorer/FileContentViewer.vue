@@ -34,8 +34,8 @@
       <p class="text-gray-600">No file selected</p>
     </div>
 
-    <!-- If there's an active file, show editor or loading or error -->
-    <div v-else class="flex-1 flex flex-col min-h-0">
+    <!-- If there's an active file, show Monaco editor (always editable) -->
+    <div v-else class="flex-1 flex flex-col min-h-0 p-4">
       <div v-if="isContentLoading(activeFile)" class="text-center py-4">
         <p class="text-gray-600">Loading file content...</p>
       </div>
@@ -43,50 +43,15 @@
         <strong class="font-bold">Error!</strong>
         <span class="block sm:inline">{{ getContentError(activeFile) }}</span>
       </div>
-      <div v-else>
-        <!-- Show either read-only code (non-editing) or the Monaco editor (editing) -->
-        <div v-if="!isEditing" class="flex flex-col h-full p-4">
-          <div class="flex-1 bg-gray-50 p-4 rounded-lg text-gray-600 relative">
-            <pre class="overflow-visible h-full"><code :class="'language-' + getFileLanguage(activeFile)" v-html="highlightedContent"></code></pre>
-
-            <!-- Edit button, if not editing -->
-            <div class="absolute bottom-4 left-4">
-              <button 
-                @click="enterEditMode" 
-                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                Edit
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div v-else class="flex flex-col h-full p-4">
-          <div class="flex-1 bg-gray-50 rounded-lg overflow-hidden">
-            <MonacoEditor
-              v-model="editedContent"
-              :language="getFileLanguage(activeFile)"
-              @editorDidMount="handleEditorMount"
-              class="h-full w-full"
-            />
-          </div>
-          <div class="mt-4 flex space-x-2">
-            <button 
-              @click="saveChanges" 
-              class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
-            >
-              Save
-            </button>
-            <button 
-              @click="cancelEdit" 
-              class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
-            >
-              Cancel
-            </button>
-          </div>
-          <div v-if="saveError" class="mt-2 text-red-600">
-            {{ saveError }}
-          </div>
+      <div v-else class="flex-1 bg-gray-50 rounded-lg overflow-hidden relative">
+        <MonacoEditor
+          v-model="fileContent"
+          :language="getFileLanguage(activeFile)"
+          @editorDidMount="handleEditorMount"
+          class="h-full w-full"
+        />
+        <div v-if="saveError" class="absolute bottom-2 left-2 text-red-600">
+          {{ saveError }}
         </div>
       </div>
     </div>
@@ -110,18 +75,9 @@ import { storeToRefs } from 'pinia'
 import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import { snapshotService } from '~/services/snapshotService'
-import Prism from 'prismjs'
-import 'prismjs/themes/prism.css'
-import 'prismjs/components/prism-javascript'
-import 'prismjs/components/prism-jsx'
-import 'prismjs/components/prism-typescript'
-import 'prismjs/components/prism-python'
-import 'prismjs/components/prism-markup'
-import 'prismjs/components/prism-markup-templating'
-import 'prismjs/components/prism-php'
 import { getLanguage } from '~/utils/aiResponseParser/languageDetector'
-import { highlightVueCode } from '~/utils/aiResponseParser/vueCodeHighlight'
 import MonacoEditor from '~/components/fileExplorer/MonacoEditor.vue'
+import { useSaveShortcuts } from '~/composables/useSaveShortcuts'
 
 const fileExplorerStore = useFileExplorerStore()
 const fileContentDisplayModeStore = useFileContentDisplayModeStore()
@@ -132,61 +88,55 @@ const contentRef = ref<HTMLElement | null>(null)
 const openFiles = computed(() => fileExplorerStore.getOpenFiles)
 const activeFile = computed(() => fileExplorerStore.getActiveFile)
 
-const isEditing = ref(false)
-const editedContent = ref('')
+const fileContent = ref('')
 const saveError = ref<string | null>(null)
 
 const getFileName = (filePath: string) => filePath.split('/').pop() || filePath
-
 const setActiveFile = (filePath: string) => fileExplorerStore.setActiveFile(filePath)
 const closeFile = (filePath: string) => fileExplorerStore.closeFile(filePath)
-
 const getFileContent = (filePath: string) => fileExplorerStore.getFileContent(filePath)
 const isContentLoading = (filePath: string) => fileExplorerStore.isContentLoading(filePath)
 const getContentError = (filePath: string) => fileExplorerStore.getContentError(filePath)
-
 const getFileLanguage = (filePath: string) => getLanguage(filePath)
 
-const highlightedContent = computed(() => {
-  if (!activeFile.value) return ''
-  const content = getFileContent(activeFile.value)
-  if (!content) return ''
-  const language = getFileLanguage(activeFile.value)
-  
-  if (language === 'vue') {
-    return highlightVueCode(content)
-  } else {
-    return Prism.highlight(content, Prism.languages[language] || Prism.languages.plaintext, language)
-  }
+onMounted(() => {
+  // Update editor content whenever the active file changes
+  watch(activeFile, (newVal) => {
+    if (newVal) {
+      fileContent.value = getFileContent(newVal) || ''
+    }
+  }, { immediate: true })
+
+  // Shortcut listener for saving
+  useSaveShortcuts(saveChanges)
+
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown)
+})
+
+onBeforeMount(() => {
+  // Ensure no leftover listeners from prior usage
+  window.removeEventListener('keydown', handleKeydown)
 })
 
 const handleEditorMount = (editor: any) => {
   editor.focus()
 }
 
-const enterEditMode = () => {
-  if (activeFile.value) {
-    editedContent.value = getFileContent(activeFile.value) || ''
-    isEditing.value = true
-  }
-}
-
-const cancelEdit = () => {
-  isEditing.value = false
-  saveError.value = null
-}
-
-const saveChanges = async () => {
+// Method to save changes via the store
+async function saveChanges() {
   if (!activeFile.value) return
   try {
     await fileExplorerStore.applyFileChange(
       fileExplorerStore.workspaceId, 
       activeFile.value, 
-      editedContent.value,
+      fileContent.value,
       'conversationId_example', // Replace with actual conversation ID if needed
       0 // Replace with actual message index if needed
     )
-    isEditing.value = false
     saveError.value = null
   } catch (error: any) {
     saveError.value = error.message || 'Failed to save changes'
@@ -201,48 +151,24 @@ const handleMinimize = async () => {
   }
 
   try {
-    // First capture the snapshot while the component is definitely visible
+    // Capture the snapshot while component is visible
     console.log('Capturing snapshot before state change')
     await snapshotService.captureSnapshot(contentRef.value)
     console.log('Snapshot captured, starting minimize')
-    // Then start the minimize process
     fileContentDisplayModeStore.startMinimize()
-    // Immediately finish minimize to trigger the transition
     await fileContentDisplayModeStore.finishMinimize()
   } catch (error) {
     console.error('Failed to handle minimize:', error)
-    // Ensure we still transition even if snapshot fails
     fileContentDisplayModeStore.finishMinimize()
   }
 }
 
-// Remove the snapshot capture from onBeforeUnmount since we now do it in handleMinimize
-onBeforeUnmount(() => {
-  console.log('Component unmounting')
-  window.removeEventListener('keydown', handleKeydown)
-})
-
+// Handle pressing Esc to minimize in fullscreen mode
 const handleKeydown = async (event: KeyboardEvent) => {
   if (isFullscreenMode.value && event.key === 'Escape') {
     await handleMinimize()
   }
 }
-
-onMounted(() => {
-  console.log('Component mounted')
-  Prism.highlightAll()
-  window.addEventListener('keydown', handleKeydown)
-})
-
-onBeforeMount(() => {
-  window.removeEventListener('keydown', handleKeydown)
-})
-
-watch(activeFile, () => {
-  nextTick(() => {
-    Prism.highlightAll()
-  })
-})
 </script>
 
 <style scoped>
