@@ -48,11 +48,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { useWorkspaceStore } from '~/stores/workspace';
 import MarkdownRenderer from '~/components/conversation/segments/renderer/MarkdownRenderer.vue';
 import { highlightFileSegment } from '~/utils/aiResponseParser/segmentHighlighter';
+import { usePrismHighlighter } from '~/composables/usePrismHighlighter';
 import type { FileSegment } from '~/utils/aiResponseParser/types';
 
 const props = defineProps<{
@@ -63,18 +64,40 @@ const props = defineProps<{
 
 const fileExplorerStore = useFileExplorerStore();
 const workspaceStore = useWorkspaceStore();
+const { initializePrism, highlightCode } = usePrismHighlighter();
 
 const highlightedCode = ref('');
+
+const updateHighlightedCode = () => {
+  if (!initializePrism()) {
+    console.error('Failed to initialize Prism');
+    return;
+  }
+  
+  try {
+    const highlighted = highlightFileSegment(props.fileSegment);
+    highlightedCode.value = highlighted.highlightedContent || '';
+    // Ensure Prism processes any new code
+    highlightCode();
+  } catch (err) {
+    console.error('Failed to highlight code:', err);
+    // Fallback to raw content if highlighting fails
+    highlightedCode.value = props.fileSegment.originalContent;
+  }
+};
 
 // Watch for changes in originalContent and rehighlight
 watch(
   () => props.fileSegment.originalContent,
-  (newContent) => {
-    const highlighted = highlightFileSegment(props.fileSegment);
-    highlightedCode.value = highlighted.highlightedContent || '';
+  () => {
+    updateHighlightedCode();
   },
   { immediate: true }
 );
+
+onMounted(() => {
+  updateHighlightedCode();
+});
 
 const isInProgress = computed(() => {
   return fileExplorerStore.isApplyChangeInProgress(props.conversationId, props.messageIndex, props.fileSegment.path);
