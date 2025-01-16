@@ -1,6 +1,5 @@
 <template>
-  <div class="file-explorer flex flex-col h-full">
-      <h2 class="text-xl font-semibold mb-4 flex-shrink-0">Project Files</h2>
+  <div class="file-explorer flex flex-col h-full pt-4">
       <div v-if="activeWorkspace" class="mb-4 px-0.5">
         <input
           v-model="searchQuery"
@@ -34,7 +33,6 @@ import { useFileExplorerStore } from '~/stores/fileExplorer'
 
 const workspaceStore = useWorkspaceStore()
 const fileExplorerStore = useFileExplorerStore()
-
 const searchQuery = ref('')
 const hasWorkspaces = computed(() => workspaceStore.allWorkspaceIds.length > 0)
 const searchLoading = computed(() => fileExplorerStore.isSearchLoading)
