@@ -1,3 +1,4 @@
+```vue
 <template>
   <div class="md:hidden flex flex-1 flex-col min-h-0">
     <!-- Mobile Navigation -->
@@ -27,9 +28,9 @@
         <ContentViewer :expandedMode="true" />
       </div>
 
-      <!-- Workflow Steps -->
-      <div v-show="activeMobilePanel === 'steps'" class="h-full p-4 overflow-auto">
-        <WorkflowSteps />
+      <!-- Workspace/Workflow Selector -->
+      <div v-show="activeMobilePanel === 'selector'" class="h-full p-4 overflow-auto">
+        <WorkspaceWorkflowSelector />
       </div>
 
       <!-- Workflow View -->
@@ -57,7 +58,7 @@
       <!-- Workflow step button -->
       <button
         v-if="activeMobilePanel === 'workflow' && !selectedStepId"
-        @click="activeMobilePanel = 'steps'"
+        @click="activeMobilePanel = 'selector'"
         class="px-4 py-2 bg-blue-500 text-white rounded shadow-lg z-20 text-sm"
       >
         Select Step
@@ -71,11 +72,10 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
 import ContentViewer from '~/components/fileExplorer/FileContentViewer.vue'
-import WorkflowSteps from '~/components/workflow/WorkflowSteps.vue'
+import WorkspaceWorkflowSelector from '~/components/workflow/LeftSidebarOverlay.vue'
 import WorkflowStepView from '~/components/workflow/WorkflowStepView.vue'
 import RightSideTabs from './RightSideTabs.vue'
 import { useMobilePanels } from '~/composables/useMobilePanels'
-import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { useWorkflowStore } from '~/stores/workflow'
 
 const props = defineProps<{  
@@ -87,11 +87,11 @@ const { activeMobilePanel } = useMobilePanels()
 
 const selectedStepId = computed(() => workflowStore.currentSelectedStepId)
 
-// Available tabs with new 'steps' tab
+// Available tabs with updated selector tab
 const availableTabs = computed(() => {
   const tabs = [
     { id: 'explorer', label: 'Files' },
-    { id: 'steps', label: 'Steps' },
+    { id: 'selector', label: 'Select' },
     { id: 'workflow', label: 'Workflow' },
     { id: 'terminal', label: 'Terminal' }
   ]
@@ -104,12 +104,12 @@ const availableTabs = computed(() => {
   return tabs
 })
 
-// Handle tab clicks with special logic for workflow/steps
+// Handle tab clicks with special logic for workflow/selector
 const handleTabClick = (tabId: string) => {
   // If clicking workflow tab without a selected step,
-  // redirect to steps tab first
+  // redirect to selector tab first
   if (tabId === 'workflow' && !selectedStepId.value) {
-    activeMobilePanel.value = 'steps'
+    activeMobilePanel.value = 'selector'
   } else {
     activeMobilePanel.value = tabId
   }
@@ -130,3 +130,4 @@ const handleTabClick = (tabId: string) => {
   -webkit-overflow-scrolling: touch;
 }
 </style>
+```

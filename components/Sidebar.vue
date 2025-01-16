@@ -9,7 +9,7 @@
       />
     </div>
 
-    <!-- Sidebar Toggle Button - Now positioned relative to sidebar -->
+    <!-- Sidebar Toggle Button -->
     <button 
       @click="toggleWorkflowDisplay"
       class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 p-1 bg-gray-700 rounded-full text-gray-300 hover:text-white hover:bg-gray-600 transition-all duration-200"
@@ -30,7 +30,7 @@
       </svg>
     </button>
 
-    <!-- Navigation -->
+    <!-- Main Navigation -->
     <nav class="flex-1 px-2 mt-4">
       <ul class="space-y-2">
         <li class="relative">
@@ -47,20 +47,7 @@
             </span>
           </NuxtLink>
         </li>
-        <li class="relative">
-          <button 
-            @click="toggleWorkspaceSelector"
-            class="w-full flex justify-center items-center p-3 rounded-md hover:text-blue-300 hover:bg-gray-700 transition-colors group relative"
-            :class="{'bg-gray-700': isWorkspaceSelectorVisible}"
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-            </svg>
-            <span class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
-              Workspace
-            </span>
-          </button>
-        </li>
+
         <li class="relative">
           <NuxtLink 
             to="/agents" 
@@ -75,6 +62,7 @@
             </span>
           </NuxtLink>
         </li>
+
         <li class="relative">
           <NuxtLink 
             to="/prompt-engineering" 
@@ -89,6 +77,27 @@
             </span>
           </NuxtLink>
         </li>
+
+        <!-- Add Workspace Button -->
+        <li class="relative">
+          <button 
+            @click="showAddWorkspaceForm = true"
+            class="w-full flex justify-center items-center p-3 rounded-md hover:text-blue-300 hover:bg-gray-700 transition-colors group relative"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
+              Add Workspace
+            </span>
+          </button>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Bottom Navigation (Settings) -->
+    <div class="px-2 pb-4">
+      <ul class="space-y-2">
         <li class="relative">
           <NuxtLink 
             to="/settings" 
@@ -105,58 +114,40 @@
           </NuxtLink>
         </li>
       </ul>
-    </nav>
+    </div>
 
-    <!-- Workspace Selector Overlay -->
-    <Transition
-      enter-active-class="transition-opacity duration-300"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition-opacity duration-300"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <div 
-        v-if="isWorkspaceSelectorVisible"
-        class="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4"
-        @click.self="hideWorkspaceSelector"
-      >
-        <div class="bg-white rounded-md shadow p-4 w-full max-w-4xl min-w-[800px]" @click.stop>
-          <WorkspaceSelector />
-        </div>
+    <!-- Add Workspace Form Modal -->
+    <div v-if="showAddWorkspaceForm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="max-w-md w-full mx-4">
+        <AddWorkspaceForm 
+          @close="showAddWorkspaceForm = false"
+          @workspace-added="handleWorkspaceAdded"
+        />
       </div>
-    </Transition>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { NuxtLink } from '#components'
-import { useWorkspaceUIStore } from '~/stores/workspaceUI'
-import WorkspaceSelector from '~/components/workspace/WorkspaceSelector.vue'
-import { useWorkflowUIStore } from '~/stores/workflowUI'
+import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useWorkflowUIStore } from '~/stores/workflowUI'
+import AddWorkspaceForm from './workspace/AddWorkspaceForm.vue'
 
-const workspaceUIStore = useWorkspaceUIStore()
 const workflowUIStore = useWorkflowUIStore()
-
-const isWorkspaceSelectorVisible = computed(() => workspaceUIStore.isWorkspaceSelectorVisible)
 const { isWorkflowOpen } = storeToRefs(workflowUIStore)
-
-const toggleWorkspaceSelector = () => {
-  workspaceUIStore.toggleWorkspaceSelector()
-}
-
-const hideWorkspaceSelector = () => {
-  workspaceUIStore.hideWorkspaceSelector()
-}
+const showAddWorkspaceForm = ref(false)
 
 const toggleWorkflowDisplay = () => {
   workflowUIStore.toggleWorkflow()
 }
+
+const handleWorkspaceAdded = () => {
+  showAddWorkspaceForm.value = false
+}
 </script>
 
-<style>
+<style scoped>
 /* Ensure tooltips appear above other content */
 .nuxt-link-exact-active::after,
 .nuxt-link-active::after {

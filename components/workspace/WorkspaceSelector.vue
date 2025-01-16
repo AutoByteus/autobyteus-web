@@ -1,87 +1,140 @@
+```vue
 <template>
-  <div class="workspace-selector bg-gray-200 rounded-lg">
-    <div class="p-4 space-y-4">
-      <select 
-        v-model="selectedWorkspaceId" 
-        class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
-      >
-        <option value="" disabled class="text-gray-900">Select a workspace</option>
-        <option 
-          v-for="id in workspaceIds" 
-          :key="id" 
-          :value="id"
-          class="text-gray-900"
-        >
-          {{ getWorkspaceName(id) }}
-        </option>
-      </select>
-      
-      <div class="flex gap-2">
-        <input 
-          v-model="newWorkspacePath" 
-          type="text" 
-          placeholder="Enter new workspace path" 
-          class="flex-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
-          @keyup="handleKeyup"
-        >
+  <div class="workspace-section">
+    <div class="current-workspace-card p-4 bg-white rounded-xl shadow-sm border border-gray-200">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-semibold text-gray-900">Current Workspace</h3>
         <button 
-          @click="addWorkspace" 
-          class="whitespace-nowrap px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+          @click="toggleExpanded"
+          class="p-2 hover:bg-gray-50 rounded-lg"
         >
-          Add New Workspace
+          <svg 
+            class="w-5 h-5 text-gray-500 transition-transform duration-200"
+            :class="{ 'rotate-180': isExpanded }"
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
         </button>
       </div>
-      
-      <p v-if="error" class="text-red-500 text-sm">{{ error }}</p>
+
+      <div class="workspace-info flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+        <div class="workspace-icon p-2 bg-white rounded-lg">
+          <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <h4 class="font-medium text-gray-900">
+            {{ currentWorkspaceName || 'Select a workspace' }}
+          </h4>
+          <p v-if="!currentWorkspaceName" class="text-sm text-gray-500">
+            No workspace selected
+          </p>
+          <p v-else class="text-sm text-gray-500">
+            {{ currentWorkspacePath }}
+          </p>
+        </div>
+        <div v-if="currentWorkspaceName" class="workspace-status">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            Active
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Workspace List -->
+    <div v-if="isExpanded" class="mt-2 pl-4 space-y-1">
+      <div 
+        v-for="workspace in workspaces"
+        :key="workspace.id"
+        class="workspace-item group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50"
+        :class="{
+          'bg-blue-50 border-blue-200': workspace.id === selectedWorkspaceId,
+          'hover:border-gray-300': workspace.id !== selectedWorkspaceId
+        }"
+        @click="selectWorkspace(workspace.id)"
+      >
+        <div class="flex-shrink-0">
+          <svg class="w-4 h-4 text-gray-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm text-gray-700 group-hover:text-gray-900 truncate">{{ workspace.name }}</div>
+          <div class="text-xs text-gray-500 truncate">{{ workspace.path }}</div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useWorkspaceStore } from '~/stores/workspace'
 
+const emit = defineEmits(['workspace-selected'])
 const workspaceStore = useWorkspaceStore()
+const isExpanded = ref(false)
 
-const workspaceIds = computed(() => workspaceStore.allWorkspaceIds)
-const selectedWorkspaceId = ref('')
-const newWorkspacePath = ref('')
-const error = ref('')
-
-const getWorkspaceName = (id: string) => {
-  const workspace = workspaceStore.workspaces[id]
-  return workspace ? workspace.name : 'Unknown Workspace'
-}
-
-const addWorkspace = async () => {
-  if (!newWorkspacePath.value) {
-    error.value = 'Workspace path cannot be empty'
-    return
-  }
-
-  try {
-    await workspaceStore.addWorkspace(newWorkspacePath.value)
-    selectedWorkspaceId.value = workspaceStore.currentSelectedWorkspaceId
-    newWorkspacePath.value = ''
-    error.value = ''
-  } catch (err) {
-    error.value = 'Failed to add workspace'
-  }
-}
-
-const handleKeyup = (event: KeyboardEvent) => {
-  if (event.key === 'Enter') {
-    addWorkspace()
-  }
-}
-
-watch(selectedWorkspaceId, (newValue) => {
-  if (newValue) {
-    workspaceStore.setSelectedWorkspaceId(newValue)
-  }
+onMounted(async () => {
+  await workspaceStore.fetchAllWorkspaces()
 })
 
-onMounted(() => {
-  workspaceStore.fetchAllWorkspaces()
+const workspaces = computed(() => {
+  return Object.entries(workspaceStore.workspaces).map(([id, workspace]) => ({
+    id,
+    name: workspace.name,
+    path: workspace.path
+  }))
 })
+
+const selectedWorkspaceId = computed(() => workspaceStore.currentSelectedWorkspaceId)
+
+const currentWorkspaceName = computed(() => {
+  if (!selectedWorkspaceId.value) return null
+  return workspaceStore.workspaces[selectedWorkspaceId.value]?.name
+})
+
+const currentWorkspacePath = computed(() => {
+  if (!selectedWorkspaceId.value) return null
+  return workspaceStore.workspaces[selectedWorkspaceId.value]?.path
+})
+
+const toggleExpanded = () => {
+  isExpanded.value = !isExpanded.value
+}
+
+const selectWorkspace = (workspaceId: string) => {
+  workspaceStore.setSelectedWorkspaceId(workspaceId)
+  emit('workspace-selected', workspaceId)
+  isExpanded.value = false
+}
 </script>
+
+<style scoped>
+.workspace-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.workspace-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0;
+  background-color: rgb(59, 130, 246, 0.1);
+  transition: width 0.2s ease;
+}
+
+.workspace-item:hover::before {
+  width: 100%;
+}
+</style>
+```
+
+Now, let's rename WorkspaceWorkflowSelector to LeftSidebarOverlay. Would you like me to provide the renamed component file as well? We'll need to update all references to this component in other files too.

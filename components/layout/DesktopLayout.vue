@@ -14,12 +14,12 @@
         <div v-if="!isWorkflowOpen" key="file-explorer" class="flex-1 overflow-auto">
           <FileExplorer />
         </div>
-        <div v-else key="workflow-steps" class="flex-1 overflow-auto">
-          <WorkflowSteps />
+        <div v-else key="workspace-workflow-selector" class="flex-1 overflow-auto">
+          <WorkspaceWorkflowSelector />
         </div>
       </transition>
     </div>
-    
+
     <div class="drag-handle" @mousedown="initDragFileToContent"></div>
 
     <!-- Main Content Area -->
@@ -71,75 +71,31 @@
           </svg>
         </button>
       </div>
-
-      <!-- Collapsed Right Panel Button -->
-      <button 
-        v-if="!isRightPanelVisible"
-        @click="toggleRightPanel"
-        class="absolute right-0 top-1/2 -translate-y-1/2 p-1 bg-white rounded-full text-gray-600 hover:text-gray-900 shadow-md hover:shadow-lg transition-all duration-200"
-        title="Show Side Panel"
-      >
-        <svg 
-          class="w-3 h-3 transition-transform duration-200 rotate-180" 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path 
-            stroke-linecap="round" 
-            stroke-linejoin="round" 
-            stroke-width="2" 
-            d="M9 5l7 7-7 7"
-          />
-        </svg>
-      </button>
     </template>
-
-    <!-- Content Preview -->
-    <div v-if="isPreviewMode" 
-      class="fixed bottom-4 right-4 w-80 h-40 bg-white rounded-lg shadow-lg border border-gray-200 cursor-pointer 
-        transition-all duration-300 hover:shadow-xl z-20"
-      @click="handleExpandContent"
-    >
-      <ScaledPreviewContainer :snapshot-url="snapshotService.getSnapshot()" />
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import { useWorkflowUIStore } from '~/stores/workflowUI'
-import { snapshotService } from '~/services/snapshotService'
+import { useRightPanel } from '~/composables/useRightPanel'
+import { usePanelResize } from '~/composables/usePanelResize'
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
 import ContentViewer from '~/components/fileExplorer/FileContentViewer.vue'
-import WorkflowSteps from '~/components/workflow/WorkflowSteps.vue'
 import WorkflowStepView from '~/components/workflow/WorkflowStepView.vue'
 import RightSideTabs from './RightSideTabs.vue'
-import ScaledPreviewContainer from '~/components/common/ScaledPreviewContainer.vue'
-import { usePanelResize } from '~/composables/usePanelResize'
-import { useRightPanel } from '~/composables/useRightPanel'
+import WorkspaceWorkflowSelector from '~/components/workflow/LeftSidebarOverlay.vue'
 
-const fileExplorerStore = useFileExplorerStore()
-const fileContentDisplayModeStore = useFileContentDisplayModeStore()
 const workflowUIStore = useWorkflowUIStore()
+const fileContentDisplayModeStore = useFileContentDisplayModeStore()
 
-const { fileExplorerWidth, initDragFileToContent } = usePanelResize()
-const { isFullscreenMode, isPreviewMode } = storeToRefs(fileContentDisplayModeStore)
+const { isFullscreenMode } = storeToRefs(fileContentDisplayModeStore)
 const { isWorkflowOpen } = storeToRefs(workflowUIStore)
-
-const {
-  isRightPanelVisible,
-  rightPanelWidth,
-  toggleRightPanel,
-  initDragRightPanel
-} = useRightPanel()
-
-const handleExpandContent = () => {
-  fileContentDisplayModeStore.showFullscreen()
-}
+const { fileExplorerWidth, initDragFileToContent } = usePanelResize()
+const { isRightPanelVisible, rightPanelWidth, toggleRightPanel, initDragRightPanel } = useRightPanel()
 </script>
 
 <style scoped>

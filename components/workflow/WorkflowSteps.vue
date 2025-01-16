@@ -1,7 +1,5 @@
 <template>
-  <div class="workflow-steps h-full">
-    <h2 class="text-xl font-semibold mb-6">Workflow</h2>
-    
+  <div class="workflow-steps">    
     <div class="flex flex-col space-y-3">
       <div 
         v-for="step in steps"
@@ -53,7 +51,7 @@ const selectStep = (stepId: string) => {
 
 <style scoped>
 .workflow-steps {
-  padding: 1rem;
+  height: 100%;
 }
 
 .workflow-step-item {
