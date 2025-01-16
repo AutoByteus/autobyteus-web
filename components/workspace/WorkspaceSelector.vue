@@ -1,4 +1,3 @@
-```vue
 <template>
   <div class="workspace-section">
     <div class="current-workspace-card p-4 bg-white rounded-xl shadow-sm border border-gray-200">
@@ -36,11 +35,6 @@
           <p v-else class="text-sm text-gray-500">
             {{ currentWorkspacePath }}
           </p>
-        </div>
-        <div v-if="currentWorkspaceName" class="workspace-status">
-          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            Active
-          </span>
         </div>
       </div>
     </div>
@@ -135,6 +129,3 @@ const selectWorkspace = (workspaceId: string) => {
   width: 100%;
 }
 </style>
-```
-
-Now, let's rename WorkspaceWorkflowSelector to LeftSidebarOverlay. Would you like me to provide the renamed component file as well? We'll need to update all references to this component in other files too.
