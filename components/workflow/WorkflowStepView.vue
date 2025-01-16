@@ -15,19 +15,19 @@
         <div class="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
           <button 
             @click="initiateNewConversation" 
-            class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-blue-500 tooltip transition-colors"
+            class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-gray-100 text-blue-500 tooltip transition-colors"
             aria-label="New Conversation"
             data-tooltip="New Conversation"
           >
-            <PlusCircleIcon class="w-6 h-6" />
+            <PlusCircleIcon class="w-8 h-8" />
           </button>
           <button 
             @click="showConversationHistory" 
-            class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 tooltip transition-colors"
+            class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 tooltip transition-colors"
             aria-label="History"
             data-tooltip="History"
           >
-            <ClockIcon class="w-6 h-6" />
+            <ClockIcon class="w-8 h-8" />
           </button>
         </div>
       </div>
