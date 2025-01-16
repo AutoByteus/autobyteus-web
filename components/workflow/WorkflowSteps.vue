@@ -1,6 +1,6 @@
 <template>
   <div class="workflow-steps h-full">
-    <h2 class="text-xl font-semibold mb-6">Workflow Steps</h2>
+    <h2 class="text-xl font-semibold mb-6">Workflow</h2>
     
     <div class="flex flex-col space-y-3">
       <div 

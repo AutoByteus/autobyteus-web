@@ -34,6 +34,7 @@
     "@capacitor/android": "^6.1.2",
     "@capacitor/cli": "^3.9.0",
     "@capacitor/core": "^3.9.0",
+    "@heroicons/vue": "^2.2.0",
     "@nuxt/schema": "^3.13.1",
     "@types/prismjs": "^1.26.4",
     "@xterm/addon-fit": "^0.10.0",
