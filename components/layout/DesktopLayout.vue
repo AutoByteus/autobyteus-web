@@ -1,28 +1,28 @@
 <template>
   <div class="hidden md:flex flex-1 relative space-x-0 min-h-0">
-    <!-- File Explorer / Workflow Steps Container -->
-    <div :style="{ width: fileExplorerWidth + 'px' }" class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0">
-      <transition
-        mode="out-in"
-        enter-active-class="transition-opacity duration-200"
-        leave-active-class="transition-opacity duration-200"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-        leave-from-class="opacity-100"
-        leave-to-class="opacity-0"
+    <!-- File Explorer Container -->
+    <div :style="{ width: fileExplorerWidth + 'px' }" class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0 relative">
+      <div class="flex-1 overflow-auto">
+        <FileExplorer />
+      </div>
+
+      <!-- Workflow Overlay -->
+      <div 
+        v-show="isWorkflowOpen"
+        class="absolute inset-0 bg-white rounded-lg shadow flex flex-col overflow-hidden transition-opacity duration-200"
+        :class="[
+          isWorkflowOpen ? 'opacity-100 z-10' : 'opacity-0 -z-10'
+        ]"
       >
-        <div v-if="!isWorkflowOpen" key="file-explorer" class="flex-1 overflow-auto">
-          <FileExplorer />
-        </div>
-        <div v-else key="workspace-workflow-selector" class="flex-1 overflow-auto">
+        <div class="flex-1 overflow-auto p-4">
           <WorkspaceWorkflowSelector />
         </div>
-      </transition>
+      </div>
     </div>
 
     <div class="drag-handle" @mousedown="initDragFileToContent"></div>
 
-    <!-- Main Content Area -->
+    <!-- Rest of the template remains unchanged -->
     <div v-if="isFullscreenMode" 
       class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0 flex-1 min-w-[200px] max-w-[calc(100%-200px)]"
     >
@@ -32,7 +32,6 @@
     </div>
 
     <template v-else>
-      <!-- Workflow Step View Area -->
       <div class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0 flex-1 min-w-[200px]">
         <div class="flex-1 overflow-auto">
           <WorkflowStepView />
@@ -41,7 +40,6 @@
 
       <div class="drag-handle" @mousedown="initDragRightPanel"></div>
 
-      <!-- Right Side Panel Area with Toggle -->
       <div 
         v-show="isRightPanelVisible"
         :style="{ width: rightPanelWidth + 'px' }" 
@@ -49,7 +47,6 @@
       >
         <RightSideTabs />
         
-        <!-- Right Panel Toggle Button -->
         <button 
           @click="toggleRightPanel"
           class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 p-1 bg-white rounded-full text-gray-600 hover:text-gray-900 shadow-md hover:shadow-lg transition-all duration-200"

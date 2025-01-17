@@ -1,12 +1,23 @@
 class AudioChunkProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
-    const { targetSampleRate, chunkDuration } = options.processorOptions;
+    const { targetSampleRate, chunkDuration, overlapDuration } = options.processorOptions;
     this.targetSampleRate = targetSampleRate || 16000;
     this.chunkDuration = chunkDuration || 7;
+    this.overlapDuration = overlapDuration || 0.2;  // Use configured overlapDuration
+
     this.chunkSize = this.targetSampleRate * this.chunkDuration;
+
+    this.overlapSize = Math.floor(this.targetSampleRate * this.overlapDuration);
+
+    // Main buffer for the current chunk
     this.buffer = new Float32Array(this.chunkSize);
     this.sampleCount = 0;
+
+    // Overlap buffer from previous chunk
+    this.overlapBuffer = new Float32Array(this.overlapSize);
+    this.overlapCount = 0; // how many samples are currently in overlapBuffer
+
     this.isInputStopped = false;
 
     this.port.onmessage = (event) => {
@@ -76,22 +87,35 @@ class AudioChunkProcessor extends AudioWorkletProcessor {
     return header;
   }
 
+  convertFloat32ToWav(float32Samples) {
+    // Convert Float32 to Int16
+    const pcmBuffer = new Int16Array(float32Samples.length);
+    for (let i = 0; i < float32Samples.length; i++) {
+      const s = Math.max(-1, Math.min(1, float32Samples[i]));
+      pcmBuffer[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+
+    // Create WAV header
+    const wavHeader = this.createWavHeader(pcmBuffer.length);
+    const wavData = new Uint8Array(wavHeader.byteLength + pcmBuffer.buffer.byteLength);
+    wavData.set(new Uint8Array(wavHeader), 0);
+    wavData.set(new Uint8Array(pcmBuffer.buffer), wavHeader.byteLength);
+
+    return wavData;
+  }
+
   tryFlushAndFinalize() {
+    // If we have leftover samples in the main buffer, combine them with the overlap
     if (this.sampleCount > 0) {
-      // Convert Float32Array to 16-bit PCM
-      const pcmBuffer = new Int16Array(this.sampleCount);
-      for (let i = 0; i < this.sampleCount; i++) {
-        const s = Math.max(-1, Math.min(1, this.buffer[i]));
-        pcmBuffer[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-      }
+      const totalSamples = this.overlapCount + this.sampleCount;
+      const combinedBuffer = new Float32Array(totalSamples);
 
-      // Create WAV header
-      const wavHeader = this.createWavHeader(this.sampleCount);
+      // Copy overlap portion
+      combinedBuffer.set(this.overlapBuffer.subarray(0, this.overlapCount), 0);
+      // Copy leftover from current buffer
+      combinedBuffer.set(this.buffer.subarray(0, this.sampleCount), this.overlapCount);
 
-      // Create WAV data
-      const wavData = new Uint8Array(wavHeader.byteLength + pcmBuffer.buffer.byteLength);
-      wavData.set(new Uint8Array(wavHeader), 0);
-      wavData.set(new Uint8Array(pcmBuffer.buffer), wavHeader.byteLength);
+      const wavData = this.convertFloat32ToWav(combinedBuffer);
 
       // Send final chunk
       this.port.postMessage({
@@ -101,7 +125,6 @@ class AudioChunkProcessor extends AudioWorkletProcessor {
         isFinal: true
       }, [wavData.buffer]);
 
-      // Reset buffer
       this.buffer = new Float32Array(this.chunkSize);
       this.sampleCount = 0;
     }
@@ -135,18 +158,14 @@ class AudioChunkProcessor extends AudioWorkletProcessor {
         }
       }
 
-      // Process full buffer
       if (this.sampleCount >= this.chunkSize) {
-        const pcmBuffer = new Int16Array(this.buffer.length);
-        for (let i = 0; i < this.buffer.length; i++) {
-          const s = Math.max(-1, Math.min(1, this.buffer[i]));
-          pcmBuffer[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-        }
+        const totalSamples = this.overlapCount + this.chunkSize;
+        const combinedBuffer = new Float32Array(totalSamples);
+        
+        combinedBuffer.set(this.overlapBuffer.subarray(0, this.overlapCount), 0);
+        combinedBuffer.set(this.buffer, this.overlapCount);
 
-        const wavHeader = this.createWavHeader(pcmBuffer.length);
-        const wavData = new Uint8Array(wavHeader.byteLength + pcmBuffer.buffer.byteLength);
-        wavData.set(new Uint8Array(wavHeader), 0);
-        wavData.set(new Uint8Array(pcmBuffer.buffer), wavHeader.byteLength);
+        const wavData = this.convertFloat32ToWav(combinedBuffer);
 
         this.port.postMessage({
           type: 'chunk',
@@ -154,6 +173,14 @@ class AudioChunkProcessor extends AudioWorkletProcessor {
           targetSampleRate: this.targetSampleRate,
           isFinal: false
         }, [wavData.buffer]);
+
+        if (this.overlapSize > 0) {
+          const startOverlap = this.chunkSize - this.overlapSize;
+          for (let j = 0; j < this.overlapSize; j++) {
+            this.overlapBuffer[j] = this.buffer[startOverlap + j];
+          }
+          this.overlapCount = this.overlapSize;
+        }
 
         this.buffer = new Float32Array(this.chunkSize);
         this.sampleCount = 0;

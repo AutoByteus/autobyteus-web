@@ -98,6 +98,8 @@ export const useAudioStore = defineStore('audio', {
 
         const config = useRuntimeConfig();
         const targetSampleRate = config.public.audio.targetSampleRate;
+        const chunkDuration = config.public.audio.chunkDuration;
+        const overlapDuration = config.public.audio.overlapDuration;  // Retrieve overlapDuration from config
 
         this.audioContext = new AudioContext({
           sampleRate: targetSampleRate,
@@ -106,16 +108,20 @@ export const useAudioStore = defineStore('audio', {
 
         await this.audioContext.audioWorklet.addModule(new URL('@/workers/audio-processor.worklet.js', import.meta.url));
 
+        const processorOptions = {
+          targetSampleRate: targetSampleRate,
+          chunkDuration: chunkDuration,
+          overlapDuration: overlapDuration  // Pass overlapDuration here
+        };
+
         const source = this.audioContext.createMediaStreamSource(this.stream);
 
-        const chunkDuration = config.public.audio.chunkDuration;
-
         this.audioWorklet = new AudioWorkletNode(this.audioContext, 'audio-chunk-processor', {
-          processorOptions: {
-            targetSampleRate: targetSampleRate,
-            chunkDuration: chunkDuration
-          }
+          processorOptions
         });
+
+        const chunkDurationSec = config.public.audio.chunkDuration;
+        const transcriptionStore2 = useTranscriptionStore();
 
         this.audioWorklet.port.onmessage = async (event) => {
           const { type, wavData, isFinal } = event.data;
@@ -129,7 +135,7 @@ export const useAudioStore = defineStore('audio', {
             };
 
             this.audioChunks.push(chunk);
-            await transcriptionStore.sendAudioChunk(workspaceId, stepId, chunk.wavData.buffer);
+            await transcriptionStore2.sendAudioChunk(workspaceId, stepId, chunk.wavData.buffer);
           } else if (type === 'flush_done') {
             if (this.flushPromiseResolve) {
               this.flushPromiseResolve();
