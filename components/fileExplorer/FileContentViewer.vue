@@ -72,15 +72,9 @@
       </div>
     </div>
 
-    <!-- Show minimize controls when in fullscreen mode -->
-    <div v-if="isFullscreenMode" class="border-t p-2 flex justify-end items-center gap-2">
-      <button
-        @click="handleMinimize"
-        class="px-3 py-1 bg-gray-300 rounded hover:bg-gray-400 text-sm text-gray-800"
-      >
-        Minimize Viewer
-      </button>
-      <small class="text-gray-400">or press <kbd>Esc</kbd></small>
+    <!-- Show minimize hint when in fullscreen mode -->
+    <div v-if="isFullscreenMode" class="border-t p-2 flex justify-end items-center">
+      <small class="text-gray-700 font-medium">Press <kbd class="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded">Esc</kbd> to exit fullscreen</small>
     </div>
   </div>
 </template>

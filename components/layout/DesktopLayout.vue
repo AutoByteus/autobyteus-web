@@ -22,7 +22,7 @@
 
     <div class="drag-handle" @mousedown="initDragFileToContent"></div>
 
-    <!-- Rest of the template remains unchanged -->
+    <!-- Content Area -->
     <div v-if="isFullscreenMode" 
       class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0 flex-1 min-w-[200px] max-w-[calc(100%-200px)]"
     >
@@ -40,6 +40,7 @@
 
       <div class="drag-handle" @mousedown="initDragRightPanel"></div>
 
+      <!-- Right Panel -->
       <div 
         v-show="isRightPanelVisible"
         :style="{ width: rightPanelWidth + 'px' }" 
@@ -47,6 +48,7 @@
       >
         <RightSideTabs />
         
+        <!-- Right Panel Toggle Button (Inside) -->
         <button 
           @click="toggleRightPanel"
           class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 p-1 bg-white rounded-full text-gray-600 hover:text-gray-900 shadow-md hover:shadow-lg transition-all duration-200"
@@ -68,6 +70,37 @@
           </svg>
         </button>
       </div>
+
+      <!-- Collapsed Right Panel Button -->
+      <button 
+        v-if="!isRightPanelVisible"
+        @click="toggleRightPanel"
+        class="absolute right-0 top-1/2 -translate-y-1/2 p-1 bg-white rounded-full text-gray-600 hover:text-gray-900 shadow-md hover:shadow-lg transition-all duration-200"
+        title="Show Side Panel"
+      >
+        <svg 
+          class="w-3 h-3 transition-transform duration-200 rotate-180" 
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path 
+            stroke-linecap="round" 
+            stroke-linejoin="round" 
+            stroke-width="2" 
+            d="M9 5l7 7-7 7"
+          />
+        </svg>
+      </button>
+
+      <!-- Content Preview -->
+      <div v-if="isPreviewMode" 
+        class="fixed bottom-4 right-4 w-80 h-40 bg-white rounded-lg shadow-lg border border-gray-200 cursor-pointer 
+          transition-all duration-300 hover:shadow-xl z-20"
+        @click="handleExpandContent"
+      >
+        <ScaledPreviewContainer :snapshot-url="snapshotService.getSnapshot()" />
+      </div>
     </template>
   </div>
 </template>
@@ -80,19 +113,25 @@ import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import { useWorkflowUIStore } from '~/stores/workflowUI'
 import { useRightPanel } from '~/composables/useRightPanel'
 import { usePanelResize } from '~/composables/usePanelResize'
+import { snapshotService } from '~/services/snapshotService'
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
 import ContentViewer from '~/components/fileExplorer/FileContentViewer.vue'
 import WorkflowStepView from '~/components/workflow/WorkflowStepView.vue'
 import RightSideTabs from './RightSideTabs.vue'
 import WorkspaceWorkflowSelector from '~/components/workflow/LeftSidebarOverlay.vue'
+import ScaledPreviewContainer from '~/components/common/ScaledPreviewContainer.vue'
 
 const workflowUIStore = useWorkflowUIStore()
 const fileContentDisplayModeStore = useFileContentDisplayModeStore()
 
-const { isFullscreenMode } = storeToRefs(fileContentDisplayModeStore)
+const { isFullscreenMode, isPreviewMode } = storeToRefs(fileContentDisplayModeStore)
 const { isWorkflowOpen } = storeToRefs(workflowUIStore)
 const { fileExplorerWidth, initDragFileToContent } = usePanelResize()
 const { isRightPanelVisible, rightPanelWidth, toggleRightPanel, initDragRightPanel } = useRightPanel()
+
+const handleExpandContent = () => {
+  fileContentDisplayModeStore.showFullscreen()
+}
 </script>
 
 <style scoped>
