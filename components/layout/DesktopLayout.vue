@@ -9,13 +9,13 @@
       <!-- Workflow Overlay -->
       <div 
         v-show="isWorkflowOpen"
-        class="absolute inset-0 bg-white rounded-lg shadow flex flex-col overflow-hidden transition-opacity duration-200"
+        class="absolute left-0 top-0 h-full bg-white rounded-lg border border-gray-200 shadow-xl flex flex-col overflow-hidden transition-all duration-200 min-w-[300px] max-w-[500px]"
         :class="[
           isWorkflowOpen ? 'opacity-100 z-10' : 'opacity-0 -z-10'
         ]"
       >
         <div class="flex-1 overflow-auto p-4">
-          <WorkspaceWorkflowSelector />
+          <LeftSidebarOverlay />
         </div>
       </div>
     </div>
@@ -118,7 +118,7 @@ import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
 import ContentViewer from '~/components/fileExplorer/FileContentViewer.vue'
 import WorkflowStepView from '~/components/workflow/WorkflowStepView.vue'
 import RightSideTabs from './RightSideTabs.vue'
-import WorkspaceWorkflowSelector from '~/components/workflow/LeftSidebarOverlay.vue'
+import LeftSidebarOverlay from '~/components/workflow/LeftSidebarOverlay.vue'
 import ScaledPreviewContainer from '~/components/common/ScaledPreviewContainer.vue'
 
 const workflowUIStore = useWorkflowUIStore()
