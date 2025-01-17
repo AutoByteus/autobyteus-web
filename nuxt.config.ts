@@ -1,7 +1,6 @@
 import { defineNuxtConfig } from 'nuxt/config'
 import { applyElectronConfig } from './nuxt.electron.config'
 
-// Define base configuration
 const baseConfig = {
   ssr: false,
   
@@ -10,6 +9,12 @@ const baseConfig = {
     '@pinia/nuxt',
     '@nuxt/test-utils/module'
   ],
+
+  // Add global middleware
+  routeRules: {
+    '/workspace/**': { middleware: ['workspace'] },
+    '/': { middleware: ['workspace'] }
+  },
 
   nitro: {
     preset: 'static',
@@ -53,11 +58,10 @@ const baseConfig = {
       wsBaseUrl: process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8001/graphql',
       googleSpeechApiKey: process.env.GOOGLE_SPEECH_API_KEY || '',
       
-      // Audio recording configuration
       audio: {
         targetSampleRate: 16000,
         chunkDuration: 5,
-        overlapDuration: 0.2,  // New configurable overlap duration (in seconds)
+        overlapDuration: 0.2,
         channels: 1,
         transcriptionWsEndpoint: process.env.NUXT_PUBLIC_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8001/ws/transcribe',
         constraints: {
@@ -97,5 +101,4 @@ const baseConfig = {
   }
 }
 
-// Export config with electron settings applied if needed
 export default defineNuxtConfig(applyElectronConfig(baseConfig))
