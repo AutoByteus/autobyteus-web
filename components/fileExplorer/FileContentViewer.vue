@@ -80,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onMounted, nextTick, ref, onBeforeMount, onBeforeUnmount } from 'vue'
+import { computed, watch, onMounted, ref, onBeforeMount, onBeforeUnmount } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
@@ -101,7 +101,7 @@ const fileContent = ref<string | null>(null)
 const saveError = ref<string | null>(null)
 const isSaving = ref(false)
 const showSaveSuccess = ref(false)
-const saveSuccessTimeout = ref<NodeJS.Timeout | null>(null)
+let saveSuccessTimeout: ReturnType<typeof setTimeout> | null = null
 
 const getFileName = (filePath: string) => filePath.split('/').pop() || filePath
 const setActiveFile = (filePath: string) => fileExplorerStore.setActiveFile(filePath)
@@ -129,8 +129,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown)
-  if (saveSuccessTimeout.value) {
-    clearTimeout(saveSuccessTimeout.value)
+  if (saveSuccessTimeout) {
+    clearTimeout(saveSuccessTimeout)
   }
 })
 
@@ -145,7 +145,7 @@ const handleEditorMount = (editor: any) => {
 const handleSave = async () => {
   console.log('Save handler triggered in FileContentViewer')
   
-  if (!activeFile.value || !fileContent.value) {
+  if (!activeFile.value || fileContent.value === null) {
     console.error('Cannot save: No active file or content')
     return
   }
@@ -159,10 +159,10 @@ const handleSave = async () => {
     
     console.log('Save successful')
     showSaveSuccess.value = true
-    if (saveSuccessTimeout.value) {
-      clearTimeout(saveSuccessTimeout.value)
+    if (saveSuccessTimeout) {
+      clearTimeout(saveSuccessTimeout)
     }
-    saveSuccessTimeout.value = setTimeout(() => {
+    saveSuccessTimeout = setTimeout(() => {
       showSaveSuccess.value = false
     }, 2000)
   } catch (error) {
@@ -177,14 +177,14 @@ const handleSave = async () => {
 }
 
 async function saveChanges() {
-  if (!activeFile.value || !fileContent.value) return
+  if (!activeFile.value || fileContent.value === null) return
   
   console.log('Saving changes for file:', activeFile.value)
   
-  await fileExplorerStore.applyBasicFileChange(
+  await fileExplorerStore.writeBasicFileContent(
     fileExplorerStore.workspaceId, 
     activeFile.value, 
-    fileContent.value,
+    fileContent.value
   )
 }
 

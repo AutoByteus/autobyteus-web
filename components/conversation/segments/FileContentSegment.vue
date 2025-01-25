@@ -56,8 +56,7 @@ import { highlightFileSegment } from '~/utils/aiResponseParser/segmentHighlighte
 import { usePrismHighlighter } from '~/composables/usePrismHighlighter';
 import type { FileSegment } from '~/utils/aiResponseParser/types';
 
-const props = defineProps<{
-  fileSegment: FileSegment;
+const props = defineProps<{  fileSegment: FileSegment;
   conversationId: string;
   messageIndex: number;
 }>();
@@ -100,11 +99,19 @@ onMounted(() => {
 });
 
 const isInProgress = computed(() => {
-  return fileExplorerStore.isApplyChangeInProgress(props.conversationId, props.messageIndex, props.fileSegment.path);
+  return fileExplorerStore.isApplyChangeInProgress(
+    props.conversationId,
+    props.messageIndex,
+    props.fileSegment.path
+  );
 });
 
 const isApplied = computed(() => {
-  return fileExplorerStore.isChangeApplied(props.conversationId, props.messageIndex, props.fileSegment.path);
+  return fileExplorerStore.isChangeApplied(
+    props.conversationId,
+    props.messageIndex,
+    props.fileSegment.path
+  );
 });
 
 const isApplyDisabled = computed(() => {
@@ -112,12 +119,16 @@ const isApplyDisabled = computed(() => {
 });
 
 const error = computed(() => {
-  return fileExplorerStore.getApplyChangeError(props.conversationId, props.messageIndex, props.fileSegment.path);
+  return fileExplorerStore.getApplyChangeError(
+    props.conversationId,
+    props.messageIndex,
+    props.fileSegment.path
+  );
 });
 
 const handleApply = async () => {
   try {
-    await fileExplorerStore.applyFileChange(
+    await fileExplorerStore.writeFileContent(
       workspaceStore.currentSelectedWorkspaceId,
       props.fileSegment.path,
       props.fileSegment.originalContent,

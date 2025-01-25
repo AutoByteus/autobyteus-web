@@ -1,12 +1,20 @@
 import { defineStore } from 'pinia'
 import { useQuery, useMutation } from '@vue/apollo-composable'
 import { GetFileContent, SearchFiles } from '~/graphql/queries/file_explorer_queries'
-import { ApplyFileChange } from '~/graphql/mutations/file_explorer_mutations'
+import { 
+  WriteFileContent, 
+  DeleteFileOrFolder, 
+  MoveFileOrFolder 
+} from '~/graphql/mutations/file_explorer_mutations'
 import type { 
   GetFileContentQuery, 
   GetFileContentQueryVariables, 
-  ApplyFileChangeMutation, 
-  ApplyFileChangeMutationVariables,
+  WriteFileContentMutation, 
+  WriteFileContentMutationVariables,
+  DeleteFileOrFolderMutation,
+  DeleteFileOrFolderMutationVariables,
+  MoveFileOrFolderMutation,
+  MoveFileOrFolderMutationVariables,
   SearchFilesQuery,
   SearchFilesQueryVariables,
 } from '~/generated/graphql'
@@ -31,6 +39,10 @@ interface FileExplorerState {
   workspaceId: string;
   basicFileChangeError: Record<string, string | null>;
   basicFileChangeLoading: Record<string, boolean>;
+  deleteError: Record<string, string | null>;
+  deleteLoading: Record<string, boolean>;
+  moveError: Record<string, string | null>;
+  moveLoading: Record<string, boolean>;
 }
 
 export const useFileExplorerStore = defineStore('fileExplorer', {
@@ -50,6 +62,10 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     workspaceId: '',
     basicFileChangeError: {},
     basicFileChangeLoading: {},
+    deleteError: {},
+    deleteLoading: {},
+    moveError: {},
+    moveLoading: {},
   }),
 
   actions: {
@@ -127,19 +143,22 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
 
-    async applyBasicFileChange(workspaceId: string, filePath: string, content: string) {
+    /**
+     * Used when saving file content from the FileContentViewer (monaco editor).
+     */
+    async writeBasicFileContent(workspaceId: string, filePath: string, content: string) {
       this.basicFileChangeError[filePath] = null
       this.basicFileChangeLoading[filePath] = true
 
-      const { mutate } = useMutation<ApplyFileChangeMutation, ApplyFileChangeMutationVariables>(ApplyFileChange)
+      const { mutate } = useMutation<WriteFileContentMutation, WriteFileContentMutationVariables>(WriteFileContent)
 
       try {
         const result = await mutate({ workspaceId, filePath, content })
         
-        if (result?.data?.applyFileChange) {
+        if (result?.data?.writeFileContent) {
           this.fileContents[filePath] = content
-          console.log('File change applied successfully')
-          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.applyFileChange)
+          console.log('File content written successfully (basic).')
+          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.writeFileContent)
           const workspaceStore = useWorkspaceStore()
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent)
         }
@@ -147,14 +166,17 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         this.basicFileChangeLoading[filePath] = false
         return result
       } catch (err) {
-        console.error('Failed to apply file change:', err)
+        console.error('Failed to write file content (basic):', err)
         this.basicFileChangeError[filePath] = err instanceof Error ? err.message : 'An unknown error occurred'
         this.basicFileChangeLoading[filePath] = false
         throw err
       }
     },
 
-    async applyFileChange(
+    /**
+     * Used when applying changes from conversation segments (FileContentSegment.vue).
+     */
+    async writeFileContent(
       workspaceId: string,
       filePath: string,
       content: string,
@@ -177,15 +199,15 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       this.applyChangeError[conversationId][messageIndex][filePath] = null
       this.applyChangeLoading[conversationId][messageIndex][filePath] = true
 
-      const { mutate } = useMutation<ApplyFileChangeMutation, ApplyFileChangeMutationVariables>(ApplyFileChange)
+      const { mutate } = useMutation<WriteFileContentMutation, WriteFileContentMutationVariables>(WriteFileContent)
 
       try {
         const result = await mutate({ workspaceId, filePath, content })
         
-        if (result?.data?.applyFileChange) {
+        if (result?.data?.writeFileContent) {
           this.fileContents[filePath] = content
-          console.log('File change applied successfully')
-          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.applyFileChange)
+          console.log('File content written successfully.')
+          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.writeFileContent)
           const workspaceStore = useWorkspaceStore()
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent)
           
@@ -201,9 +223,80 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         this.applyChangeLoading[conversationId][messageIndex][filePath] = false
         return result
       } catch (err) {
-        console.error('Failed to apply file change:', err)
+        console.error('Failed to write file content:', err)
         this.applyChangeError[conversationId][messageIndex][filePath] = err instanceof Error ? err.message : 'An unknown error occurred'
         this.applyChangeLoading[conversationId][messageIndex][filePath] = false
+        throw err
+      }
+    },
+
+    async deleteFileOrFolder(filePath: string) {
+      this.deleteError[filePath] = null
+      this.deleteLoading[filePath] = true
+
+      const workspaceStore = useWorkspaceStore()
+      const workspaceId = workspaceStore.currentSelectedWorkspaceId
+
+      try {
+        const { mutate } = useMutation<DeleteFileOrFolderMutation, DeleteFileOrFolderMutationVariables>(DeleteFileOrFolder)
+        const result = await mutate({ workspaceId, path: filePath })
+
+        if (result?.data?.deleteFileOrFolder) {
+          if (this.openFiles.includes(filePath)) {
+            this.closeFile(filePath)
+          }
+          
+          this.openFiles = this.openFiles.filter(file => !file.startsWith(filePath + '/'))
+          
+          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.deleteFileOrFolder)
+          workspaceStore.handleFileSystemChange(workspaceId, changeEvent)
+        }
+
+        this.deleteLoading[filePath] = false
+        return result
+      } catch (err) {
+        console.error('Failed to delete file/folder:', err)
+        this.deleteError[filePath] = err instanceof Error ? err.message : 'An unknown error occurred'
+        this.deleteLoading[filePath] = false
+        throw err
+      }
+    },
+
+    async moveFileOrFolder(sourcePath: string, destinationPath: string) {
+      this.moveError[sourcePath] = null
+      this.moveLoading[sourcePath] = true
+
+      const workspaceStore = useWorkspaceStore()
+      const workspaceId = workspaceStore.currentSelectedWorkspaceId
+
+      try {
+        const { mutate } = useMutation<MoveFileOrFolderMutation, MoveFileOrFolderMutationVariables>(MoveFileOrFolder)
+        const result = await mutate({ workspaceId, sourcePath, destinationPath })
+
+        if (result?.data?.moveFileOrFolder) {
+          if (this.openFiles.includes(sourcePath)) {
+            const newPath = destinationPath
+            const index = this.openFiles.indexOf(sourcePath)
+            this.openFiles[index] = newPath
+            if (this.activeFile === sourcePath) {
+              this.activeFile = newPath
+            }
+            if (this.fileContents[sourcePath] !== undefined) {
+              this.fileContents[newPath] = this.fileContents[sourcePath]
+              delete this.fileContents[sourcePath]
+            }
+          }
+
+          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.moveFileOrFolder)
+          workspaceStore.handleFileSystemChange(workspaceId, changeEvent)
+        }
+
+        this.moveLoading[sourcePath] = false
+        return result
+      } catch (err) {
+        console.error('Failed to move file/folder:', err)
+        this.moveError[sourcePath] = err instanceof Error ? err.message : 'An unknown error occurred'
+        this.moveLoading[sourcePath] = false
         throw err
       }
     },
@@ -305,6 +398,10 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       this.workspaceId = ''
       this.basicFileChangeError = {}
       this.basicFileChangeLoading = {}
+      this.deleteError = {}
+      this.deleteLoading = {}
+      this.moveError = {}
+      this.moveLoading = {}
     }
   },
 
@@ -335,6 +432,17 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     },
     getBasicChangeErrorGetter: (state) => (filePath: string): string | null => {
       return state.basicFileChangeError[filePath] || null
-    }
+    },
+    isDeleteLoading: (state) => (filePath: string): boolean => 
+      !!state.deleteLoading[filePath],
+    
+    getDeleteError: (state) => (filePath: string): string | null => 
+      state.deleteError[filePath] || null,
+    
+    isMoveLoading: (state) => (filePath: string): boolean => 
+      !!state.moveLoading[filePath],
+    
+    getMoveError: (state) => (filePath: string): string | null => 
+      state.moveError[filePath] || null
   }
 })

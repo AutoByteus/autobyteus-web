@@ -1,5 +1,3 @@
-import { reactive } from 'vue'
-
 export class TreeNode {
   name: string
   path: string

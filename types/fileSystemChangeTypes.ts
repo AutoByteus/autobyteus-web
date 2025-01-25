@@ -1,12 +1,12 @@
 import { TreeNode } from '~/utils/fileExplorer/TreeNode'
 
 export interface FileSystemChangeEvent {
-  changes: Array<AddChange | DeleteChange | RenameChange>
+  changes: Array<AddChange | DeleteChange | RenameChange | MoveChange>
 }
 
 export interface AddChange {
   type: 'add'
-  node: TreeNode // Replace 'any' with 'TreeNode' for type safety
+  node: TreeNode
   parent_id: string
 }
 
@@ -18,6 +18,13 @@ export interface DeleteChange {
 
 export interface RenameChange {
   type: 'rename'
-  node: TreeNode // Replace 'any' with 'TreeNode' for type safety
+  node: TreeNode
   previous_id?: string
+}
+
+export interface MoveChange {
+  type: 'move'
+  node: TreeNode
+  old_parent_id: string
+  new_parent_id: string
 }

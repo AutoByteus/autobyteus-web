@@ -1,5 +1,5 @@
 import { TreeNode } from '~/utils/fileExplorer/TreeNode'
-import type { FileSystemChangeEvent, AddChange, DeleteChange, RenameChange } from '~/types/fileSystemChangeTypes'
+import type { FileSystemChangeEvent, AddChange, DeleteChange, RenameChange, MoveChange } from '~/types/fileSystemChangeTypes'
 
 export function getFilePathsFromFolder(node: TreeNode): string[] {
   const filePaths: string[] = [];
@@ -67,6 +67,9 @@ export function handleFileSystemChange(
         case 'rename':
           handleRenameChange(nodeIdToNode, change);
           break;
+        case 'move':
+          handleMoveChange(nodeIdToNode, change);
+          break;
         default:
           console.warn(`Unhandled change type: ${(change as { type: string }).type}`);
       }
@@ -106,6 +109,26 @@ function handleRenameChange(nodeIdToNode: Record<string, TreeNode>, change: Rena
     delete nodeIdToNode[change.previous_id];
     nodeIdToNode[change.node.id] = node;
   }
+}
+
+function handleMoveChange(nodeIdToNode: Record<string, TreeNode>, change: MoveChange): void {
+  const node = nodeIdToNode[change.node.id];
+  const oldParent = nodeIdToNode[change.old_parent_id];
+  const newParent = nodeIdToNode[change.new_parent_id];
+  
+  if (!node || !oldParent || !newParent) {
+    throw new Error('One or more nodes not found during move operation');
+  }
+
+  // Remove from old parent
+  oldParent.children = oldParent.children.filter(child => child.id !== node.id);
+  
+  // Update node properties
+  node.name = change.node.name;
+  node.path = change.node.path;
+  
+  // Add to new parent
+  newParent.addChild(node);
 }
 
 export function findFileByPath(nodes: TreeNode[], path: string): TreeNode | null {

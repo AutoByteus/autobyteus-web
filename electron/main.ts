@@ -33,7 +33,7 @@ function createWindow() {
         console.error('Failed to load URL:', startURL, err)
       })
 
-    mainWindow.webContents.openDevTools()
+    //mainWindow.webContents.openDevTools()
 
     mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
       console.error('Page failed to load:', {
