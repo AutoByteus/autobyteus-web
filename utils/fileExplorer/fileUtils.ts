@@ -105,10 +105,6 @@ function handleRenameChange(nodeIdToNode: Record<string, TreeNode>, change: Rena
   }
   node.name = change.node.name;
   node.path = change.node.path;
-  if (change.previous_id && change.previous_id !== change.node.id) {
-    delete nodeIdToNode[change.previous_id];
-    nodeIdToNode[change.node.id] = node;
-  }
 }
 
 function handleMoveChange(nodeIdToNode: Record<string, TreeNode>, change: MoveChange): void {

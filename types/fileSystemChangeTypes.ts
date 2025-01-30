@@ -19,7 +19,7 @@ export interface DeleteChange {
 export interface RenameChange {
   type: 'rename'
   node: TreeNode
-  previous_id?: string
+  parent_id: string
 }
 
 export interface MoveChange {

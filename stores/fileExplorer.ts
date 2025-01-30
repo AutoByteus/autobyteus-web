@@ -4,7 +4,8 @@ import { GetFileContent, SearchFiles } from '~/graphql/queries/file_explorer_que
 import { 
   WriteFileContent, 
   DeleteFileOrFolder, 
-  MoveFileOrFolder 
+  MoveFileOrFolder,
+  RenameFileOrFolder
 } from '~/graphql/mutations/file_explorer_mutations'
 import type { 
   GetFileContentQuery, 
@@ -17,6 +18,8 @@ import type {
   MoveFileOrFolderMutationVariables,
   SearchFilesQuery,
   SearchFilesQueryVariables,
+  RenameFileOrFolderMutation,
+  RenameFileOrFolderMutationVariables
 } from '~/generated/graphql'
 import { useWorkspaceStore } from '~/stores/workspace'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
@@ -43,6 +46,8 @@ interface FileExplorerState {
   deleteLoading: Record<string, boolean>;
   moveError: Record<string, string | null>;
   moveLoading: Record<string, boolean>;
+  renameError: Record<string, string | null>;
+  renameLoading: Record<string, boolean>;
 }
 
 export const useFileExplorerStore = defineStore('fileExplorer', {
@@ -66,6 +71,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     deleteLoading: {},
     moveError: {},
     moveLoading: {},
+    renameError: {},
+    renameLoading: {},
   }),
 
   actions: {
@@ -105,6 +112,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     },
 
     async fetchFileContent(filePath: string) {
+      // Already loaded once? skip re-query if we have content
+      // but if content is undefined, let's fetch.
       if (this.fileContents[filePath] !== undefined) return
 
       this.contentLoading[filePath] = true
@@ -143,9 +152,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
 
-    /**
-     * Used when saving file content from the FileContentViewer (monaco editor).
-     */
     async writeBasicFileContent(workspaceId: string, filePath: string, content: string) {
       this.basicFileChangeError[filePath] = null
       this.basicFileChangeLoading[filePath] = true
@@ -173,9 +179,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
 
-    /**
-     * Used when applying changes from conversation segments (FileContentSegment.vue).
-     */
     async writeFileContent(
       workspaceId: string,
       filePath: string,
@@ -242,10 +245,11 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         const result = await mutate({ workspaceId, path: filePath })
 
         if (result?.data?.deleteFileOrFolder) {
+          // If this file was open, close it
           if (this.openFiles.includes(filePath)) {
             this.closeFile(filePath)
           }
-          
+          // Also close any subfiles if user deletes a folder
           this.openFiles = this.openFiles.filter(file => !file.startsWith(filePath + '/'))
           
           const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.deleteFileOrFolder)
@@ -274,6 +278,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         const result = await mutate({ workspaceId, sourcePath, destinationPath })
 
         if (result?.data?.moveFileOrFolder) {
+          // If this file/folder was open, adjust the openFiles array
           if (this.openFiles.includes(sourcePath)) {
             const newPath = destinationPath
             const index = this.openFiles.indexOf(sourcePath)
@@ -297,6 +302,52 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         console.error('Failed to move file/folder:', err)
         this.moveError[sourcePath] = err instanceof Error ? err.message : 'An unknown error occurred'
         this.moveLoading[sourcePath] = false
+        throw err
+      }
+    },
+
+    async renameFileOrFolder(targetPath: string, newName: string) {
+      this.renameError[targetPath] = null
+      this.renameLoading[targetPath] = true
+
+      const workspaceStore = useWorkspaceStore()
+      const workspaceId = workspaceStore.currentSelectedWorkspaceId
+
+      const { mutate } = useMutation<RenameFileOrFolderMutation, RenameFileOrFolderMutationVariables>(RenameFileOrFolder)
+
+      try {
+        const result = await mutate({ workspaceId, targetPath, newName })
+
+        if (result?.data?.renameFileOrFolder) {
+          // If this file is open, rename it in openFiles
+          if (this.openFiles.includes(targetPath)) {
+            // The new path will likely be parent path + newName
+            const segments = targetPath.split('/')
+            segments[segments.length - 1] = newName
+            const newPath = segments.join('/')
+
+            const index = this.openFiles.indexOf(targetPath)
+            this.openFiles[index] = newPath
+            if (this.activeFile === targetPath) {
+              this.activeFile = newPath
+            }
+            // Also keep content reference if it's loaded
+            if (this.fileContents[targetPath] !== undefined) {
+              this.fileContents[newPath] = this.fileContents[targetPath]
+              delete this.fileContents[targetPath]
+            }
+          }
+
+          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.renameFileOrFolder)
+          workspaceStore.handleFileSystemChange(workspaceId, changeEvent)
+        }
+
+        this.renameLoading[targetPath] = false
+        return result
+      } catch (err) {
+        console.error('Failed to rename file/folder:', err)
+        this.renameError[targetPath] = err instanceof Error ? err.message : 'An unknown error occurred'
+        this.renameLoading[targetPath] = false
         throw err
       }
     },
@@ -402,6 +453,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       this.deleteLoading = {}
       this.moveError = {}
       this.moveLoading = {}
+      this.renameError = {}
+      this.renameLoading = {}
     }
   },
 
@@ -443,6 +496,12 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       !!state.moveLoading[filePath],
     
     getMoveError: (state) => (filePath: string): string | null => 
-      state.moveError[filePath] || null
+      state.moveError[filePath] || null,
+
+    isRenameLoading: (state) => (path: string): boolean =>
+      !!state.renameLoading[path],
+    
+    getRenameError: (state) => (path: string): string | null =>
+      state.renameError[path] || null
   }
 })
