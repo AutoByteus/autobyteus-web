@@ -143,7 +143,6 @@ const isGlobalDragging = ref(false)
 let originalName = ''
 
 onMounted(() => {
-  // Listen globally for any event that indicates we need to close all context menus
   document.addEventListener('closeAllFileContextMenus', onCloseAllContextMenus)
   document.addEventListener('dragover', onGlobalDragOver)
 })
@@ -156,9 +155,6 @@ onBeforeUnmount(() => {
   }
 })
 
-/**
- * Closes this item's context menu if open.
- */
 function onCloseAllContextMenus() {
   if (showContextMenu.value) {
     showContextMenu.value = false
@@ -183,16 +179,22 @@ const isFolderOpen = computed(() => {
 
 const isValidDropTarget = computed(() => {
   const dragData = window.dragData
-  if (!dragData || !dragData.path || props.file.is_file) {
+  if (!dragData || !dragData.path) {
     return false
   }
 
-  if (props.file.path === dragData.path || props.file.path.startsWith(dragData.path + '/')) {
+  // Allow dropping on folders only (not files)
+  if (props.file.is_file) {
     return false
   }
 
-  const dragParentPath = dragData.path.split('/').slice(0, -1).join('/')
-  if (props.file.path === dragParentPath) {
+  // Prevent dropping an item onto itself
+  if (props.file.path === dragData.path) {
+    return false
+  }
+
+  // Prevent dropping a parent folder into its own child
+  if (props.file.path.startsWith(dragData.path + '/')) {
     return false
   }
 
@@ -211,7 +213,6 @@ const handleContextMenu = (event: MouseEvent) => {
   event.preventDefault()
   event.stopPropagation()
   
-  // Dispatch event so that any other open context menus will close
   document.dispatchEvent(new Event('closeAllFileContextMenus'))
 
   showContextMenu.value = true
@@ -303,30 +304,25 @@ const onDragStart = (event: DragEvent) => {
     path: props.file.path
   }))
   
-  // Enhanced drag image creation
   if (dragPreviewRef.value) {
     const preview = dragPreviewRef.value.cloneNode(true) as HTMLElement
     preview.style.display = 'block'
     document.body.appendChild(preview)
     
-    // Position the preview element
     preview.style.position = 'fixed'
     preview.style.top = '0'
     preview.style.left = '0'
     preview.style.zIndex = '-1'
     preview.style.opacity = '1'
     
-    // Get dimensions after the preview is in the DOM
     const rect = preview.getBoundingClientRect()
     
-    // Set the drag image with proper offset
     event.dataTransfer.setDragImage(
       preview,
       -10, 
       rect.height / 2
     )
 
-    // Clean up the preview element
     setTimeout(() => preview.remove(), 0)
   }
 
@@ -422,7 +418,6 @@ const onDrop = async (event: DragEvent) => {
       const parentPath = destinationPath.split('/').slice(0, -1).join('/')
       destinationPath = parentPath + '/' + sourceBasename
     }
-
     await fileExplorerStore.moveFileOrFolder(sourcePath, destinationPath)
   } catch (error) {
     console.error('Failed to move item:', error)
