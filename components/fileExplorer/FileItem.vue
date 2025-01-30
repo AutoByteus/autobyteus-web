@@ -1,3 +1,6 @@
+You're absolutely right! Let me provide the complete code without any placeholders or comments about functions remaining the same:
+
+```vue
 <template>
   <div 
     ref="fileItemRef"
@@ -20,7 +23,6 @@
     @dragover.prevent.stop="onDragOver"
     @drop.prevent.stop="onDrop"
   >
-    <!-- Enhanced drag preview element -->
     <div v-show="false" ref="dragPreviewRef" class="drag-preview">
       <div class="drag-preview-content">
         <div class="drag-preview-icon">
@@ -33,7 +35,6 @@
       </div>
     </div>
 
-    <!-- Drop position indicators -->
     <div 
       v-if="showDropIndicator"
       class="absolute w-full transition-all duration-200"
@@ -56,7 +57,6 @@
       ></div>
     </div>
 
-    <!-- File/Folder header -->
     <div 
       class="file-header flex items-center space-x-2 rounded p-2 transition-colors duration-200"
       :class="{ 
@@ -73,7 +73,6 @@
         <i v-else class="fas fa-file text-gray-500"></i>
       </div>
 
-      <!-- Name display/edit -->
       <template v-if="!isRenaming">
         <span class="text-sm text-gray-700 truncate">{{ file.name }}</span>
       </template>
@@ -89,14 +88,12 @@
       </template>
     </div>
 
-    <!-- Children -->
     <transition name="folder">
       <div v-if="!file.is_file && isFolderOpen" class="children ml-4 mt-2">
         <FileItem v-for="(child, index) in file.children" :key="`${child.path}-${index}`" :file="child"/>
       </div>
     </transition>
 
-    <!-- Context menu -->
     <FileContextMenu
       :visible="showContextMenu"
       :position="contextMenuPosition"
@@ -113,7 +110,6 @@
       @cancel="onDeleteCanceled"
     />
 
-    <!-- Add File/Folder Dialog -->
     <AddFileOrFolderDialog
       :show="showAddDialog"
       :parentPath="file.path"
@@ -148,15 +144,18 @@ const dropPosition = ref<'above' | 'below' | 'inside' | null>(null)
 const showDropIndicator = ref(false)
 const isGlobalDragging = ref(false)
 
-// For "Add File/Folder" we track a small dialog
 const showAddDialog = ref(false)
-const addFileMode = ref(true)  // true => file, false => folder
+const addFileMode = ref(true)
 
 let originalName = ''
 
 onMounted(() => {
   document.addEventListener('closeAllFileContextMenus', onCloseAllContextMenus)
   document.addEventListener('dragover', onGlobalDragOver)
+  console.log("File item:", props.file)
+  if (!props.file.is_file) {
+    console.log(`Child nodes of '${props.file.name}':`, props.file.children)
+  }
 })
 
 onBeforeUnmount(() => {
@@ -164,6 +163,20 @@ onBeforeUnmount(() => {
   document.removeEventListener('dragover', onGlobalDragOver)
   if (showDropIndicator.value) {
     showDropIndicator.value = false
+  }
+})
+
+const isFolderOpen = computed(() => {
+  return !props.file.is_file && fileExplorerStore.isFolderOpen(props.file.path)
+})
+
+watch(isFolderOpen, (newValue) => {
+  if (!props.file.is_file) {
+    if (newValue) {
+      console.log(`Folder '${props.file.name}' is now open. Children:`, props.file.children)
+    } else {
+      console.log(`Folder '${props.file.name}' is now closed.`)
+    }
   }
 })
 
@@ -185,27 +198,20 @@ const onGlobalDragOver = (event: DragEvent) => {
   }
 }
 
-const isFolderOpen = computed(() => {
-  return !props.file.is_file && fileExplorerStore.isFolderOpen(props.file.path)
-})
-
 const isValidDropTarget = computed(() => {
   const dragData = window.dragData
   if (!dragData || !dragData.path) {
     return false
   }
 
-  // Only allow dropping onto folders
   if (props.file.is_file) {
     return false
   }
 
-  // Prevent dropping an item onto itself
   if (props.file.path === dragData.path) {
     return false
   }
 
-  // Prevent dropping a parent folder into its own child
   if (props.file.path.startsWith(dragData.path + '/')) {
     return false
   }
@@ -302,43 +308,35 @@ const onDeleteCanceled = () => {
   showDeleteConfirm.value = false
 }
 
-// New: triggers for the "Add File" or "Add Folder" from context menu
-function promptAddFile() {
+const promptAddFile = () => {
   showContextMenu.value = false
   addFileMode.value = true
   showAddDialog.value = true
 }
 
-function promptAddFolder() {
+const promptAddFolder = () => {
   showContextMenu.value = false
   addFileMode.value = false
   showAddDialog.value = true
 }
 
-// Build the final path for the new file/folder
 function buildAddPath(node: TreeNode, newName: string): string {
-  // If user right-clicked a file, we place the new item in its parent folder.
-  // If user right-clicked a folder, we place the new item inside that folder.
   if (node.is_file) {
     const segments = node.path.split('/')
-    segments.pop() // remove the file name
+    segments.pop()
     const parentPath = segments.join('/')
     if (!parentPath) {
-      // means it's in root
       return newName
     }
     return `${parentPath}/${newName}`
   } else {
-    // It's a folder
     if (!node.path) {
-      // workspace root
       return newName
     }
     return `${node.path}/${newName}`
   }
 }
 
-// Once user input is confirmed
 async function onAddConfirmed(newName: string) {
   showAddDialog.value = false
   try {
@@ -354,42 +352,40 @@ function onAddCanceled() {
 }
 
 const onDragStart = (event: DragEvent) => {
-  if (!event.dataTransfer || event.target !== fileItemRef.value) return
+  event.stopPropagation()
+  if (event.target === fileItemRef.value) {
+    if (event.dataTransfer) {
+      isDragging.value = true
+      dropPosition.value = null
+      showDropIndicator.value = false
+      isGlobalDragging.value = true
+      
+      event.dataTransfer.setData('application/json', JSON.stringify(props.file))
+      event.dataTransfer.effectAllowed = 'copy'
+      
+      if (dragPreviewRef.value) {
+        const preview = dragPreviewRef.value.cloneNode(true) as HTMLElement
+        preview.style.display = 'block'
+        document.body.appendChild(preview)
+        
+        preview.style.position = 'fixed'
+        preview.style.top = '0'
+        preview.style.left = '0'
+        preview.style.zIndex = '-1'
+        preview.style.opacity = '1'
+        
+        const rect = preview.getBoundingClientRect()
+        
+        event.dataTransfer.setDragImage(
+          preview,
+          -10, 
+          rect.height / 2
+        )
 
-  isDragging.value = true
-  dropPosition.value = null
-  showDropIndicator.value = false
-  isGlobalDragging.value = true
-  
-  window.dragData = { path: props.file.path }
-  
-  event.dataTransfer.setData('application/json', JSON.stringify({
-    path: props.file.path
-  }))
-  
-  if (dragPreviewRef.value) {
-    const preview = dragPreviewRef.value.cloneNode(true) as HTMLElement
-    preview.style.display = 'block'
-    document.body.appendChild(preview)
-    
-    preview.style.position = 'fixed'
-    preview.style.top = '0'
-    preview.style.left = '0'
-    preview.style.zIndex = '-1'
-    preview.style.opacity = '1'
-    
-    const rect = preview.getBoundingClientRect()
-    
-    event.dataTransfer.setDragImage(
-      preview,
-      -10, 
-      rect.height / 2
-    )
-
-    setTimeout(() => preview.remove(), 0)
+        setTimeout(() => preview.remove(), 0)
+      }
+    }
   }
-
-  event.dataTransfer.effectAllowed = 'move'
 }
 
 const onDragEnter = (event: DragEvent) => {
@@ -427,7 +423,7 @@ const onDragOver = (event: DragEvent) => {
   }
 
   showDropIndicator.value = true
-  event.dataTransfer.dropEffect = 'move'
+  event.dataTransfer.dropEffect = event.ctrlKey ? 'copy' : 'move'
 }
 
 const onDragLeave = (event: DragEvent) => {
@@ -468,24 +464,27 @@ const onDrop = async (event: DragEvent) => {
     const data = event.dataTransfer?.getData('application/json')
     if (!data) return
     
-    const { path: sourcePath } = JSON.parse(data)
-    let destinationPath = props.file.path
-
-    if (sourcePath === destinationPath) return
-
-    const sourceBasename = sourcePath.split('/').pop() || ''
+    const parsedData = JSON.parse(data)
+    const sourcePath = parsedData.path
     
-    if (finalPosition === 'inside' && !props.file.is_file) {
-      destinationPath = destinationPath + '/' + sourceBasename
-    } else {
-      const parentPath = destinationPath.split('/').slice(0, -1).join('/')
-      destinationPath = parentPath + '/' + sourceBasename
+    if (sourcePath) {
+      let destinationPath = props.file.path
+      const sourceBasename = sourcePath.split('/').pop() || ''
+      
+      if (finalPosition === 'inside' && !props.file.is_file) {
+        destinationPath = destinationPath + '/' + sourceBasename
+      } else {
+        const parentPath = destinationPath.split('/').slice(0, -1).join('/')
+        destinationPath = parentPath + '/' + sourceBasename
+      }
+
+      await fileExplorerStore.moveFileOrFolder(sourcePath, destinationPath)
     }
-    await fileExplorerStore.moveFileOrFolder(sourcePath, destinationPath)
   } catch (error) {
-    console.error('Failed to move item:', error)
+    console.error('Drop operation failed:', error)
   }
 }
+
 </script>
 
 <style scoped>
