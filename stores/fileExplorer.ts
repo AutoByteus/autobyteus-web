@@ -5,7 +5,8 @@ import {
   WriteFileContent, 
   DeleteFileOrFolder, 
   MoveFileOrFolder,
-  RenameFileOrFolder
+  RenameFileOrFolder,
+  CreateFileOrFolder
 } from '~/graphql/mutations/file_explorer_mutations'
 import type { 
   GetFileContentQuery, 
@@ -19,7 +20,9 @@ import type {
   SearchFilesQuery,
   SearchFilesQueryVariables,
   RenameFileOrFolderMutation,
-  RenameFileOrFolderMutationVariables
+  RenameFileOrFolderMutationVariables,
+  CreateFileOrFolderMutation,
+  CreateFileOrFolderMutationVariables
 } from '~/generated/graphql'
 import { useWorkspaceStore } from '~/stores/workspace'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
@@ -33,21 +36,32 @@ interface FileExplorerState {
   fileContents: Record<string, string | null>;
   contentLoading: Record<string, boolean>;
   contentError: Record<string, string | null>;
+
   applyChangeError: Record<string, Record<number, Record<string, string | null>>>;
   applyChangeLoading: Record<string, Record<number, Record<string, boolean>>>;
   appliedChanges: Record<string, Record<number, Record<string, boolean>>>;
+
   searchResults: any[];
   searchLoading: boolean;
   searchError: string | null;
+
   workspaceId: string;
+
   basicFileChangeError: Record<string, string | null>;
   basicFileChangeLoading: Record<string, boolean>;
+
   deleteError: Record<string, string | null>;
   deleteLoading: Record<string, boolean>;
+
   moveError: Record<string, string | null>;
   moveLoading: Record<string, boolean>;
+
   renameError: Record<string, string | null>;
   renameLoading: Record<string, boolean>;
+
+  /* For creating new file/folder */
+  createError: Record<string, string | null>;
+  createLoading: Record<string, boolean>;
 }
 
 export const useFileExplorerStore = defineStore('fileExplorer', {
@@ -58,21 +72,32 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     fileContents: {},
     contentLoading: {},
     contentError: {},
+    
     applyChangeError: {},
     applyChangeLoading: {},
     appliedChanges: {},
+
     searchResults: [],
     searchLoading: false,
     searchError: null,
+
     workspaceId: '',
+
     basicFileChangeError: {},
     basicFileChangeLoading: {},
+
     deleteError: {},
     deleteLoading: {},
+
     moveError: {},
     moveLoading: {},
+
     renameError: {},
     renameLoading: {},
+
+    /* For creating new file/folder */
+    createError: {},
+    createLoading: {}
   }),
 
   actions: {
@@ -113,7 +138,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
 
     async fetchFileContent(filePath: string) {
       // Already loaded once? skip re-query if we have content
-      // but if content is undefined, let's fetch.
       if (this.fileContents[filePath] !== undefined) return
 
       this.contentLoading[filePath] = true
@@ -352,6 +376,36 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
 
+    /**
+     * Create a file or folder in the workspace at a fully constructed path.
+     * 'finalPath' is the entire path from the workspace root (e.g. "src/components/NewItem.ts").
+     */
+    async createFileOrFolder(finalPath: string, isFile: boolean) {
+      this.createError[finalPath] = null
+      this.createLoading[finalPath] = true
+
+      const workspaceStore = useWorkspaceStore()
+      const workspaceId = workspaceStore.currentSelectedWorkspaceId
+
+      try {
+        const { mutate } = useMutation<CreateFileOrFolderMutation, CreateFileOrFolderMutationVariables>(CreateFileOrFolder)
+        const result = await mutate({ workspaceId, path: finalPath, isFile })
+
+        if (result?.data?.createFileOrFolder) {
+          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.createFileOrFolder)
+          workspaceStore.handleFileSystemChange(workspaceId, changeEvent)
+        }
+
+        this.createLoading[finalPath] = false
+        return result
+      } catch (err) {
+        console.error('Failed to create file/folder:', err)
+        this.createError[finalPath] = err instanceof Error ? err.message : 'An unknown error occurred'
+        this.createLoading[finalPath] = false
+        throw err
+      }
+    },
+
     isApplyChangeInProgress(conversationId: string, messageIndex: number, filePath: string): boolean {
       return !!(this.applyChangeLoading[conversationId] &&
         this.applyChangeLoading[conversationId][messageIndex] &&
@@ -440,21 +494,31 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       this.fileContents = {}
       this.contentLoading = {}
       this.contentError = {}
+
       this.applyChangeError = {}
       this.applyChangeLoading = {}
       this.appliedChanges = {}
+
       this.searchResults = []
       this.searchLoading = false
       this.searchError = null
+
       this.workspaceId = ''
+
       this.basicFileChangeError = {}
       this.basicFileChangeLoading = {}
+
       this.deleteError = {}
       this.deleteLoading = {}
+
       this.moveError = {}
       this.moveLoading = {}
+
       this.renameError = {}
       this.renameLoading = {}
+
+      this.createError = {}
+      this.createLoading = {}
     }
   },
 
@@ -466,6 +530,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     getFileContent: (state) => (filePath: string): string | null => state.fileContents[filePath] || null,
     isContentLoading: (state) => (filePath: string): boolean => !!state.contentLoading[filePath],
     getContentError: (state) => (filePath: string): string | null => state.contentError[filePath] || null,
+
     isApplyChangeInProgressGetter: (state) => (conversationId: string, messageIndex: number, filePath: string): boolean => {
       return !!(state.applyChangeLoading[conversationId] &&
         state.applyChangeLoading[conversationId][messageIndex] &&
@@ -477,31 +542,29 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     getApplyChangeErrorGetter: (state) => (conversationId: string, messageIndex: number, filePath: string): string | null => {
       return state.applyChangeError[conversationId]?.[messageIndex]?.[filePath] || null
     },
+
     getSearchResults: (state) => state.searchResults,
     isSearchLoading: (state) => state.searchLoading,
     getSearchError: (state) => state.searchError,
+
     isBasicChangeLoadingGetter: (state) => (filePath: string): boolean => {
       return state.basicFileChangeLoading[filePath] || false
     },
     getBasicChangeErrorGetter: (state) => (filePath: string): string | null => {
       return state.basicFileChangeError[filePath] || null
     },
-    isDeleteLoading: (state) => (filePath: string): boolean => 
-      !!state.deleteLoading[filePath],
-    
-    getDeleteError: (state) => (filePath: string): string | null => 
-      state.deleteError[filePath] || null,
-    
-    isMoveLoading: (state) => (filePath: string): boolean => 
-      !!state.moveLoading[filePath],
-    
-    getMoveError: (state) => (filePath: string): string | null => 
-      state.moveError[filePath] || null,
 
-    isRenameLoading: (state) => (path: string): boolean =>
-      !!state.renameLoading[path],
-    
-    getRenameError: (state) => (path: string): string | null =>
-      state.renameError[path] || null
+    isDeleteLoading: (state) => (filePath: string): boolean => !!state.deleteLoading[filePath],
+    getDeleteError: (state) => (filePath: string): string | null => state.deleteError[filePath] || null,
+
+    isMoveLoading: (state) => (filePath: string): boolean => !!state.moveLoading[filePath],
+    getMoveError: (state) => (filePath: string): string | null => state.moveError[filePath] || null,
+
+    isRenameLoading: (state) => (path: string): boolean => !!state.renameLoading[path],
+    getRenameError: (state) => (path: string): string | null => state.renameError[path] || null,
+
+    /* For new file/folder creation */
+    isCreateLoading: (state) => (path: string): boolean => !!state.createLoading[path],
+    getCreateError: (state) => (path: string): string | null => state.createError[path] || null
   }
 })

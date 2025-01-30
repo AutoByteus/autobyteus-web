@@ -181,5 +181,54 @@ describe('fileUtils', () => {
       expect(nodeIdToNode['newFile-id']).toBeDefined()
       expect(nodeIdToNode['nonExistentFolder-id'].children.find(child => child.id === 'newFile-id')).toBeDefined()
     })
+
+    // NEW TEST: handle adding nested folders
+    it('should handle nested folder additions similarly to server-side nested creation', () => {
+      // For instance, adding "root/level1/level2/level3"
+      const level3Node = new TreeNode(
+        'level3',
+        'root/level1/level2/level3',
+        false,
+        [],
+        'level3-id'
+      )
+      const addChange: AddChange = {
+        type: 'add',
+        node: level3Node,
+        parent_id: 'level2-id'
+      }
+      // We also need to simulate that level1 and level2 might be newly added in the same event
+      const level1Node = new TreeNode('level1', 'root/level1', false, [], 'level1-id')
+      const level2Node = new TreeNode('level2', 'root/level1/level2', false, [], 'level2-id')
+
+      const addLevel1: AddChange = {
+        type: 'add',
+        node: level1Node,
+        parent_id: 'root-id'
+      }
+      const addLevel2: AddChange = {
+        type: 'add',
+        node: level2Node,
+        parent_id: 'level1-id'
+      }
+
+      const event: FileSystemChangeEvent = {
+        changes: [addLevel1, addLevel2, addChange]
+      }
+
+      handleFileSystemChange(rootNode, nodeIdToNode, event)
+
+      // Check that all nodes exist in the dictionary
+      expect(nodeIdToNode['level1-id']).toBeDefined()
+      expect(nodeIdToNode['level2-id']).toBeDefined()
+      expect(nodeIdToNode['level3-id']).toBeDefined()
+
+      // Check correct parent-child relationships
+      expect(rootNode.children.find(child => child.id === 'level1-id')).toBeDefined()
+      const level1InTree = nodeIdToNode['level1-id']
+      expect(level1InTree.children.find(child => child.id === 'level2-id')).toBeDefined()
+      const level2InTree = nodeIdToNode['level2-id']
+      expect(level2InTree.children.find(child => child.id === 'level3-id')).toBeDefined()
+    })
   })
 })

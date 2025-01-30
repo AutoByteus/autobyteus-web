@@ -43,16 +43,12 @@
         dropPosition === 'inside' ? 'inset-0' : ''
       ]"
     >
-      <!-- Line indicator for above/below -->
       <div 
         v-if="dropPosition === 'above' || dropPosition === 'below'"
         class="absolute left-0 right-0 h-[2px] bg-blue-500 rounded"
       >
-        <!-- Small circle on the line -->
         <div class="absolute -left-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
       </div>
-      
-      <!-- Border indicator for dropping inside -->
       <div 
         v-if="dropPosition === 'inside'"
         class="absolute inset-0 border-2 border-blue-500 rounded-lg pointer-events-none"
@@ -100,12 +96,14 @@
       </div>
     </transition>
 
-    <!-- Context menu and delete dialog -->
+    <!-- Context menu -->
     <FileContextMenu
       :visible="showContextMenu"
       :position="contextMenuPosition"
       @rename="startRename"
       @delete="promptDelete"
+      @add-file="promptAddFile"
+      @add-folder="promptAddFolder"
     />
 
     <ConfirmDeleteDialog 
@@ -113,6 +111,15 @@
       :targetName="file.name"
       @confirm="onDeleteConfirmed"
       @cancel="onDeleteCanceled"
+    />
+
+    <!-- Add File/Folder Dialog -->
+    <AddFileOrFolderDialog
+      :show="showAddDialog"
+      :parentPath="file.path"
+      :isFile="addFileMode"
+      @confirm="onAddConfirmed"
+      @cancel="onAddCanceled"
     />
   </div>
 </template>
@@ -123,6 +130,7 @@ import { TreeNode } from '~/utils/fileExplorer/TreeNode'
 import { useFileExplorerStore } from '~/stores/fileExplorer'
 import FileContextMenu from './FileContextMenu.vue'
 import ConfirmDeleteDialog from './ConfirmDeleteDialog.vue'
+import AddFileOrFolderDialog from './AddFileOrFolderDialog.vue'
 
 const props = defineProps<{ file: TreeNode }>()
 const fileExplorerStore = useFileExplorerStore()
@@ -139,6 +147,10 @@ const showDeleteConfirm = ref(false)
 const dropPosition = ref<'above' | 'below' | 'inside' | null>(null)
 const showDropIndicator = ref(false)
 const isGlobalDragging = ref(false)
+
+// For "Add File/Folder" we track a small dialog
+const showAddDialog = ref(false)
+const addFileMode = ref(true)  // true => file, false => folder
 
 let originalName = ''
 
@@ -183,7 +195,7 @@ const isValidDropTarget = computed(() => {
     return false
   }
 
-  // Allow dropping on folders only (not files)
+  // Only allow dropping onto folders
   if (props.file.is_file) {
     return false
   }
@@ -288,6 +300,57 @@ const onDeleteConfirmed = async () => {
 
 const onDeleteCanceled = () => {
   showDeleteConfirm.value = false
+}
+
+// New: triggers for the "Add File" or "Add Folder" from context menu
+function promptAddFile() {
+  showContextMenu.value = false
+  addFileMode.value = true
+  showAddDialog.value = true
+}
+
+function promptAddFolder() {
+  showContextMenu.value = false
+  addFileMode.value = false
+  showAddDialog.value = true
+}
+
+// Build the final path for the new file/folder
+function buildAddPath(node: TreeNode, newName: string): string {
+  // If user right-clicked a file, we place the new item in its parent folder.
+  // If user right-clicked a folder, we place the new item inside that folder.
+  if (node.is_file) {
+    const segments = node.path.split('/')
+    segments.pop() // remove the file name
+    const parentPath = segments.join('/')
+    if (!parentPath) {
+      // means it's in root
+      return newName
+    }
+    return `${parentPath}/${newName}`
+  } else {
+    // It's a folder
+    if (!node.path) {
+      // workspace root
+      return newName
+    }
+    return `${node.path}/${newName}`
+  }
+}
+
+// Once user input is confirmed
+async function onAddConfirmed(newName: string) {
+  showAddDialog.value = false
+  try {
+    const finalPath = buildAddPath(props.file, newName)
+    await fileExplorerStore.createFileOrFolder(finalPath, addFileMode.value)
+  } catch (error) {
+    console.error('Failed to create file/folder:', error)
+  }
+}
+
+function onAddCanceled() {
+  showAddDialog.value = false
 }
 
 const onDragStart = (event: DragEvent) => {
@@ -446,7 +509,6 @@ const onDrop = async (event: DragEvent) => {
   transform: scale(0.98);
 }
 
-/* Enhanced drag preview styles */
 .drag-preview {
   position: fixed;
   top: -9999px;
@@ -500,43 +562,6 @@ const onDrop = async (event: DragEvent) => {
   background-color: rgba(229, 231, 235, 0.7);
 }
 
-.drop-indicator-line {
-  height: 2px;
-  background-color: #3b82f6;
-  position: absolute;
-  left: 0;
-  right: 0;
-  transform: scaleX(0);
-  transition: transform 0.15s ease-in-out;
-}
-
-.drop-indicator-line.active {
-  transform: scaleX(1);
-}
-
-.drop-indicator-circle {
-  width: 6px;
-  height: 6px;
-  background-color: #3b82f6;
-  border-radius: 50%;
-  position: absolute;
-  left: -3px;
-  top: -2px;
-}
-
-.file-item.dragging {
-  opacity: 0.5;
-  transform: scale(0.98);
-}
-
-.file-item:not(.dragging) {
-  transition: transform 0.2s ease-out, opacity 0.2s ease-out;
-}
-
-.file-item.drag-over {
-  transform: translateX(4px);
-}
-
 @keyframes pulse {
   0% {
     border-color: #3b82f6;
@@ -550,9 +575,5 @@ const onDrop = async (event: DragEvent) => {
     border-color: #3b82f6;
     opacity: 1;
   }
-}
-
-.drop-indicator {
-  animation: pulse 1.5s infinite;
 }
 </style>

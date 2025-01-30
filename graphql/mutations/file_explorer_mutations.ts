@@ -23,3 +23,9 @@ export const RenameFileOrFolder = gql`
     renameFileOrFolder(workspaceId: $workspaceId, targetPath: $targetPath, newName: $newName)
   }
 `
+
+export const CreateFileOrFolder = gql`
+  mutation CreateFileOrFolder($workspaceId: String!, $path: String!, $isFile: Boolean!) {
+    createFileOrFolder(workspaceId: $workspaceId, path: $path, isFile: $isFile)
+  }
+`

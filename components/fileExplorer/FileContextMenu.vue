@@ -25,10 +25,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import {
   PencilSquareIcon,
-  TrashIcon
+  TrashIcon,
+  PlusIcon
 } from '@heroicons/vue/24/outline'
 
 interface ContextMenuPosition {
@@ -42,13 +43,27 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-const emit = defineEmits<{  (e: 'rename'): void
+const emit = defineEmits<{
+  (e: 'rename'): void
   (e: 'delete'): void
+  (e: 'add-file'): void
+  (e: 'add-folder'): void
 }>()
 
 const menuRef = ref<HTMLElement | null>(null)
 
+// We've added "Add File" and "Add Folder" items
 const menuItems = [
+  {
+    label: 'Add File',
+    icon: PlusIcon,
+    action: () => emit('add-file')
+  },
+  {
+    label: 'Add Folder',
+    icon: PlusIcon,
+    action: () => emit('add-folder')
+  },
   {
     label: 'Rename',
     icon: PencilSquareIcon,
@@ -97,18 +112,14 @@ const menuStyle = computed(() => {
 
 watch(() => props.visible, (newVisible) => {
   if (newVisible && menuRef.value) {
-    // Reset position when menu is shown
     const { top, left } = menuStyle.value
     menuRef.value.style.top = top
     menuRef.value.style.left = left
   }
 })
 
-// Clean up when component is destroyed
 onUnmounted(() => {
-  if (props.visible) {
-    document.removeEventListener('click', onGlobalClick)
-  }
+  // Clean up if needed
 })
 </script>
 
@@ -134,19 +145,5 @@ onUnmounted(() => {
     opacity: 1;
     transform: scale(1);
   }
-}
-
-/* Add smooth transitions */
-.menu-item {
-  transition: all 0.2s ease;
-}
-
-.menu-item:hover {
-  background-color: rgba(59, 130, 246, 0.05);
-}
-
-/* Add a subtle divider between items */
-.menu-item:not(:last-child) {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 </style>
