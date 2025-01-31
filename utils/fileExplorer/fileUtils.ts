@@ -2,16 +2,16 @@ import { TreeNode } from '~/utils/fileExplorer/TreeNode'
 import type { FileSystemChangeEvent, AddChange, DeleteChange, RenameChange, MoveChange } from '~/types/fileSystemChangeTypes'
 
 export function getFilePathsFromFolder(node: TreeNode): string[] {
-  const filePaths: string[] = [];
+  const filePaths: string[] = []
   function traverse(currentNode: TreeNode) {
     if (currentNode.is_file) {
-      filePaths.push(currentNode.path);
+      filePaths.push(currentNode.path)
     } else {
-      currentNode.children.forEach(child => traverse(child));
+      currentNode.children.forEach(child => traverse(child))
     }
   }
-  traverse(node);
-  return filePaths;
+  traverse(node)
+  return filePaths
 }
 
 export async function determineFileType(filePath: string): Promise<'text' | 'image'> {
@@ -28,26 +28,26 @@ export async function determineFileType(filePath: string): Promise<'text' | 'ima
 }
 
 export function findNodeById(root: TreeNode, id: string): TreeNode | null {
-  if (root.id === id) return root;
+  if (root.id === id) return root
   for (const child of root.children) {
-    const found = findNodeById(child, id);
-    if (found) return found;
+    const found = findNodeById(child, id)
+    if (found) return found
   }
-  return null;
+  return null
 }
 
 export function createNodeIdToNodeDictionary(root: TreeNode): Record<string, TreeNode> {
-  const dictionary: Record<string, TreeNode> = {};
+  const dictionary: Record<string, TreeNode> = {}
   
   function traverse(node: TreeNode) {
-    dictionary[node.id] = node;
+    dictionary[node.id] = node
     for (const child of node.children) {
-      traverse(child);
+      traverse(child)
     }
   }
   
-  traverse(root);
-  return dictionary;
+  traverse(root)
+  return dictionary
 }
 
 /**
@@ -63,95 +63,100 @@ export function handleFileSystemChange(
     try {
       switch (change.type) {
         case 'add':
-          handleAddChange(nodeIdToNode, change);
-          break;
+          handleAddChange(nodeIdToNode, change)
+          break
         case 'delete':
-          handleDeleteChange(nodeIdToNode, change);
-          break;
+          handleDeleteChange(nodeIdToNode, change)
+          break
         case 'rename':
-          handleRenameChange(nodeIdToNode, change);
-          break;
+          handleRenameChange(nodeIdToNode, change)
+          break
         case 'move':
-          handleMoveChange(nodeIdToNode, change);
-          break;
+          handleMoveChange(nodeIdToNode, change)
+          break
         default:
-          console.warn(`Unhandled change type: ${(change as { type: string }).type}`);
+          console.warn(`Unhandled change type: ${(change as { type: string }).type}`)
       }
     } catch (error) {
-      console.error('Error handling file system change:', error);
+      console.error('Error handling file system change:', error)
     }
-  });
+  })
 }
 
 /**
  * Adds a new node under the specified parent, then ensures children are sorted.
  */
 function handleAddChange(nodeIdToNode: Record<string, TreeNode>, change: AddChange): void {
-  const parentNode = nodeIdToNode[change.parent_id];
+  const parentNode = nodeIdToNode[change.parent_id]
   if (!parentNode) {
-    throw new Error(`Parent node with id ${change.parent_id} not found`);
+    throw new Error(`Parent node with id ${change.parent_id} not found`)
   }
-  const newNode = TreeNode.fromObject(change.node);
+  const newNode = TreeNode.fromObject(change.node)
 
-  // Insert into parent's children in sorted order
-  parentNode.addChild(newNode);
-
-  // Update our dictionary
-  nodeIdToNode[newNode.id] = newNode;
+  parentNode.addChild(newNode)
+  nodeIdToNode[newNode.id] = newNode
 }
 
 /**
- * Removes a child by id from its parent, if known. Then remove from dictionary.
+ * Removes a child by id from its parent, then removes from dictionary.
  */
 function handleDeleteChange(nodeIdToNode: Record<string, TreeNode>, change: DeleteChange): void {
-  const parentNode = nodeIdToNode[change.parent_id];
+  const parentNode = nodeIdToNode[change.parent_id]
   if (!parentNode) {
-    throw new Error(`Parent node with id ${change.parent_id} not found`);
+    throw new Error(`Parent node with id ${change.parent_id} not found`)
   }
-  parentNode.children = parentNode.children.filter(child => child.id !== change.node_id);
-  delete nodeIdToNode[change.node_id];
+  parentNode.children = parentNode.children.filter(child => child.id !== change.node_id)
+  delete nodeIdToNode[change.node_id]
 }
 
 /**
- * Renames a node. We also re-sort the parent's children afterward.
+ * Optimized rename operation that maintains sort order efficiently.
+ * Removes node from current position and reinserts in correct sorted position.
  */
 function handleRenameChange(nodeIdToNode: Record<string, TreeNode>, change: RenameChange): void {
-  const node = nodeIdToNode[change.node.id];
+  const node = nodeIdToNode[change.node.id]
   if (!node) {
-    throw new Error(`Node with id ${change.node.id} not found`);
+    throw new Error(`Node with id ${change.node.id} not found`)
   }
-  node.name = change.node.name;
-  node.path = change.node.path;
+  
+  const parentNode = nodeIdToNode[change.parent_id]
+  if (!parentNode) {
+    throw new Error(`Parent node with id ${change.parent_id} not found`)
+  }
 
-  const parentNode = nodeIdToNode[change.parent_id];
-  if (parentNode) {
-    // Re-sort the parent's children now that this node's name changed
-    parentNode.sortChildren();
+  // Remove the node from its current position
+  const currentIndex = parentNode.children.findIndex(child => child.id === node.id)
+  if (currentIndex === -1) {
+    throw new Error(`Node ${node.id} not found in parent's children`)
   }
+  parentNode.children.splice(currentIndex, 1)
+  
+  // Update the node's properties
+  node.name = change.node.name
+  node.path = change.node.path
+  
+  // Reinsert the node in its new sorted position using efficient addChild
+  parentNode.addChild(node)
 }
 
 /**
- * Moves a node from old_parent_id to new_parent_id, updating name/path if needed.
- * We remove from the old parent's children array, and add to the new parent's array in sorted order.
+ * Moves a node between parents, updating properties and maintaining sort order.
  */
 function handleMoveChange(nodeIdToNode: Record<string, TreeNode>, change: MoveChange): void {
-  const node = nodeIdToNode[change.node.id];
-  const oldParent = nodeIdToNode[change.old_parent_id];
-  const newParent = nodeIdToNode[change.new_parent_id];
+  const node = nodeIdToNode[change.node.id]
+  const oldParent = nodeIdToNode[change.old_parent_id]
+  const newParent = nodeIdToNode[change.new_parent_id]
   
   if (!node || !oldParent || !newParent) {
-    throw new Error('One or more nodes not found during move operation');
+    throw new Error('One or more nodes not found during move operation')
   }
 
-  // Remove from old parent's children
-  oldParent.children = oldParent.children.filter(child => child.id !== node.id);
+  oldParent.children = oldParent.children.filter(child => child.id !== node.id)
   
-  // Update node properties
-  node.name = change.node.name;
-  node.path = change.node.path;
+  node.name = change.node.name
+  node.path = change.node.path
   
-  // Add to new parent's children in sorted order
-  newParent.addChild(node);
+  newParent.addChild(node)
 }
 
 export function findFileByPath(nodes: TreeNode[], path: string): TreeNode | null {

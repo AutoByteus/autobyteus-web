@@ -39,7 +39,6 @@ export class TreeNode {
    *   2) Among directories (or among files), sort by name ignoring case.
    */
   addChild(node: TreeNode): void {
-    // Insert using our custom binary search approach
     const insertIndex = this.findInsertIndex(node)
     this.children.splice(insertIndex, 0, node)
   }
@@ -70,19 +69,15 @@ export class TreeNode {
    * then files, then name-based comparison ignoring case.
    */
   private compareNodes(a: TreeNode, b: TreeNode): number {
-    // If a is directory and b is file => a < b
     if (a.is_file !== b.is_file) {
       return a.is_file ? 1 : -1
     }
-    // Both are dirs or both are files => compare by name
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase())
   }
 
   /**
-   * Re-sorts the entire children array (used if something changed
-   * that might break ordering, e.g. node rename). Typically you won't
-   * need this if you do a binary search insert for new children, but
-   * you may call it after a rename or other operation that changes ordering.
+   * Re-sorts the entire children array. Only use this if absolutely necessary,
+   * as addChild provides more efficient sorted insertion.
    */
   sortChildren(): void {
     this.children.sort((a, b) => this.compareNodes(a, b))
