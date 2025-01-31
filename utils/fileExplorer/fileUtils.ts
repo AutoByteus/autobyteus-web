@@ -50,6 +50,10 @@ export function createNodeIdToNodeDictionary(root: TreeNode): Record<string, Tre
   return dictionary;
 }
 
+/**
+ * Applies a series of changes (add, delete, rename, move) to the front-end tree.
+ * Ensures that children remain sorted (directories first, then files) after each change.
+ */
 export function handleFileSystemChange(
   workspaceTree: TreeNode,
   nodeIdToNode: Record<string, TreeNode>,
@@ -79,16 +83,26 @@ export function handleFileSystemChange(
   });
 }
 
+/**
+ * Adds a new node under the specified parent, then ensures children are sorted.
+ */
 function handleAddChange(nodeIdToNode: Record<string, TreeNode>, change: AddChange): void {
   const parentNode = nodeIdToNode[change.parent_id];
   if (!parentNode) {
     throw new Error(`Parent node with id ${change.parent_id} not found`);
   }
   const newNode = TreeNode.fromObject(change.node);
+
+  // Insert into parent's children in sorted order
   parentNode.addChild(newNode);
+
+  // Update our dictionary
   nodeIdToNode[newNode.id] = newNode;
 }
 
+/**
+ * Removes a child by id from its parent, if known. Then remove from dictionary.
+ */
 function handleDeleteChange(nodeIdToNode: Record<string, TreeNode>, change: DeleteChange): void {
   const parentNode = nodeIdToNode[change.parent_id];
   if (!parentNode) {
@@ -98,6 +112,9 @@ function handleDeleteChange(nodeIdToNode: Record<string, TreeNode>, change: Dele
   delete nodeIdToNode[change.node_id];
 }
 
+/**
+ * Renames a node. We also re-sort the parent's children afterward.
+ */
 function handleRenameChange(nodeIdToNode: Record<string, TreeNode>, change: RenameChange): void {
   const node = nodeIdToNode[change.node.id];
   if (!node) {
@@ -105,8 +122,18 @@ function handleRenameChange(nodeIdToNode: Record<string, TreeNode>, change: Rena
   }
   node.name = change.node.name;
   node.path = change.node.path;
+
+  const parentNode = nodeIdToNode[change.parent_id];
+  if (parentNode) {
+    // Re-sort the parent's children now that this node's name changed
+    parentNode.sortChildren();
+  }
 }
 
+/**
+ * Moves a node from old_parent_id to new_parent_id, updating name/path if needed.
+ * We remove from the old parent's children array, and add to the new parent's array in sorted order.
+ */
 function handleMoveChange(nodeIdToNode: Record<string, TreeNode>, change: MoveChange): void {
   const node = nodeIdToNode[change.node.id];
   const oldParent = nodeIdToNode[change.old_parent_id];
@@ -116,14 +143,14 @@ function handleMoveChange(nodeIdToNode: Record<string, TreeNode>, change: MoveCh
     throw new Error('One or more nodes not found during move operation');
   }
 
-  // Remove from old parent
+  // Remove from old parent's children
   oldParent.children = oldParent.children.filter(child => child.id !== node.id);
   
   // Update node properties
   node.name = change.node.name;
   node.path = change.node.path;
   
-  // Add to new parent
+  // Add to new parent's children in sorted order
   newParent.addChild(node);
 }
 
