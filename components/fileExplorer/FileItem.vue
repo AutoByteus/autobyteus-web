@@ -1,6 +1,3 @@
-You're absolutely right! Let me provide the complete code without any placeholders or comments about functions remaining the same:
-
-```vue
 <template>
   <div 
     ref="fileItemRef"
@@ -23,18 +20,22 @@ You're absolutely right! Let me provide the complete code without any placeholde
     @dragover.prevent.stop="onDragOver"
     @drop.prevent.stop="onDrop"
   >
+    <!-- Hidden drag preview (restored folder/file icon, removed any plus sign) -->
     <div v-show="false" ref="dragPreviewRef" class="drag-preview">
       <div class="drag-preview-content">
+        <!-- Show the folder/file icon in the drag preview -->
         <div class="drag-preview-icon">
           <svg v-if="!file.is_file" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#87CEEB" class="w-full h-full">
             <path d="M20 18c0 .55-.45 1-1 1H5c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h5l2 1h7c.55 0 1 .45 1 1v11z"/>
           </svg>
           <i v-else class="fas fa-file text-gray-500"></i>
         </div>
+        <!-- Make the label bigger -->
         <span class="drag-preview-text">{{ file.name }}</span>
       </div>
     </div>
 
+    <!-- Drop indicator -->
     <div 
       v-if="showDropIndicator"
       class="absolute w-full transition-all duration-200"
@@ -57,6 +58,7 @@ You're absolutely right! Let me provide the complete code without any placeholde
       ></div>
     </div>
 
+    <!-- File/Folder Display -->
     <div 
       class="file-header flex items-center space-x-2 rounded p-2 transition-colors duration-200"
       :class="{ 
@@ -88,12 +90,14 @@ You're absolutely right! Let me provide the complete code without any placeholde
       </template>
     </div>
 
+    <!-- Folder contents if open -->
     <transition name="folder">
       <div v-if="!file.is_file && isFolderOpen" class="children ml-4 mt-2">
         <FileItem v-for="(child, index) in file.children" :key="`${child.path}-${index}`" :file="child"/>
       </div>
     </transition>
 
+    <!-- Context menu -->
     <FileContextMenu
       :visible="showContextMenu"
       :position="contextMenuPosition"
@@ -103,6 +107,7 @@ You're absolutely right! Let me provide the complete code without any placeholde
       @add-folder="promptAddFolder"
     />
 
+    <!-- Delete confirmation -->
     <ConfirmDeleteDialog 
       :show="showDeleteConfirm"
       :targetName="file.name"
@@ -110,6 +115,7 @@ You're absolutely right! Let me provide the complete code without any placeholde
       @cancel="onDeleteCanceled"
     />
 
+    <!-- Add file/folder dialog -->
     <AddFileOrFolderDialog
       :show="showAddDialog"
       :parentPath="file.path"
@@ -146,7 +152,6 @@ const isGlobalDragging = ref(false)
 
 const showAddDialog = ref(false)
 const addFileMode = ref(true)
-
 let originalName = ''
 
 onMounted(() => {
@@ -204,14 +209,13 @@ const isValidDropTarget = computed(() => {
     return false
   }
 
+  // Not valid if dropping into itself, into a file, or inside its subfolder
   if (props.file.is_file) {
     return false
   }
-
   if (props.file.path === dragData.path) {
     return false
   }
-
   if (props.file.path.startsWith(dragData.path + '/')) {
     return false
   }
@@ -321,15 +325,17 @@ const promptAddFolder = () => {
 }
 
 function buildAddPath(node: TreeNode, newName: string): string {
+  // If the node is a file, add item under its parent
   if (node.is_file) {
     const segments = node.path.split('/')
-    segments.pop()
+    segments.pop() // remove the file name
     const parentPath = segments.join('/')
     if (!parentPath) {
       return newName
     }
     return `${parentPath}/${newName}`
   } else {
+    // If the node is a folder, add item inside it
     if (!node.path) {
       return newName
     }
@@ -359,11 +365,14 @@ const onDragStart = (event: DragEvent) => {
       dropPosition.value = null
       showDropIndicator.value = false
       isGlobalDragging.value = true
-      
+
+      // Set data for the dragged item
       event.dataTransfer.setData('application/json', JSON.stringify(props.file))
-      event.dataTransfer.effectAllowed = 'copy'
-      
+      // Restrict to move operation (avoids default plus sign for copy)
+      event.dataTransfer.effectAllowed = 'move'
+
       if (dragPreviewRef.value) {
+        // Create a clone of our hidden preview
         const preview = dragPreviewRef.value.cloneNode(true) as HTMLElement
         preview.style.display = 'block'
         document.body.appendChild(preview)
@@ -376,12 +385,10 @@ const onDragStart = (event: DragEvent) => {
         
         const rect = preview.getBoundingClientRect()
         
-        event.dataTransfer.setDragImage(
-          preview,
-          -10, 
-          rect.height / 2
-        )
+        // Use the cloned element as the drag image
+        event.dataTransfer.setDragImage(preview, -10, rect.height / 2)
 
+        // Remove the cloned preview after setting the drag image
         setTimeout(() => preview.remove(), 0)
       }
     }
@@ -399,8 +406,11 @@ const onDragEnter = (event: DragEvent) => {
 const onDragOver = (event: DragEvent) => {
   event.preventDefault()
   event.stopPropagation()
-  
-  if (!event.dataTransfer || !isValidDropTarget.value) {
+
+  // Force dropEffect to 'move' so no plus sign appears
+  if (event.dataTransfer && isValidDropTarget.value) {
+    event.dataTransfer.dropEffect = 'move'
+  } else {
     dropPosition.value = null
     showDropIndicator.value = false
     return
@@ -412,6 +422,7 @@ const onDragOver = (event: DragEvent) => {
   const mouseY = event.clientY - rect.top
   const height = rect.height
   
+  // Decide positioning for "above", "inside", or "below"
   if (mouseY < height * 0.25) {
     dropPosition.value = 'above'
   } else if (mouseY > height * 0.75) {
@@ -423,7 +434,6 @@ const onDragOver = (event: DragEvent) => {
   }
 
   showDropIndicator.value = true
-  event.dataTransfer.dropEffect = event.ctrlKey ? 'copy' : 'move'
 }
 
 const onDragLeave = (event: DragEvent) => {
@@ -470,10 +480,12 @@ const onDrop = async (event: DragEvent) => {
     if (sourcePath) {
       let destinationPath = props.file.path
       const sourceBasename = sourcePath.split('/').pop() || ''
-      
+
+      // If dropping inside a folder, place item there
       if (finalPosition === 'inside' && !props.file.is_file) {
         destinationPath = destinationPath + '/' + sourceBasename
       } else {
+        // If dropping above/below, place item at parent level
         const parentPath = destinationPath.split('/').slice(0, -1).join('/')
         destinationPath = parentPath + '/' + sourceBasename
       }
@@ -484,7 +496,6 @@ const onDrop = async (event: DragEvent) => {
     console.error('Drop operation failed:', error)
   }
 }
-
 </script>
 
 <style scoped>
@@ -516,24 +527,25 @@ const onDrop = async (event: DragEvent) => {
   pointer-events: none;
 }
 
+/* Increased font-size for easier readability */
 .drag-preview-content {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 12px;
+  padding: 6px 10px;
+  font-size: 14px; /* was 12px; increased to 14px */
   color: #374151;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   white-space: nowrap;
   max-width: 200px;
 }
 
 .drag-preview-icon {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
 }
 
@@ -542,6 +554,7 @@ const onDrop = async (event: DragEvent) => {
   text-overflow: ellipsis;
 }
 
+/* Folder expand/collapse transition */
 .folder-enter-active,
 .folder-leave-active {
   transition: all 0.2s ease;
