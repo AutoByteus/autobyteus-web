@@ -20,50 +20,31 @@
     @dragover.prevent.stop="onDragOver"
     @drop.prevent.stop="onDrop"
   >
-    <!-- Hidden drag preview (restored folder/file icon, removed any plus sign) -->
+    <!-- Hidden drag preview -->
     <div v-show="false" ref="dragPreviewRef" class="drag-preview">
       <div class="drag-preview-content">
-        <!-- Show the folder/file icon in the drag preview -->
         <div class="drag-preview-icon">
           <svg v-if="!file.is_file" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#87CEEB" class="w-full h-full">
             <path d="M20 18c0 .55-.45 1-1 1H5c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h5l2 1h7c.55 0 1 .45 1 1v11z"/>
           </svg>
           <i v-else class="fas fa-file text-gray-500"></i>
         </div>
-        <!-- Make the label bigger -->
         <span class="drag-preview-text">{{ file.name }}</span>
       </div>
     </div>
 
     <!-- Drop indicator -->
     <div 
-      v-if="showDropIndicator"
-      class="absolute w-full transition-all duration-200"
-      :class="[
-        dropPosition === 'above' ? '-top-[2px]' : '',
-        dropPosition === 'below' ? '-bottom-[2px]' : '',
-        dropPosition === 'inside' ? 'inset-0' : ''
-      ]"
-    >
-      <div 
-        v-if="dropPosition === 'above' || dropPosition === 'below'"
-        class="absolute left-0 right-0 h-[2px] bg-blue-500 rounded"
-      >
-        <div class="absolute -left-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
-      </div>
-      <div 
-        v-if="dropPosition === 'inside'"
-        class="absolute inset-0 border-2 border-blue-500 rounded-lg pointer-events-none"
-        :class="{ 'opacity-50': !isValidDropTarget }"
-      ></div>
-    </div>
+      v-if="showDropIndicator && dropPosition === 'inside'"
+      class="absolute inset-0 border-2 border-blue-500 rounded-lg pointer-events-none opacity-50"
+    ></div>
 
     <!-- File/Folder Display -->
     <div 
       class="file-header flex items-center space-x-2 rounded p-2 transition-colors duration-200"
       :class="{ 
         'hover:bg-gray-200': !isDragging,
-        'bg-blue-50': dropPosition === 'inside' && isValidDropTarget
+        'bg-blue-50': dropPosition === 'inside'
       }"
     >
       <div class="icon w-5 h-5 flex-shrink-0">
@@ -146,7 +127,7 @@ const renameInputRef = ref<HTMLInputElement | null>(null)
 const showContextMenu = ref(false)
 const contextMenuPosition = ref({ top: 0, left: 0 })
 const showDeleteConfirm = ref(false)
-const dropPosition = ref<'above' | 'below' | 'inside' | null>(null)
+const dropPosition = ref<'inside' | null>(null)
 const showDropIndicator = ref(false)
 const isGlobalDragging = ref(false)
 
@@ -157,10 +138,6 @@ let originalName = ''
 onMounted(() => {
   document.addEventListener('closeAllFileContextMenus', onCloseAllContextMenus)
   document.addEventListener('dragover', onGlobalDragOver)
-  console.log("File item:", props.file)
-  if (!props.file.is_file) {
-    console.log(`Child nodes of '${props.file.name}':`, props.file.children)
-  }
 })
 
 onBeforeUnmount(() => {
@@ -173,16 +150,6 @@ onBeforeUnmount(() => {
 
 const isFolderOpen = computed(() => {
   return !props.file.is_file && fileExplorerStore.isFolderOpen(props.file.path)
-})
-
-watch(isFolderOpen, (newValue) => {
-  if (!props.file.is_file) {
-    if (newValue) {
-      console.log(`Folder '${props.file.name}' is now open. Children:`, props.file.children)
-    } else {
-      console.log(`Folder '${props.file.name}' is now closed.`)
-    }
-  }
 })
 
 function onCloseAllContextMenus() {
@@ -202,26 +169,6 @@ const onGlobalDragOver = (event: DragEvent) => {
     showDropIndicator.value = false
   }
 }
-
-const isValidDropTarget = computed(() => {
-  const dragData = window.dragData
-  if (!dragData || !dragData.path) {
-    return false
-  }
-
-  // Not valid if dropping into itself, into a file, or inside its subfolder
-  if (props.file.is_file) {
-    return false
-  }
-  if (props.file.path === dragData.path) {
-    return false
-  }
-  if (props.file.path.startsWith(dragData.path + '/')) {
-    return false
-  }
-
-  return true
-})
 
 const handleClick = () => {
   if (props.file.is_file) {
@@ -325,17 +272,15 @@ const promptAddFolder = () => {
 }
 
 function buildAddPath(node: TreeNode, newName: string): string {
-  // If the node is a file, add item under its parent
   if (node.is_file) {
     const segments = node.path.split('/')
-    segments.pop() // remove the file name
+    segments.pop()
     const parentPath = segments.join('/')
     if (!parentPath) {
       return newName
     }
     return `${parentPath}/${newName}`
   } else {
-    // If the node is a folder, add item inside it
     if (!node.path) {
       return newName
     }
@@ -359,38 +304,29 @@ function onAddCanceled() {
 
 const onDragStart = (event: DragEvent) => {
   event.stopPropagation()
-  if (event.target === fileItemRef.value) {
-    if (event.dataTransfer) {
-      isDragging.value = true
-      dropPosition.value = null
-      showDropIndicator.value = false
-      isGlobalDragging.value = true
+  if (event.target === fileItemRef.value && event.dataTransfer) {
+    isDragging.value = true
+    dropPosition.value = null
+    showDropIndicator.value = false
+    isGlobalDragging.value = true
 
-      // Set data for the dragged item
-      event.dataTransfer.setData('application/json', JSON.stringify(props.file))
-      // Restrict to move operation (avoids default plus sign for copy)
-      event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('application/json', JSON.stringify(props.file))
+    event.dataTransfer.effectAllowed = 'move'
 
-      if (dragPreviewRef.value) {
-        // Create a clone of our hidden preview
-        const preview = dragPreviewRef.value.cloneNode(true) as HTMLElement
-        preview.style.display = 'block'
-        document.body.appendChild(preview)
-        
-        preview.style.position = 'fixed'
-        preview.style.top = '0'
-        preview.style.left = '0'
-        preview.style.zIndex = '-1'
-        preview.style.opacity = '1'
-        
-        const rect = preview.getBoundingClientRect()
-        
-        // Use the cloned element as the drag image
-        event.dataTransfer.setDragImage(preview, -10, rect.height / 2)
-
-        // Remove the cloned preview after setting the drag image
-        setTimeout(() => preview.remove(), 0)
-      }
+    if (dragPreviewRef.value) {
+      const preview = dragPreviewRef.value.cloneNode(true) as HTMLElement
+      preview.style.display = 'block'
+      document.body.appendChild(preview)
+      
+      preview.style.position = 'fixed'
+      preview.style.top = '0'
+      preview.style.left = '0'
+      preview.style.zIndex = '-1'
+      preview.style.opacity = '1'
+      
+      const rect = preview.getBoundingClientRect()
+      event.dataTransfer.setDragImage(preview, -10, rect.height / 2)
+      setTimeout(() => preview.remove(), 0)
     }
   }
 }
@@ -398,8 +334,6 @@ const onDragStart = (event: DragEvent) => {
 const onDragEnter = (event: DragEvent) => {
   event.preventDefault()
   event.stopPropagation()
-  
-  if (!isValidDropTarget.value) return
   showDropIndicator.value = true
 }
 
@@ -407,8 +341,7 @@ const onDragOver = (event: DragEvent) => {
   event.preventDefault()
   event.stopPropagation()
 
-  // Force dropEffect to 'move' so no plus sign appears
-  if (event.dataTransfer && isValidDropTarget.value) {
+  if (event.dataTransfer) {
     event.dataTransfer.dropEffect = 'move'
   } else {
     dropPosition.value = null
@@ -422,17 +355,8 @@ const onDragOver = (event: DragEvent) => {
   const mouseY = event.clientY - rect.top
   const height = rect.height
   
-  // Decide positioning for "above", "inside", or "below"
-  if (mouseY < height * 0.25) {
-    dropPosition.value = 'above'
-  } else if (mouseY > height * 0.75) {
-    dropPosition.value = 'below'
-  } else if (!props.file.is_file) {
-    dropPosition.value = 'inside'
-  } else {
-    dropPosition.value = mouseY < height / 2 ? 'above' : 'below'
-  }
-
+  // Always set dropPosition to 'inside'
+  dropPosition.value = 'inside'
   showDropIndicator.value = true
 }
 
@@ -455,7 +379,6 @@ const onDragEnd = () => {
   isDragging.value = false
   dropPosition.value = null
   showDropIndicator.value = false
-  window.dragData = null
   isGlobalDragging.value = false
 }
 
@@ -468,24 +391,20 @@ const onDrop = async (event: DragEvent) => {
   showDropIndicator.value = false
   isGlobalDragging.value = false
   
-  if (!isValidDropTarget.value) return
-  
   try {
     const data = event.dataTransfer?.getData('application/json')
     if (!data) return
     
-    const parsedData = JSON.parse(data)
+    const parsedData: TreeNode = JSON.parse(data)
     const sourcePath = parsedData.path
     
     if (sourcePath) {
       let destinationPath = props.file.path
       const sourceBasename = sourcePath.split('/').pop() || ''
 
-      // If dropping inside a folder, place item there
       if (finalPosition === 'inside' && !props.file.is_file) {
         destinationPath = destinationPath + '/' + sourceBasename
       } else {
-        // If dropping above/below, place item at parent level
         const parentPath = destinationPath.split('/').slice(0, -1).join('/')
         destinationPath = parentPath + '/' + sourceBasename
       }
@@ -527,13 +446,12 @@ const onDrop = async (event: DragEvent) => {
   pointer-events: none;
 }
 
-/* Increased font-size for easier readability */
 .drag-preview-content {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 4px;
   padding: 6px 10px;
-  font-size: 14px; /* was 12px; increased to 14px */
+  font-size: 14px;
   color: #374151;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
@@ -554,7 +472,6 @@ const onDrop = async (event: DragEvent) => {
   text-overflow: ellipsis;
 }
 
-/* Folder expand/collapse transition */
 .folder-enter-active,
 .folder-leave-active {
   transition: all 0.2s ease;
@@ -572,6 +489,43 @@ const onDrop = async (event: DragEvent) => {
 
 .file-item:focus-within > .file-header {
   background-color: rgba(229, 231, 235, 0.7);
+}
+
+.drop-indicator-line {
+  height: 2px;
+  background-color: #3b82f6;
+  position: absolute;
+  left: 0;
+  right: 0;
+  transform: scaleX(0);
+  transition: transform 0.15s ease-in-out;
+}
+
+.drop-indicator-line.active {
+  transform: scaleX(1);
+}
+
+.drop-indicator-circle {
+  width: 6px;
+  height: 6px;
+  background-color: #3b82f6;
+  border-radius: 50%;
+  position: absolute;
+  left: -3px;
+  top: -2px;
+}
+
+.file-item.dragging {
+  opacity: 0.5;
+  transform: scale(0.98);
+}
+
+.file-item:not(.dragging) {
+  transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+}
+
+.file-item.drag-over {
+  transform: translateX(4px);
 }
 
 @keyframes pulse {

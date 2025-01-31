@@ -62,14 +62,22 @@ const displayedFiles = computed(() => {
   }
 })
 
-const isValidDragData = (dragData: any): boolean => {
-  if (!dragData || !dragData.path) return false
-  
-  // Allow drops on root if not trying to drop on itself or its parent
-  const sourcePath = dragData.path
-  const sourceParentPath = sourcePath.split('/').slice(0, -1).join('/')
-  
-  return sourceParentPath !== '' // Prevent dropping root onto itself
+const isValidDragData = (event: DragEvent): boolean => {
+  try {
+    const data = event.dataTransfer?.getData('application/json')
+    if (!data) return false
+    
+    const dragData = JSON.parse(data)
+    if (!dragData.path) return false
+    
+    // Allow drops on root if not trying to drop on itself or its parent
+    const sourcePath = dragData.path
+    const sourceParentPath = sourcePath.split('/').slice(0, -1).join('/')
+    
+    return sourceParentPath !== '' // Prevent dropping root onto itself
+  } catch {
+    return false
+  }
 }
 
 const onDragOver = (event: DragEvent) => {
@@ -79,8 +87,7 @@ const onDragOver = (event: DragEvent) => {
   const target = event.target as HTMLElement
   if (!target.closest('.file-explorer-content')) return
 
-  const dragData = window.dragData
-  if (!isValidDragData(dragData)) return
+  if (!isValidDragData(event)) return
 
   isDropTarget.value = true
   event.dataTransfer!.dropEffect = 'move'
