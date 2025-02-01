@@ -14,11 +14,12 @@
     @click.stop="handleClick"
     @contextmenu.prevent="handleContextMenu"
     @dragstart="onDragStart"
+    @dragenter="onDragEnter"
+    @dragover="onDragOver"
+    @dragleave="onDragLeave"
+    @drop="onDrop"
     @dragend="onDragEnd"
-    @dragenter.stop="onDragEnter"
-    @dragleave.stop="onDragLeave"
-    @dragover.prevent.stop="onDragOver"
-    @drop.prevent.stop="onDrop"
+    v-if="file.is_file || !file.is_file"
   >
     <!-- Hidden drag preview -->
     <div v-show="false" ref="dragPreviewRef" class="drag-preview">
@@ -33,18 +34,13 @@
       </div>
     </div>
 
-    <!-- Drop indicator -->
-    <div 
-      v-if="showDropIndicator && dropPosition === 'inside'"
-      class="absolute inset-0 border-2 border-blue-500 rounded-lg pointer-events-none opacity-50"
-    ></div>
-
+    <!-- The drop indicator for folders has been removed to prevent a full blue border on child folders -->
     <!-- File/Folder Display -->
     <div 
       class="file-header flex items-center space-x-2 rounded p-2 transition-colors duration-200"
       :class="{ 
         'hover:bg-gray-200': !isDragging,
-        'bg-blue-50': dropPosition === 'inside'
+        'bg-blue-50': isDragOver
       }"
     >
       <div class="icon w-5 h-5 flex-shrink-0">
@@ -127,8 +123,7 @@ const renameInputRef = ref<HTMLInputElement | null>(null)
 const showContextMenu = ref(false)
 const contextMenuPosition = ref({ top: 0, left: 0 })
 const showDeleteConfirm = ref(false)
-const dropPosition = ref<'inside' | null>(null)
-const showDropIndicator = ref(false)
+const isDragOver = ref(false)
 const isGlobalDragging = ref(false)
 
 const showAddDialog = ref(false)
@@ -138,18 +133,22 @@ let originalName = ''
 onMounted(() => {
   document.addEventListener('closeAllFileContextMenus', onCloseAllContextMenus)
   document.addEventListener('dragover', onGlobalDragOver)
+  document.addEventListener('dragend', onGlobalDragEnd)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('closeAllFileContextMenus', onCloseAllContextMenus)
   document.removeEventListener('dragover', onGlobalDragOver)
-  if (showDropIndicator.value) {
-    showDropIndicator.value = false
-  }
+  document.removeEventListener('dragend', onGlobalDragEnd)
+  isDragOver.value = false
 })
 
 const isFolderOpen = computed(() => {
   return !props.file.is_file && fileExplorerStore.isFolderOpen(props.file.path)
+})
+
+const isValidDropTarget = computed(() => {
+  return !props.file.is_file // Only folders are valid drop targets
 })
 
 function onCloseAllContextMenus() {
@@ -165,9 +164,15 @@ const onGlobalDragOver = (event: DragEvent) => {
     (event.target.closest('.file-item') !== null || event.target.closest('.file-explorer') !== null)
   
   if (!isOverFileExplorer) {
-    dropPosition.value = null
-    showDropIndicator.value = false
+    isDragOver.value = false
   }
+}
+
+const onGlobalDragEnd = () => {
+  // Clear all drag-related states
+  isDragOver.value = false
+  isGlobalDragging.value = false
+  isDragging.value = false
 }
 
 const handleClick = () => {
@@ -271,27 +276,19 @@ const promptAddFolder = () => {
   showAddDialog.value = true
 }
 
-function buildAddPath(node: TreeNode, newName: string): string {
-  if (node.is_file) {
-    const segments = node.path.split('/')
-    segments.pop()
-    const parentPath = segments.join('/')
-    if (!parentPath) {
-      return newName
-    }
-    return `${parentPath}/${newName}`
-  } else {
-    if (!node.path) {
-      return newName
-    }
-    return `${node.path}/${newName}`
-  }
-}
-
 async function onAddConfirmed(newName: string) {
   showAddDialog.value = false
   try {
-    const finalPath = buildAddPath(props.file, newName)
+    // Build the new file/folder path based on whether the current node is a file or folder
+    let finalPath: string
+    if (props.file.is_file) {
+      const segments = props.file.path.split('/')
+      segments.pop()
+      const parentPath = segments.join('/')
+      finalPath = parentPath ? `${parentPath}/${newName}` : newName
+    } else {
+      finalPath = props.file.path ? `${props.file.path}/${newName}` : newName
+    }
     await fileExplorerStore.createFileOrFolder(finalPath, addFileMode.value)
   } catch (error) {
     console.error('Failed to create file/folder:', error)
@@ -306,8 +303,7 @@ const onDragStart = (event: DragEvent) => {
   event.stopPropagation()
   if (event.target === fileItemRef.value && event.dataTransfer) {
     isDragging.value = true
-    dropPosition.value = null
-    showDropIndicator.value = false
+    isDragOver.value = false
     isGlobalDragging.value = true
 
     event.dataTransfer.setData('application/json', JSON.stringify(props.file))
@@ -334,51 +330,46 @@ const onDragStart = (event: DragEvent) => {
 const onDragEnter = (event: DragEvent) => {
   event.preventDefault()
   event.stopPropagation()
-  showDropIndicator.value = true
+  
+  if (!isValidDropTarget.value) return
+  
+  isDragOver.value = true
 }
 
 const onDragOver = (event: DragEvent) => {
   event.preventDefault()
   event.stopPropagation()
 
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
-  } else {
-    dropPosition.value = null
-    showDropIndicator.value = false
+  if (!isValidDropTarget.value) {
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'none'
+    }
     return
   }
 
-  const rect = fileItemRef.value?.getBoundingClientRect()
-  if (!rect) return
-
-  const mouseY = event.clientY - rect.top
-  const height = rect.height
-  
-  // Always set dropPosition to 'inside'
-  dropPosition.value = 'inside'
-  showDropIndicator.value = true
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+  isDragOver.value = true
 }
 
 const onDragLeave = (event: DragEvent) => {
   event.preventDefault()
   event.stopPropagation()
 
-  const rect = fileItemRef.value?.getBoundingClientRect()
-  if (rect) {
-    const relatedTarget = event.relatedTarget as HTMLElement
-    if (!fileItemRef.value?.contains(relatedTarget) && 
-        !relatedTarget?.closest('.file-item')) {
-      dropPosition.value = null
-      showDropIndicator.value = false
-    }
+  if (!isValidDropTarget.value) return
+
+  const relatedTarget = event.relatedTarget as HTMLElement
+  if (!fileItemRef.value?.contains(relatedTarget)) {
+    isDragOver.value = false
   }
 }
 
-const onDragEnd = () => {
+const onDragEnd = (event: DragEvent) => {
+  event.preventDefault()
+  event.stopPropagation()
   isDragging.value = false
-  dropPosition.value = null
-  showDropIndicator.value = false
+  isDragOver.value = false
   isGlobalDragging.value = false
 }
 
@@ -386,11 +377,9 @@ const onDrop = async (event: DragEvent) => {
   event.preventDefault()
   event.stopPropagation()
   
-  const finalPosition = dropPosition.value
-  dropPosition.value = null
-  showDropIndicator.value = false
-  isGlobalDragging.value = false
+  if (!isValidDropTarget.value) return
   
+  isDragOver.value = false
   try {
     const data = event.dataTransfer?.getData('application/json')
     if (!data) return
@@ -399,16 +388,8 @@ const onDrop = async (event: DragEvent) => {
     const sourcePath = parsedData.path
     
     if (sourcePath) {
-      let destinationPath = props.file.path
       const sourceBasename = sourcePath.split('/').pop() || ''
-
-      if (finalPosition === 'inside' && !props.file.is_file) {
-        destinationPath = destinationPath + '/' + sourceBasename
-      } else {
-        const parentPath = destinationPath.split('/').slice(0, -1).join('/')
-        destinationPath = parentPath + '/' + sourceBasename
-      }
-
+      const destinationPath = props.file.path + '/' + sourceBasename
       await fileExplorerStore.moveFileOrFolder(sourcePath, destinationPath)
     }
   } catch (error) {
