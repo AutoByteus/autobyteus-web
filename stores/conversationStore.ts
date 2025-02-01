@@ -1,4 +1,3 @@
-
 import { defineStore } from 'pinia';
 import { useMutation, useSubscription, useQuery } from '@vue/apollo-composable';
 import { SendStepRequirement, CloseConversation } from '~/graphql/mutations/workflowStepMutations';
@@ -27,6 +26,7 @@ interface ConversationStoreState {
   currentStepId: string | null;
   conversationRequirements: Map<string, string>;
   conversationContextPaths: Map<string, ContextFilePath[]>;
+  conversationModelSelection: Map<string, string>;
   isSubscribed: boolean;
   isSending: boolean;
 }
@@ -38,6 +38,7 @@ export const useConversationStore = defineStore('conversation', {
     currentStepId: null,
     conversationRequirements: new Map(),
     conversationContextPaths: new Map(),
+    conversationModelSelection: new Map(),
     isSubscribed: false,
     isSending: false,
   }),
@@ -70,6 +71,12 @@ export const useConversationStore = defineStore('conversation', {
       const conversationId = state.activeConversationIdsByStep.get(state.currentStepId!) || null;
       if (!conversationId) return [];
       return state.conversationContextPaths.get(conversationId) || [];
+    },
+
+    currentModelSelection: (state): string => {
+      const conversationId = state.activeConversationIdsByStep.get(state.currentStepId!);
+      if (!conversationId) return '';
+      return state.conversationModelSelection.get(conversationId) || '';
     },
 
     isCurrentlySending: (state): boolean => state.isSending,
@@ -169,12 +176,20 @@ export const useConversationStore = defineStore('conversation', {
       // Initialize maps for new conversation
       this.conversationRequirements.set(tempId, '');
       this.conversationContextPaths.set(tempId, []);
+      this.conversationModelSelection.set(tempId, '');
     },
 
     updateUserRequirement(newRequirement: string) {
       const conversationId = this.activeConversationIdsByStep.get(this.currentStepId!);
       if (conversationId) {
         this.conversationRequirements.set(conversationId, newRequirement);
+      }
+    },
+
+    updateModelSelection(newModel: string) {
+      const conversationId = this.activeConversationIdsByStep.get(this.currentStepId!);
+      if (conversationId) {
+        this.conversationModelSelection.set(conversationId, newModel);
       }
     },
 
@@ -203,6 +218,7 @@ export const useConversationStore = defineStore('conversation', {
         // Clean up conversation data
         this.conversationRequirements.delete(conversationId);
         this.conversationContextPaths.delete(conversationId);
+        this.conversationModelSelection.delete(conversationId);
 
         // Update selected conversation
         if (this.activeConversationIdsByStep.get(stepId) === conversationId) {
@@ -293,12 +309,16 @@ export const useConversationStore = defineStore('conversation', {
             // Transfer data from temporary conversation to new one
             const tempRequirement = this.conversationRequirements.get(conversationId);
             const tempContextPaths = this.conversationContextPaths.get(conversationId);
+            const tempModelSelection = this.conversationModelSelection.get(conversationId);
             
             if (tempRequirement) {
               this.conversationRequirements.set(conversation_id, tempRequirement);
             }
             if (tempContextPaths) {
               this.conversationContextPaths.set(conversation_id, tempContextPaths);
+            }
+            if (tempModelSelection) {
+              this.conversationModelSelection.set(conversation_id, tempModelSelection);
             }
             
             await this.closeConversation(conversationId);
