@@ -529,12 +529,12 @@ export const useConversationStore = defineStore('conversation', {
       formData.append('workspace_id', workspaceId);
 
       try {
-        const response = await apiService.post<{ filePath: string }>('/upload-file', formData, {
+        const response = await apiService.post<{ fileUrl: string }>('/upload-file', formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
         });
-        return response.data.filePath;
+        return response.data.fileUrl;
       } catch (error) {
         console.error('Error uploading file:', error);
         throw error;
