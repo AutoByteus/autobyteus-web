@@ -1,4 +1,3 @@
-
 <template>
   <div>
     <strong>AI:</strong>
@@ -21,6 +20,10 @@
           :conversation-id="conversationId"
           :message-index="messageIndex"
         />
+        <ThinkSegment
+          v-else-if="segment.type === 'think'"
+          :content="segment.content"
+        />
       </template>
     </div>
   </div>
@@ -31,9 +34,9 @@ import type { AIMessage } from '~/types/conversation';
 import TextSegment from '~/components/conversation/segments/TextSegment.vue';
 import FileContentSegment from '~/components/conversation/segments/FileContentSegment.vue';
 import BashCommandSegment from '~/components/conversation/segments/BashCommandSegment.vue';
+import ThinkSegment from '~/components/conversation/segments/ThinkSegment.vue';
 
-const props = defineProps<{
-  message: AIMessage;
+const props = defineProps<{  message: AIMessage;
   conversationId: string;
   messageIndex: number;
 }>();

@@ -157,15 +157,16 @@ describe('IncrementalAIResponseParser (Integration)', () => {
     ]);
   });
 
-  it('should handle unknown tags as text across multiple chunks', () => {
-    parser.processChunks(['<think>']);
+  it('should handle unknown tags as text across multiple chunks for unrecognized tags', () => {
+    // Using a tag that is not recognized (e.g. <unknown>) should be treated as text.
+    parser.processChunks(['<unknown>']);
     expect(segments).toEqual([
-      { type: 'text', content: '<think>' }
+      { type: 'text', content: '<unknown>' }
     ]);
 
-    parser.processChunks(['random text</think>']);
+    parser.processChunks(['some text</unknown>']);
     expect(segments).toEqual([
-      { type: 'text', content: '<think>random text</think>' }
+      { type: 'text', content: '<unknown>some text</unknown>' }
     ]);
   });
 

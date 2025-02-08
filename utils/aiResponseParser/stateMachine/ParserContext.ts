@@ -1,8 +1,9 @@
-import type { AIResponseSegment, AIResponseTextSegment, FileSegment, BashCommandSegment } from '../types';
+/* autobyteus-web/utils/aiResponseParser/stateMachine/ParserContext.ts */
+import type { AIResponseSegment, AIResponseTextSegment, FileSegment, BashCommandSegment, ThinkSegment } from '../types';
 import { getLanguage } from '../languageDetector';
-import { State } from './State';
+import type { State } from './State';
 
-type CurrentSegment = FileSegment | AIResponseTextSegment | null;
+type CurrentSegment = FileSegment | AIResponseTextSegment | ThinkSegment | null;
 
 export class ParserContext {
   public segments: AIResponseSegment[];
@@ -11,6 +12,7 @@ export class ParserContext {
 
   public tagBuffer: string = '';
   public fileClosingBuffer: string = '';
+  public thinkClosingBuffer: string = '';
   public currentSegment: CurrentSegment = null;
 
   private _currentState: State | null = null;
@@ -54,11 +56,19 @@ export class ParserContext {
 
   /**
    * Append a character to the current file segment.
-   * This assumes we are currently parsing a file segment. If not, no action taken.
    */
   appendToFileSegment(char: string): void {
     if (this.currentSegment && this.currentSegment.type === 'file') {
       this.currentSegment.originalContent += char;
+    }
+  }
+
+  /**
+   * Append a character to the current think segment.
+   */
+  appendToThinkSegment(char: string): void {
+    if (this.currentSegment && this.currentSegment.type === 'think') {
+      this.currentSegment.content += char;
     }
   }
 
@@ -74,7 +84,6 @@ export class ParserContext {
         description
       };
       this.segments.push(bashCommandSegment);
-      // After a bash command, reset currentSegment to null
       this.currentSegment = null;
     }
   }
@@ -90,7 +99,20 @@ export class ParserContext {
     this.currentSegment = newFileSegment;
   }
 
+  startThinkSegment(): void {
+    const newThinkSegment: ThinkSegment = {
+      type: 'think',
+      content: ''
+    };
+    this.segments.push(newThinkSegment);
+    this.currentSegment = newThinkSegment;
+  }
+
   endFileSegment(): void {
+    this.currentSegment = null;
+  }
+  
+  endThinkSegment(): void {
     this.currentSegment = null;
   }
 

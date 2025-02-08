@@ -2,6 +2,7 @@ import { BaseState, ParserStateType } from './State';
 import { TextState } from './TextState';
 import { FileContentReadingState } from './FileContentReadingState';
 import { ParserContext } from './ParserContext';
+import { ThinkContentReadingState } from './ThinkContentReadingState';
 
 export class TagParsingState extends BaseState {
   stateType = ParserStateType.TAG_PARSING_STATE;
@@ -43,9 +44,22 @@ export class TagParsingState extends BaseState {
           this.context.transitionTo(new FileContentReadingState(this.context));
           return;
         }
+      } else if (tagBuffer.startsWith('<llm_reasoning_token')) {
+        // For <llm_reasoning_token>, we do not expect attributes; simply start a think segment.
+        const gtIdx = tagBuffer.indexOf('>');
+        if (gtIdx !== -1) {
+          this.context.startThinkSegment();
+          this.context.tagBuffer = '';
+          this.context.transitionTo(new ThinkContentReadingState(this.context));
+          return;
+        }
       } else {
-        // If it's no longer matching <bash or <file tag
-        if (!('<bash'.startsWith(tagBuffer) || '<file'.startsWith(tagBuffer))) {
+        // If it's no longer matching any known tag, revert to text
+        if (
+          !('<bash'.startsWith(tagBuffer)) &&
+          !('<file'.startsWith(tagBuffer)) &&
+          !('<llm_reasoning_token'.startsWith(tagBuffer))
+        ) {
           this.context.appendTextSegment(tagBuffer);
           this.context.tagBuffer = '';
           this.context.transitionTo(new TextState(this.context));

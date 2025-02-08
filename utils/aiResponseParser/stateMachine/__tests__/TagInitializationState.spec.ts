@@ -90,5 +90,16 @@ describe('TagInitializationState', () => {
     expect(context.currentState.stateType).toBe('TAG_INITIALIZATION_STATE');
     expect(segments).toEqual([]);
   });
-});
 
+  // New test for llm_reasoning_token tag recognition
+  it('should transition to TagParsingState when `<llm_reasoning_token` is recognized', () => {
+    // Reset context with tagBuffer starting with '<'
+    context.tagBuffer = '<';
+    context.buffer = 'llm_reasoning_token>';
+    context.pos = 0;
+
+    context.currentState.run();
+    // After reading the complete token, it should transition to TagParsingState
+    expect(context.currentState.stateType).toBe('TAG_PARSING_STATE');
+  });
+});

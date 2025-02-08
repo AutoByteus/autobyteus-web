@@ -1,3 +1,5 @@
+/* autobyteus-web/utils/aiResponseParser/types.ts */
+
 export interface BashCommand {
   command: string;
   description: string;
@@ -29,7 +31,17 @@ export interface FileSegment {
   language: string;
 }
 
-export type AIResponseSegment = AIResponseTextSegment | BashCommandSegment | FileSegment;
+/* New ThinkSegment type for thinking content */
+export interface ThinkSegment {
+  type: 'think';
+  content: string;
+}
+
+export type AIResponseSegment = 
+  | AIResponseTextSegment 
+  | BashCommandSegment 
+  | FileSegment 
+  | ThinkSegment;
 
 export interface ParsedAIResponse {
   segments: AIResponseSegment[];

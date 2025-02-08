@@ -7,7 +7,13 @@ describe('StateMachine', () => {
     const segments: AIResponseSegment[] = [];
     const machine = new StateMachine(segments);
 
-    machine.appendChunks(['Intro text ', '<bash command="echo Hello" description="Print hello"/>', ' Middle text ', '<file path="src/test.js">console.log("Hi")</file>', ' Ending text']);
+    machine.appendChunks([
+      'Intro text ',
+      '<bash command="echo Hello" description="Print hello"/>',
+      ' Middle text ',
+      '<file path="src/test.js">console.log("Hi")</file>',
+      ' Ending text'
+    ]);
     machine.run();
 
     expect(segments).toEqual([
@@ -49,6 +55,22 @@ describe('StateMachine', () => {
     machine.run();
     expect(segments).toEqual([
       { type: 'text', content: 'Some <unknown>tag</unknown> text' }
+    ]);
+  });
+
+  // New test for llm_reasoning_token segment
+  it('should parse a llm_reasoning_token segment received in multiple chunks', () => {
+    const segments: AIResponseSegment[] = [];
+    const machine = new StateMachine(segments);
+
+    machine.appendChunks([
+      '<llm_reasoning_token>',
+      'This is a think content',
+      '</llm_reasoning_token>'
+    ]);
+    machine.run();
+    expect(segments).toEqual([
+      { type: 'think', content: 'This is a think content' }
     ]);
   });
 });

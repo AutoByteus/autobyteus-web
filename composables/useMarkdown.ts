@@ -7,7 +7,7 @@ import DOMPurify from 'dompurify';
 export const useMarkdown = () => {
   // Create markdown-it instance with essential configuration
   const md = new MarkdownIt({
-    html: true,
+    html: false,
     breaks: true,
     linkify: true,
     typographer: true,
