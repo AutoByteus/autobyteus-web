@@ -88,7 +88,8 @@ const isSending = computed(() => conversationStore.isCurrentlySending);
 const textarea = ref<HTMLTextAreaElement | null>(null);
 const controlsRef = ref<HTMLDivElement | null>(null);
 const textareaHeight = ref(150);
-// Remove local selectedModel and instead create a computed property that gets/sets the model from the store.
+
+// Computed property for selectedModel that gets/sets the conversation's model selection.
 const selectedModel = computed({
   get: () => conversationStore.currentModelSelection,
   set: (value: string) => conversationStore.updateModelSelection(value)
@@ -192,8 +193,8 @@ const initializeModels = async () => {
   isLoadingModels.value = true;
   try {
     await llmProviderConfigStore.fetchModels();
-    if (availableModels.value.length > 0) {
-      // Optionally, you could initialize the model selection for the conversation here if needed.
+    // Only set a default model if no model has already been selected.
+    if (availableModels.value.length > 0 && !selectedModel.value) {
       selectedModel.value = availableModels.value[0];
     }
   } catch (error) {
