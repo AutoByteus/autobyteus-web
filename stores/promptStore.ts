@@ -1,12 +1,10 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
 import { useQuery, useMutation } from '@vue/apollo-composable';
 import { GET_PROMPTS, GET_PROMPT_BY_ID } from '~/graphql/queries/prompt_queries';
 import { CREATE_PROMPT } from '~/graphql/mutations/prompt_mutations';
 
-// Define the Prompt interface with camelCase and correct id type
 interface Prompt {
-  id: string;  // Changed from number to string to match backend
+  id: string;
   name: string;
   category: string;
   promptText: string;
@@ -14,73 +12,119 @@ interface Prompt {
   parentPromptId?: string | null;
 }
 
-export const usePromptStore = defineStore('prompt', () => {
-  const prompts = ref<Prompt[]>([]);
-  const loading = ref(false);
-  const error = ref('');
+interface PromptState {
+  prompts: Prompt[];
+  loading: boolean;
+  error: string;
+  selectedPrompt: Prompt | null;
+}
 
-  const fetchActivePrompts = async () => {
-    loading.value = true;
-    error.value = '';
-    try {
-      const { onResult, onError } = useQuery(GET_PROMPTS, null, { fetchPolicy: 'network-only' });
-      onResult((result) => {
-        if (result.data && result.data.activePrompts) {
-          prompts.value = result.data.activePrompts;
-        }
-        loading.value = false;
-      });
-      onError((err) => {
-        error.value = err.message;
-        loading.value = false;
-      });
-    } catch (e: any) {
-      error.value = e.message;
-      loading.value = false;
-    }
-  };
+export const usePromptStore = defineStore('prompt', {
+  state: (): PromptState => ({
+    prompts: [],
+    loading: false,
+    error: '',
+    selectedPrompt: null
+  }),
 
-  const fetchPromptById = async (id: string): Promise<Prompt | null> => {
-    loading.value = true;
-    error.value = '';
-    try {
-      const { onResult, onError } = useQuery(GET_PROMPT_BY_ID, { id }, { fetchPolicy: 'network-only' });
-      return new Promise((resolve) => {
-        onResult((result) => {
-          loading.value = false;
-          if (result.data && result.data.promptDetails) {
-            resolve(result.data.promptDetails);
-          } else {
-            resolve(null);
-          }
+  actions: {
+    async fetchActivePrompts() {
+      this.loading = true;
+      this.error = '';
+      
+      try {
+        const { onResult, onError } = useQuery(GET_PROMPTS, null, { 
+          fetchPolicy: 'network-only' 
         });
-        onError((err) => {
-          error.value = err.message;
-          loading.value = false;
-          resolve(null);
-        });
-      });
-    } catch (e: any) {
-      error.value = e.message;
-      loading.value = false;
-      throw e;
-    }
-  };
 
-  const createPrompt = async (name: string, category: string, promptText: string) => {
-    try {
-      const { mutate } = useMutation(CREATE_PROMPT);
-      const response = await mutate({ input: { name, category, promptText } });
-      if (response && response.data && response.data.createPrompt) {
-        await fetchActivePrompts();
-      } else {
-        throw new Error('Failed to create prompt: No data returned');
+        return new Promise((resolve, reject) => {
+          onResult((result) => {
+            if (result.data?.activePrompts) {
+              this.prompts = result.data.activePrompts;
+              this.loading = false;
+              resolve(result.data.activePrompts);
+            }
+          });
+
+          onError((err) => {
+            this.error = err.message;
+            this.loading = false;
+            reject(err);
+          });
+        });
+      } catch (e: any) {
+        this.error = e.message;
+        this.loading = false;
+        throw e;
       }
-    } catch (e: any) {
-      error.value = e.message;
-      throw e;
-    }
-  };
+    },
 
-  return { prompts, loading, error, fetchActivePrompts, createPrompt, fetchPromptById };
+    async fetchPromptById(id: string) {
+      this.loading = true;
+      this.error = '';
+      
+      try {
+        const { onResult, onError } = useQuery(GET_PROMPT_BY_ID, 
+          { id }, 
+          { fetchPolicy: 'network-only' }
+        );
+
+        return new Promise<Prompt | null>((resolve, reject) => {
+          onResult((result) => {
+            this.loading = false;
+            if (result.data?.promptDetails) {
+              this.selectedPrompt = result.data.promptDetails;
+              resolve(result.data.promptDetails);
+            } else {
+              resolve(null);
+            }
+          });
+
+          onError((err) => {
+            this.error = err.message;
+            this.loading = false;
+            reject(err);
+          });
+        });
+      } catch (e: any) {
+        this.error = e.message;
+        this.loading = false;
+        throw e;
+      }
+    },
+
+    async createPrompt(name: string, category: string, promptText: string) {
+      try {
+        const { mutate } = useMutation(CREATE_PROMPT);
+        const response = await mutate({ 
+          input: { name, category, promptText } 
+        });
+
+        if (response?.data?.createPrompt) {
+          await this.fetchActivePrompts();
+          return response.data.createPrompt;
+        } else {
+          throw new Error('Failed to create prompt: No data returned');
+        }
+      } catch (e: any) {
+        this.error = e.message;
+        throw e;
+      }
+    },
+
+    setSelectedPrompt(prompt: Prompt | null) {
+      this.selectedPrompt = prompt;
+    },
+
+    clearError() {
+      this.error = '';
+    }
+  },
+
+  getters: {
+    getPrompts: (state): Prompt[] => state.prompts,
+    getLoading: (state): boolean => state.loading,
+    getError: (state): string => state.error,
+    getSelectedPrompt: (state): Prompt | null => state.selectedPrompt
+  }
 });

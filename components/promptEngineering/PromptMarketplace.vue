@@ -37,6 +37,8 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
 import { usePromptStore } from '~/stores/promptStore';
 
 const props = defineProps<{  selectedPromptId: string | null;
@@ -46,7 +48,15 @@ defineEmits<{  (e: 'select-prompt', id: string): void;
 }>();
 
 const promptStore = usePromptStore();
-const { prompts, loading, error } = promptStore;
+const { prompts, loading, error } = storeToRefs(promptStore);
+
+onMounted(async () => {
+  try {
+    await promptStore.fetchActivePrompts();
+  } catch (err) {
+    console.error('Failed to fetch prompts:', err);
+  }
+});
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
