@@ -72,36 +72,44 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useConversationStore } from '~/stores/conversationStore';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useWorkflowStore } from '~/stores/workflow';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import AudioRecorder from '~/components/AudioRecorder.vue';
 
+// Initialize stores
 const conversationStore = useConversationStore();
 const workspaceStore = useWorkspaceStore();
 const workflowStore = useWorkflowStore();
 const llmProviderConfigStore = useLLMProviderConfigStore();
 
-const userRequirement = computed(() => conversationStore.currentRequirement);
-const isSending = computed(() => conversationStore.isCurrentlySending);
+// Use storeToRefs for reactive state properties
+const { currentRequirement, isCurrentlySending, currentModelSelection, selectedConversation, conversationMessages } = storeToRefs(conversationStore);
+const { currentSelectedWorkspaceId } = storeToRefs(workspaceStore);
+const { selectedStep } = storeToRefs(workflowStore);
+const { models, isLoadingModels } = storeToRefs(llmProviderConfigStore);
+
+// Local component state
+const userRequirement = computed(() => currentRequirement.value);
+const isSending = computed(() => isCurrentlySending.value);
 const textarea = ref<HTMLTextAreaElement | null>(null);
 const controlsRef = ref<HTMLDivElement | null>(null);
 const textareaHeight = ref(150);
+const isSearching = ref(false);
 
-// Computed property for selectedModel that gets/sets the conversation's model selection.
+// Computed property for selectedModel that gets/sets the conversation's model selection
 const selectedModel = computed({
-  get: () => conversationStore.currentModelSelection,
+  get: () => currentModelSelection.value,
   set: (value: string) => conversationStore.updateModelSelection(value)
 });
 
-const isSearching = ref(false);
-const isLoadingModels = ref(true);
-
-const availableModels = computed(() => llmProviderConfigStore.models);
+// Ensure models is always an array
+const availableModels = computed(() => models.value || []);
 
 const isFirstMessage = () => {
-  return !conversationStore.selectedConversation || conversationStore.conversationMessages.length === 0;
+  return !selectedConversation.value || conversationMessages.value.length === 0;
 };
 
 const updateRequirement = (event: Event) => {
@@ -116,10 +124,10 @@ const handleSend = async () => {
     return;
   }
 
-  const workspaceId = workspaceStore.currentSelectedWorkspaceId;
-  const selectedStep = workflowStore.selectedStep;
+  const workspaceId = currentSelectedWorkspaceId.value;
+  const currentStep = selectedStep.value;
 
-  if (!workspaceId || !selectedStep) {
+  if (!workspaceId || !currentStep) {
     alert('Workspace or step is not selected.');
     return;
   }
@@ -130,7 +138,7 @@ const handleSend = async () => {
 
     await conversationStore.sendStepRequirementAndSubscribe(
       workspaceId,
-      selectedStep.id,
+      currentStep.id,
       llmModelToSend
     );
 
@@ -190,17 +198,14 @@ const handleResize = () => {
 };
 
 const initializeModels = async () => {
-  isLoadingModels.value = true;
   try {
     await llmProviderConfigStore.fetchModels();
-    // Only set a default model if no model has already been selected.
+    // Only set a default model if no model has already been selected and models are available
     if (availableModels.value.length > 0 && !selectedModel.value) {
       selectedModel.value = availableModels.value[0];
     }
   } catch (error) {
     console.error('Failed to fetch available models:', error);
-  } finally {
-    isLoadingModels.value = false;
   }
 };
 

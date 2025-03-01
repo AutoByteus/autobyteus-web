@@ -84,6 +84,40 @@
             </div>
           </div>
         </div>
+
+        <!-- Available Models Section -->
+        <div class="mt-8">
+          <div class="flex items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-800">Available Models</h3>
+            <button 
+              @click="refreshModels" 
+              class="ml-2 p-1 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-100 transition-colors duration-200"
+              title="Refresh models"
+              :disabled="isLoadingModels"
+            >
+              <span class="i-heroicons-arrow-path-20-solid w-5 h-5" :class="{ 'animate-spin': isLoadingModels }"></span>
+            </button>
+          </div>
+
+          <div v-if="isLoadingModels" class="flex justify-center items-center py-6">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+            <p class="text-gray-600">Loading available models...</p>
+          </div>
+          <div v-else-if="availableModels.length === 0" class="bg-gray-50 rounded-lg p-6 text-center">
+            <span class="i-heroicons-cube-transparent-20-solid w-10 h-10 text-gray-400 mx-auto mb-3"></span>
+            <p class="text-gray-600">No models available. Configure at least one provider API key to see available models.</p>
+          </div>
+          <div v-else class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div 
+              v-for="model in availableModels" 
+              :key="model"
+              class="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center"
+            >
+              <span class="i-heroicons-cube-20-solid w-4 h-4 text-blue-600 mr-2"></span>
+              <span class="text-sm font-medium text-gray-800 truncate">{{ model }}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Notifications -->
@@ -99,10 +133,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig'
 
 const store = useLLMProviderConfigStore()
+// Use storeToRefs for reactive state properties
+const { isLoadingModels, models } = storeToRefs(store)
 
 const loading = ref(true)
 const saving = ref(false)
@@ -114,6 +151,19 @@ const notification = ref<{ type: 'success' | 'error'; message: string } | null>(
 
 const providerConfigs = ref<Record<string, { apiKey?: string }>>({})
 
+// Computed property to ensure models is always an array
+const availableModels = computed(() => models.value || [])
+
+const refreshModels = async () => {
+  try {
+    await store.fetchModels()
+    showNotification('Models refreshed successfully', 'success')
+  } catch (error) {
+    console.error('Failed to refresh models:', error)
+    showNotification('Failed to refresh models', 'error')
+  }
+}
+
 onMounted(async () => {
   try {
     providers.value = await store.fetchProviders()
@@ -122,14 +172,24 @@ onMounted(async () => {
     for (const provider of providers.value) {
       try {
         const apiKey = await store.getLLMProviderApiKey(provider)
-        if (apiKey) {
+        // Check specifically for non-empty strings to determine if configured
+        if (apiKey && typeof apiKey === 'string' && apiKey.trim() !== '') {
           providerConfigs.value[provider] = { apiKey: '********' }
+        } else {
+          // Ensure provider exists in providerConfigs but without apiKey property
+          providerConfigs.value[provider] = {}
         }
       } catch (error) {
         console.error(`Failed to load API key for ${provider}:`, error)
+        // Ensure provider exists in providerConfigs but without apiKey property
+        providerConfigs.value[provider] = {}
       }
     }
+    
+    // Load available models
+    await store.fetchModels()
   } catch (error) {
+    console.error('Failed to load providers or models:', error)
     showNotification('Failed to load providers', 'error')
   } finally {
     loading.value = false
@@ -154,10 +214,18 @@ const saveApiKey = async () => {
   try {
     await store.setLLMProviderApiKey(selectedProvider.value, apiKey.value)
     providerConfigs.value[selectedProvider.value] = { apiKey: '********' }
-    showNotification(`API key for ${selectedProvider.value} saved successfully`, 'success')
+    
+    // Updated notification message to indicate models are being refreshed
+    const messageBase = `API key for ${selectedProvider.value} saved successfully`;
+    const message = isLoadingModels.value 
+      ? `${messageBase}. Refreshing available models...` 
+      : `${messageBase}. Models refreshed.`;
+    
+    showNotification(message, 'success')
     apiKey.value = ''
     selectedProvider.value = ''
   } catch (error) {
+    console.error('Failed to save API key:', error)
     showNotification(`Failed to save API key for ${selectedProvider.value}`, 'error')
   } finally {
     saving.value = false
