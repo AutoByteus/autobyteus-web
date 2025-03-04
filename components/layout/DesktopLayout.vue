@@ -92,15 +92,6 @@
           />
         </svg>
       </button>
-
-      <!-- Content Preview -->
-      <div v-if="isPreviewMode" 
-        class="fixed bottom-4 right-4 w-80 h-40 bg-white rounded-lg shadow-lg border border-gray-200 cursor-pointer 
-          transition-all duration-300 hover:shadow-xl z-20"
-        @click="handleExpandContent"
-      >
-        <ScaledPreviewContainer :snapshot-url="snapshotService.getSnapshot()" />
-      </div>
     </template>
   </div>
 </template>
@@ -113,18 +104,16 @@ import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import { useWorkflowUIStore } from '~/stores/workflowUI'
 import { useRightPanel } from '~/composables/useRightPanel'
 import { usePanelResize } from '~/composables/usePanelResize'
-import { snapshotService } from '~/services/snapshotService'
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
 import ContentViewer from '~/components/fileExplorer/FileContentViewer.vue'
 import WorkflowStepView from '~/components/workflow/WorkflowStepView.vue'
 import RightSideTabs from './RightSideTabs.vue'
 import LeftSidebarOverlay from '~/components/workflow/LeftSidebarOverlay.vue'
-import ScaledPreviewContainer from '~/components/common/ScaledPreviewContainer.vue'
 
 const workflowUIStore = useWorkflowUIStore()
 const fileContentDisplayModeStore = useFileContentDisplayModeStore()
 
-const { isFullscreenMode, isPreviewMode } = storeToRefs(fileContentDisplayModeStore)
+const { isFullscreenMode, isMinimizedMode } = storeToRefs(fileContentDisplayModeStore)
 const { isWorkflowOpen } = storeToRefs(workflowUIStore)
 const { fileExplorerWidth, initDragFileToContent } = usePanelResize()
 const { isRightPanelVisible, rightPanelWidth, toggleRightPanel, initDragRightPanel } = useRightPanel()
