@@ -93,15 +93,18 @@
               @click="refreshModels" 
               class="ml-2 p-1 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-100 transition-colors duration-200"
               title="Refresh models"
-              :disabled="isLoadingModels"
+              :disabled="isLoadingModels || isReloadingModels"
             >
-              <span class="i-heroicons-arrow-path-20-solid w-5 h-5" :class="{ 'animate-spin': isLoadingModels }"></span>
+              <span class="i-heroicons-arrow-path-20-solid w-5 h-5" 
+                    :class="{ 'animate-spin': isLoadingModels || isReloadingModels }"></span>
             </button>
           </div>
 
-          <div v-if="isLoadingModels" class="flex justify-center items-center py-6">
+          <div v-if="isLoadingModels || isReloadingModels" class="flex justify-center items-center py-6">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
-            <p class="text-gray-600">Loading available models...</p>
+            <p class="text-gray-600">
+              {{ isReloadingModels ? 'Reloading and discovering models...' : 'Loading available models...' }}
+            </p>
           </div>
           <div v-else-if="availableModels.length === 0" class="bg-gray-50 rounded-lg p-6 text-center">
             <span class="i-heroicons-cube-transparent-20-solid w-10 h-10 text-gray-400 mx-auto mb-3"></span>
@@ -139,7 +142,7 @@ import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig'
 
 const store = useLLMProviderConfigStore()
 // Use storeToRefs for reactive state properties
-const { isLoadingModels, models } = storeToRefs(store)
+const { isLoadingModels, models, isReloadingModels } = storeToRefs(store)
 
 const loading = ref(true)
 const saving = ref(false)
@@ -156,11 +159,12 @@ const availableModels = computed(() => models.value || [])
 
 const refreshModels = async () => {
   try {
-    await store.fetchModels()
-    showNotification('Models refreshed successfully', 'success')
+    // Call reloadModels to force backend to rediscover models first
+    await store.reloadModels()
+    showNotification('Models reloaded and refreshed successfully', 'success')
   } catch (error) {
-    console.error('Failed to refresh models:', error)
-    showNotification('Failed to refresh models', 'error')
+    console.error('Failed to reload models:', error)
+    showNotification('Failed to reload models', 'error')
   }
 }
 
@@ -215,17 +219,11 @@ const saveApiKey = async () => {
     await store.setLLMProviderApiKey(selectedProvider.value, apiKey.value)
     providerConfigs.value[selectedProvider.value] = { apiKey: '********' }
     
-    // Updated notification message to indicate models are being refreshed
-    const messageBase = `API key for ${selectedProvider.value} saved successfully`;
-    const message = isLoadingModels.value 
-      ? `${messageBase}. Refreshing available models...` 
-      : `${messageBase}. Models refreshed.`;
-    
-    showNotification(message, 'success')
+    showNotification(`API key for ${selectedProvider.value} saved and models reloaded successfully`, 'success')
     apiKey.value = ''
     selectedProvider.value = ''
   } catch (error) {
-    console.error('Failed to save API key:', error)
+    console.error('Failed to save API key or reload models:', error)
     showNotification(`Failed to save API key for ${selectedProvider.value}`, 'error')
   } finally {
     saving.value = false

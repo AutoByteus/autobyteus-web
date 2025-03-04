@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
-import { snapshotService } from '~/services/snapshotService'
+import { useFileExplorerStore } from '~/stores/fileExplorer'
 
-export type DisplayMode = 'hidden' | 'fullscreen' | 'preview'
+export type DisplayMode = 'hidden' | 'fullscreen' | 'minimized'
 
 interface FileContentDisplayModeState {
   displayMode: DisplayMode;
@@ -21,38 +21,34 @@ export const useFileContentDisplayModeStore = defineStore('fileContentDisplayMod
       this.isMinimizing = false
     },
 
-    startMinimize() {
-      console.log('Starting minimize process')
-      this.isMinimizing = true
+    minimize() {
+      console.log('Minimizing file viewer')
+      // No need for multi-step process, just set to minimized directly
+      this.displayMode = 'minimized'
+      this.isMinimizing = false
     },
 
-    async finishMinimize() {
-      console.log('Finishing minimize process')
-      // Ensure we're still minimizing (could have been cancelled)
-      if (this.isMinimizing) {
-        this.displayMode = 'preview'
-        this.isMinimizing = false
-        console.log('Display mode changed to preview')
-      }
+    restore() {
+      console.log('Restoring file viewer to fullscreen')
+      this.displayMode = 'fullscreen'
+      this.isMinimizing = false
     },
 
     hide() {
       console.log('Hiding viewer')
       this.displayMode = 'hidden'
       this.isMinimizing = false
-      snapshotService.clearSnapshot()
     },
 
     resetState() {
       console.log('Resetting display mode state')
       this.displayMode = 'hidden'
       this.isMinimizing = false
-      snapshotService.clearSnapshot()
     }
   },
 
   getters: {
     isFullscreenMode: (state): boolean => state.displayMode === 'fullscreen',
-    isPreviewMode: (state): boolean => state.displayMode === 'preview',
+    isMinimizedMode: (state): boolean => state.displayMode === 'minimized',
   }
 })

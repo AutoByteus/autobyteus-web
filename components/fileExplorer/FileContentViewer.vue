@@ -3,6 +3,7 @@
     id="contentViewer"
     class="bg-white rounded-lg shadow-md flex flex-col h-full"
     ref="contentRef"
+    v-if="isFullscreenMode || (!isFullscreenMode && !isMinimizedMode)"
   >
     <!-- Tabs for open files across the top -->
     <div class="flex border-b overflow-x-auto sticky top-0 bg-white z-10 p-2">
@@ -74,7 +75,7 @@
 
     <!-- Show minimize hint when in fullscreen mode -->
     <div v-if="isFullscreenMode" class="border-t p-2 flex justify-end items-center">
-      <small class="text-gray-700 font-medium">Press <kbd class="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded">Esc</kbd> to exit fullscreen</small>
+      <small class="text-gray-700 font-medium">Press <kbd class="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded">Esc</kbd> to minimize</small>
     </div>
   </div>
 </template>
@@ -84,13 +85,12 @@ import { computed, watch, onMounted, ref, onBeforeMount, onBeforeUnmount } from 
 import { storeToRefs } from 'pinia'
 import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
-import { snapshotService } from '~/services/snapshotService'
 import { getLanguage } from '~/utils/aiResponseParser/languageDetector'
 import MonacoEditor from '~/components/fileExplorer/MonacoEditor.vue'
 
 const fileExplorerStore = useFileExplorerStore()
 const fileContentDisplayModeStore = useFileContentDisplayModeStore()
-const { isFullscreenMode } = storeToRefs(fileContentDisplayModeStore)
+const { isFullscreenMode, isMinimizedMode } = storeToRefs(fileContentDisplayModeStore)
 
 const contentRef = ref<HTMLElement | null>(null)
 
@@ -188,25 +188,10 @@ async function saveChanges() {
   )
 }
 
-const handleMinimize = async () => {
-  if (!contentRef.value) {
-    console.error('No content element to capture')
-    return
-  }
-
-  try {
-    await snapshotService.captureSnapshot(contentRef.value)
-    fileContentDisplayModeStore.startMinimize()
-    await fileContentDisplayModeStore.finishMinimize()
-  } catch (error) {
-    console.error('Failed to handle minimize:', error)
-    fileContentDisplayModeStore.finishMinimize()
-  }
-}
-
 const handleKeydown = async (event: KeyboardEvent) => {
   if (isFullscreenMode.value && event.key === 'Escape') {
-    await handleMinimize()
+    // Instead of taking a snapshot, just minimize directly
+    fileContentDisplayModeStore.minimize()
   }
 }
 </script>
