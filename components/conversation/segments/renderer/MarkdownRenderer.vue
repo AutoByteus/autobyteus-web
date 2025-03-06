@@ -1,18 +1,22 @@
-
 <template>
-  <div v-html="renderedMarkdown" class="markdown-body prose dark:prose-invert prose-gray max-w-none markdown-container"></div>
+  <div 
+    ref="markdownContainer" 
+    v-html="renderedMarkdown" 
+    class="markdown-body prose dark:prose-invert prose-gray max-w-none markdown-container"
+  ></div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
+import { computed, onMounted, onBeforeUnmount, watch, nextTick, ref } from 'vue';
 import { useMarkdown } from '~/composables/useMarkdown';
 import { usePlantUML } from '~/composables/usePlantUML';
+import highlightService from '~/services/highlightService';
 import 'prismjs/themes/prism.css';
 
-const props = defineProps<{
-  content: string;
+const props = defineProps<{  content: string;
 }>();
 
+const markdownContainer = ref<HTMLElement | null>(null);
 const { renderMarkdown } = useMarkdown();
 const { processPlantUmlDiagrams, reset } = usePlantUML();
 
@@ -20,18 +24,60 @@ const renderedMarkdown = computed(() => {
   return renderMarkdown(props.content);
 });
 
-// Process PlantUML diagrams after markdown rendering
-watch(() => props.content, async (newContent, oldContent) => {
-  if (newContent !== oldContent) {
-    reset();
-    await nextTick();
-    await processPlantUmlDiagrams();
+// Use a more efficient approach for highlighting code blocks after markdown rendering
+const highlightCodeInMarkdown = async () => {
+  await nextTick();
+  if (markdownContainer.value) {
+    // Use the service to highlight code blocks in the container
+    highlightService.highlightCodeBlocks(markdownContainer.value);
   }
-}, { immediate: true });
+};
 
-onBeforeUnmount(() => {
-  reset();
+// Optimize PlantUML processing with Intersection Observer
+onMounted(() => {
+  if (!markdownContainer.value) return;
+  
+  // Set up Intersection Observer to process diagrams only when visible
+  const observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      // Process diagrams and highlight code when visible
+      highlightCodeInMarkdown();
+      processPlantUmlDiagrams();
+    }
+  }, {
+    rootMargin: '100px 0px', // Process when within 100px of viewport
+    threshold: 0
+  });
+  
+  observer.observe(markdownContainer.value);
+  
+  // Clean up on unmount
+  onBeforeUnmount(() => {
+    observer.disconnect();
+    reset();
+  });
 });
+
+// Process content changes with debouncing
+watch(() => props.content, 
+  (newContent, oldContent) => {
+    if (newContent !== oldContent) {
+      reset();
+      
+      // Debounce processing to avoid rapid consecutive updates
+      const processingTimeout = setTimeout(() => {
+        highlightCodeInMarkdown();
+        processPlantUmlDiagrams();
+      }, 100);
+      
+      // Clean up timeout on unmount
+      onBeforeUnmount(() => {
+        clearTimeout(processingTimeout);
+      });
+    }
+  }, 
+  { immediate: false }
+);
 </script>
 
 <style>

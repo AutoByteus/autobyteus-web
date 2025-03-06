@@ -40,7 +40,11 @@
       </button>
     </div>
     <MarkdownRenderer v-if="isMarkdownFile" :content="fileSegment.originalContent" />
-    <pre v-else :class="'language-' + fileSegment.language + ' w-full overflow-x-auto'"><code v-html="highlightedCode"></code></pre>
+    <pre 
+      v-else
+      ref="codeContainer"
+      :class="'language-' + fileSegment.language + ' w-full overflow-x-auto'"
+    ><code v-html="highlightedCode" :class="'language-' + fileSegment.language" data-highlighted="true"></code></pre>
     <div v-if="error" class="mt-2 p-2 rounded bg-red-100 text-red-800">
       {{ error }}
     </div>
@@ -53,49 +57,81 @@ import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { useWorkspaceStore } from '~/stores/workspace';
 import MarkdownRenderer from '~/components/conversation/segments/renderer/MarkdownRenderer.vue';
 import { highlightFileSegment } from '~/utils/aiResponseParser/segmentHighlighter';
-import { usePrismHighlighter } from '~/composables/usePrismHighlighter';
+import highlightService from '~/services/highlightService';
 import type { FileSegment } from '~/utils/aiResponseParser/types';
 
-const props = defineProps<{  fileSegment: FileSegment;
+const props = defineProps<{  
+  fileSegment: FileSegment;
   conversationId: string;
   messageIndex: number;
 }>();
 
 const fileExplorerStore = useFileExplorerStore();
 const workspaceStore = useWorkspaceStore();
-const { initializePrism, highlightCode } = usePrismHighlighter();
 
+const codeContainer = ref<HTMLElement | null>(null);
 const highlightedCode = ref('');
+const isHighlightPending = ref(false);
 
+// Use a more efficient approach to highlight code
 const updateHighlightedCode = () => {
-  if (!initializePrism()) {
-    console.error('Failed to initialize Prism');
-    return;
-  }
-  
   try {
+    // Use cached highlightFileSegment function
     const highlighted = highlightFileSegment(props.fileSegment);
     highlightedCode.value = highlighted.highlightedContent || '';
-    // Ensure Prism processes any new code
-    highlightCode();
+    isHighlightPending.value = false;
   } catch (err) {
     console.error('Failed to highlight code:', err);
     // Fallback to raw content if highlighting fails
     highlightedCode.value = props.fileSegment.originalContent;
+    isHighlightPending.value = false;
   }
 };
 
-// Watch for changes in originalContent and rehighlight
+// Use a debounced approach for the watcher to avoid multiple rapid updates
+const debouncedHighlight = (() => {
+  let timeout: number | null = null;
+  return () => {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    isHighlightPending.value = true;
+    timeout = window.setTimeout(() => {
+      updateHighlightedCode();
+      timeout = null;
+    }, 50); // Debounce by 50ms
+  };
+})();
+
+// Watch for changes in originalContent and debounce highlighting
 watch(
   () => props.fileSegment.originalContent,
   () => {
-    updateHighlightedCode();
+    debouncedHighlight();
   },
   { immediate: true }
 );
 
+// Use Intersection Observer to only highlight when visible
 onMounted(() => {
-  updateHighlightedCode();
+  if (!codeContainer.value) return;
+  
+  // Set up intersection observer to highlight code only when visible
+  const observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && isHighlightPending.value) {
+      updateHighlightedCode();
+    }
+  }, { 
+    rootMargin: '200px 0px', // Start loading when within 200px of viewport
+    threshold: 0 
+  });
+  
+  observer.observe(codeContainer.value);
+  
+  // Clean up observer when component is unmounted
+  onBeforeUnmount(() => {
+    observer.disconnect();
+  });
 });
 
 const isInProgress = computed(() => {

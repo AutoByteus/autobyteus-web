@@ -1,18 +1,5 @@
-
 import MarkdownIt from 'markdown-it';
-import Prism from 'prismjs';
-
-// Import required Prism components
-import 'prismjs/components/prism-javascript';
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-python';
-import 'prismjs/components/prism-markup';
-import 'prismjs/components/prism-php';
-import 'prismjs/components/prism-ruby';
-import 'prismjs/components/prism-css';
-import 'prismjs/components/prism-jsx';
-import 'prismjs/components/prism-json';
-import 'prismjs/components/prism-markdown';
+import highlightService from '~/services/highlightService';
 
 export function markdownItPrism(md: MarkdownIt) {
   const fence = md.renderer.rules.fence!;
@@ -24,12 +11,7 @@ export function markdownItPrism(md: MarkdownIt) {
     // If language is specified
     if (lang) {
       try {
-        const highlighted = Prism.highlight(
-          token.content,
-          Prism.languages[lang] || Prism.languages.plaintext,
-          lang
-        );
-
+        const highlighted = highlightService.highlight(token.content, lang);
         const languageClass = `language-${lang}`;
         
         return `<pre class="${languageClass}"><code class="${languageClass}">${highlighted}</code></pre>`;
