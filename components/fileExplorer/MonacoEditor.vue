@@ -84,6 +84,17 @@ watch(() => props.language, (newValue) => {
 
 onMounted(async () => {
   await initMonaco();
+  // Updated event listener with logging
+  if (editorContainer.value) {
+    editorContainer.value.addEventListener('keydown', (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        console.log('Ctrl+S intercepted');
+        e.preventDefault();
+        e.stopPropagation();
+        emit('save');
+      }
+    });
+  }
 });
 
 onBeforeUnmount(() => {
