@@ -19,17 +19,17 @@
     "test": "vitest",
     "start": "electron .",
     "generate": "nuxt generate",
-    "generate:electron": "NODE_ENV=production BUILD_TARGET=electron nuxt generate",
+    "generate:electron": "cross-env NODE_ENV=production BUILD_TARGET=electron nuxt generate",
     "generate:icons": "tsc -p build/tsconfig.json && node build/scripts/generateIcons.js",
     "preview": "nuxt preview",
     "codegen": "graphql-codegen --require dotenv/config --config codegen.ts",
     "transpile-electron": "tsc -p electron/tsconfig.json",
     "transpile-build": "tsc -p build/tsconfig.json",
     "prepare-server": "chmod +x ./scripts/prepare-server.sh && ./scripts/prepare-server.sh",
-    "build:electron": "NODE_ENV=production yarn prepare-server && yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js",
-    "build:electron:linux": "env NODE_ENV=production yarn prepare-server && yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --linux",
-    "build:electron:windows": "env NODE_ENV=production yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --windows",
-    "build:electron:mac": "NODE_ENV=production yarn prepare-server && yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --mac"
+    "build:electron": "cross-env NODE_ENV=production yarn prepare-server && yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js",
+    "build:electron:linux": "cross-env NODE_ENV=production yarn prepare-server && yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --linux",
+    "build:electron:windows": "cross-env NODE_ENV=production yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --windows",
+    "build:electron:mac": "cross-env NODE_ENV=production yarn prepare-server && yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --mac"
   },
   "dependencies": {
     "@capacitor/android": "^6.1.2",
