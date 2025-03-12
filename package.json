@@ -25,10 +25,11 @@
     "codegen": "graphql-codegen --require dotenv/config --config codegen.ts",
     "transpile-electron": "tsc -p electron/tsconfig.json",
     "transpile-build": "tsc -p build/tsconfig.json",
-    "build:electron": "NODE_ENV=production yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js",
-    "build:electron:linux": "NODE_ENV=production yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --linux",
-    "build:electron:windows": "NODE_ENV=production yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --windows",
-    "build:electron:mac": "NODE_ENV=production yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --mac"
+    "prepare-server": "chmod +x ./scripts/prepare-server.sh && ./scripts/prepare-server.sh",
+    "build:electron": "NODE_ENV=production yarn prepare-server && yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js",
+    "build:electron:linux": "env NODE_ENV=production yarn prepare-server && yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --linux",
+    "build:electron:windows": "env NODE_ENV=production yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --windows",
+    "build:electron:mac": "NODE_ENV=production yarn prepare-server && yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --mac"
   },
   "dependencies": {
     "@capacitor/android": "^6.1.2",
@@ -71,6 +72,7 @@
     "@vue/test-utils": "^2.4.6",
     "autoprefixer": "^10.4.19",
     "concurrently": "^9.0.1",
+    "cross-env": "^7.0.3",
     "dotenv": "^16.4.5",
     "electron": "^32.1.0",
     "electron-builder": "^25.0.5",
