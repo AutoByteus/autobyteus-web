@@ -1,6 +1,7 @@
 import sharp from 'sharp'
 import fs from 'fs'
 import path from 'path'
+import toIco from 'to-ico'
 
 interface IconGenerationSize {
   size: number
@@ -38,11 +39,26 @@ export async function generateIcons(): Promise<void> {
         .toFile(path.join(targetDir, filename))
     }
     
-    // Generate ICO file for Windows
+    // Generate ICO file for Windows using to-ico
+    // For ICO, we'll use multiple resolutions (16, 32, 48, 256)
     console.log('Generating Windows ICO icon...')
-    await sharp(source)
-      .resize(256, 256)
-      .toFile(path.join(targetDir, 'icon.ico'))
+    const icoPngFiles = [16, 32, 48, 256].map(size => 
+      path.join(targetDir, `${size}x${size}.png`)
+    )
+    
+    // Wait for all required PNGs to be loaded
+    const pngBuffers = await Promise.all(
+      icoPngFiles.map(file => fs.promises.readFile(file))
+    )
+    
+    // Convert PNGs to ICO format
+    const icoBuffer = await toIco(pngBuffers, {
+      sizes: [16, 32, 48, 256],
+      resize: true
+    })
+    
+    // Save the ICO file
+    await fs.promises.writeFile(path.join(targetDir, 'icon.ico'), icoBuffer)
     
     // Generate ICNS file for macOS
     console.log('Generating macOS ICNS icon...')

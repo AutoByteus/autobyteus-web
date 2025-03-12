@@ -48,6 +48,13 @@ const options: Configuration = {
   asar: false,
   // Default icon for all platforms
   icon: 'build/icons/512x512.png',
+  // Include the resources directory which contains the server
+  extraResources: [
+    {
+      from: "resources/server",
+      to: "server"
+    }
+  ],
   win: {
     target: ['nsis'],
     icon: 'build/icons/icon.ico'
