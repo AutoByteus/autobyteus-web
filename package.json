@@ -28,7 +28,7 @@
     "prepare-server": "chmod +x ./scripts/prepare-server.sh && ./scripts/prepare-server.sh",
     "build:electron": "cross-env NODE_ENV=production yarn prepare-server && yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js",
     "build:electron:linux": "cross-env NODE_ENV=production yarn prepare-server && yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --linux",
-    "build:electron:windows": "cross-env NODE_ENV=production yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --windows",
+    "build:electron:windows": "cross-env NODE_ENV=production yarn prepare-server && yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --windows",
     "build:electron:mac": "cross-env NODE_ENV=production yarn prepare-server && yarn generate:electron && yarn transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --mac"
   },
   "dependencies": {
