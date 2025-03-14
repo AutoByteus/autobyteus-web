@@ -20,6 +20,7 @@ interface ServerState {
   connectionAttempts: number
   maxConnectionAttempts: number
   isInitialStartup: boolean
+  logFilePath: string
 }
 
 export const useServerStore = defineStore('server', {
@@ -33,7 +34,8 @@ export const useServerStore = defineStore('server', {
     usingInternalServer: false,
     connectionAttempts: 0,
     maxConnectionAttempts: 5, // Increased for slower startup
-    isInitialStartup: true    // Flag to track initial startup phase
+    isInitialStartup: true,   // Flag to track initial startup phase
+    logFilePath: ''
   }),
   
   getters: {
@@ -111,7 +113,7 @@ export const useServerStore = defineStore('server', {
     /**
      * Initialize the server configuration
      */
-    initialize(): void {
+    async initialize(): Promise<void> {
       console.log('serverStore: Initializing server config')
       
       // Always explicitly set status to starting at initialization
@@ -131,6 +133,16 @@ export const useServerStore = defineStore('server', {
       if (typeof window !== 'undefined' && window.electronAPI) {
         this.isElectron = true
         console.log('serverStore: Running in Electron mode')
+        
+        // Try to get the log file path
+        if (window.electronAPI.getLogFilePath) {
+          try {
+            this.logFilePath = await window.electronAPI.getLogFilePath()
+            console.log('serverStore: Log file path:', this.logFilePath)
+          } catch (e) {
+            console.error('serverStore: Failed to get log file path:', e)
+          }
+        }
         
         if (this.usingInternalServer) {
           // Only manage server status for internal server
