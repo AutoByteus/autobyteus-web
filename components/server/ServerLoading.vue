@@ -25,6 +25,9 @@
           <p v-if="serverStore.healthCheckStatus" class="text-gray-600 text-sm mt-2">
             Health check: {{ serverStore.healthCheckStatus }}
           </p>
+          <p v-if="logFilePath" class="text-gray-600 text-sm mt-2">
+            Logs available at: {{ logFilePath }}
+          </p>
         </div>
         
         <button 
@@ -60,6 +63,9 @@
           <p v-if="serverStore.healthCheckStatus" class="text-gray-600 text-sm mt-2">
             Health check: {{ serverStore.healthCheckStatus }}
           </p>
+          <p v-if="logFilePath" class="text-gray-600 text-sm mt-2">
+            Logs available at: {{ logFilePath }}
+          </p>
         </div>
         
         <div class="mt-4 flex flex-col gap-2">
@@ -85,6 +91,14 @@
           >
             {{ showDetails ? 'Hide technical details' : 'Show technical details' }}
           </button>
+          
+          <button 
+            v-if="logFilePath && serverStore.isElectron" 
+            @click="openInFileExplorer"
+            class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none mt-2"
+          >
+            Show Logs in File Explorer
+          </button>
         </div>
       </div>
     </div>
@@ -107,6 +121,9 @@ const toggleDetails = () => {
   showDetails.value = !showDetails.value
 }
 
+// Log file path
+const logFilePath = ref('')
+
 // For debugging - log status changes
 watch(() => serverStore.status, (newStatus, oldStatus) => {
   console.log(`ServerLoading: Status changed from ${oldStatus} to ${newStatus}`)
@@ -116,9 +133,18 @@ watch(() => serverStore.status, (newStatus, oldStatus) => {
 let healthInterval: NodeJS.Timeout | null = null
 
 // Check health automatically when component mounts
-onMounted(() => {
+onMounted(async () => {
   console.log('ServerLoading: Component mounted with status:', serverStore.status)
   console.log('ServerLoading: Using internal server:', serverStore.usingInternalServer)
+  
+  // Get the log file path if we're in Electron
+  if (serverStore.isElectron && window.electronAPI?.getLogFilePath) {
+    try {
+      logFilePath.value = await window.electronAPI.getLogFilePath()
+    } catch (e) {
+      console.error('Failed to get log file path:', e)
+    }
+  }
   
   // Run a health check after mounting
   setTimeout(() => {
@@ -145,6 +171,17 @@ onBeforeUnmount(() => {
     healthInterval = null
   }
 })
+
+// Function to open the log file in the default file explorer
+const openInFileExplorer = () => {
+  if (!logFilePath.value || !window.electronAPI) return
+  
+  // Using system's shell command to show the file in explorer
+  const electron = require('electron')
+  if (electron && electron.shell) {
+    electron.shell.showItemInFolder(logFilePath.value)
+  }
+}
 </script>
 
 <style scoped>

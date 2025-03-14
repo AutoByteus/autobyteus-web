@@ -1,7 +1,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import * as path from 'path'
 import isDev from 'electron-is-dev'
-import { serverManager } from './serverManager'
+import { serverManager } from './server/serverManagerFactory'
+import { logger } from './logger'
 import axios from 'axios'
 
 // Determine if we should use the internal server
@@ -13,6 +14,8 @@ let serverStarting = true // Track when server is in startup phase
 
 function createWindow() {
   try {
+    logger.info('Creating main window')
+    
     mainWindow = new BrowserWindow({
       width: 1200,
       height: 800,
@@ -29,24 +32,25 @@ function createWindow() {
       ? process.env.VITE_DEV_SERVER_URL || 'http://localhost:3000'
       : `file://${path.join(__dirname, '../renderer/index.html')}`
 
-    console.log('Environment:', isDev ? 'Development' : 'Production')
-    console.log('Loading URL:', startURL)
-    console.log('Using internal server:', useInternalServer)
-    console.log('Current directory:', __dirname)
-    console.log('Resolved index.html path:', path.resolve(__dirname, '../renderer/index.html'))
+    logger.info('Environment:', isDev ? 'Development' : 'Production')
+    logger.info('Loading URL:', startURL)
+    logger.info('Using internal server:', useInternalServer)
+    logger.info('Current directory:', __dirname)
+    logger.info('Resolved index.html path:', path.resolve(__dirname, '../renderer/index.html'))
     
     mainWindow.loadURL(startURL)
       .then(() => {
-        console.log('URL loaded successfully')
+        logger.info('URL loaded successfully')
       })
       .catch(err => {
-        console.error('Failed to load URL:', startURL, err)
+        logger.error('Failed to load URL:', startURL, err)
       })
 
-    //mainWindow.webContents.openDevTools()
+    // Uncomment for debugging
+    // mainWindow.webContents.openDevTools()
 
     mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
-      console.error('Page failed to load:', {
+      logger.error('Page failed to load:', {
         errorCode,
         errorDescription,
         validatedURL,
@@ -55,16 +59,16 @@ function createWindow() {
     })
 
     mainWindow.webContents.on('did-finish-load', () => {
-      console.log('Page finished loading')
+      logger.info('Page finished loading')
       // List files in the renderer directory for debugging
       const rendererPath = path.join(__dirname, '../renderer')
-      console.log('Renderer directory:', rendererPath)
+      logger.info('Renderer directory:', rendererPath)
       try {
         const fs = require('fs')
         const files = fs.readdirSync(rendererPath)
-        console.log('Files in renderer directory:', files)
+        logger.info('Files in renderer directory:', files)
       } catch (error) {
-        console.error('Error listing renderer directory:', error)
+        logger.error('Error listing renderer directory:', error)
       }
 
       if (!mainWindow) return
@@ -100,7 +104,7 @@ function createWindow() {
       } else {
         // For external server, we don't manage server status in the main process
         // The renderer will handle connecting to the external server
-        console.log('Using external server - renderer will handle server connection')
+        logger.info('Using external server - renderer will handle server connection')
       }
     })
 
@@ -108,7 +112,7 @@ function createWindow() {
       mainWindow = null
     })
   } catch (error) {
-    console.error('Error in createWindow:', error)
+    logger.error('Error in createWindow:', error)
   }
 }
 
@@ -116,13 +120,13 @@ function createWindow() {
 async function initializeServer() {
   // Skip server initialization if using external server
   if (!useInternalServer) {
-    console.log('Using external server - skipping internal server initialization')
+    logger.info('Using external server - skipping internal server initialization')
     serverStarting = false
     return
   }
   
   try {
-    console.log('Starting backend server...')
+    logger.info('Starting backend server...')
     await serverManager.startServer()
     
     // Server successfully started
@@ -138,9 +142,9 @@ async function initializeServer() {
       })
     }
     
-    console.log('Backend server started successfully on port', serverManager.getServerPort())
+    logger.info('Backend server started successfully on port', serverManager.getServerPort())
   } catch (error) {
-    console.error('Failed to start backend server:', error)
+    logger.error('Failed to start backend server:', error)
     serverStartFailed = true
     serverStarting = false
     
@@ -156,7 +160,7 @@ async function initializeServer() {
 
 // Handle IPC messages from the renderer process
 ipcMain.on('ping', (event, args) => {
-  console.log('Received ping:', args)
+  logger.info('Received ping:', args)
   event.reply('pong', 'Pong from main process!')
 })
 
@@ -201,7 +205,7 @@ ipcMain.handle('restart-server', async () => {
     }
   } catch (error) {
     serverStarting = false
-    console.error('Failed to restart server:', error)
+    logger.error('Failed to restart server:', error)
     return { status: 'error', message: 'Failed to restart server' }
   }
 })
@@ -215,7 +219,7 @@ ipcMain.handle('check-server-health', async () => {
   
   try {
     const healthUrl = `${serverManager.getServerBaseUrl()}/rest/health`
-    console.log(`Checking server health at: ${healthUrl}`)
+    logger.info(`Checking server health at: ${healthUrl}`)
     
     const response = await axios.get(healthUrl, { timeout: 3000 }) // 3 second timeout
     
@@ -227,7 +231,7 @@ ipcMain.handle('check-server-health', async () => {
     // During server startup, connection refused errors are expected
     // Don't log the full stack trace for these expected errors
     if (serverStarting) {
-      console.log('Health check during startup: Server not ready yet')
+      logger.info('Health check during startup: Server not ready yet')
       return {
         status: 'starting',
         message: 'Server is still starting up'
@@ -235,7 +239,6 @@ ipcMain.handle('check-server-health', async () => {
     }
     
     // For unexpected errors or after server should be running, log more details
-    // Fix TypeScript error by properly checking the error object type
     let errorMessage = 'Unknown error';
     let errorCode = 'UNKNOWN_ERROR';
     
@@ -251,7 +254,7 @@ ipcMain.handle('check-server-health', async () => {
       errorMessage = error;
     }
     
-    console.error(`Health check failed: ${errorCode} - ${errorMessage}`);
+    logger.error(`Health check failed: ${errorCode} - ${errorMessage}`);
     
     return {
       status: 'error',
@@ -262,16 +265,21 @@ ipcMain.handle('check-server-health', async () => {
   }
 })
 
+// New handler to get the log file path
+ipcMain.handle('get-log-file-path', () => {
+  return logger.getLogPath()
+})
+
 app.whenReady()
   .then(async () => {
-    console.log('App is ready, creating window...')
+    logger.info('App is ready, creating window...')
     createWindow()
     
     // Start the backend server (only if using internal server)
     await initializeServer()
   })
   .catch(err => {
-    console.error('Failed to initialize app:', err)
+    logger.error('Failed to initialize app:', err)
   })
 
 app.on('window-all-closed', () => {
@@ -279,6 +287,9 @@ app.on('window-all-closed', () => {
   if (useInternalServer) {
     serverManager.stopServer()
   }
+  
+  // Close the logger
+  logger.close()
   
   if (process.platform !== 'darwin') {
     app.quit()
@@ -290,6 +301,9 @@ app.on('will-quit', () => {
   if (useInternalServer) {
     serverManager.stopServer()
   }
+  
+  // Close the logger
+  logger.close()
 })
 
 app.on('activate', () => {
