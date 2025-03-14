@@ -1,13 +1,15 @@
 <template>
   <div id="app">
+    <!-- Server loading overlay will appear when server is starting -->
+    <ServerLoading />
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
   </div>
 </template>
-
 <script setup lang="ts">
 import { useHead } from 'nuxt/app'
+import ServerLoading from '~/components/server/ServerLoading.vue'
 
 useHead({
   title: 'Autobyteus',
@@ -26,12 +28,10 @@ useHead({
   ],
 })
 </script>
-
 <style lang="css">
   @tailwind base;
   @tailwind components;
   @tailwind utilities;
-
   #app {
     @apply min-h-screen font-sans;
   }
