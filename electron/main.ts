@@ -235,10 +235,23 @@ ipcMain.handle('check-server-health', async () => {
     }
     
     // For unexpected errors or after server should be running, log more details
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    const errorCode = error.code || 'UNKNOWN_ERROR'
+    // Fix TypeScript error by properly checking the error object type
+    let errorMessage = 'Unknown error';
+    let errorCode = 'UNKNOWN_ERROR';
     
-    console.error(`Health check failed: ${errorCode} - ${errorMessage}`)
+    // Check if error is an Error object
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      // Check for axios error or any error with a code property
+      if (error instanceof Object && 'code' in error) {
+        errorCode = error.code as string;
+      }
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    
+    console.error(`Health check failed: ${errorCode} - ${errorMessage}`);
     
     return {
       status: 'error',
