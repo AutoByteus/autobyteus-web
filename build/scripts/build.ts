@@ -59,6 +59,18 @@ const options: Configuration = {
     target: ['nsis'],
     icon: 'build/icons/icon.ico'
   },
+  nsis: {
+    oneClick: false,                    // Allow user to customize installation
+    allowToChangeInstallationDirectory: true, // Allow user to change installation directory
+    perMachine: false,                  // Install for current user only by default
+    installerIcon: 'build/icons/icon.ico',
+    uninstallerIcon: 'build/icons/icon.ico',
+    installerHeaderIcon: 'build/icons/icon.ico',
+    createDesktopShortcut: true,
+    createStartMenuShortcut: true,
+    shortcutName: 'AutoByteus',
+    differentialPackage: false         // Disable differential updates
+  },
   mac: {
     target: ['dmg'],
     icon: 'build/icons/icon.icns'
