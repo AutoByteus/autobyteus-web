@@ -46,7 +46,7 @@
       </div>
       
       <div v-else-if="serverStore.status === 'error'" class="error-state">
-        <div class="error-icon">â</div>
+        <div class="error-icon">❌</div>
         <h2 class="text-xl font-semibold mt-4 text-red-600">
           <span v-if="serverStore.usingInternalServer">Application Error</span>
           <span v-else>Connection Error</span>
