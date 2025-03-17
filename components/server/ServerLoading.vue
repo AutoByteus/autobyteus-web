@@ -46,7 +46,7 @@
       </div>
       
       <div v-else-if="serverStore.status === 'error'" class="error-state">
-        <div class="error-icon">❌</div>
+        <div class="error-icon">â</div>
         <h2 class="text-xl font-semibold mt-4 text-red-600">
           <span v-if="serverStore.usingInternalServer">Application Error</span>
           <span v-else>Connection Error</span>
@@ -92,13 +92,7 @@
             {{ showDetails ? 'Hide technical details' : 'Show technical details' }}
           </button>
           
-          <button 
-            v-if="logFilePath && serverStore.isElectron" 
-            @click="openInFileExplorer"
-            class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none mt-2"
-          >
-            Show Logs in File Explorer
-          </button>
+          <!-- Removed the "Show Logs in File Explorer" button as requested -->
         </div>
       </div>
     </div>
@@ -172,16 +166,7 @@ onBeforeUnmount(() => {
   }
 })
 
-// Function to open the log file in the default file explorer
-const openInFileExplorer = () => {
-  if (!logFilePath.value || !window.electronAPI) return
-  
-  // Using system's shell command to show the file in explorer
-  const electron = require('electron')
-  if (electron && electron.shell) {
-    electron.shell.showItemInFolder(logFilePath.value)
-  }
-}
+// Removed the openInFileExplorer function as it's no longer needed
 </script>
 
 <style scoped>

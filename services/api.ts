@@ -1,13 +1,18 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import { useRuntimeConfig } from '#app'
+import { getServerUrls } from '~/utils/serverConfig'
 
 class ApiService {
   private axiosInstance: AxiosInstance
 
   constructor() {
-    const config = useRuntimeConfig()
-    const baseURL = config.public.restBaseUrl
-
+    // Get server URLs from our centralized configuration
+    const serverUrls = getServerUrls()
+    const baseURL = serverUrls.rest
+    
+    // Log the configuration for debugging
+    console.log('API Service: Initializing with base URL:', baseURL)
+    
     if (!baseURL) {
       throw new Error('REST base URL is not configured')
     }

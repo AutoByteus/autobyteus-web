@@ -31,13 +31,14 @@ export function getServerBaseUrl(): string {
  */
 export function getServerUrls() {
   if (useInternalServer()) {
+    const baseUrl = `http://localhost:${INTERNAL_SERVER_PORT}`;
     // When using internal server, use the fixed port
     return {
-      graphql: `http://localhost:${INTERNAL_SERVER_PORT}/graphql`,
-      rest: `http://localhost:${INTERNAL_SERVER_PORT}/rest`,
+      graphql: `${baseUrl}/graphql`,
+      rest: `${baseUrl}/rest`,
       ws: `ws://localhost:${INTERNAL_SERVER_PORT}/graphql`,
       transcription: `ws://localhost:${INTERNAL_SERVER_PORT}/transcribe`,
-      health: `http://localhost:${INTERNAL_SERVER_PORT}/rest/health`
+      health: `${baseUrl}/rest/health`
     };
   }
   
