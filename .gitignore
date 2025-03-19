@@ -5,9 +5,5 @@ nuxt.d.ts
 .output
 dist
 .DS_Store
-<<<<<<< HEAD
 android
-generated
-=======
-.env
->>>>>>> 37cf910d54cfc2a8802c2919e6a8000d749d6fcc
+
