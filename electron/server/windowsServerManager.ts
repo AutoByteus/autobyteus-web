@@ -55,9 +55,16 @@ export class WindowsServerManager extends BaseServerManager {
   }
 
   /**
-   * Override stopServer for Windows-specific process killing
+   * Override stopServer for Windows-specific process killing.
+   * Only call this if explicitly needed - we generally want to keep the server running.
    */
   public stopServer(): void {
+    // If we detected an external server, don't stop it
+    if (this.isExternalServerDetected) {
+      logger.info('Server was already running when application started - not stopping it')
+      return
+    }
+    
     if (!this.serverProcess) {
       logger.info('Server is not running')
       return

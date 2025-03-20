@@ -283,10 +283,11 @@ app.whenReady()
   })
 
 app.on('window-all-closed', () => {
-  // Stop the server when the app is closed (only if using internal server)
-  if (useInternalServer) {
-    serverManager.stopServer()
-  }
+  // Don't stop the server when the app is closed to allow for faster startup next time
+  // This is commented out to keep server running
+  // if (useInternalServer) {
+  //   serverManager.stopServer()
+  // }
   
   // Close the logger
   logger.close()
@@ -297,10 +298,11 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
-  // Ensure server is stopped when app is quitting (only if using internal server)
-  if (useInternalServer) {
-    serverManager.stopServer()
-  }
+  // Don't stop the server when the app quits to allow for faster startup next time
+  // This is commented out to keep server running
+  // if (useInternalServer) {
+  //   serverManager.stopServer()
+  // }
   
   // Close the logger
   logger.close()

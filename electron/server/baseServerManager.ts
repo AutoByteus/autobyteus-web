@@ -25,6 +25,7 @@ export abstract class BaseServerManager {
   protected firstRun: boolean = false
   protected healthCheckInterval: NodeJS.Timeout | null = null
   protected serverDir: string = ''
+  protected isExternalServerDetected: boolean = false
 
   constructor() {
     // Initialize the app data directory
@@ -195,9 +196,49 @@ export abstract class BaseServerManager {
   }
 
   /**
+   * Check if a server is already running at the configured port
+   * @returns Promise<boolean> True if a server is already running and healthy
+   */
+  public async checkExistingServer(): Promise<boolean> {
+    logger.info(`Checking if server is already running at ${this.serverUrl}...`)
+    
+    try {
+      // Set the server URL based on the fixed port
+      this.serverUrl = `http://localhost:${this.serverPort}`
+      
+      // Try to connect to the health endpoint with a short timeout
+      const response = await axios.get(`${this.serverUrl}/rest/health`, {
+        timeout: 2000 // 2 second timeout
+      })
+      
+      if (response.status === 200 && response.data.status === 'ok') {
+        logger.info('Existing server found and it is healthy')
+        this.isServerRunning = true
+        this.ready = true
+        this.isExternalServerDetected = true
+        // Notify that the server is ready since we found an existing one
+        this.notifyReady()
+        return true
+      } else {
+        logger.info('Server responded but health check failed:', response.status, response.data)
+        return false
+      }
+    } catch (error) {
+      logger.info('No existing server found or server not healthy:', error instanceof Error ? error.message : String(error))
+      return false
+    }
+  }
+
+  /**
    * Start the backend server
    */
   public async startServer(): Promise<void> {
+    // First check if a server is already running
+    if (await this.checkExistingServer()) {
+      logger.info('Using existing server - no need to start a new instance')
+      return
+    }
+    
     if (this.isServerRunning) {
       logger.info('Server is already running')
       return
@@ -251,7 +292,13 @@ export abstract class BaseServerManager {
    */
   public stopServer(): void {
     if (!this.serverProcess) {
-      logger.info('Server is not running')
+      logger.info('Server is not running or not managed by this application')
+      return
+    }
+
+    // If we detected an external server that we didn't start, don't stop it
+    if (this.isExternalServerDetected) {
+      logger.info('Server was already running when application started - not stopping it')
       return
     }
 
