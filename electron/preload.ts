@@ -18,6 +18,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Method for directly checking server health
   checkServerHealth: () => ipcRenderer.invoke('check-server-health'),
   
-  // New method to get the log file path
-  getLogFilePath: () => ipcRenderer.invoke('get-log-file-path')
+  // Method to get the log file path
+  getLogFilePath: () => ipcRenderer.invoke('get-log-file-path'),
+  
+  // New method to open the log file
+  openLogFile: (filePath: string) => ipcRenderer.invoke('open-log-file', filePath)
 })

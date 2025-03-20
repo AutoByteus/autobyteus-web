@@ -1,5 +1,8 @@
 <template>
-  <div class="server-loading-container" v-if="showComponent">
+  <div 
+    class="server-loading-container" 
+    v-if="showComponent && !serverStore.allowAppWithoutServer"
+  >
     <div class="server-loading-content">
       <div v-if="serverStore.status === 'starting'" class="loading-state">
         <div class="spinner"></div>
@@ -30,19 +33,30 @@
           </p>
         </div>
         
-        <button 
-          @click="toggleDetails" 
-          class="mt-4 text-sm text-blue-600 hover:text-blue-800 focus:outline-none"
-        >
-          {{ showDetails ? 'Hide technical details' : 'Show technical details' }}
-        </button>
-        <button 
-          @click="serverStore.checkServerHealth" 
-          class="ml-4 text-sm text-blue-600 hover:text-blue-800 focus:outline-none"
-          v-if="showDetails"
-        >
-          Run health check
-        </button>
+        <div class="mt-4 flex flex-col md:flex-row gap-2 justify-center">
+          <button 
+            @click="toggleDetails" 
+            class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none"
+          >
+            {{ showDetails ? 'Hide technical details' : 'Show technical details' }}
+          </button>
+          
+          <button 
+            @click="serverStore.checkServerHealth" 
+            class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none md:ml-4"
+            v-if="showDetails"
+          >
+            Run health check
+          </button>
+          
+          <!-- New button to continue without server -->
+          <button
+            @click="continueWithoutServer"
+            class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none md:ml-4"
+          >
+            Continue without server
+          </button>
+        </div>
       </div>
       
       <div v-else-if="serverStore.status === 'error'" class="error-state">
@@ -84,6 +98,13 @@
             Check Server Health
           </button>
           
+          <button
+            @click="continueWithoutServer"
+            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 focus:outline-none mt-2"
+          >
+            Continue without server
+          </button>
+          
           <button 
             v-if="serverStore.errorMessage"
             @click="toggleDetails" 
@@ -91,8 +112,6 @@
           >
             {{ showDetails ? 'Hide technical details' : 'Show technical details' }}
           </button>
-          
-          <!-- Removed the "Show Logs in File Explorer" button as requested -->
         </div>
       </div>
     </div>
@@ -102,17 +121,29 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useServerStore } from '~/stores/serverStore'
+import { useRouter } from 'vue-router'
 
 // Use the server store
 const serverStore = useServerStore()
+const router = useRouter()
 
 // Show component only when server is not running or has an error
-const showComponent = computed(() => serverStore.status !== 'running')
+// Also respect the allowAppWithoutServer flag
+const showComponent = computed(() => 
+  (serverStore.status !== 'running' && !serverStore.allowAppWithoutServer)
+)
 
 // Toggle for showing technical details
 const showDetails = ref(false)
 const toggleDetails = () => {
   showDetails.value = !showDetails.value
+}
+
+// Function to continue without server
+const continueWithoutServer = () => {
+  serverStore.setAllowAppWithoutServer(true)
+  // Optionally, we could navigate to the settings page to show server status
+  router.push('/settings?section=server-status')
 }
 
 // Log file path
@@ -165,8 +196,6 @@ onBeforeUnmount(() => {
     healthInterval = null
   }
 })
-
-// Removed the openInFileExplorer function as it's no longer needed
 </script>
 
 <style scoped>

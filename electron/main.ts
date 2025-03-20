@@ -1,9 +1,10 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import * as path from 'path'
 import isDev from 'electron-is-dev'
 import { serverManager } from './server/serverManagerFactory'
 import { logger } from './logger'
 import axios from 'axios'
+import * as fs from 'fs'
 
 // Determine if we should use the internal server
 const useInternalServer = process.env.USE_INTERNAL_SERVER !== 'false'
@@ -24,8 +25,8 @@ function createWindow() {
         nodeIntegration: false,
         contextIsolation: true,
       },
-      // Don't show the window until server is ready or when using external server
-      show: !useInternalServer, // Show immediately if using external server
+      // Always show the window immediately - we won't block the UI anymore
+      show: true, 
     })
 
     const startURL = isDev
@@ -74,36 +75,22 @@ function createWindow() {
       if (!mainWindow) return
       
       if (useInternalServer) {
-        // For internal server, handle server status
+        // For internal server, notify renderer of current status
         if (serverStartFailed) {
           mainWindow.webContents.send('server-status', { status: 'error', message: 'Failed to start backend server' })
-          if (!mainWindow.isVisible()) mainWindow.show()
         } else if (serverManager.isRunning()) {
-          // If server is already running, show the window immediately but still send the 'starting' status first
-          // followed by 'running' status after a short delay to ensure loading screen appears
-          mainWindow.webContents.send('server-status', { status: 'starting' })
-          setTimeout(() => {
-            if (mainWindow) {
-              const serverUrls = serverManager.getServerUrls()
-              mainWindow.webContents.send('server-status', { 
-                status: 'running', 
-                port: serverManager.getServerPort(),
-                urls: serverUrls
-              })
-            }
-          }, 1500) // Wait 1.5 seconds before sending 'running' status
-          
-          // Show window now, the loading overlay will be visible until status changes to 'running'
-          if (!mainWindow.isVisible()) mainWindow.show()
+          const serverUrls = serverManager.getServerUrls()
+          mainWindow.webContents.send('server-status', { 
+            status: 'running', 
+            port: serverManager.getServerPort(),
+            urls: serverUrls
+          })
         } else {
-          // If server is still starting, send 'starting' status and wait for server ready event
+          // If server is still starting, send 'starting' status
           mainWindow.webContents.send('server-status', { status: 'starting' })
-          // Show window now with 'starting' status
-          if (!mainWindow.isVisible()) mainWindow.show()
         }
       } else {
         // For external server, we don't manage server status in the main process
-        // The renderer will handle connecting to the external server
         logger.info('Using external server - renderer will handle server connection')
       }
     })
@@ -132,7 +119,7 @@ async function initializeServer() {
     // Server successfully started
     serverStarting = false
     
-    // Instead of showing window here, now we just notify the window the server is ready
+    // Notify the window the server is ready, but don't wait for this to show the window
     if (mainWindow) {
       const serverUrls = serverManager.getServerUrls()
       mainWindow.webContents.send('server-status', { 
@@ -148,7 +135,7 @@ async function initializeServer() {
     serverStartFailed = true
     serverStarting = false
     
-    // Notify window of error if it exists
+    // Notify window of error if it exists, but don't prevent app from loading
     if (mainWindow) {
       mainWindow.webContents.send('server-status', { 
         status: 'error', 
@@ -210,7 +197,7 @@ ipcMain.handle('restart-server', async () => {
   }
 })
 
-// New handler for directly checking server health with improved error handling
+// Handler for directly checking server health with improved error handling
 ipcMain.handle('check-server-health', async () => {
   if (!useInternalServer) {
     // For external server, let the renderer handle health checks
@@ -229,7 +216,6 @@ ipcMain.handle('check-server-health', async () => {
     }
   } catch (error) {
     // During server startup, connection refused errors are expected
-    // Don't log the full stack trace for these expected errors
     if (serverStarting) {
       logger.info('Health check during startup: Server not ready yet')
       return {
@@ -242,11 +228,9 @@ ipcMain.handle('check-server-health', async () => {
     let errorMessage = 'Unknown error';
     let errorCode = 'UNKNOWN_ERROR';
     
-    // Check if error is an Error object
     if (error instanceof Error) {
       errorMessage = error.message;
       
-      // Check for axios error or any error with a code property
       if (error instanceof Object && 'code' in error) {
         errorCode = error.code as string;
       }
@@ -265,18 +249,52 @@ ipcMain.handle('check-server-health', async () => {
   }
 })
 
-// New handler to get the log file path
+// Handler to get the log file path
 ipcMain.handle('get-log-file-path', () => {
   return logger.getLogPath()
+})
+
+// New handler to open the log file
+ipcMain.handle('open-log-file', async (event, filePath) => {
+  try {
+    logger.info(`Attempting to open log file: ${filePath}`)
+    
+    // Verify that the file exists before attempting to open it
+    if (!fs.existsSync(filePath)) {
+      logger.error(`Log file does not exist: ${filePath}`)
+      return { success: false, error: 'Log file does not exist' }
+    }
+    
+    // Open the file with the default system application
+    await shell.openPath(filePath)
+    logger.info(`Log file opened successfully: ${filePath}`)
+    return { success: true }
+  } catch (error) {
+    logger.error(`Failed to open log file: ${error instanceof Error ? error.message : String(error)}`)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error opening log file'
+    }
+  }
 })
 
 app.whenReady()
   .then(async () => {
     logger.info('App is ready, creating window...')
+    // Always create window immediately, regardless of server status
     createWindow()
     
-    // Start the backend server (only if using internal server)
-    await initializeServer()
+    // Start the backend server (only if using internal server) in the background
+    initializeServer().catch(err => {
+      logger.error('Server initialization failed in background:', err)
+      // App UI is already showing, so we just need to update the status
+      if (mainWindow) {
+        mainWindow.webContents.send('server-status', { 
+          status: 'error', 
+          message: `Failed to start backend server: ${err.message || err}` 
+        })
+      }
+    })
   })
   .catch(err => {
     logger.error('Failed to initialize app:', err)

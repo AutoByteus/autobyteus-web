@@ -8,5 +8,6 @@ interface Window {
     onServerStatus: (callback: (status: any) => void) => () => void;
     checkServerHealth: () => Promise<any>;
     getLogFilePath: () => Promise<string>;
+    openLogFile: (filePath: string) => Promise<{ success: boolean; error?: string }>;
   };
 }
