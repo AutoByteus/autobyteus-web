@@ -4,36 +4,26 @@ import { applyElectronConfig } from './nuxt.electron.config'
 // Fixed server port for internal server
 const INTERNAL_SERVER_PORT = 29695
 
-// Determine if we should use the internal server
-// Default to true for Electron builds, false otherwise
-const useInternalServer = process.env.USE_INTERNAL_SERVER !== 'false' && 
-  (process.env.BUILD_TARGET === 'electron' || process.env.USE_INTERNAL_SERVER === 'true')
-
-// Configure server URLs based on the server mode
-function getServerUrls() {
-  if (useInternalServer) {
-    // When using internal server, use the fixed port
-    return {
-      graphqlBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/graphql`,
-      restBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/rest`,
-      wsBaseUrl: `ws://localhost:${INTERNAL_SERVER_PORT}/graphql`,
-      transcriptionWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/transcribe`
-    }
-  }
-  
-  // When using external server, use environment variables
-  return {
-    graphqlBaseUrl: process.env.NUXT_PUBLIC_GRAPHQL_BASE_URL || 'http://localhost:8000/graphql',
-    restBaseUrl: process.env.NUXT_PUBLIC_REST_BASE_URL || 'http://localhost:8000/rest',
-    wsBaseUrl: process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8000/graphql',
-    transcriptionWsEndpoint: process.env.NUXT_PUBLIC_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8000/ws/transcribe'
-  }
+// Configure default server URLs for non-Electron builds
+const defaultServerUrls = {
+  graphqlBaseUrl: process.env.NUXT_PUBLIC_GRAPHQL_BASE_URL || 'http://localhost:8000/graphql',
+  restBaseUrl: process.env.NUXT_PUBLIC_REST_BASE_URL || 'http://localhost:8000/rest',
+  wsBaseUrl: process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8000/graphql',
+  transcriptionWsEndpoint: process.env.NUXT_PUBLIC_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8000/ws/transcribe'
 }
 
-// Get URLs based on the server mode
-const serverUrls = getServerUrls()
+// For Electron builds, always use the internal server port
+const electronServerUrls = {
+  graphqlBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/graphql`,
+  restBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/rest`,
+  wsBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/graphql`,
+  transcriptionWsEndpoint: `http://localhost:${INTERNAL_SERVER_PORT}/transcribe`
+}
 
-console.log('Nuxt config: Using internal server:', useInternalServer)
+// Select server URLs based on build target
+const serverUrls = process.env.BUILD_TARGET === 'electron' ? electronServerUrls : defaultServerUrls
+
+console.log('Nuxt config: Build target:', process.env.BUILD_TARGET || 'browser')
 console.log('Nuxt config: GraphQL URL:', serverUrls.graphqlBaseUrl)
 console.log('Nuxt config: REST URL:', serverUrls.restBaseUrl)
 
@@ -83,19 +73,38 @@ const baseConfig = {
       }
     },
     define: {
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
-      // Make USE_INTERNAL_SERVER available in the client
-      'process.env.USE_INTERNAL_SERVER': JSON.stringify(useInternalServer ? 'true' : 'false')
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
+    },
+    // Ensure CommonJS modules are properly transformed for browser
+    build: {
+      target: 'es2020',
+      // Roll-up specific options
+      rollupOptions: {
+        // Force ES modules output
+        output: {
+          format: 'es'
+        }
+      },
+      commonjsOptions: {
+        // This helps with converting CommonJS modules to ES modules
+        transformMixedEsModules: true,
+        // Process noVNC modules
+      }
     }
   },
 
   runtimeConfig: {
     public: {
-      // Use server URLs based on the server mode
+      // Use server URLs based on the build target
       graphqlBaseUrl: serverUrls.graphqlBaseUrl,
       restBaseUrl: serverUrls.restBaseUrl,
       wsBaseUrl: serverUrls.wsBaseUrl,
       googleSpeechApiKey: process.env.GOOGLE_SPEECH_API_KEY || '',
+      
+      // VNC configuration
+      vncHost: process.env.NUXT_PUBLIC_VNC_HOST || 'localhost',
+      vncPort: parseInt(process.env.NUXT_PUBLIC_VNC_PORT || '6080'),
+      vncPassword: process.env.NUXT_PUBLIC_VNC_PASSWORD || 'mysecretpassword',
       
       audio: {
         targetSampleRate: 16000,
@@ -136,7 +145,10 @@ const baseConfig = {
   compatibilityDate: '2024-07-22',
 
   build: {
-    transpile: ['@xenova/transformers'],
+    // Add noVNC to transpile so that Babel processes it
+    transpile: [
+      '@xenova/transformers',
+    ],
   }
 }
 
