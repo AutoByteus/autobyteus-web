@@ -104,7 +104,6 @@ const baseConfig = {
       // VNC configuration
       vncHost: process.env.NUXT_PUBLIC_VNC_HOST || 'localhost',
       vncPort: parseInt(process.env.NUXT_PUBLIC_VNC_PORT || '6080'),
-      vncPassword: process.env.NUXT_PUBLIC_VNC_PASSWORD || 'mysecretpassword',
       
       audio: {
         targetSampleRate: 16000,

@@ -1,10 +1,13 @@
 import { defineStore } from 'pinia';
 import { ref, computed, shallowRef } from 'vue';
+import { useRuntimeConfig } from 'nuxt/app';
 import RFB from '~/lib/novnc/core/rfb'; // Local ESM import
 
 export const useVncViewerStore = defineStore('vncViewer', () => {
-  const vncHost = ref('localhost');
-  const vncPort = ref(6080);
+  // Get values from runtime config
+  const config = useRuntimeConfig();
+  const vncHost = ref(config.public.vncHost);
+  const vncPort = ref(config.public.vncPort);
   const vncPath = ref('');
   const connectionStatus = ref<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const password = ref('mysecretpassword');
