@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
-import { useInternalServer, getServerUrls, INTERNAL_SERVER_PORT } from '~/utils/serverConfig'
+import { INTERNAL_SERVER_PORT, getServerUrls, isElectronEnvironment } from '~/utils/serverConfig'
 
 // Define the state interface
 interface ServerState {
@@ -21,6 +21,7 @@ interface ServerState {
   maxConnectionAttempts: number
   isInitialStartup: boolean
   logFilePath: string
+  allowAppWithoutServer: boolean
 }
 
 export const useServerStore = defineStore('server', {
@@ -29,16 +30,23 @@ export const useServerStore = defineStore('server', {
     port: INTERNAL_SERVER_PORT,
     urls: getServerUrls(),
     errorMessage: '',
-    isElectron: false,
+    isElectron: isElectronEnvironment(),
     healthCheckStatus: '',
-    usingInternalServer: false,
+    usingInternalServer: true, // Default to true in Electron, will be updated based on actual connection
     connectionAttempts: 0,
-    maxConnectionAttempts: 5, // Increased for slower startup
-    isInitialStartup: true,   // Flag to track initial startup phase
-    logFilePath: ''
+    maxConnectionAttempts: 5,
+    isInitialStartup: true,
+    logFilePath: '',
+    allowAppWithoutServer: false
   }),
   
   getters: {
+    // Add a new getter to determine if restart is possible
+    canRestartServer: (state) => {
+      // Can only restart if we're in Electron AND using an internal server
+      return state.isElectron && state.usingInternalServer;
+    },
+    
     userFriendlyError: (state): string => {
       // During initial startup with internal server, don't show technical error messages
       if (state.isInitialStartup && state.usingInternalServer) {
@@ -111,6 +119,13 @@ export const useServerStore = defineStore('server', {
   
   actions: {
     /**
+     * Set the allowAppWithoutServer flag
+     */
+    setAllowAppWithoutServer(value: boolean): void {
+      this.allowAppWithoutServer = value
+    },
+    
+    /**
      * Initialize the server configuration
      */
     async initialize(): Promise<void> {
@@ -122,53 +137,68 @@ export const useServerStore = defineStore('server', {
       this.connectionAttempts = 0
       this.isInitialStartup = true
       
-      // Determine if we're using internal or external server
-      this.usingInternalServer = useInternalServer()
-      console.log(`serverStore: Using ${this.usingInternalServer ? 'internal' : 'external'} server`)
-      
-      // Set the URLs based on the server mode
+      // Set the URLs based on the environment
       this.urls = getServerUrls()
+      this.isElectron = isElectronEnvironment()
       
-      // Safely check for Electron API
-      if (typeof window !== 'undefined' && window.electronAPI) {
-        this.isElectron = true
-        console.log('serverStore: Running in Electron mode')
-        
-        // Try to get the log file path
-        if (window.electronAPI.getLogFilePath) {
-          try {
-            this.logFilePath = await window.electronAPI.getLogFilePath()
-            console.log('serverStore: Log file path:', this.logFilePath)
-          } catch (e) {
-            console.error('serverStore: Failed to get log file path:', e)
+      // If we're in browser mode, always set usingInternalServer to false
+      if (!this.isElectron) {
+        this.usingInternalServer = false
+        console.log('serverStore: Browser mode detected, using external server')
+      }
+      
+      console.log(`serverStore: Running in ${this.isElectron ? 'Electron' : 'browser'} mode`)
+      
+      // Try to get the log file path in Electron environment
+      if (this.isElectron && window.electronAPI?.getLogFilePath) {
+        try {
+          this.logFilePath = await window.electronAPI.getLogFilePath()
+          console.log('serverStore: Log file path:', this.logFilePath)
+        } catch (e) {
+          console.error('serverStore: Failed to get log file path:', e)
+        }
+      }
+      
+      // Check for an existing server first, regardless of environment
+      try {
+        const isServerRunning = await this.checkServerHealth()
+        if (isServerRunning.status === 'ok') {
+          console.log('serverStore: Found existing server on startup')
+          this.status = 'running'
+          this.errorMessage = ''
+          this.isInitialStartup = false
+          
+          // If we're in browser mode, any server we connect to is external
+          if (!this.isElectron) {
+            this.usingInternalServer = false
+            console.log('serverStore: Connected to external server in browser mode')
           }
+          
+          return
         }
-        
-        if (this.usingInternalServer) {
-          // Only manage server status for internal server
-          this.handleInternalServerInitialization()
-        } else {
-          // For external server in Electron, show loading and attempt connection
-          this.handleExternalServerInitialization()
-        }
+      } catch (e) {
+        console.log('serverStore: No existing server found on initial check')
+        // Continue with normal flow if no server found
+      }
+      
+      // If we're in Electron, handle server initialization through Electron
+      if (this.isElectron) {
+        this.handleElectronServerInitialization()
       } else {
-        console.log('serverStore: Not running in Electron mode')
-        // When in development/browser mode
-        // Still show loading screen and attempt to connect to server (external or mocked)
-        this.handleExternalServerInitialization()
+        // In browser mode, try to connect to configured server
+        this.handleBrowserServerConnection()
       }
       
       // After a reasonable time, mark the initial startup phase as complete
-      // This affects how we present error messages
       setTimeout(() => {
         this.isInitialStartup = false
       }, 30000) // 30 seconds should be enough for most server startups
     },
     
     /**
-     * Initialize for internal server (bundled with Electron)
+     * Initialize through Electron's server manager
      */
-    handleInternalServerInitialization(): void {
+    handleElectronServerInitialization(): void {
       let removeServerStatusListener: (() => void) | null = null
       
       // Initialize with server status
@@ -177,6 +207,15 @@ export const useServerStore = defineStore('server', {
           .then((serverStatus) => {
             console.log('serverStore: Received server status:', serverStatus)
             this.updateServerStatus(serverStatus)
+            
+            // Update usingInternalServer based on the status
+            if (serverStatus.isExternalServerDetected === true) {
+              console.log('serverStore: Connected to externally started server')
+              this.usingInternalServer = false
+            } else {
+              console.log('serverStore: Using internal server')
+              this.usingInternalServer = true
+            }
           })
           .catch((error) => {
             console.error('serverStore: Failed to get application status:', error)
@@ -199,6 +238,13 @@ export const useServerStore = defineStore('server', {
           // When we receive 'running' status, mark initial startup as complete
           if (serverStatus.status === 'running') {
             this.isInitialStartup = false
+          }
+          
+          // Update usingInternalServer based on the status
+          if (serverStatus.isExternalServerDetected === true) {
+            this.usingInternalServer = false
+          } else if (serverStatus.isExternalServerDetected === false) {
+            this.usingInternalServer = true
           }
           
           this.updateServerStatus(serverStatus)
@@ -226,23 +272,25 @@ export const useServerStore = defineStore('server', {
     },
     
     /**
-     * Initialize for external server
+     * Handle server connection in browser environment
      */
-    handleExternalServerInitialization(): void {
+    handleBrowserServerConnection(): void {
       // Reset connection attempts
       this.connectionAttempts = 0
       this.status = 'starting'
+      this.usingInternalServer = false // In browser mode, we're always connecting to an external server
+      console.log('serverStore: Setting connection mode to external server in browser mode')
       
       // Show a slight delay before first connection attempt to ensure loading screen appears
       setTimeout(() => {
-        this.attemptExternalServerConnection()
+        this.attemptServerConnection()
       }, 1000)
     },
     
     /**
-     * Attempt to connect to external server with retries
+     * Attempt to connect to server with retries
      */
-    async attemptExternalServerConnection(): Promise<void> {
+    async attemptServerConnection(): Promise<void> {
       if (this.connectionAttempts >= this.maxConnectionAttempts) {
         this.status = 'error'
         this.errorMessage = `Failed to connect to server after ${this.maxConnectionAttempts} attempts`
@@ -254,8 +302,8 @@ export const useServerStore = defineStore('server', {
       console.log(`serverStore: Connection attempt ${this.connectionAttempts} of ${this.maxConnectionAttempts}`)
       
       try {
-        const isHealthy = await this.checkExternalServerHealth()
-        if (isHealthy) {
+        const result = await this.checkServerHealth()
+        if (result.status === 'ok') {
           this.status = 'running'
           this.errorMessage = ''
           this.isInitialStartup = false
@@ -263,7 +311,7 @@ export const useServerStore = defineStore('server', {
           // If not healthy and we haven't reached max attempts, try again
           if (this.connectionAttempts < this.maxConnectionAttempts) {
             setTimeout(() => {
-              this.attemptExternalServerConnection()
+              this.attemptServerConnection()
             }, 2000) // Wait 2 seconds between attempts
           } else {
             this.status = 'error'
@@ -278,7 +326,7 @@ export const useServerStore = defineStore('server', {
         // If we haven't reached max attempts, try again
         if (this.connectionAttempts < this.maxConnectionAttempts) {
           setTimeout(() => {
-            this.attemptExternalServerConnection()
+            this.attemptServerConnection()
           }, 2000) // Wait 2 seconds between attempts
         } else {
           this.status = 'error'
@@ -289,47 +337,7 @@ export const useServerStore = defineStore('server', {
     },
     
     /**
-     * Check health of external server
-     */
-    async checkExternalServerHealth(): Promise<boolean> {
-      const healthUrl = this.urls.health
-      this.healthCheckStatus = `Checking (attempt ${this.connectionAttempts}/${this.maxConnectionAttempts})...`
-      
-      try {
-        console.log(`serverStore: Checking server health at ${healthUrl}`)
-        const response = await axios.get(healthUrl, { timeout: 5000 })
-        
-        if (response.status === 200) {
-          this.healthCheckStatus = 'Healthy'
-          return true
-        } else {
-          this.healthCheckStatus = `Error: Unexpected response status ${response.status}`
-          return false
-        }
-      } catch (error) {
-        // During initial startup, don't store technical error messages
-        if (!this.isInitialStartup) {
-          if (error instanceof Error) {
-            this.errorMessage = error.message
-          }
-        }
-        
-        // Create a more user-friendly health check status message
-        const errorCode = error.code || 'ERROR'
-        if (errorCode === 'ECONNREFUSED') {
-          this.healthCheckStatus = 'Error: Could not connect to server'
-        } else if (errorCode === 'ETIMEDOUT') {
-          this.healthCheckStatus = 'Error: Connection timed out'
-        } else {
-          this.healthCheckStatus = `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }
-        
-        return false
-      }
-    },
-    
-    /**
-     * Update the server status (for internal server)
+     * Update the server status (for Electron mode)
      */
     updateServerStatus(serverStatus: any): void {
       if (!serverStatus) {
@@ -352,53 +360,57 @@ export const useServerStore = defineStore('server', {
         this.errorMessage = serverStatus.message
         this.isInitialStartup = false // An explicit error message means we're past initial startup
       }
+      
+      // Explicitly update usingInternalServer based on isExternalServerDetected
+      if (serverStatus.isExternalServerDetected === true) {
+        this.usingInternalServer = false
+        console.log('serverStore: External server detected, setting usingInternalServer to false')
+      } else if (serverStatus.isExternalServerDetected === false) {
+        this.usingInternalServer = true
+        console.log('serverStore: Internal server detected, setting usingInternalServer to true')
+      }
     },
     
     /**
-     * Restart the application services or retry external server connection
+     * Restart the application services or retry server connection
      */
     async restartServer(): Promise<void> {
+      // Only allow restart if we're using an internal server in Electron
+      if (!this.canRestartServer) {
+        console.warn('serverStore: Cannot restart external server')
+        // If we're just trying to reconnect to an external server, try that instead
+        if (!this.usingInternalServer) {
+          this.status = 'starting'
+          this.errorMessage = ''
+          this.handleBrowserServerConnection()
+        }
+        return
+      }
+      
       // Reset startup flag when manually restarting
       this.isInitialStartup = true
       
-      if (this.usingInternalServer) {
-        if (!this.isElectron) {
-          console.warn('serverStore: Cannot restart application: not running in Electron')
-          return
-        }
-        
-        if (!window.electronAPI?.restartServer) {
-          console.warn('serverStore: electronAPI.restartServer not available')
-          return
-        }
-        
-        this.status = 'starting'
-        this.errorMessage = ''
-        
-        try {
-          const result = await window.electronAPI.restartServer()
-          this.updateServerStatus(result)
-          
-          // After a reasonable time, mark the initial startup phase as complete again
-          setTimeout(() => {
-            this.isInitialStartup = false
-          }, 30000)
-        } catch (error) {
-          console.error('serverStore: Failed to restart application services:', error)
-          this.status = 'error'
-          this.errorMessage = 'Failed to restart the application'
-          this.isInitialStartup = false
-        }
-      } else {
-        // For external server, just retry connection
-        this.status = 'starting'
-        this.errorMessage = ''
-        this.handleExternalServerInitialization()
+      if (!window.electronAPI?.restartServer) {
+        console.warn('serverStore: electronAPI.restartServer not available')
+        return
+      }
+      
+      this.status = 'starting'
+      this.errorMessage = ''
+      
+      try {
+        const result = await window.electronAPI.restartServer()
+        this.updateServerStatus(result)
         
         // After a reasonable time, mark the initial startup phase as complete again
         setTimeout(() => {
           this.isInitialStartup = false
-        }, 10000) // Shorter time for external server connection attempts
+        }, 30000)
+      } catch (error) {
+        console.error('serverStore: Failed to restart application services:', error)
+        this.status = 'error'
+        this.errorMessage = 'Failed to restart the application'
+        this.isInitialStartup = false
       }
     },
     
@@ -406,13 +418,8 @@ export const useServerStore = defineStore('server', {
      * Check server health
      */
     async checkServerHealth(): Promise<{ status: string; message?: string; data?: any }> {
-      if (this.usingInternalServer && this.isElectron) {
-        // For internal server in Electron, use the Electron IPC
-        if (!window.electronAPI?.checkServerHealth) {
-          console.warn('serverStore: electronAPI.checkServerHealth not available')
-          return { status: 'error', message: 'Health check not available' }
-        }
-        
+      if (this.isElectron && window.electronAPI?.checkServerHealth) {
+        // For Electron, use the Electron IPC
         this.healthCheckStatus = 'Checking...'
         
         try {
@@ -436,6 +443,12 @@ export const useServerStore = defineStore('server', {
               } catch (e) {
                 console.error('serverStore: Error refreshing server status:', e)
               }
+            }
+            
+            // Always update usingInternalServer based on isExternalServerDetected in the result
+            if (result.isExternalServerDetected === true) {
+              this.usingInternalServer = false
+              console.log('serverStore: Health check confirmed external server, setting usingInternalServer to false')
             }
           } else {
             this.healthCheckStatus = `Error: ${result.message || 'Unknown error'}`
@@ -461,11 +474,40 @@ export const useServerStore = defineStore('server', {
           }
         }
       } else {
-        // For external server, check health directly
-        const isHealthy = await this.checkExternalServerHealth()
-        return { 
-          status: isHealthy ? 'ok' : 'error',
-          data: { status: isHealthy ? 'ok' : 'error' }
+        // For browser mode or if Electron API is not available, check health directly
+        const healthUrl = this.urls.health
+        this.healthCheckStatus = `Checking (attempt ${this.connectionAttempts}/${this.maxConnectionAttempts})...`
+        
+        try {
+          console.log(`serverStore: Checking server health at ${healthUrl}`)
+          const response = await axios.get(healthUrl, { timeout: 5000 })
+          
+          if (response.status === 200) {
+            this.healthCheckStatus = 'Healthy'
+            return { status: 'ok', data: response.data }
+          } else {
+            this.healthCheckStatus = `Error: Unexpected response status ${response.status}`
+            return { status: 'error', message: `Unexpected response status ${response.status}` }
+          }
+        } catch (error) {
+          // During initial startup, don't store technical error messages
+          if (!this.isInitialStartup) {
+            if (error instanceof Error) {
+              this.errorMessage = error.message
+            }
+          }
+          
+          // Create a more user-friendly health check status message
+          const errorCode = error.code || 'ERROR'
+          if (errorCode === 'ECONNREFUSED') {
+            this.healthCheckStatus = 'Error: Could not connect to server'
+          } else if (errorCode === 'ETIMEDOUT') {
+            this.healthCheckStatus = 'Error: Connection timed out'
+          } else {
+            this.healthCheckStatus = `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+          }
+          
+          return { status: 'error', message: this.healthCheckStatus }
         }
       }
     }

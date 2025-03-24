@@ -21,6 +21,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Method to get the log file path
   getLogFilePath: () => ipcRenderer.invoke('get-log-file-path'),
   
-  // New method to open the log file
-  openLogFile: (filePath: string) => ipcRenderer.invoke('open-log-file', filePath)
+  // Method to open the log file
+  openLogFile: (filePath: string) => ipcRenderer.invoke('open-log-file', filePath),
+  
+  // New method to read log file content
+  readLogFile: (filePath: string) => ipcRenderer.invoke('read-log-file', filePath)
 })

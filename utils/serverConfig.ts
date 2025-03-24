@@ -1,38 +1,39 @@
 /**
  * Server configuration utilities for AutoByteus
- * Supports both internal server (bundled with Electron) and external server (configured via env variables)
+ * Dynamically detects and connects to available servers
  */
 
 // Fixed server port for internal server
 export const INTERNAL_SERVER_PORT = 29695;
 
 /**
- * Determine if we should use the internal server bundled with Electron
- * Reads the USE_INTERNAL_SERVER environment variable set during build
- */
-export function useInternalServer(): boolean {
-  return process.env.USE_INTERNAL_SERVER === 'true';
-}
-
-/**
- * Get the server base URL based on configuration mode
+ * Get the server base URL
+ * Always uses the internal server port for Electron builds, otherwise falls back to external
  */
 export function getServerBaseUrl(): string {
-  if (useInternalServer()) {
+  // In Electron context, we always use the internal port
+  if (typeof window !== 'undefined' && window.electronAPI) {
     return `http://localhost:${INTERNAL_SERVER_PORT}`;
   }
   
-  // Use environment variables or fall back to default port 8000
+  // Not in Electron, use environment variables or fall back to default port 8000
   return process.env.NUXT_PUBLIC_REST_BASE_URL?.replace('/rest', '') || 'http://localhost:8000';
+}
+
+/**
+ * Check if we're running in Electron
+ */
+export function isElectronEnvironment(): boolean {
+  return typeof window !== 'undefined' && !!window.electronAPI;
 }
 
 /**
  * Get all server URLs as an object
  */
 export function getServerUrls() {
-  if (useInternalServer()) {
+  // In Electron context, we always try the internal port first
+  if (isElectronEnvironment()) {
     const baseUrl = `http://localhost:${INTERNAL_SERVER_PORT}`;
-    // When using internal server, use the fixed port
     return {
       graphql: `${baseUrl}/graphql`,
       rest: `${baseUrl}/rest`,
@@ -42,7 +43,7 @@ export function getServerUrls() {
     };
   }
   
-  // When using external server, use environment variables
+  // Not in Electron, use environment variables
   const graphqlUrl = process.env.NUXT_PUBLIC_GRAPHQL_BASE_URL || 'http://localhost:8000/graphql';
   const restUrl = process.env.NUXT_PUBLIC_REST_BASE_URL || 'http://localhost:8000/rest';
   const wsUrl = process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8000/graphql';

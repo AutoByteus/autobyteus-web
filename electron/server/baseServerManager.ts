@@ -269,6 +269,7 @@ export abstract class BaseServerManager {
 
       // Start the server process
       this.serverStartTime = Date.now()
+      this.isExternalServerDetected = false // This is an internal server we're starting
       
       // This is implemented by platform-specific classes
       await this.launchServerProcess()
@@ -407,6 +408,13 @@ export abstract class BaseServerManager {
    */
   public getServerBaseUrl(): string {
     return this.serverUrl
+  }
+
+  /**
+   * Check if the detected server was externally started
+   */
+  public isExternalServer(): boolean {
+    return this.isExternalServerDetected
   }
 
   /**

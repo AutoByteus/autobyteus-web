@@ -20,9 +20,9 @@
         <div v-if="showDetails" class="technical-details mt-4">
           <p class="text-gray-600 text-sm">
             <span v-if="serverStore.usingInternalServer">Backend service initializing...</span>
-            <span v-else>Connecting to external server at:</span>
+            <span v-else>Connecting to server at:</span>
           </p>
-          <p v-if="!serverStore.usingInternalServer" class="text-gray-600 text-sm font-mono mt-1">
+          <p class="text-gray-600 text-sm font-mono mt-1">
             {{ serverStore.urls.graphql }}
           </p>
           <p v-if="serverStore.healthCheckStatus" class="text-gray-600 text-sm mt-2">
@@ -49,7 +49,7 @@
             Run health check
           </button>
           
-          <!-- New button to continue without server -->
+          <!-- Button to continue without server -->
           <button
             @click="continueWithoutServer"
             class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none md:ml-4"
@@ -70,6 +70,11 @@
         <div v-if="!serverStore.usingInternalServer" class="mt-2 text-gray-600">
           <p>Please ensure that the server is running and reachable at:</p>
           <p class="font-mono text-sm mt-1">{{ serverStore.urls.graphql }}</p>
+          
+          <!-- Add a special note for external servers -->
+          <p class="mt-2 text-amber-600">
+            This application cannot restart externally managed servers.
+          </p>
         </div>
         
         <div v-if="showDetails && serverStore.errorMessage" class="technical-details mt-4">
@@ -83,12 +88,22 @@
         </div>
         
         <div class="mt-4 flex flex-col gap-2">
+          <!-- For internal servers, show restart button -->
           <button 
+            v-if="serverStore.canRestartServer"
             @click="serverStore.restartServer"
             class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none"
           >
-            <span v-if="serverStore.usingInternalServer">Restart Server</span>
-            <span v-else>Retry Connection</span>
+            Restart Server
+          </button>
+          
+          <!-- For external servers, show retry connection button -->
+          <button 
+            v-else
+            @click="serverStore.checkServerHealth"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none"
+          >
+            Retry Connection
           </button>
           
           <button 
@@ -121,6 +136,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useServerStore } from '~/stores/serverStore'
+import RFB from '';
 import { useRouter } from 'vue-router'
 
 // Use the server store

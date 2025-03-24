@@ -50,13 +50,14 @@
         <button 
           @click="serverStore.restartServer"
           class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none transition-colors duration-150"
-          :disabled="serverStore.status === 'starting'"
+          :disabled="!serverStore.canRestartServer || serverStore.status === 'starting'"
+          :class="{'opacity-50 cursor-not-allowed': !serverStore.canRestartServer || serverStore.status === 'starting'}"
         >
           <span v-if="serverStore.usingInternalServer">
             {{ serverStore.status === 'running' ? 'Restart Server' : 'Start Server' }}
           </span>
           <span v-else>
-            Retry Connection
+            Refresh Connection
           </span>
         </button>
       </div>
@@ -72,7 +73,7 @@
           <p class="font-mono">{{ serverStore.usingInternalServer ? 'Internal Server' : 'External Server' }}</p>
         </div>
         
-        <div class="detail-item" v-if="!serverStore.usingInternalServer">
+        <div class="detail-item">
           <span class="text-sm text-gray-500">Server URL:</span>
           <p class="font-mono">{{ serverStore.urls.graphql }}</p>
         </div>
@@ -87,23 +88,22 @@
           <p class="font-mono">{{ logFilePath }}</p>
         </div>
         
+        <div class="detail-item" v-if="!serverStore.canRestartServer">
+          <span class="text-sm text-gray-500">Server Control:</span>
+          <p class="font-mono text-amber-600">External server cannot be restarted by this application</p>
+        </div>
+        
         <div class="detail-item" v-if="serverStore.status === 'error'">
           <span class="text-sm text-gray-500">Error Details:</span>
           <p class="font-mono text-red-600">{{ serverStore.errorMessage }}</p>
         </div>
       </div>
       
-      <div class="mt-4" v-if="serverStore.isElectron && logFilePath">
-        <button 
-          @click="openLogFile" 
-          class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none"
-        >
-          View Server Logs
-        </button>
-        <div v-if="logFileError" class="text-red-600 mt-2 text-sm">
-          {{ logFileError }}
-        </div>
-      </div>
+      <!-- Server Logs Section - only show in Electron mode -->
+      <ServerLogViewer 
+        v-if="serverStore.isElectron && logFilePath" 
+        :logFilePath="logFilePath" 
+      />
     </div>
   </div>
 </template>
@@ -111,6 +111,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useServerStore } from '~/stores/serverStore'
+import ServerLogViewer from '~/components/server/ServerLogViewer.vue'
 
 const serverStore = useServerStore()
 const logFilePath = ref('')
@@ -132,25 +133,6 @@ onMounted(async () => {
   // Check server health when component is mounted
   serverStore.checkServerHealth()
 })
-
-const openLogFile = async () => {
-  if (!serverStore.isElectron || !window.electronAPI?.openLogFile || !logFilePath.value) {
-    logFileError.value = 'Cannot open log file: functionality not available'
-    return
-  }
-  
-  try {
-    logFileError.value = '' // Clear any previous error
-    const result = await window.electronAPI.openLogFile(logFilePath.value)
-    
-    if (!result.success) {
-      logFileError.value = result.error || 'Failed to open log file'
-    }
-  } catch (e) {
-    console.error('Error opening log file:', e)
-    logFileError.value = e instanceof Error ? e.message : 'Unknown error opening log file'
-  }
-}
 </script>
 
 <style scoped>
