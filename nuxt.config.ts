@@ -75,22 +75,9 @@ const baseConfig = {
     define: {
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
     },
-    // Ensure CommonJS modules are properly transformed for browser
     build: {
-      target: 'es2020',
-      // Roll-up specific options
-      rollupOptions: {
-        // Force ES modules output
-        output: {
-          format: 'es'
-        }
-      },
-      commonjsOptions: {
-        // This helps with converting CommonJS modules to ES modules
-        transformMixedEsModules: true,
-        // Process noVNC modules
-      }
-    }
+      target: 'es2022', // Added to support top-level await
+    },
   },
 
   runtimeConfig: {

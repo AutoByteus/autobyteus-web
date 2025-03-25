@@ -26,10 +26,19 @@
         <button 
           @click="vncStore.sendCtrlAltDel" 
           class="px-2 py-1 text-xs bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
-          :disabled="!vncStore.isConnected"
+          :disabled="!vncStore.isConnected || vncStore.viewOnly"
           title="Send Ctrl+Alt+Del"
         >
           Ctrl+Alt+Del
+        </button>
+        <button 
+          v-if="vncStore.isConnected"
+          @click="vncStore.toggleViewOnly" 
+          class="px-2 py-1 text-xs rounded transition-colors"
+          :class="vncStore.viewOnly ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-yellow-500 text-white hover:bg-yellow-600'"
+          title="Toggle interaction mode"
+        >
+          {{ vncStore.viewOnly ? 'View Only' : 'Interactive' }}
         </button>
       </div>
     </div>
@@ -46,6 +55,12 @@
           </svg>
           <span class="text-sm text-gray-700">Connecting to VNC server...</span>
         </div>
+      </div>
+      <div 
+        v-if="vncStore.isConnected && vncStore.viewOnly" 
+        class="absolute bottom-0 left-0 right-0 p-2 bg-yellow-100 text-yellow-800 text-xs text-center"
+      >
+        View-only mode enabled. Click "View Only" button to enable interaction.
       </div>
     </div>
   </div>

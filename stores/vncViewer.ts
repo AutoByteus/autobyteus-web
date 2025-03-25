@@ -14,6 +14,7 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
   const errorMessage = ref('');
   const rfb = shallowRef<RFB | null>(null);
   const container = shallowRef<HTMLElement | null>(null);
+  const viewOnly = ref(true); // Default to view-only mode
 
   const isConnected = computed(() => connectionStatus.value === 'connected');
   const isConnecting = computed(() => connectionStatus.value === 'connecting');
@@ -58,6 +59,7 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
         shared: true,
         scaleViewport: true, 
         resizeSession: true,
+        viewOnly: viewOnly.value, // Set initial view-only mode
       });
 
       rfb.value.addEventListener('connect', () => {
@@ -117,6 +119,16 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
     }
   }
 
+  function toggleViewOnly() {
+    viewOnly.value = !viewOnly.value;
+    console.log(`View-only mode ${viewOnly.value ? 'enabled' : 'disabled'}`);
+    
+    // If we're connected, update the RFB instance
+    if (rfb.value) {
+      rfb.value.viewOnly = viewOnly.value;
+    }
+  }
+
   return {
     vncHost,
     vncPort,
@@ -127,9 +139,11 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
     isConnected,
     isConnecting,
     statusMessage,
+    viewOnly, // Expose viewOnly state
     setContainer,
     connect,
     disconnect,
     sendCtrlAltDel,
+    toggleViewOnly, // Expose new method
   };
 });
