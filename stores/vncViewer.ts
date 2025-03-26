@@ -60,16 +60,29 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
         scaleViewport: true, 
         resizeSession: true,
         viewOnly: viewOnly.value, // Set initial view-only mode
+        qualityLevel: 6, // Higher quality (0-9, 9 being highest)
+        compressionLevel: 0, // Highest compression (0-9, 0 being highest)
+        clipViewport: false, // Don't clip the viewport
+        showDotCursor: true, // Show dot cursor when in view-only mode
+        background: '#1e1e1e', // Match background color to our container
       });
 
       rfb.value.addEventListener('connect', () => {
         connectionStatus.value = 'connected';
         errorMessage.value = '';
         console.log('Connected to VNC server');
+        
+        // Apply proper scaling after connection
+        if (rfb.value) {
+          rfb.value.scaleViewport = true;
+          rfb.value.resizeSession = true;
+          
+          // Force a resize event to make sure scaling is applied
+          window.dispatchEvent(new Event('resize'));
+        }
       });
       
       rfb.value.addEventListener('disconnect', (e) => {
-        connectionStatus.value = 'disconnected';
         if (!e.detail.clean) {
           errorMessage.value = e.detail.reason || 'Disconnected unexpectedly';
           console.error('VNC disconnected with error:', e.detail);
@@ -82,6 +95,12 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
       rfb.value.addEventListener('credentialsrequired', () => {
         console.log('VNC credentials required');
         if (rfb.value) rfb.value.sendCredentials({ password: password.value });
+      });
+      
+      // Add resize event handler directly to the RFB instance
+      rfb.value.addEventListener('resize', () => {
+        console.log('VNC resize event received from server');
+        // Scaling is already handled by RFB with scaleViewport and resizeSession set during initialization
       });
     } catch (err) {
       console.error('Connection failed:', err);
@@ -139,11 +158,12 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
     isConnected,
     isConnecting,
     statusMessage,
-    viewOnly, // Expose viewOnly state
+    viewOnly,
     setContainer,
     connect,
     disconnect,
     sendCtrlAltDel,
-    toggleViewOnly, // Expose new method
+    toggleViewOnly,
+    rfb, // Expose rfb for external access if needed
   };
 });
