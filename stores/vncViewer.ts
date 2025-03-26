@@ -4,13 +4,13 @@ import { useRuntimeConfig } from 'nuxt/app';
 import RFB from '~/lib/novnc/core/rfb'; // Local ESM import
 
 export const useVncViewerStore = defineStore('vncViewer', () => {
-  // Get values from runtime config
+  // Get values from runtime config with default fallbacks
   const config = useRuntimeConfig();
-  const vncHost = ref(config.public.vncHost);
-  const vncPort = ref(config.public.vncPort);
+  const vncHost = ref(config.public.vncHost || 'localhost');
+  const vncPort = ref(config.public.vncPort || 6080);
   const vncPath = ref('');
   const connectionStatus = ref<'disconnected' | 'connecting' | 'connected'>('disconnected');
-  const password = ref('mysecretpassword');
+  const password = ref(config.public.vncPassword || 'mysecretpassword');
   const errorMessage = ref('');
   const rfb = shallowRef<RFB | null>(null);
   const container = shallowRef<HTMLElement | null>(null);
@@ -97,10 +97,9 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
         if (rfb.value) rfb.value.sendCredentials({ password: password.value });
       });
       
-      // Add resize event handler directly to the RFB instance
+      // Resize event handler for logging purposes
       rfb.value.addEventListener('resize', () => {
         console.log('VNC resize event received from server');
-        // Scaling is already handled by RFB with scaleViewport and resizeSession set during initialization
       });
     } catch (err) {
       console.error('Connection failed:', err);

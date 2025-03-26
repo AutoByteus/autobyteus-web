@@ -6,7 +6,9 @@
           class="status-indicator w-3 h-3 rounded-full mr-2" 
           :class="{ 'bg-red-500': !vncStore.isConnected, 'bg-yellow-500': vncStore.isConnecting, 'bg-green-500': vncStore.isConnected }"
         ></div>
-        <span class="text-sm font-medium">{{ vncStore.isConnected ? 'Connected to VNC server' : vncStore.statusMessage }}</span>
+        <span class="text-sm font-medium">
+          {{ vncStore.isConnected ? 'Connected to VNC server' : vncStore.statusMessage }}
+        </span>
       </div>
       <div class="controls flex items-center space-x-2">
         <button 
@@ -42,7 +44,7 @@
         </button>
       </div>
     </div>
-    <div class="vnc-screen flex-grow relative" ref="vncScreenContainer">
+    <div class="vnc-screen flex-grow relative">
       <div ref="screen" class="vnc-display"></div>
       <div 
         v-if="vncStore.isConnecting" 
@@ -63,23 +65,13 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, nextTick } from 'vue';
 import { useVncViewerStore } from '~/stores/vncViewer';
-import { useRuntimeConfig } from '#app';
 
 const vncStore = useVncViewerStore();
-const config = useRuntimeConfig();
 const screen = ref<HTMLElement | null>(null);
-const vncScreenContainer = ref<HTMLElement | null>(null);
-
-// Set config values
-vncStore.vncHost = config.public.vncHost || 'localhost';
-vncStore.vncPort = config.public.vncPort || 6080;
-vncStore.password = config.public.vncPassword || 'mysecretpassword';
 
 // Handle window resize
 const handleWindowResize = () => {
-  console.log('Window resize event - triggering resize');
-  // Simply dispatch a resize event to let RFB handle scaling
-  window.dispatchEvent(new Event('resize'));
+  console.log('Window resize event triggered');
 };
 
 onMounted(() => {
@@ -113,15 +105,6 @@ onBeforeUnmount(() => {
   vncStore.disconnect();
 });
 </script>
-
-<style>
-/* Global styles to ensure scrollbars aren't visible */
-::-webkit-scrollbar {
-  -webkit-appearance: none;
-  width: 0;
-  height: 0;
-}
-</style>
 
 <style scoped>
 .vnc-container { 
