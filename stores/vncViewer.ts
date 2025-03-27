@@ -59,13 +59,16 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
         shared: true,
         scaleViewport: true, 
         resizeSession: true,
-        viewOnly: viewOnly.value, // Set initial view-only mode
+        viewOnly: viewOnly.value, // Set initial view-only mode (note: this option is not used by RFB constructor)
         qualityLevel: 6, // Higher quality (0-9, 9 being highest)
         compressionLevel: 0, // Highest compression (0-9, 0 being highest)
         clipViewport: false, // Don't clip the viewport
         showDotCursor: true, // Show dot cursor when in view-only mode
         background: '#1e1e1e', // Match background color to our container
       });
+
+      // Explicitly set viewOnly mode since RFB constructor ignores the passed option
+      rfb.value.viewOnly = viewOnly.value;
 
       rfb.value.addEventListener('connect', () => {
         connectionStatus.value = 'connected';
