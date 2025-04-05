@@ -61,10 +61,7 @@
       <h3 class="text-lg font-medium text-gray-800 mb-4">Technical Details</h3>
       
       <div class="grid gap-4 md:grid-cols-2 mb-4">
-        <div class="detail-item">
-          <span class="text-sm text-gray-500">Server Type:</span>
-          <p class="font-mono">Internal Server</p>
-        </div>
+        <!-- Removed Server Type block as it's no longer needed -->
         
         <div class="detail-item">
           <span class="text-sm text-gray-500">Server URL:</span>

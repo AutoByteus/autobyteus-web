@@ -8,7 +8,7 @@ import { logger } from '../logger'
 
 export class LinuxServerManager extends BaseServerManager {
   /**
-   * Get path to the server executable for Linux
+   * Get path to the server executable for Linux.
    */
   protected getServerPath(): string {
     const resourcePath = isDev 
@@ -20,18 +20,15 @@ export class LinuxServerManager extends BaseServerManager {
   }
 
   /**
-   * Launch the server process for Linux
+   * Launch the server process for Linux.
    */
   protected async launchServerProcess(): Promise<void> {
     const serverPath = this.getServerPath()
-    
-    // Create environment with only the necessary variables
     const env = {
       ...process.env,
       PORT: this.serverPort.toString(),
       SERVER_PORT: this.serverPort.toString()
     }
-
     const options = {
       cwd: this.serverDir,
       env,
@@ -47,7 +44,6 @@ export class LinuxServerManager extends BaseServerManager {
       `--data-dir`, `${this.appDataDir}`
     ]
     
-    // Format the command for logging
     const formattedPath = serverPath.includes(' ') ? `"${serverPath}"` : serverPath
     logger.info(`Executing: ${formattedPath} ${args.join(' ')}`)
     

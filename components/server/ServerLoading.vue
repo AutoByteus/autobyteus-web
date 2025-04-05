@@ -1,26 +1,22 @@
 <template>
-  <div 
-    class="server-loading-container" 
-    v-if="showComponent && !serverStore.allowAppWithoutServer"
-  >
+  <div class="server-loading-container" v-if="serverStore.status !== 'running'">
     <div class="server-loading-content">
       <div v-if="serverStore.status === 'starting'" class="loading-state">
         <div class="spinner"></div>
         <h2 class="text-xl font-semibold mt-4">Starting AutoByteus...</h2>
         <p class="text-gray-600 mt-2">{{ serverStore.connectionMessage }}</p>
         
-        <div v-if="serverStore.connectionAttempts > 0 && !serverStore.usingInternalServer" class="mt-2 text-gray-600">
+        <div v-if="serverStore.connectionAttempts > 0" class="mt-2 text-gray-600">
           Connection attempt {{ serverStore.connectionAttempts }} of {{ serverStore.maxConnectionAttempts }}...
         </div>
         
-        <div v-if="serverStore.usingInternalServer && serverStore.isInitialStartup" class="mt-2 text-gray-600">
+        <div v-if="serverStore.isInitialStartup" class="mt-2 text-gray-600">
           <p>Initial server startup may take a moment. Please be patient...</p>
         </div>
         
         <div v-if="showDetails" class="technical-details mt-4">
           <p class="text-gray-600 text-sm">
-            <span v-if="serverStore.usingInternalServer">Backend service initializing...</span>
-            <span v-else>Connecting to server at:</span>
+            Backend service initializing...
           </p>
           <p class="text-gray-600 text-sm font-mono mt-1">
             {{ serverStore.urls.graphql }}
@@ -40,21 +36,12 @@
           >
             {{ showDetails ? 'Hide technical details' : 'Show technical details' }}
           </button>
-          
           <button 
+            v-if="showDetails"
             @click="serverStore.checkServerHealth" 
             class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none md:ml-4"
-            v-if="showDetails"
           >
             Run health check
-          </button>
-          
-          <!-- Button to continue without server -->
-          <button
-            @click="continueWithoutServer"
-            class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none md:ml-4"
-          >
-            Continue without server
           </button>
         </div>
       </div>
@@ -62,20 +49,9 @@
       <div v-else-if="serverStore.status === 'error'" class="error-state">
         <div class="error-icon">❌</div>
         <h2 class="text-xl font-semibold mt-4 text-red-600">
-          <span v-if="serverStore.usingInternalServer">Application Error</span>
-          <span v-else>Connection Error</span>
+          Application Error
         </h2>
         <p class="text-gray-800 mt-2">{{ serverStore.userFriendlyError }}</p>
-        
-        <div v-if="!serverStore.usingInternalServer" class="mt-2 text-gray-600">
-          <p>Please ensure that the server is running and reachable at:</p>
-          <p class="font-mono text-sm mt-1">{{ serverStore.urls.graphql }}</p>
-          
-          <!-- Add a special note for external servers -->
-          <p class="mt-2 text-amber-600">
-            This application cannot restart externally managed servers.
-          </p>
-        </div>
         
         <div v-if="showDetails && serverStore.errorMessage" class="technical-details mt-4">
           <p class="text-gray-600 text-sm">Technical details: {{ serverStore.errorMessage }}</p>
@@ -88,38 +64,18 @@
         </div>
         
         <div class="mt-4 flex flex-col gap-2">
-          <!-- For internal servers, show restart button -->
           <button 
-            v-if="serverStore.canRestartServer"
             @click="serverStore.restartServer"
             class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none"
           >
             Restart Server
           </button>
-          
-          <!-- For external servers, show retry connection button -->
-          <button 
-            v-else
-            @click="serverStore.checkServerHealth"
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none"
-          >
-            Retry Connection
-          </button>
-          
           <button 
             @click="serverStore.checkServerHealth" 
             class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 focus:outline-none mt-2"
           >
             Check Server Health
           </button>
-          
-          <button
-            @click="continueWithoutServer"
-            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 focus:outline-none mt-2"
-          >
-            Continue without server
-          </button>
-          
           <button 
             v-if="serverStore.errorMessage"
             @click="toggleDetails" 
@@ -136,18 +92,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useServerStore } from '~/stores/serverStore'
-import RFB from '';
 import { useRouter } from 'vue-router'
 
 // Use the server store
 const serverStore = useServerStore()
 const router = useRouter()
 
-// Show component only when server is not running or has an error
-// Also respect the allowAppWithoutServer flag
-const showComponent = computed(() => 
-  (serverStore.status !== 'running' && !serverStore.allowAppWithoutServer)
-)
+// Show this component only when the server is not running
+const showComponent = computed(() => serverStore.status !== 'running')
 
 // Toggle for showing technical details
 const showDetails = ref(false)
@@ -155,30 +107,18 @@ const toggleDetails = () => {
   showDetails.value = !showDetails.value
 }
 
-// Function to continue without server
-const continueWithoutServer = () => {
-  serverStore.setAllowAppWithoutServer(true)
-  // Optionally, we could navigate to the settings page to show server status
-  router.push('/settings?section=server-status')
-}
-
 // Log file path
 const logFilePath = ref('')
 
-// For debugging - log status changes
 watch(() => serverStore.status, (newStatus, oldStatus) => {
   console.log(`ServerLoading: Status changed from ${oldStatus} to ${newStatus}`)
 })
 
-// Interval reference for health checks
 let healthInterval: NodeJS.Timeout | null = null
 
-// Check health automatically when component mounts
 onMounted(async () => {
   console.log('ServerLoading: Component mounted with status:', serverStore.status)
-  console.log('ServerLoading: Using internal server:', serverStore.usingInternalServer)
   
-  // Get the log file path if we're in Electron
   if (serverStore.isElectron && window.electronAPI?.getLogFilePath) {
     try {
       logFilePath.value = await window.electronAPI.getLogFilePath()
@@ -187,25 +127,21 @@ onMounted(async () => {
     }
   }
   
-  // Run a health check after mounting
   setTimeout(() => {
     serverStore.checkServerHealth()
-  }, 2000) // Check after 2 seconds to give server time to start
+  }, 2000)
   
-  // Set up an interval to check again if still in 'starting' state
-  // Use a variable interval based on whether we're in initial startup
   healthInterval = setInterval(() => {
     if (serverStore.status === 'starting') {
-      console.log('ServerLoading: Still in starting state, checking health again')
+      console.log('ServerLoading: Still starting, checking health again')
       serverStore.checkServerHealth()
     } else if (healthInterval) {
       clearInterval(healthInterval)
       healthInterval = null
     }
-  }, serverStore.isInitialStartup ? 5000 : 3000) // Check less frequently during initial startup
+  }, serverStore.isInitialStartup ? 5000 : 3000)
 })
 
-// Clean up interval when component is unmounted
 onBeforeUnmount(() => {
   if (healthInterval) {
     clearInterval(healthInterval)

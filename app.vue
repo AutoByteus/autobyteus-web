@@ -1,33 +1,18 @@
 <template>
   <div id="app">
-    <!-- Server loading overlay will appear when server is starting -->
-    <ServerLoading />
+    <!-- Only display the server loading overlay in Electron environment -->
+    <ServerLoading v-if="serverStore.isElectron" />
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
   </div>
 </template>
-<script setup lang="ts">
-import { useHead } from 'nuxt/app'
-import ServerLoading from '~/components/server/ServerLoading.vue'
 
-useHead({
-  title: 'Autobyteus',
-  meta: [
-    { charset: 'UTF-8' },
-    { name: 'viewport', content: 'width=device-width, initial-scale=1.0' },
-    { hid: 'description', name: 'description', content: 'A brief description of your app.' },
-    { name: 'theme-color', content: '#ffffff' },
-    { name: 'apple-mobile-web-app-capable', content: 'yes' },
-    { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
-    // Add any additional meta tags as needed
-  ],
-  link: [
-    { rel: 'icon', type: 'image/png', href: '/favicon.png' },
-    // Add any additional link tags as needed
-  ],
-})
+<script setup lang="ts">
+import { useServerStore } from '~/stores/serverStore'
+const serverStore = useServerStore()
 </script>
+
 <style lang="css">
   @tailwind base;
   @tailwind components;

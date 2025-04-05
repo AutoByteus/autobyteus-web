@@ -102,7 +102,7 @@ import { useServerStore } from '~/stores/serverStore';
 import ProviderAPIKeyManager from '~/components/settings/ProviderAPIKeyManager.vue';
 import TokenUsageStatistics from '~/components/settings/TokenUsageStatistics.vue';
 import ServerSettingsManager from '~/components/settings/ServerSettingsManager.vue';
-import ServerMonitor from '~/components/settings/ServerMonitor.vue';
+import ServerMonitor from '~/components/server/ServerMonitor.vue';
 
 const route = useRoute();
 const serverStore = useServerStore();
@@ -115,8 +115,8 @@ onMounted(() => {
     activeSection.value = sectionParam;
   }
   
-  // If server is not running, default to server-status section
-  if (serverStore.status !== 'running' && serverStore.allowAppWithoutServer) {
+  // If server is not running and we are in Electron mode, default to server-status section
+  if (serverStore.isElectron && serverStore.status !== 'running') {
     activeSection.value = 'server-status';
   }
 });

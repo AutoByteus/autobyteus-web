@@ -7,7 +7,7 @@ import { logger } from '../logger'
 
 export class WindowsServerManager extends BaseServerManager {
   /**
-   * Get path to the server executable for Windows
+   * Get path to the server executable for Windows.
    */
   protected getServerPath(): string {
     const resourcePath = isDev 
@@ -19,12 +19,10 @@ export class WindowsServerManager extends BaseServerManager {
   }
 
   /**
-   * Launch the server process for Windows
+   * Launch the server process for Windows.
    */
   protected async launchServerProcess(): Promise<void> {
     const serverPath = this.getServerPath()
-    
-    // Create environment with only the necessary variables
     const env = {
       ...process.env,
       PORT: this.serverPort.toString(),
@@ -46,7 +44,6 @@ export class WindowsServerManager extends BaseServerManager {
       `--data-dir`, `${this.appDataDir}`
     ]
     
-    // Format the command for logging
     const formattedPath = serverPath.includes(' ') ? `"${serverPath}"` : serverPath
     logger.info(`Executing: ${formattedPath} ${args.join(' ')}`)
     
@@ -55,16 +52,9 @@ export class WindowsServerManager extends BaseServerManager {
   }
 
   /**
-   * Override stopServer for Windows-specific process killing.
-   * Only call this if explicitly needed - we generally want to keep the server running.
+   * Stop the backend server.
    */
   public stopServer(): void {
-    // If we detected an external server, don't stop it
-    if (this.isExternalServerDetected) {
-      logger.info('Server was already running when application started - not stopping it')
-      return
-    }
-    
     if (!this.serverProcess) {
       logger.info('Server is not running')
       return
@@ -73,12 +63,9 @@ export class WindowsServerManager extends BaseServerManager {
     logger.info('Stopping server...')
     this.isServerRunning = false
     this.ready = false
-
-    // Stop health check polling
     this.stopHealthCheckPolling()
 
     try {
-      // On Windows, we need to terminate the process tree
       if (this.serverProcess.pid !== undefined) {
         logger.info(`Executing: taskkill /pid ${this.serverProcess.pid} /f /t`)
         spawn('taskkill', ['/pid', this.serverProcess.pid.toString(), '/f', '/t'])

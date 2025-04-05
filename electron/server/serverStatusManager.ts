@@ -2,6 +2,7 @@ import { EventEmitter } from 'events'
 import { BaseServerManager } from './baseServerManager'
 import { logger } from '../logger'
 import axios from 'axios'
+import { ServerStatus } from './serverStatusEnum'
 
 /**
  * ServerStatusManager acts as a bridge between the Electron main process and renderer
@@ -11,7 +12,6 @@ export class ServerStatusManager extends EventEmitter {
   private manager: BaseServerManager
   private isInitializing: boolean = false
   private healthCheckStatus: string = ''
-  private externalServerDetected: boolean = false
   
   constructor(serverManager: BaseServerManager) {
     super()
@@ -20,17 +20,17 @@ export class ServerStatusManager extends EventEmitter {
     // Set up event handlers for server status changes
     this.manager.onReady(() => {
       logger.info('ServerStatusManager: Server is ready')
-      this.emitStatusChange('running')
+      this.emitStatusChange(ServerStatus.RUNNING)
     })
     
     this.manager.onError((error) => {
       logger.error('ServerStatusManager: Server error:', error)
-      this.emitStatusChange('error', error.message)
+      this.emitStatusChange(ServerStatus.ERROR, error.message)
     })
   }
   
   /**
-   * Initialize the server - checking for existing server first and starting internal server if needed
+   * Initialize the internal server.
    */
   async initializeServer(): Promise<void> {
     if (this.isInitializing) {
@@ -41,165 +41,128 @@ export class ServerStatusManager extends EventEmitter {
     this.isInitializing = true
     
     try {
-      logger.info('ServerStatusManager: Checking for existing server')
-      
-      // First check if a server is already running at the port
-      const isExistingServer = await this.manager.checkExistingServer()
-      this.externalServerDetected = isExistingServer
-      
-      if (isExistingServer) {
-        // Server is already running, emit status update
-        logger.info('ServerStatusManager: Found existing server')
-        this.emitStatusChange('running')
-      } else {
-        // No server found, start the internal server
-        logger.info('ServerStatusManager: No existing server found, starting internal server')
-        this.emitStatusChange('starting')
-        await this.manager.startServer()
-      }
+      logger.info('ServerStatusManager: Starting internal server')
+      this.emitStatusChange(ServerStatus.STARTING)
+      await this.manager.startServer()
+      this.emitStatusChange(ServerStatus.RUNNING)
     } catch (error) {
       logger.error('ServerStatusManager: Server initialization failed:', error)
-      this.emitStatusChange('error', error instanceof Error ? error.message : String(error))
+      this.emitStatusChange(ServerStatus.ERROR, error instanceof Error ? error.message : String(error))
     } finally {
       this.isInitializing = false
     }
   }
   
   /**
-   * Restart the server
+   * Restart the internal server with a stable restart flow.
    */
   async restartServer(): Promise<any> {
     logger.info('ServerStatusManager: Restarting server')
     
-    // Reset status
-    this.emitStatusChange('starting')
+    // Begin by setting status to STOPPING
+    this.emitStatusChange(ServerStatus.STOPPING)
     
+    if (this.manager.isRunning()) {
+      this.manager.stopServer()
+    }
+    
+    // Wait until the server is completely stopped
+    await new Promise<void>((resolve) => {
+      const checkStopped = async () => {
+        const health = await this.checkServerHealth()
+        if (health.status !== 'ok') {
+          resolve()
+        } else {
+          setTimeout(checkStopped, 1000)
+        }
+      }
+      checkStopped()
+    })
+    
+    // Emit stopped status
+    this.emitStatusChange(ServerStatus.STOPPED)
+    
+    // Now initiate startup by emitting starting state and starting server
+    this.emitStatusChange(ServerStatus.STARTING)
     try {
-      // First check if a server is already running at the port
-      const isExistingServer = await this.manager.checkExistingServer()
-      
-      if (isExistingServer) {
-        logger.info('ServerStatusManager: Found existing server, no need to restart')
-        this.externalServerDetected = isExistingServer
-        this.emitStatusChange('running')
-        return this.getStatus()
-      }
-      
-      // Stop the server if it's already running (managed by us)
-      if (this.manager.isRunning() && !this.externalServerDetected) {
-        this.manager.stopServer()
-      }
-      
-      // Start the server
       await this.manager.startServer()
+      // When the server is ready, onReady callback will emit RUNNING
       return this.getStatus()
     } catch (error) {
       logger.error('ServerStatusManager: Restart failed:', error)
-      this.emitStatusChange('error', error instanceof Error ? error.message : String(error))
+      this.emitStatusChange(ServerStatus.ERROR, error instanceof Error ? error.message : String(error))
       return {
-        status: 'error',
-        message: error instanceof Error ? error.message : String(error),
-        isExternalServerDetected: this.externalServerDetected
+        status: ServerStatus.ERROR,
+        message: error instanceof Error ? error.message : String(error)
       }
     }
   }
   
   /**
-   * Check server health
+   * Check server health.
    */
   async checkServerHealth(): Promise<any> {
     try {
       logger.info('ServerStatusManager: Checking server health')
-      
       if (!this.manager.isRunning()) {
-        // If we think the server isn't running, check if one appeared
-        const isExistingServer = await this.manager.checkExistingServer()
-        if (isExistingServer) {
-          this.externalServerDetected = true
-          this.emitStatusChange('running')
-          return {
-            status: 'ok',
-            data: { status: 'ok' },
-            isExternalServerDetected: true
-          }
-        }
-        
-        // No running server
         return {
           status: 'starting',
           message: 'Server is not running'
         }
       }
       
-      // Server is running, check health endpoint
       const urls = this.manager.getServerUrls()
       const response = await axios.get(urls.health, { timeout: 5000 })
       
       if (response.status === 200) {
         this.healthCheckStatus = 'Healthy'
-        // Ensure the status is updated to running
-        this.emitStatusChange('running')
+        this.emitStatusChange(ServerStatus.RUNNING)
         return {
           status: 'ok',
-          data: response.data,
-          isExternalServerDetected: this.externalServerDetected
+          data: response.data
         }
       } else {
         this.healthCheckStatus = `Error: Unexpected response status ${response.status}`
         return {
           status: 'error',
-          message: this.healthCheckStatus,
-          isExternalServerDetected: this.externalServerDetected
+          message: this.healthCheckStatus
         }
       }
     } catch (error) {
       logger.error('ServerStatusManager: Health check failed:', error)
       const errorMessage = error instanceof Error ? error.message : String(error)
-      
       this.healthCheckStatus = `Error: ${errorMessage}`
-      
       return {
         status: 'error',
-        message: errorMessage,
-        isExternalServerDetected: this.externalServerDetected
+        message: errorMessage
       }
     }
   }
   
   /**
-   * Get the current server status
+   * Get the current server status.
    */
   getStatus(): any {
     const isRunning = this.manager.isRunning()
     const urls = this.manager.getServerUrls()
     
     return {
-      status: isRunning ? 'running' : 'starting',
+      status: isRunning ? ServerStatus.RUNNING : ServerStatus.STARTING,
       urls,
-      healthCheckStatus: this.healthCheckStatus,
-      isExternalServerDetected: this.externalServerDetected
+      healthCheckStatus: this.healthCheckStatus
     }
   }
   
   /**
-   * Check if we're using an internal server vs. an externally started one
+   * Emit status change event.
    */
-  isUsingInternalServer(): boolean {
-    return !this.externalServerDetected
-  }
-  
-  /**
-   * Emit status change event
-   */
-  private emitStatusChange(status: 'starting' | 'running' | 'error', message?: string): void {
+  private emitStatusChange(status: ServerStatus, message?: string): void {
     const urls = this.manager.getServerUrls()
-    
     const statusObject = {
       status,
       urls,
       message,
-      healthCheckStatus: this.healthCheckStatus,
-      isExternalServerDetected: this.externalServerDetected
+      healthCheckStatus: this.healthCheckStatus
     }
     
     logger.info(`ServerStatusManager: Emitting status change: ${status}`)
