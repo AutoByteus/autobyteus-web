@@ -55,9 +55,12 @@ const options: Configuration = {
       to: "server"
     }
   ],
+  // Default artifact name pattern
+  artifactName: '${productName}_${platform}-${version}.${ext}',
   win: {
     target: ['nsis'],
-    icon: 'build/icons/icon.ico'
+    icon: 'build/icons/icon.ico',
+    artifactName: '${productName}_windows-${version}.${ext}'
   },
   nsis: {
     oneClick: false,                    // Allow user to customize installation
@@ -73,11 +76,14 @@ const options: Configuration = {
   },
   mac: {
     target: ['dmg'],
-    icon: 'build/icons/icon.icns'
+    icon: 'build/icons/icon.icns',
+    // Custom naming for macOS builds based on architecture
+    artifactName: '${productName}_macos-${arch}-${version}.${ext}'
   },
   linux: {
     target: ['AppImage'],
-    icon: 'build/icons' // Linux will use the icons directory containing multiple sizes
+    icon: 'build/icons', // Linux will use the icons directory containing multiple sizes
+    artifactName: '${productName}_linux-${version}.${ext}'
   }
 }
 
@@ -92,8 +98,15 @@ if (platform !== 'ALL') {
   buildConfig.targets = new Map([
     [Platform.LINUX, new Map([[Arch.x64, ['AppImage']]])],
     [Platform.WINDOWS, new Map([[Arch.x64, ['nsis']]])],
-    [Platform.MAC, new Map([[Arch.x64, ['dmg']]])]
+    [Platform.MAC, new Map([[Arch.x64, ['dmg']], [Arch.arm64, ['dmg']]])]
   ])
+}
+
+// Function to convert electron-builder arch to our naming convention
+function getArchName(arch: Arch): string {
+  if (arch === Arch.arm64) return 'arm64';
+  if (arch === Arch.x64) return 'intel';
+  return arch.toString();
 }
 
 async function main(): Promise<void> {
@@ -103,8 +116,52 @@ async function main(): Promise<void> {
     
     // Then proceed with electron-builder
     console.log('Starting electron-builder...')
-    const result = await build(buildConfig)
-    console.log('Build completed:', result)
+    
+    // Handle different platforms separately to customize naming
+    if (platform === 'ALL') {
+      // Custom handling for builds with specific architecture naming
+      console.log('Building for all platforms with custom naming...')
+      
+      // Build for Linux
+      console.log('Building for Linux...')
+      await build({
+        config: options,
+        targets: new Map([[Platform.LINUX, new Map([[Arch.x64, ['AppImage']]])]])
+      })
+      
+      // Build for Windows
+      console.log('Building for Windows...')
+      await build({
+        config: options,
+        targets: new Map([[Platform.WINDOWS, new Map([[Arch.x64, ['nsis']]])]])
+      })
+      
+      // Build for macOS with both architectures
+      console.log('Building for macOS...')
+      for (const arch of [Arch.arm64, Arch.x64]) {
+        const archName = getArchName(arch);
+        console.log(`Building for macOS (${archName})...`);
+        
+        const macConfig = {
+          ...options,
+          mac: {
+            ...options.mac,
+            artifactName: `\${productName}_macos-${archName}-\${version}.\${ext}`
+          }
+        };
+        
+        await build({
+          config: macConfig,
+          targets: new Map([[Platform.MAC, new Map([[arch, ['dmg']]])]])
+        });
+      }
+      
+      console.log('All platform builds completed successfully')
+    } else {
+      // For single platform builds, use the standard configuration
+      const result = await build(buildConfig)
+      console.log('Build completed:', result)
+    }
   } catch (error) {
     console.error('Build process failed:', error)
     process.exit(1)

@@ -3,12 +3,40 @@ import { ref, computed, shallowRef } from 'vue';
 import { useRuntimeConfig } from 'nuxt/app';
 import RFB from '~/lib/novnc/core/rfb'; // Local ESM import
 
+// Import the server settings store to dynamically fetch VNC configuration
+import { useServerSettingsStore } from '~/stores/serverSettings';
+
 export const useVncViewerStore = defineStore('vncViewer', () => {
-  // Get values from runtime config with default fallbacks
+  // Runtime config is still used for other settings like the VNC password.
   const config = useRuntimeConfig();
-  const vncHost = ref(config.public.vncHost || 'localhost');
-  const vncPort = ref(config.public.vncPort || 6080);
+
+  // Access the server settings store
+  const serverSettingsStore = useServerSettingsStore();
+
+  // Utility function to fetch a setting value by key with an optional fallback.
+  function getServerSetting(key: string, fallback: string): string {
+    const found = serverSettingsStore.getSettingByKey(key);
+    if (!found || !found.value) {
+      return fallback;
+    }
+    return found.value;
+  }
+
+  // Computed property to fetch the complete VNC server URL from settings.
+  // It expects a setting with the key 'AUTOBYTEUS_VNC_SERVER_URL' (e.g., "ws://localhost:6080").
+  // If the provided value does not start with "ws://" or "wss://", "ws://" is prepended.
+  const vncServerUrl = computed(() => {
+    let url = getServerSetting('AUTOBYTEUS_VNC_SERVER_URL', 'localhost:6080');
+    if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
+      url = `ws://${url}`;
+    }
+    return url;
+  });
+
+  // VNC path can remain empty unless we need user customization.
   const vncPath = ref('');
+
+  // Connection status and other store states
   const connectionStatus = ref<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const password = ref(config.public.vncPassword || 'mysecretpassword');
   const errorMessage = ref('');
@@ -28,9 +56,10 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
   });
 
   function setContainer(element: HTMLElement | null) {
-    console.log('VNC container set:', element ? 
-      `Container size: ${element.offsetWidth}x${element.offsetHeight}` : 
-      'Container is null');
+    console.log('VNC container set:', element
+      ? `Container size: ${element.offsetWidth}x${element.offsetHeight}`
+      : 'Container is null'
+    );
     container.value = element;
   }
 
@@ -40,7 +69,7 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
       console.log('Not connecting: already in state:', connectionStatus.value, 'or container missing');
       return;
     }
-    
+
     // Clean up any existing connection first
     if (rfb.value) {
       console.log('Cleaning up existing connection before connecting');
@@ -51,40 +80,41 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
     errorMessage.value = '';
 
     try {
-      const wsUrl = `ws://${vncHost.value}:${vncPort.value}${vncPath.value}`;
+      const wsUrl = `${vncServerUrl.value}${vncPath.value}`;
       console.log(`Connecting to VNC at ${wsUrl}`);
-      
+
       rfb.value = new RFB(container.value, wsUrl, {
         credentials: { password: password.value },
         shared: true,
-        scaleViewport: true, 
+        scaleViewport: true,
         resizeSession: true,
-        viewOnly: viewOnly.value, // Set initial view-only mode (note: this option is not used by RFB constructor)
-        qualityLevel: 6, // Higher quality (0-9, 9 being highest)
-        compressionLevel: 0, // Highest compression (0-9, 0 being highest)
-        clipViewport: false, // Don't clip the viewport
-        showDotCursor: true, // Show dot cursor when in view-only mode
+        // The constructor's "viewOnly" is ignored by RFB, so we set it explicitly below.
+        viewOnly: viewOnly.value,
+        qualityLevel: 6,       // Higher quality (0-9, 9 being highest)
+        compressionLevel: 0,   // Highest compression (0-9, 0 being highest)
+        clipViewport: false,   // Don't clip the viewport
+        showDotCursor: true,   // Show dot cursor when in view-only mode
         background: '#1e1e1e', // Match background color to our container
       });
 
-      // Explicitly set viewOnly mode since RFB constructor ignores the passed option
+      // Must set viewOnly explicitly (constructor option is not used by noVNC).
       rfb.value.viewOnly = viewOnly.value;
 
       rfb.value.addEventListener('connect', () => {
         connectionStatus.value = 'connected';
         errorMessage.value = '';
         console.log('Connected to VNC server');
-        
+
         // Apply proper scaling after connection
         if (rfb.value) {
           rfb.value.scaleViewport = true;
           rfb.value.resizeSession = true;
-          
-          // Force a resize event to make sure scaling is applied
+
+          // Force a resize event to ensure scaling is applied
           window.dispatchEvent(new Event('resize'));
         }
       });
-      
+
       rfb.value.addEventListener('disconnect', (e) => {
         if (!e.detail.clean) {
           errorMessage.value = e.detail.reason || 'Disconnected unexpectedly';
@@ -94,12 +124,12 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
         }
         cleanupConnection();
       });
-      
+
       rfb.value.addEventListener('credentialsrequired', () => {
         console.log('VNC credentials required');
         if (rfb.value) rfb.value.sendCredentials({ password: password.value });
       });
-      
+
       // Resize event handler for logging purposes
       rfb.value.addEventListener('resize', () => {
         console.log('VNC resize event received from server');
@@ -143,29 +173,31 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
   function toggleViewOnly() {
     viewOnly.value = !viewOnly.value;
     console.log(`View-only mode ${viewOnly.value ? 'enabled' : 'disabled'}`);
-    
-    // If we're connected, update the RFB instance
+
+    // If connected, update the RFB instance
     if (rfb.value) {
       rfb.value.viewOnly = viewOnly.value;
     }
   }
 
   return {
-    vncHost,
-    vncPort,
-    vncPath,
+    // State
     connectionStatus,
-    password,
     errorMessage,
+    rfb,
+    container,
+    viewOnly,
+
+    // Computed
     isConnected,
     isConnecting,
     statusMessage,
-    viewOnly,
+
+    // Methods
     setContainer,
     connect,
     disconnect,
     sendCtrlAltDel,
     toggleViewOnly,
-    rfb, // Expose rfb for external access if needed
   };
 });

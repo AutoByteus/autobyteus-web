@@ -88,9 +88,7 @@ const baseConfig = {
       wsBaseUrl: serverUrls.wsBaseUrl,
       googleSpeechApiKey: process.env.GOOGLE_SPEECH_API_KEY || '',
       
-      // VNC configuration
-      vncHost: process.env.NUXT_PUBLIC_VNC_HOST || 'localhost',
-      vncPort: parseInt(process.env.NUXT_PUBLIC_VNC_PORT || '6080'),
+      // Removed VNC configuration from runtimeConfig as it is now handled via server settings
       
       audio: {
         targetSampleRate: 16000,

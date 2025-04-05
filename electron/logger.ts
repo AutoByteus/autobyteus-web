@@ -14,13 +14,19 @@ class Logger {
       fs.mkdirSync(logDir, { recursive: true })
     }
 
-    this.logPath = path.join(logDir, `app-${new Date().toISOString().split('T')[0]}.log`)
+    // Use a fixed filename instead of date-based name
+    this.logPath = path.join(logDir, 'app.log')
     this.initLogStream()
   }
 
   private initLogStream(): void {
     try {
-      this.fileStream = fs.createWriteStream(this.logPath, { flags: 'a' })
+      // Use 'w' flag to overwrite the file on startup instead of 'a' (append)
+      this.fileStream = fs.createWriteStream(this.logPath, { flags: 'w' })
+      
+      // Write a header to the log file with the application start time
+      const startupTime = new Date().toISOString()
+      this.fileStream.write(`[${startupTime}] [INFO] Application started\n`)
     } catch (error) {
       console.error('Failed to create log file stream:', error)
     }
