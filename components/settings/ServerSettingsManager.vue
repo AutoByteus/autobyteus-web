@@ -12,59 +12,94 @@
       </div>
 
       <div v-else class="space-y-6">
-        <!-- Settings List -->
-        <div v-if="store.settings.length === 0" class="text-gray-500 py-4">
-          No server settings found.
-        </div>
-        
-        <div v-else>
-          <!-- Settings Table -->
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
-              <thead class="bg-blue-50">
-                <tr>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">
-                    Setting
-                  </th>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">
-                    Value
-                  </th>
-                  <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-blue-700 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="setting in store.settings" :key="setting.key" class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {{ setting.key }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    <input
-                      v-model="editedSettings[setting.key]"
-                      type="text"
-                      class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition-colors duration-150"
-                      :placeholder="`Enter ${setting.key}`"
-                    >
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      @click="saveIndividualSetting(setting.key)"
-                      :disabled="!isSettingChanged(setting.key) || store.isUpdating"
-                      class="px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
-                    >
-                      <span v-if="isUpdating[setting.key]" class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1 inline-block"></span>
-                      Save
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        <!-- Settings Table with integrated new setting row -->
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+            <thead class="bg-blue-50">
+              <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">
+                  Setting
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">
+                  Value
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">
+                  Description
+                </th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-blue-700 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <!-- Existing Settings -->
+              <tr v-for="setting in store.settings" :key="setting.key" class="hover:bg-gray-50 transition-colors duration-150">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  {{ setting.key }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  <input
+                    v-model="editedSettings[setting.key]"
+                    type="text"
+                    class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition-colors duration-150"
+                    :placeholder="`Enter ${setting.key}`"
+                  >
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {{ setting.description }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button
+                    @click="saveIndividualSetting(setting.key)"
+                    :disabled="!isSettingChanged(setting.key) || store.isUpdating"
+                    class="px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                  >
+                    <span v-if="isUpdating[setting.key]" class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1 inline-block"></span>
+                    Save
+                  </button>
+                </td>
+              </tr>
+              
+              <!-- New Setting Row -->
+              <tr class="bg-gray-50 hover:bg-gray-100 transition-colors duration-150">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  <input
+                    v-model="newSetting.key"
+                    type="text"
+                    placeholder="Enter new setting key"
+                    class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  <input
+                    v-model="newSetting.value"
+                    type="text"
+                    placeholder="Enter value"
+                    class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 italic">
+                  Custom user-defined setting
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button
+                    @click="addNewSetting"
+                    :disabled="!isNewSettingValid || isAddingNewSetting"
+                    class="px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                  >
+                    <span v-if="isAddingNewSetting" class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1 inline-block"></span>
+                    Save
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <!-- Error message for new setting -->
+          <div v-if="newSettingError" class="mt-2 text-sm text-red-600 pl-6">
+            {{ newSettingError }}
           </div>
         </div>
-
-        <!-- Save All Button has been removed as per requirement -->
-
       </div>
 
       <!-- Notifications -->
@@ -89,11 +124,39 @@ const editedSettings = reactive<Record<string, string>>({})
 const originalSettings = reactive<Record<string, string>>({})
 const isUpdating = reactive<Record<string, boolean>>({})
 
+// New setting state
+const newSetting = reactive({
+  key: '',
+  value: ''
+})
+const newSettingError = ref('')
+const isAddingNewSetting = ref(false)
+
 // Computed property to check if any setting has changed
 const hasAnySettingChanged = computed(() => {
   return Object.keys(editedSettings).some(key => 
     editedSettings[key] !== originalSettings[key]
   )
+})
+
+// Computed property to validate new setting
+const isNewSettingValid = computed(() => {
+  // Reset error message when inputs change
+  newSettingError.value = ''
+  
+  // Key must not be empty
+  if (!newSetting.key.trim()) {
+    return false
+  }
+  
+  // Key must not already exist
+  const keyExists = store.settings.some(setting => setting.key === newSetting.key)
+  if (keyExists) {
+    newSettingError.value = 'Setting with this key already exists'
+    return false
+  }
+  
+  return true
 })
 
 // Method to check if an individual setting has changed
@@ -140,26 +203,36 @@ const saveIndividualSetting = async (key: string) => {
   }
 }
 
-const saveAllSettings = async () => {
-  if (!hasAnySettingChanged.value) return
+const addNewSetting = async () => {
+  if (!isNewSettingValid.value) return
   
-  store.isUpdating = true
+  isAddingNewSetting.value = true
   
   try {
-    const changedKeys = Object.keys(editedSettings).filter(key => 
-      editedSettings[key] !== originalSettings[key]
-    )
+    await store.updateServerSetting(newSetting.key, newSetting.value)
     
-    for (const key of changedKeys) {
-      await store.updateServerSetting(key, editedSettings[key])
-      originalSettings[key] = editedSettings[key]
-    }
+    // After successful addition, refresh the settings list
+    await store.fetchServerSettings()
     
-    showNotification('All settings saved successfully', 'success')
+    // Update the local state
+    store.settings.forEach(setting => {
+      if (!(setting.key in editedSettings)) {
+        editedSettings[setting.key] = setting.value
+        originalSettings[setting.key] = setting.value
+        isUpdating[setting.key] = false
+      }
+    })
+    
+    // Reset the new setting form
+    newSetting.key = ''
+    newSetting.value = ''
+    
+    showNotification(`Custom setting added successfully`, 'success')
   } catch (error: any) {
-    showNotification(error.message || 'Failed to save settings', 'error')
+    newSettingError.value = error.message || 'Failed to add custom setting'
+    showNotification(error.message || 'Failed to add custom setting', 'error')
   } finally {
-    store.isUpdating = false
+    isAddingNewSetting.value = false
   }
 }
 </script>
