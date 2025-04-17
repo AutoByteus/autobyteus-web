@@ -8,7 +8,12 @@ export function markdownItPrism(md: MarkdownIt) {
     const token = tokens[idx];
     const lang = token.info.trim();
     
-    // If language is specified
+    // Skip if language is plantuml, let the plantuml plugin handle it
+    if (lang === 'plantuml') {
+      return fence(tokens, idx, options, env, slf);
+    }
+    
+    // If language is specified (and not plantuml)
     if (lang) {
       try {
         const highlighted = highlightService.highlight(token.content, lang);

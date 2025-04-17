@@ -31,7 +31,7 @@
           <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Agent Servers</h3>
             <button
-              @click="showAddServerForm = true"
+              @click="showAddServerForm = true; showWorkflows = false"
               class="p-1 text-gray-500 hover:text-blue-600 rounded-full"
             >
               <span class="i-heroicons-plus-circle-20-solid w-5 h-5"></span>
@@ -49,13 +49,13 @@
               </div>
               <div class="flex space-x-1">
                 <button
-                  @click="editServer(server)"
+                  @click="editServer(server); showWorkflows = false"
                   class="p-1 text-gray-500 hover:text-gray-700 rounded-full"
                 >
                   <span class="i-heroicons-cog-6-tooth-20-solid w-4 h-4"></span>
                 </button>
                 <button
-                  @click="deleteServer(server.id)"
+                  @click="deleteServer(server.id); showWorkflows = false"
                   class="p-1 text-gray-500 hover:text-red-500 rounded-full"
                 >
                   <span class="i-heroicons-trash-20-solid w-4 h-4"></span>
@@ -86,12 +86,31 @@
         <!-- Add Server Button (when no servers) -->
         <div v-else class="mt-4">
           <button
-            @click="showAddServerForm = true"
+            @click="showAddServerForm = true; showWorkflows = false"
             class="flex items-center justify-center w-full px-4 py-2 border border-dashed border-gray-300 rounded-md text-gray-500 hover:text-blue-600 hover:border-blue-300"
           >
             <span class="i-heroicons-plus-20-solid w-5 h-5 mr-2"></span>
             <span>Add Agent Server</span>
           </button>
+        </div>
+
+        <!-- Workflows Section -->
+        <div class="mt-6">
+          <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Workflows</h3>
+          <nav>
+            <ul class="space-y-2">
+              <li>
+                <button
+                  @click="showWorkflows = true"
+                  class="flex w-full items-center px-4 py-2 rounded-md text-gray-700 hover:bg-gray-100"
+                  :class="{ 'bg-gray-100 text-gray-900': showWorkflows }"
+                >
+                  <span class="i-heroicons-arrow-path-20-solid w-5 h-5 mr-3"></span>
+                  <span>Workflows</span>
+                </button>
+              </li>
+            </ul>
+          </nav>
         </div>
       </div>
     </div>
@@ -146,7 +165,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- Server Management Section -->
       <div v-else-if="showServerManagement" class="max-w-4xl mx-auto p-6">
         <div class="mb-6">
@@ -165,7 +184,17 @@
           @delete="deleteServer"
         />
       </div>
-      
+
+      <!-- Workflows View -->
+      <div v-else-if="showWorkflows" class="max-w-7xl mx-auto p-6">
+        <h1 class="text-2xl font-bold text-gray-900 mb-4">Workflows</h1>
+        <ul class="space-y-2">
+          <li class="p-4 bg-white rounded-lg shadow-sm">Workflow Alpha</li>
+          <li class="p-4 bg-white rounded-lg shadow-sm">Workflow Beta</li>
+          <li class="p-4 bg-white rounded-lg shadow-sm">Workflow Gamma</li>
+        </ul>
+      </div>
+
       <!-- Agents Dashboard -->
       <div v-else class="max-w-7xl mx-auto p-6">
         <!-- Header -->
@@ -176,14 +205,14 @@
           </div>
           <div class="flex space-x-3">
             <button
-              @click="showServerManagement = true"
+              @click="showServerManagement = true; showWorkflows = false"
               class="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               <span class="i-heroicons-server-20-solid w-5 h-5 mr-2 inline-block"></span>
               Manage Servers
             </button>
             <button
-              @click="showAddServerForm = true"
+              @click="showAddServerForm = true; showWorkflows = false"
               class="px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700"
             >
               <span class="i-heroicons-plus-20-solid w-5 h-5 mr-2 inline-block"></span>
@@ -240,7 +269,7 @@
             <span class="i-heroicons-server-20-solid w-10 h-10 text-gray-400 mx-auto mb-3"></span>
             <p class="text-gray-500 mb-2">No Agent servers connected</p>
             <button
-              @click="showAddServerForm = true"
+              @click="showAddServerForm = true; showWorkflows = false"
               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
             >
               <span class="i-heroicons-plus-20-solid w-4 h-4 mr-1"></span>
@@ -270,12 +299,14 @@ definePageMeta({
 const serversStore = useServersStore();
 const agentsStore = useAgentsStore();
 
-// Server management
-const agentServers = computed(() => serversStore.agentServers);
+// UI state
 const showAddServerForm = ref(false);
 const showServerManagement = ref(false);
+const showWorkflows = ref(false);
 const editingServer = ref(null);
 
+// Server management
+const agentServers = computed(() => serversStore.agentServers);
 const handleServerFormSubmit = (server) => {
   if (editingServer.value) {
     serversStore.updateServer(server);
@@ -284,12 +315,14 @@ const handleServerFormSubmit = (server) => {
   }
   showAddServerForm.value = false;
   editingServer.value = null;
+  showWorkflows.value = false;
 };
 
 const editServer = (server) => {
   editingServer.value = { ...server };
   showAddServerForm.value = true;
   showServerManagement.value = false;
+  showWorkflows.value = false;
 };
 
 const deleteServer = (serverId) => {
@@ -298,21 +331,23 @@ const deleteServer = (serverId) => {
   
   // Remove the server itself
   serversStore.deleteServer(serverId);
+  showWorkflows.value = false;
 };
 
 const cancelServerForm = () => {
   showAddServerForm.value = false;
   editingServer.value = null;
+  showWorkflows.value = false;
 };
 
 // Agent management
 const localAgents = computed(() => agentsStore.localAgents);
-const remoteAgents = computed(() => agentsStore.remoteAgents);
 const getAgentsByServerId = (serverId) => agentsStore.getAgentsByServerId(serverId);
 
 const activeAgent = ref(null);
 const setActiveAgent = (agent) => {
   activeAgent.value = agent;
   showServerManagement.value = false;
+  showWorkflows.value = false;
 };
 </script>

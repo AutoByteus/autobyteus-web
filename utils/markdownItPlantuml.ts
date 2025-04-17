@@ -1,15 +1,28 @@
-import { v4 as uuidv4 } from 'uuid';
+// We'll use a simple hashing function to create IDs based on content
+const generateHashId = (str: string): string => {
+  let hash = 0;
+  if (str.length === 0) return hash.toString();
+  
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  
+  // Convert to positive hex string and add prefix
+  return 'puml-' + Math.abs(hash).toString(16);
+};
 
 export default function plantumlPlugin(md: any) {
-  const defaultRender = md.renderer.rules.fence || function(tokens: any, idx: number, options: any, env: any, self: any) {
-    return self.renderToken(tokens, idx, options);
-  };
+  const fence = md.renderer.rules.fence!;
 
   md.renderer.rules.fence = function(tokens: any, idx: number, options: any, env: any, self: any) {
     const token = tokens[idx];
     if (token.info.trim() === 'plantuml') {
       const content = token.content.trim();
-      const diagramId = uuidv4(); // Generate unique ID for each diagram
+      // Generate deterministic ID based on content
+      const diagramId = generateHashId(content);
+      
       return `
         <div class="plantuml-diagram-container">
           <div class="plantuml-diagram" data-content="${encodeURIComponent(content)}" data-diagram-id="${diagramId}">
@@ -21,13 +34,17 @@ export default function plantumlPlugin(md: any) {
               <span class="mt-2">Generating diagram...</span>
             </div>
             <div class="error-state" style="display: none;">
-              <span>Failed to generate diagram</span>
+              <svg class="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+              </svg>
+              <span class="error-message mt-2 text-red-600">Failed to generate diagram</span>
             </div>
             <div class="diagram-content" style="display: none;"></div>
           </div>
         </div>
       `;
     }
-    return defaultRender(tokens, idx, options, env, self);
+    // Fallback to default fence rendering
+    return fence(tokens, idx, options, env, self);
   };
 }

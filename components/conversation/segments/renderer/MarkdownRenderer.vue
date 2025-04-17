@@ -33,6 +33,21 @@ const highlightCodeInMarkdown = async () => {
   }
 };
 
+// Add debouncing to avoid too frequent processing
+let processingTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const processDiagramsAndCode = () => {
+  if (processingTimeout) {
+    clearTimeout(processingTimeout);
+  }
+  
+  processingTimeout = setTimeout(() => {
+    highlightCodeInMarkdown();
+    processPlantUmlDiagrams();
+    processingTimeout = null;
+  }, 100);
+};
+
 // Optimize PlantUML processing with Intersection Observer
 onMounted(() => {
   if (!markdownContainer.value) return;
@@ -41,8 +56,7 @@ onMounted(() => {
   const observer = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting) {
       // Process diagrams and highlight code when visible
-      highlightCodeInMarkdown();
-      processPlantUmlDiagrams();
+      processDiagramsAndCode();
     }
   }, {
     rootMargin: '100px 0px', // Process when within 100px of viewport
@@ -54,7 +68,9 @@ onMounted(() => {
   // Clean up on unmount
   onBeforeUnmount(() => {
     observer.disconnect();
-    reset();
+    if (processingTimeout) {
+      clearTimeout(processingTimeout);
+    }
   });
 });
 
@@ -62,22 +78,22 @@ onMounted(() => {
 watch(() => props.content, 
   (newContent, oldContent) => {
     if (newContent !== oldContent) {
+      // Reset only clears the local tracking map, not the global cache
       reset();
       
       // Debounce processing to avoid rapid consecutive updates
-      const processingTimeout = setTimeout(() => {
-        highlightCodeInMarkdown();
-        processPlantUmlDiagrams();
-      }, 100);
-      
-      // Clean up timeout on unmount
-      onBeforeUnmount(() => {
-        clearTimeout(processingTimeout);
-      });
+      processDiagramsAndCode();
     }
   }, 
   { immediate: false }
 );
+
+// Clean up on unmount
+onBeforeUnmount(() => {
+  if (processingTimeout) {
+    clearTimeout(processingTimeout);
+  }
+});
 </script>
 
 <style>
@@ -103,6 +119,40 @@ watch(() => props.content,
     font-family: 'Fira Code', monospace;
     font-size: 14px;
     line-height: 1.5;
+  }
+  
+  /* PlantUML diagram styling */
+  .plantuml-diagram-container {
+    margin: 1em 0;
+  }
+  
+  .loading-state, .error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    border: 1px dashed #ccc;
+    border-radius: 0.25rem;
+    background-color: #f9fafb;
+  }
+  
+  .dark .loading-state, .dark .error-state {
+    background-color: rgb(31 41 55);
+    border-color: #4b5563;
+  }
+  
+  .error-state {
+    border-color: #ef4444;
+  }
+  
+  .error-message {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: #ef4444;
+    max-width: 90%;
+    text-align: center;
+    word-break: break-word;
   }
 }
 </style>
