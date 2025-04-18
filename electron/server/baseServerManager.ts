@@ -60,7 +60,7 @@ export abstract class BaseServerManager {
    */
   protected initializeFirstRun(serverDir: string): void {
     logger.info('Performing first-run initialization...')
-    
+
     try {
       // Check for required files in the server directory before proceeding
       const requiredServerFiles = ['alembic.ini', 'logging_config.ini', '.env']
@@ -70,7 +70,7 @@ export abstract class BaseServerManager {
           throw new Error(`Required server file not found: ${filePath}`)
         }
       }
-      
+
       // Check for required directories in the server directory
       const requiredServerDirs = ['alembic']
       for (const dir of requiredServerDirs) {
@@ -79,12 +79,12 @@ export abstract class BaseServerManager {
           throw new Error(`Required server directory not found: ${dirPath}`)
         }
       }
-      
+
       // Create the app data directory if it doesn't exist
       if (!fs.existsSync(this.appDataDir)) {
         fs.mkdirSync(this.appDataDir, { recursive: true })
       }
-      
+
       // Create required subdirectories in the app data directory
       const requiredDataDirs = ['db', 'logs', 'download']
       for (const dir of requiredDataDirs) {
@@ -94,13 +94,13 @@ export abstract class BaseServerManager {
           logger.info(`Created directory: ${dirPath}`)
         }
       }
-      
+
       // Copy .env file on first run (but don't update it later)
       const envFileSrc = path.join(serverDir, '.env')
       const envFileDest = path.join(this.appDataDir, '.env')
       fs.copyFileSync(envFileSrc, envFileDest)
       logger.info(`Copied .env file to: ${envFileDest}`)
-      
+
       // Copy download directory if it exists in the server directory
       const downloadSrcDir = path.join(serverDir, 'download')
       const downloadDestDir = path.join(this.appDataDir, 'download')
@@ -112,7 +112,7 @@ export abstract class BaseServerManager {
           logger.warn(`Warning: Failed to copy download directory contents: ${copyError}`)
         }
       }
-      
+
       logger.info('First-run initialization completed successfully')
     } catch (error) {
       logger.error('Error during first-run initialization:', error)
@@ -378,6 +378,11 @@ export abstract class BaseServerManager {
    * Must be implemented by subclasses.
    */
   protected abstract getServerPath(): string;
+
+  /**
+   * Get the platform-specific cache directory path for Autobyteus.
+   */
+  public abstract getCacheDir(): string;
 
   /**
    * Set up event handlers for the server process.

@@ -16,7 +16,7 @@ let mainWindow: BrowserWindow | null
  */
 function createWindow() {
   try {
-    const cacheDir = path.join((app as any).getPath('cache'), 'autobyteus')
+    const cacheDir = serverManager.getCacheDir()
     logger.info(`Computed cache directory: ${cacheDir}`)
     const userDataPath = app.getPath('userData')
     logger.info(`user data path: ${userDataPath}`)
@@ -96,9 +96,7 @@ function createWindow() {
  */
 function cleanOldCacheIfNeeded(): void {
   try {
-    // Compute and log cache directory path
-    // Cast to any to access the 'cache' path (not yet in TS definitions)
-    const cacheDir = path.join((app as any).getPath('cache'), 'autobyteus')
+    const cacheDir = serverManager.getCacheDir()
     logger.info(`Computed cache directory: ${cacheDir}`)
 
     const userDataPath = app.getPath('userData')

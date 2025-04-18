@@ -1,5 +1,6 @@
 import { spawn } from 'child_process'
 import * as path from 'path'
+import * as os from 'os'
 import isDev from 'electron-is-dev'
 import { StdioOptions } from 'child_process'
 import { BaseServerManager } from './baseServerManager'
@@ -75,5 +76,13 @@ export class WindowsServerManager extends BaseServerManager {
     }
 
     this.serverProcess = null
+  }
+
+  /**
+   * Get the platform-specific cache directory path for Autobyteus.
+   */
+  public getCacheDir(): string {
+    const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local')
+    return path.join(localAppData, 'autobyteus')
   }
 }

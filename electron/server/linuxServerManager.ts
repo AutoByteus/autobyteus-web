@@ -1,6 +1,7 @@
 import { spawn } from 'child_process'
 import * as path from 'path'
 import * as fs from 'fs'
+import * as os from 'os'
 import isDev from 'electron-is-dev'
 import { StdioOptions } from 'child_process'
 import { BaseServerManager } from './baseServerManager'
@@ -49,5 +50,12 @@ export class LinuxServerManager extends BaseServerManager {
     
     this.serverProcess = spawn(serverPath, args, options)
     this.setupProcessHandlers()
+  }
+
+  /**
+   * Get the platform-specific cache directory path for Autobyteus.
+   */
+  public getCacheDir(): string {
+    return path.join(os.homedir(), '.cache', 'autobyteus')
   }
 }

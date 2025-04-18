@@ -1,6 +1,7 @@
 import { spawn, execSync } from 'child_process'
 import * as path from 'path'
 import * as fs from 'fs'
+import * as os from 'os'
 import isDev from 'electron-is-dev'
 import { StdioOptions } from 'child_process'
 import { BaseServerManager } from './baseServerManager'
@@ -85,5 +86,12 @@ export class MacOSServerManager extends BaseServerManager {
     logger.info(`Server process spawned with PID: ${this.serverProcess.pid}`)
     this.setupProcessHandlers()
     this.startHealthCheckPolling()
+  }
+
+  /**
+   * Get the platform-specific cache directory path for Autobyteus.
+   */
+  public getCacheDir(): string {
+    return path.join(os.homedir(), '.cache', 'autobyteus')
   }
 }
