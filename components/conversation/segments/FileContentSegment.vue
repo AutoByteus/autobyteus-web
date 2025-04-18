@@ -1,7 +1,31 @@
 <template>
   <div class="overflow-x-auto mb-4">
     <div class="flex justify-between items-center bg-gray-200 p-2 rounded-t-md">
-      <span class="font-bold">File: {{ fileSegment.path }}</span>
+      <div class="flex items-center">
+        <button 
+          @click="toggleExpand" 
+          class="mr-2 p-1 rounded hover:bg-gray-300 transition-colors focus:outline-none"
+          :aria-expanded="isExpanded"
+          aria-label="Toggle file content"
+        >
+          <svg 
+            class="w-4 h-4 transform transition-transform" 
+            :class="{ 'rotate-90': isExpanded }"
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24" 
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path 
+              stroke-linecap="round" 
+              stroke-linejoin="round" 
+              stroke-width="2" 
+              d="M9 5l7 7-7 7">
+            </path>
+          </svg>
+        </button>
+        <span class="font-bold">File: {{ fileSegment.path }}</span>
+      </div>
       <button
         @click="handleApply"
         :disabled="isApplyDisabled"
@@ -39,12 +63,28 @@
         <span v-else>Apply</span>
       </button>
     </div>
-    <MarkdownRenderer v-if="isMarkdownFile" :content="fileSegment.originalContent" />
-    <pre 
-      v-else
-      ref="codeContainer"
-      :class="'language-' + fileSegment.language + ' w-full overflow-x-auto'"
-    ><code v-html="highlightedCode" :class="'language-' + fileSegment.language" data-highlighted="true"></code></pre>
+
+    <!-- File preview when collapsed -->
+    <div 
+      v-if="!isExpanded" 
+      class="p-2 bg-amber-50 border border-amber-100 rounded-b-md cursor-pointer hover:bg-amber-100 transition-colors"
+      @click="toggleExpand"
+    >
+      <div class="preview-content">
+        <code class="text-sm font-mono">{{ contentPreview }}</code>
+      </div>
+    </div>
+
+    <!-- Full file content when expanded -->
+    <div v-else>
+      <MarkdownRenderer v-if="isMarkdownFile" :content="fileSegment.originalContent" />
+      <pre 
+        v-else
+        ref="codeContainer"
+        :class="'language-' + fileSegment.language + ' w-full overflow-x-auto'"
+      ><code v-html="highlightedCode" :class="'language-' + fileSegment.language" data-highlighted="true"></code></pre>
+    </div>
+
     <div v-if="error" class="mt-2 p-2 rounded bg-red-100 text-red-800">
       {{ error }}
     </div>
@@ -52,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue';
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { useWorkspaceStore } from '~/stores/workspace';
 import MarkdownRenderer from '~/components/conversation/segments/renderer/MarkdownRenderer.vue';
@@ -60,8 +100,7 @@ import { highlightFileSegment } from '~/utils/aiResponseParser/segmentHighlighte
 import highlightService from '~/services/highlightService';
 import type { FileSegment } from '~/utils/aiResponseParser/types';
 
-const props = defineProps<{  
-  fileSegment: FileSegment;
+const props = defineProps<{  fileSegment: FileSegment;
   conversationId: string;
   messageIndex: number;
 }>();
@@ -72,6 +111,31 @@ const workspaceStore = useWorkspaceStore();
 const codeContainer = ref<HTMLElement | null>(null);
 const highlightedCode = ref('');
 const isHighlightPending = ref(false);
+const isExpanded = ref(false); // Default collapsed state
+
+// Generate a preview of the content (first few lines)
+const contentPreview = computed(() => {
+  const content = props.fileSegment.originalContent;
+  const lines = content.split('\n');
+  const previewLines = lines.slice(0, 5); // Show first 5 lines
+
+  let preview = previewLines.join('\n');
+  if (lines.length > 5) {
+    preview += '\n...'; // Add ellipsis for truncated content
+  }
+
+  return preview;
+});
+
+// Toggle expanded/collapsed state
+const toggleExpand = () => {
+  isExpanded.value = !isExpanded.value;
+
+  // If expanding and highlighting is pending, trigger it
+  if (isExpanded.value && isHighlightPending.value) {
+    updateHighlightedCode();
+  }
+};
 
 // Use a more efficient approach to highlight code
 const updateHighlightedCode = () => {
@@ -97,7 +161,10 @@ const debouncedHighlight = (() => {
     }
     isHighlightPending.value = true;
     timeout = window.setTimeout(() => {
-      updateHighlightedCode();
+      // Only update highlighting if expanded
+      if (isExpanded.value) {
+        updateHighlightedCode();
+      }
       timeout = null;
     }, 50); // Debounce by 50ms
   };
@@ -112,23 +179,21 @@ watch(
   { immediate: true }
 );
 
-// Use Intersection Observer to only highlight when visible
+// Use Intersection Observer to only highlight when visible and expanded
 onMounted(() => {
   if (!codeContainer.value) return;
-  
-  // Set up intersection observer to highlight code only when visible
+
   const observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting && isHighlightPending.value) {
+    if (entries[0].isIntersecting && isHighlightPending.value && isExpanded.value) {
       updateHighlightedCode();
     }
   }, { 
-    rootMargin: '200px 0px', // Start loading when within 200px of viewport
+    rootMargin: '200px 0px',
     threshold: 0 
   });
-  
+
   observer.observe(codeContainer.value);
-  
-  // Clean up observer when component is unmounted
+
   onBeforeUnmount(() => {
     observer.disconnect();
   });
@@ -182,5 +247,12 @@ const isMarkdownFile = computed(() => {
 </script>
 
 <style scoped>
-/* Additional styles for markdown elements */
+.preview-content {
+  max-height: 7.5em; /* Approximately 5 lines of text */
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 5; /* Show 5 lines */
+  -webkit-box-orient: vertical;
+  line-height: 1.5;
+}
 </style>

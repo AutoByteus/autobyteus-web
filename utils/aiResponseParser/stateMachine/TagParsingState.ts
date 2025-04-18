@@ -37,11 +37,18 @@ export class TagParsingState extends BaseState {
         if (gtIdx !== -1) {
           const fileTag = tagBuffer.slice(0, gtIdx + 1);
           const pathMatch = fileTag.match(/path=['"]([^'"]+)['"]/);
-          if (pathMatch) {
-            this.context.startFileSegment(pathMatch[1]);
-          }
+          // Clear the tagBuffer regardless
           this.context.tagBuffer = '';
-          this.context.transitionTo(new FileContentReadingState(this.context));
+
+          if (pathMatch) {
+            // Valid file tag with path attribute: start file segment
+            this.context.startFileSegment(pathMatch[1]);
+            this.context.transitionTo(new FileContentReadingState(this.context));
+          } else {
+            // Invalid file tag (no path): treat as plain text
+            this.context.appendTextSegment(fileTag);
+            this.context.transitionTo(new TextState(this.context));
+          }
           return;
         }
       } else if (tagBuffer.startsWith('<llm_reasoning_token')) {
