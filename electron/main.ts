@@ -11,8 +11,16 @@ const serverStatusManager = new ServerStatusManager(serverManager);
 
 let mainWindow: BrowserWindow | null
 
+/**
+ * Create the main application window.
+ */
 function createWindow() {
   try {
+    const cacheDir = path.join((app as any).getPath('cache'), 'autobyteus')
+    logger.info(`Computed cache directory: ${cacheDir}`)
+    const userDataPath = app.getPath('userData')
+    logger.info(`user data path: ${userDataPath}`)
+
     logger.info('Creating main window')
     
     mainWindow = new BrowserWindow({
@@ -23,7 +31,7 @@ function createWindow() {
         nodeIntegration: false,
         contextIsolation: true,
       },
-      show: true, 
+      show: true,
     })
 
     const startURL = isDev
@@ -83,21 +91,55 @@ function createWindow() {
   }
 }
 
+/**
+ * Clean up the Nuitka-extracted cache folder on version upgrade.
+ */
+function cleanOldCacheIfNeeded(): void {
+  try {
+    // Compute and log cache directory path
+    // Cast to any to access the 'cache' path (not yet in TS definitions)
+    const cacheDir = path.join((app as any).getPath('cache'), 'autobyteus')
+    logger.info(`Computed cache directory: ${cacheDir}`)
+
+    const userDataPath = app.getPath('userData')
+    const versionFile = path.join(userDataPath, '.last-version')
+    const currentVersion = app.getVersion()
+
+    let previousVersion: string | null = null
+    if (fs.existsSync(versionFile)) {
+      previousVersion = fs.readFileSync(versionFile, 'utf8')
+    }
+
+    if (previousVersion !== currentVersion) {
+      if (fs.existsSync(cacheDir)) {
+        logger.info(
+          `Clearing old cache at ${cacheDir} (upgrading from ${previousVersion} to ${currentVersion})`
+        )
+        fs.rmSync(cacheDir, { recursive: true, force: true })
+        logger.info(`Cache cleared at ${cacheDir}`)
+      }
+      fs.writeFileSync(versionFile, currentVersion, 'utf8')
+    }
+  } catch (error) {
+    logger.error('Error during cache cleanup:', error)
+  }
+}
+
 ipcMain.on('ping', (event, args) => {
   logger.info('Received ping:', args)
   event.reply('pong', 'Pong from main process!')
 })
 
 ipcMain.handle('get-server-status', () => {
-  return serverStatusManager.getStatus();
+  return serverStatusManager.getStatus()
 })
 
 ipcMain.handle('restart-server', async () => {
-  return await serverStatusManager.restartServer();
+  return await serverStatusManager.restartServer()
 })
 
 ipcMain.handle('check-server-health', async () => {
-  return await serverStatusManager.checkServerHealth();
+  return await serverStatusManager.checkServerHealth()
 })
 
 ipcMain.handle('get-log-file-path', () => {
@@ -131,8 +173,8 @@ ipcMain.handle('read-log-file', async (event, filePath) => {
       return { success: false, error: 'Log file does not exist' }
     }
     const content = fs.readFileSync(filePath, 'utf8')
-    const lines = content.split('\n');
-    const lastLines = lines.slice(Math.max(0, lines.length - 500)).join('\n');
+    const lines = content.split('\n')
+    const lastLines = lines.slice(Math.max(0, lines.length - 500)).join('\n')
     logger.info(`Read ${lastLines.length} characters from log file`)
     return { 
       success: true, 
@@ -152,6 +194,10 @@ app.whenReady()
   .then(async () => {
     logger.info('App is ready, creating window...')
     createWindow()
+
+    // Ensure Nuitka cache is cleaned when the Electron version changes
+    cleanOldCacheIfNeeded()
+
     serverStatusManager.initializeServer().catch(err => {
       logger.error('Server initialization failed in background:', err)
     })
