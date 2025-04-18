@@ -67,7 +67,7 @@
     <!-- File preview when collapsed -->
     <div 
       v-if="!isExpanded" 
-      class="p-2 bg-purple-50 border border-purple-100 rounded-b-md cursor-pointer hover:bg-purple-100 transition-colors"
+      class="p-2 bg-amber-50 border border-amber-100 rounded-b-md cursor-pointer hover:bg-amber-100 transition-colors"
       @click="toggleExpand"
     >
       <div class="preview-content">
