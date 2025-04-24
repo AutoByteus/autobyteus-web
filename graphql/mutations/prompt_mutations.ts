@@ -6,7 +6,9 @@ export const CREATE_PROMPT = gql`
       id
       name
       category
-      promptText
+      promptContent
+      description
+      suitableForModel
       createdAt
       parentPromptId
     }

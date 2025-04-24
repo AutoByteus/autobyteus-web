@@ -26,7 +26,11 @@
               {{ prompt.category }}
             </span>
           </div>
-          <p class="mt-2 text-sm text-gray-500 line-clamp-3">{{ prompt.promptText }}</p>
+          <p class="mt-2 text-sm text-gray-500 line-clamp-3">{{ prompt.promptContent }}</p>
+          <div class="mt-4 flex flex-wrap gap-2 text-xs text-gray-500">
+            <span>Description: {{ prompt.description || '—' }}</span>
+            <span>Model: {{ prompt.suitableForModel || '—' }}</span>
+          </div>
           <div class="mt-4 flex items-center text-sm text-gray-500">
             <span>Created {{ formatDate(prompt.createdAt) }}</span>
           </div>
@@ -41,11 +45,8 @@ import { onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { usePromptStore } from '~/stores/promptStore';
 
-const props = defineProps<{  selectedPromptId: string | null;
-}>();
-
-defineEmits<{  (e: 'select-prompt', id: string): void;
-}>();
+const props = defineProps<{ selectedPromptId: string | null }>();
+defineEmits<{ (e: 'select-prompt', id: string): void }>();
 
 const promptStore = usePromptStore();
 const { prompts, loading, error } = storeToRefs(promptStore);

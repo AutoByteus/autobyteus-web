@@ -10,7 +10,8 @@
     </div>
     <div class="mt-2">
       <strong>User:</strong>
-      <div>{{ message.text }}</div>
+      <!-- Apply CSS to preserve whitespace and line breaks -->
+      <div class="whitespace-pre-wrap">{{ message.text }}</div>
     </div>
   </div>
 </template>
@@ -18,11 +19,11 @@
 <script setup lang="ts">
 import type { UserMessage } from '~/types/conversation';
 
-const props = defineProps<{
-  message: UserMessage;
+const props = defineProps<{  message: UserMessage;
 }>();
 </script>
 
 <style scoped>
-/* Add any additional styles here */
+/* Styles specific to UserMessage, if any, go here */
+/* The whitespace-pre-wrap class is provided by Tailwind CSS */
 </style>

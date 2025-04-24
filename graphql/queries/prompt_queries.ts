@@ -6,7 +6,9 @@ export const GET_PROMPTS = gql`
       id
       name
       category
-      promptText
+      promptContent
+      description
+      suitableForModel
       createdAt
       parentPromptId
     }
@@ -19,7 +21,9 @@ export const GET_PROMPT_BY_ID = gql`
       id
       name
       category
-      promptText
+      promptContent
+      description
+      suitableForModel
       createdAt
       parentPromptId
     }

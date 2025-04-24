@@ -1,7 +1,6 @@
 <template>
   <div class="fixed inset-0 bg-white z-50 overflow-auto">
     <div class="max-w-6xl mx-auto px-6 py-8">
-      <!-- Header with back button -->
       <div class="flex justify-between items-center mb-8">
         <button 
           @click="$emit('close')"
@@ -14,7 +13,6 @@
         </button>
       </div>
 
-      <!-- Content -->
       <div v-if="loading" class="animate-pulse space-y-8">
         <div class="h-8 bg-gray-200 rounded w-1/3"></div>
         <div class="space-y-4">
@@ -29,7 +27,6 @@
       </div>
 
       <div v-else-if="prompt" class="space-y-8">
-        <!-- Title and Category -->
         <div>
           <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ prompt.name }}</h1>
           <span class="inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
@@ -37,15 +34,24 @@
           </span>
         </div>
 
-        <!-- Prompt Text -->
-        <div class="bg-gray-50 rounded-lg p-8">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">Prompt Text</h2>
-          <div class="prose max-w-none">
-            <pre class="whitespace-pre-wrap text-gray-700 font-mono bg-white p-6 rounded-lg border">{{ prompt.promptText }}</pre>
+        <div class="space-y-4">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900 mb-2">Description</h2>
+            <p class="text-gray-700">{{ prompt.description || '—' }}</p>
+          </div>
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900 mb-2">Suitable for Model</h2>
+            <p class="text-gray-700">{{ prompt.suitableForModel || '—' }}</p>
           </div>
         </div>
 
-        <!-- Action Buttons -->
+        <div class="bg-gray-50 rounded-lg p-8">
+          <h2 class="text-lg font-semibold text-gray-900 mb-4">Prompt Content</h2>
+          <div class="prose max-w-none">
+            <pre class="whitespace-pre-wrap text-gray-700 font-mono bg-white p-6 rounded-lg border">{{ prompt.promptContent }}</pre>
+          </div>
+        </div>
+
         <div class="flex justify-end space-x-4">
           <button 
             @click="copyPrompt"
@@ -60,7 +66,6 @@
           </button>
         </div>
 
-        <!-- Parent Prompt Section -->
         <div v-if="prompt.parentPromptId" class="border-t pt-8 mt-8">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-gray-900">Parent Prompt</h2>
@@ -80,7 +85,7 @@
             
             <div v-else-if="parentPrompt" class="bg-gray-50 rounded-lg p-6">
               <h3 class="font-medium text-gray-900 mb-2">{{ parentPrompt.name }}</h3>
-              <pre class="whitespace-pre-wrap text-gray-700 font-mono bg-white p-4 rounded border">{{ parentPrompt.promptText }}</pre>
+              <pre class="whitespace-pre-wrap text-gray-700 font-mono bg-white p-4 rounded border">{{ parentPrompt.promptContent }}</pre>
             </div>
             
             <div v-else-if="parentError" class="text-red-500">
@@ -97,11 +102,8 @@
 import { ref, onMounted, watch } from 'vue';
 import { usePromptStore } from '~/stores/promptStore';
 
-const props = defineProps<{  promptId: string;
-}>();
-
-defineEmits<{  (e: 'close'): void;
-}>();
+const props = defineProps<{ promptId: string }>();
+const emit = defineEmits<{ (e: 'close'): void }>();
 
 const promptStore = usePromptStore();
 const prompt = ref<any>(null);
@@ -142,15 +144,9 @@ const toggleParentPrompt = async () => {
 };
 
 const copyPrompt = () => {
-  if (prompt.value?.promptText) {
-    navigator.clipboard.writeText(prompt.value.promptText)
-      .then(() => {
-        // Could add a toast notification here
-        console.log('Prompt copied to clipboard');
-      })
-      .catch(err => {
-        console.error('Failed to copy prompt:', err);
-      });
+  if (prompt.value?.promptContent) {
+    navigator.clipboard.writeText(prompt.value.promptContent)
+      .catch(err => console.error('Failed to copy prompt:', err));
   }
 };
 

@@ -7,7 +7,9 @@ interface Prompt {
   id: string;
   name: string;
   category: string;
-  promptText: string;
+  promptContent: string;
+  description?: string | null;
+  suitableForModel?: string | null;
   createdAt: string;
   parentPromptId?: string | null;
 }
@@ -37,7 +39,7 @@ export const usePromptStore = defineStore('prompt', {
           fetchPolicy: 'network-only' 
         });
 
-        return new Promise((resolve, reject) => {
+        return new Promise<Prompt[]>((resolve, reject) => {
           onResult((result) => {
             if (result.data?.activePrompts) {
               this.prompts = result.data.activePrompts;
@@ -93,11 +95,17 @@ export const usePromptStore = defineStore('prompt', {
       }
     },
 
-    async createPrompt(name: string, category: string, promptText: string) {
+    async createPrompt(
+      name: string,
+      category: string,
+      promptContent: string,
+      description?: string,
+      suitableForModel?: string
+    ) {
       try {
         const { mutate } = useMutation(CREATE_PROMPT);
         const response = await mutate({ 
-          input: { name, category, promptText } 
+          input: { name, category, promptContent, description, suitableForModel } 
         });
 
         if (response?.data?.createPrompt) {
