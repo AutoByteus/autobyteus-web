@@ -1,31 +1,35 @@
 <template>
   <div class="overflow-x-auto mb-4">
+    <!-- Header with file name and Apply / Reapply button -->
     <div class="flex justify-between items-center bg-gray-200 p-2 rounded-t-md">
       <div class="flex items-center">
-        <button 
-          @click="toggleExpand" 
+        <!-- expand / collapse button -->
+        <button
+          @click="toggleExpand"
           class="mr-2 p-1 rounded hover:bg-gray-300 transition-colors focus:outline-none"
           :aria-expanded="isExpanded"
           aria-label="Toggle file content"
         >
-          <svg 
-            class="w-4 h-4 transform transition-transform" 
+          <svg
+            class="w-4 h-4 transform transition-transform"
             :class="{ 'rotate-90': isExpanded }"
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24" 
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <path 
-              stroke-linecap="round" 
-              stroke-linejoin="round" 
-              stroke-width="2" 
-              d="M9 5l7 7-7 7">
-            </path>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5l7 7-7 7"
+            />
           </svg>
         </button>
         <span class="font-bold">File: {{ fileSegment.path }}</span>
       </div>
+
+      <!-- Apply / Reapply button -->
       <button
         @click="handleApply"
         :disabled="isApplyDisabled"
@@ -36,7 +40,8 @@
             : 'bg-blue-500 hover:bg-blue-700 text-white'
         ]"
       >
-        <span v-if="isInProgress">
+        <span v-if="isInProgress" class="flex items-center">
+          <!-- loader -->
           <svg
             class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline"
             xmlns="http://www.w3.org/2000/svg"
@@ -50,23 +55,23 @@
               r="10"
               stroke="currentColor"
               stroke-width="4"
-            ></circle>
+            />
             <path
               class="opacity-75"
               fill="currentColor"
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
+            />
           </svg>
-          Applying...
+          Applying…
         </span>
-        <span v-else-if="isApplied">Applied</span>
+        <span v-else-if="applyCount > 0">Reapply ({{ applyCount }})</span>
         <span v-else>Apply</span>
       </button>
     </div>
 
-    <!-- File preview when collapsed -->
-    <div 
-      v-if="!isExpanded" 
+    <!-- Collapsed content preview -->
+    <div
+      v-if="!isExpanded"
       class="p-2 bg-amber-50 border border-amber-100 rounded-b-md cursor-pointer hover:bg-amber-100 transition-colors"
       @click="toggleExpand"
     >
@@ -75,16 +80,21 @@
       </div>
     </div>
 
-    <!-- Full file content when expanded -->
+    <!-- Full content when expanded -->
     <div v-else>
       <MarkdownRenderer v-if="isMarkdownFile" :content="fileSegment.originalContent" />
-      <pre 
+      <pre
         v-else
         ref="codeContainer"
         :class="'language-' + fileSegment.language + ' w-full overflow-x-auto'"
-      ><code v-html="highlightedCode" :class="'language-' + fileSegment.language" data-highlighted="true"></code></pre>
+      ><code
+        v-html="highlightedCode"
+        :class="'language-' + fileSegment.language"
+        data-highlighted="true"
+      ></code></pre>
     </div>
 
+    <!-- error -->
     <div v-if="error" class="mt-2 p-2 rounded bg-red-100 text-red-800">
       {{ error }}
     </div>
@@ -92,13 +102,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick, watchEffect } from 'vue';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { useWorkspaceStore } from '~/stores/workspace';
 import MarkdownRenderer from '~/components/conversation/segments/renderer/MarkdownRenderer.vue';
 import { highlightFileSegment } from '~/utils/aiResponseParser/segmentHighlighter';
-import highlightService from '~/services/highlightService';
 import type { FileSegment } from '~/utils/aiResponseParser/types';
+
+/* -------------------------------------------------------------------------- */
+/* Props & Stores                                                             */
+/* -------------------------------------------------------------------------- */
 
 const props = defineProps<{  fileSegment: FileSegment;
   conversationId: string;
@@ -106,128 +119,124 @@ const props = defineProps<{  fileSegment: FileSegment;
 }>();
 
 const fileExplorerStore = useFileExplorerStore();
-const workspaceStore = useWorkspaceStore();
+const workspaceStore    = useWorkspaceStore();
 
-const codeContainer = ref<HTMLElement | null>(null);
-const highlightedCode = ref('');
-const isHighlightPending = ref(false);
-const isExpanded = ref(false); // Default collapsed state
+/* -------------------------------------------------------------------------- */
+/* State                                                                      */
+/* -------------------------------------------------------------------------- */
 
-// Generate a preview of the content (first few lines)
+const codeContainer       = ref<HTMLElement | null>(null);
+const highlightedCode     = ref('');
+const isHighlightPending  = ref(false);
+const isExpanded          = ref(false);
+const applyCount          = ref(0);               // <— NEW: keeps track of how many times user applied
+
+/* -------------------------------------------------------------------------- */
+/* Derived State                                                              */
+/* -------------------------------------------------------------------------- */
+
 const contentPreview = computed(() => {
-  const content = props.fileSegment.originalContent;
-  const lines = content.split('\n');
-  const previewLines = lines.slice(0, 5); // Show first 5 lines
-
-  let preview = previewLines.join('\n');
-  if (lines.length > 5) {
-    preview += '\n...'; // Add ellipsis for truncated content
-  }
-
-  return preview;
+  const lines = props.fileSegment.originalContent.split('\n');
+  const preview = lines.slice(0, 5).join('\n');
+  return lines.length > 5 ? preview + '\n...' : preview;
 });
 
-// Toggle expanded/collapsed state
-const toggleExpand = () => {
+const isInProgress = computed(() =>
+  fileExplorerStore.isApplyChangeInProgress(
+    props.conversationId,
+    props.messageIndex,
+    props.fileSegment.path
+  )
+);
+
+/* we only block clicks while an async write is running */
+const isApplyDisabled = computed(() => isInProgress.value);
+
+const error = computed(() =>
+  fileExplorerStore.getApplyChangeError(
+    props.conversationId,
+    props.messageIndex,
+    props.fileSegment.path
+  )
+);
+
+const isMarkdownFile = computed(() => props.fileSegment.path.endsWith('.md'));
+
+/* -------------------------------------------------------------------------- */
+/* Initialise applyCount if this file had already been applied previously     */
+/* -------------------------------------------------------------------------- */
+watchEffect(() => {
+  const wasAppliedEarlier = fileExplorerStore.isChangeApplied(
+    props.conversationId,
+    props.messageIndex,
+    props.fileSegment.path
+  );
+  if (wasAppliedEarlier && applyCount.value === 0) {
+    applyCount.value = 1;    // assume at least once
+  }
+});
+
+/* -------------------------------------------------------------------------- */
+/* Expand / collapse logic                                                    */
+/* -------------------------------------------------------------------------- */
+
+function toggleExpand() {
   isExpanded.value = !isExpanded.value;
+  if (isExpanded.value && isHighlightPending.value) updateHighlightedCode();
+}
 
-  // If expanding and highlighting is pending, trigger it
-  if (isExpanded.value && isHighlightPending.value) {
-    updateHighlightedCode();
-  }
-};
+/* -------------------------------------------------------------------------- */
+/* Syntax-highlight once visible & debounced                                  */
+/* -------------------------------------------------------------------------- */
 
-// Use a more efficient approach to highlight code
-const updateHighlightedCode = () => {
+function updateHighlightedCode() {
   try {
-    // Use cached highlightFileSegment function
-    const highlighted = highlightFileSegment(props.fileSegment);
-    highlightedCode.value = highlighted.highlightedContent || '';
-    isHighlightPending.value = false;
+    highlightedCode.value = highlightFileSegment(props.fileSegment).highlightedContent || '';
   } catch (err) {
-    console.error('Failed to highlight code:', err);
-    // Fallback to raw content if highlighting fails
+    console.error('Failed to highlight:', err);
     highlightedCode.value = props.fileSegment.originalContent;
+  } finally {
     isHighlightPending.value = false;
   }
-};
+}
 
-// Use a debounced approach for the watcher to avoid multiple rapid updates
 const debouncedHighlight = (() => {
-  let timeout: number | null = null;
+  let t: number | null = null;
   return () => {
-    if (timeout) {
-      clearTimeout(timeout);
-    }
+    if (t) clearTimeout(t);
     isHighlightPending.value = true;
-    timeout = window.setTimeout(() => {
-      // Only update highlighting if expanded
-      if (isExpanded.value) {
-        updateHighlightedCode();
-      }
-      timeout = null;
-    }, 50); // Debounce by 50ms
+    t = window.setTimeout(() => {
+      if (isExpanded.value) updateHighlightedCode();
+      t = null;
+    }, 50);
   };
 })();
 
-// Watch for changes in originalContent and debounce highlighting
 watch(
   () => props.fileSegment.originalContent,
-  () => {
-    debouncedHighlight();
-  },
+  () => debouncedHighlight(),
   { immediate: true }
 );
 
-// Use Intersection Observer to only highlight when visible and expanded
 onMounted(() => {
   if (!codeContainer.value) return;
-
-  const observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting && isHighlightPending.value && isExpanded.value) {
-      updateHighlightedCode();
-    }
-  }, { 
-    rootMargin: '200px 0px',
-    threshold: 0 
-  });
-
-  observer.observe(codeContainer.value);
-
-  onBeforeUnmount(() => {
-    observer.disconnect();
-  });
-});
-
-const isInProgress = computed(() => {
-  return fileExplorerStore.isApplyChangeInProgress(
-    props.conversationId,
-    props.messageIndex,
-    props.fileSegment.path
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries[0].isIntersecting && isExpanded.value && isHighlightPending.value) {
+        updateHighlightedCode();
+      }
+    },
+    { rootMargin: '200px 0px' }
   );
+  observer.observe(codeContainer.value!);
+  onBeforeUnmount(() => observer.disconnect());
 });
 
-const isApplied = computed(() => {
-  return fileExplorerStore.isChangeApplied(
-    props.conversationId,
-    props.messageIndex,
-    props.fileSegment.path
-  );
-});
+/* -------------------------------------------------------------------------- */
+/* Apply / Reapply handler                                                    */
+/* -------------------------------------------------------------------------- */
 
-const isApplyDisabled = computed(() => {
-  return isInProgress.value || isApplied.value;
-});
-
-const error = computed(() => {
-  return fileExplorerStore.getApplyChangeError(
-    props.conversationId,
-    props.messageIndex,
-    props.fileSegment.path
-  );
-});
-
-const handleApply = async () => {
+async function handleApply() {
   try {
     await fileExplorerStore.writeFileContent(
       workspaceStore.currentSelectedWorkspaceId,
@@ -236,22 +245,19 @@ const handleApply = async () => {
       props.conversationId,
       props.messageIndex
     );
+    applyCount.value += 1;          // <— increment counter when successful
   } catch (err) {
-    console.error('Failed to apply file change:', err);
+    console.error('Failed to apply change:', err);
   }
-};
-
-const isMarkdownFile = computed(() => {
-  return props.fileSegment.path.endsWith('.md');
-});
+}
 </script>
 
 <style scoped>
 .preview-content {
-  max-height: 7.5em; /* Approximately 5 lines of text */
+  max-height: 7.5em;               /* ≈5 lines */
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 5; /* Show 5 lines */
+  -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
   line-height: 1.5;
 }
