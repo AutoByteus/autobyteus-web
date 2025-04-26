@@ -8,7 +8,8 @@ export const CREATE_PROMPT = gql`
       category
       promptContent
       description
-      suitableForModel
+      suitableForModels     # plural
+      version
       createdAt
       parentPromptId
     }

@@ -9,7 +9,8 @@ interface Prompt {
   category: string;
   promptContent: string;
   description?: string | null;
-  suitableForModel?: string | null;
+  suitableForModels?: string | null;
+  version: number;
   createdAt: string;
   parentPromptId?: string | null;
 }
@@ -26,17 +27,17 @@ export const usePromptStore = defineStore('prompt', {
     prompts: [],
     loading: false,
     error: '',
-    selectedPrompt: null
+    selectedPrompt: null,
   }),
 
   actions: {
     async fetchActivePrompts() {
       this.loading = true;
       this.error = '';
-      
+
       try {
-        const { onResult, onError } = useQuery(GET_PROMPTS, null, { 
-          fetchPolicy: 'network-only' 
+        const { onResult, onError } = useQuery(GET_PROMPTS, null, {
+          fetchPolicy: 'network-only',
         });
 
         return new Promise<Prompt[]>((resolve, reject) => {
@@ -64,11 +65,12 @@ export const usePromptStore = defineStore('prompt', {
     async fetchPromptById(id: string) {
       this.loading = true;
       this.error = '';
-      
+
       try {
-        const { onResult, onError } = useQuery(GET_PROMPT_BY_ID, 
-          { id }, 
-          { fetchPolicy: 'network-only' }
+        const { onResult, onError } = useQuery(
+          GET_PROMPT_BY_ID,
+          { id },
+          { fetchPolicy: 'network-only' },
         );
 
         return new Promise<Prompt | null>((resolve, reject) => {
@@ -100,20 +102,19 @@ export const usePromptStore = defineStore('prompt', {
       category: string,
       promptContent: string,
       description?: string,
-      suitableForModel?: string
+      suitableForModels?: string,
     ) {
       try {
         const { mutate } = useMutation(CREATE_PROMPT);
-        const response = await mutate({ 
-          input: { name, category, promptContent, description, suitableForModel } 
+        const response = await mutate({
+          input: { name, category, promptContent, description, suitableForModels },
         });
 
         if (response?.data?.createPrompt) {
           await this.fetchActivePrompts();
           return response.data.createPrompt;
-        } else {
-          throw new Error('Failed to create prompt: No data returned');
         }
+        throw new Error('Failed to create prompt: No data returned');
       } catch (e: any) {
         this.error = e.message;
         throw e;
@@ -126,13 +127,13 @@ export const usePromptStore = defineStore('prompt', {
 
     clearError() {
       this.error = '';
-    }
+    },
   },
 
   getters: {
     getPrompts: (state): Prompt[] => state.prompts,
     getLoading: (state): boolean => state.loading,
     getError: (state): string => state.error,
-    getSelectedPrompt: (state): Prompt | null => state.selectedPrompt
-  }
+    getSelectedPrompt: (state): Prompt | null => state.selectedPrompt,
+  },
 });

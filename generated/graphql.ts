@@ -41,8 +41,10 @@ export type ConversationHistory = {
 
 export type CreatePromptInput = {
   category: Scalars['String']['input'];
+  description?: InputMaybe<Scalars['String']['input']>;
   name: Scalars['String']['input'];
-  promptText: Scalars['String']['input'];
+  promptContent: Scalars['String']['input'];
+  suitableForModel?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type MarkActivePromptInput = {
@@ -179,11 +181,14 @@ export type Prompt = {
   __typename?: 'Prompt';
   category: Scalars['String']['output'];
   createdAt: Scalars['DateTime']['output'];
+  description?: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];
   name: Scalars['String']['output'];
   parentPromptId?: Maybe<Scalars['String']['output']>;
-  promptText: Scalars['String']['output'];
+  promptContent: Scalars['String']['output'];
+  suitableForModel?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
+  version: Scalars['Int']['output'];
 };
 
 export type Query = {
@@ -310,7 +315,7 @@ export type SubscriptionStepResponseArgs = {
 
 export type UpdatePromptInput = {
   id: Scalars['String']['input'];
-  newPromptText: Scalars['String']['input'];
+  newPromptContent: Scalars['String']['input'];
 };
 
 export type UsageStatistics = {
@@ -398,7 +403,7 @@ export type CreatePromptMutationVariables = Exact<{
 }>;
 
 
-export type CreatePromptMutation = { __typename?: 'Mutation', createPrompt: { __typename?: 'Prompt', id: string, name: string, category: string, promptText: string, createdAt: any, parentPromptId?: string | null } };
+export type CreatePromptMutation = { __typename?: 'Mutation', createPrompt: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModel?: string | null, version: number, createdAt: any, parentPromptId?: string | null } };
 
 export type UpdateServerSettingMutationVariables = Exact<{
   key: Scalars['String']['input'];
@@ -504,14 +509,14 @@ export type GetAvailableProvidersQuery = { __typename?: 'Query', availableProvid
 export type GetPromptsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetPromptsQuery = { __typename?: 'Query', activePrompts: Array<{ __typename?: 'Prompt', id: string, name: string, category: string, promptText: string, createdAt: any, parentPromptId?: string | null }> };
+export type GetPromptsQuery = { __typename?: 'Query', activePrompts: Array<{ __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModel?: string | null, version: number, createdAt: any, parentPromptId?: string | null }> };
 
 export type GetPromptByIdQueryVariables = Exact<{
   id: Scalars['String']['input'];
 }>;
 
 
-export type GetPromptByIdQuery = { __typename?: 'Query', promptDetails?: { __typename?: 'Prompt', id: string, name: string, category: string, promptText: string, createdAt: any, parentPromptId?: string | null } | null };
+export type GetPromptByIdQuery = { __typename?: 'Query', promptDetails?: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModel?: string | null, version: number, createdAt: any, parentPromptId?: string | null } | null };
 
 export type GetServerSettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -761,7 +766,10 @@ export const CreatePromptDocument = gql`
     id
     name
     category
-    promptText
+    promptContent
+    description
+    suitableForModel
+    version
     createdAt
     parentPromptId
   }
@@ -1199,7 +1207,10 @@ export const GetPromptsDocument = gql`
     id
     name
     category
-    promptText
+    promptContent
+    description
+    suitableForModel
+    version
     createdAt
     parentPromptId
   }
@@ -1231,7 +1242,10 @@ export const GetPromptByIdDocument = gql`
     id
     name
     category
-    promptText
+    promptContent
+    description
+    suitableForModel
+    version
     createdAt
     parentPromptId
   }

@@ -8,7 +8,8 @@ export const GET_PROMPTS = gql`
       category
       promptContent
       description
-      suitableForModel
+      suitableForModels     # plural
+      version
       createdAt
       parentPromptId
     }
@@ -16,15 +17,17 @@ export const GET_PROMPTS = gql`
 `;
 
 export const GET_PROMPT_BY_ID = gql`
-  query GetPromptById($id: String!) {
+  query GetPromptById($id: ID!) {
     promptDetails(id: $id) {
       id
       name
       category
       promptContent
       description
-      suitableForModel
+      suitableForModels     # plural
+      version
       createdAt
+      updatedAt
       parentPromptId
     }
   }

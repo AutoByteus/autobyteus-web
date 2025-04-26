@@ -20,8 +20,8 @@
           <textarea v-model="description" rows="2" class="w-full border rounded px-3 py-2"></textarea>
         </div>
         <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700">Suitable for Model</label>
-          <input v-model="suitableForModel" type="text" class="w-full border rounded px-3 py-2" />
+          <label class="block text-sm font-medium text-gray-700">Suitable for Models (comma-separated)</label>
+          <input v-model="suitableForModels" type="text" class="w-full border rounded px-3 py-2" />
         </div>
         <div class="flex justify-end space-x-2">
           <button type="button" @click="closeModal" class="px-4 py-2 border rounded">Cancel</button>
@@ -41,7 +41,7 @@ const name = ref('');
 const category = ref('');
 const promptContent = ref('');
 const description = ref('');
-const suitableForModel = ref('');
+const suitableForModels = ref('');
 const promptStore = usePromptStore();
 
 const handleSave = async () => {
@@ -51,7 +51,7 @@ const handleSave = async () => {
       category.value,
       promptContent.value,
       description.value || undefined,
-      suitableForModel.value || undefined
+      suitableForModels.value || undefined
     );
     emit('close');
   } catch (e) {
