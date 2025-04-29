@@ -1,31 +1,21 @@
 <template>
   <div class="prompt-marketplace">
+    <!-- Keep the header in the component (unchanged) -->
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-xl font-semibold text-gray-800">Prompt Marketplace</h2>
-      <div class="flex space-x-2">
-        <button
-          @click="showCreatePrompt = true"
-          class="flex items-center px-4 py-2 text-sm bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          Create Prompt
-        </button>
-        <button
-          @click="syncPrompts"
-          class="flex items-center px-4 py-2 text-sm rounded-lg transition-colors"
-          :class="[
-            syncing ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-50 text-blue-600 hover:bg-blue-100',
-          ]"
-          :disabled="syncing"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          {{ syncing ? 'Syncing...' : 'Sync Prompts' }}
-        </button>
-      </div>
+      <button
+        @click="syncPrompts"
+        class="flex items-center px-4 py-2 text-sm rounded-lg transition-colors"
+        :class="[
+          syncing ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+        ]"
+        :disabled="syncing"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        {{ syncing ? 'Syncing...' : 'Sync Prompts' }}
+      </button>
     </div>
 
     <!-- Sync Result Message -->
@@ -134,10 +124,6 @@
       {{ error }}
     </div>
 
-    <div v-else-if="showCreatePrompt">
-      <CreatePromptModal @close="showCreatePrompt = false" />
-    </div>
-
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div
         v-for="prompt in prompts"
@@ -189,7 +175,6 @@
 import { onMounted, computed, ref, watch, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { usePromptStore } from '~/stores/promptStore';
-import CreatePromptModal from './CreatePromptModal.vue';
 
 const props = defineProps<{ selectedPromptId: string | null }>();
 defineEmits<{ (e: 'select-prompt', id: string): void }>();
@@ -197,7 +182,6 @@ defineEmits<{ (e: 'select-prompt', id: string): void }>();
 const promptStore = usePromptStore();
 const { prompts, loading, error, syncing, syncResult, deleteResult } = storeToRefs(promptStore);
 
-const showCreatePrompt = ref(false);
 const showDeleteConfirm = ref(false);
 const promptToDelete = ref<string | null>(null);
 
