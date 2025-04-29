@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { useQuery, useMutation } from '@vue/apollo-composable';
 import { GET_PROMPTS, GET_PROMPT_BY_ID } from '~/graphql/queries/prompt_queries';
-import { CREATE_PROMPT } from '~/graphql/mutations/prompt_mutations';
+import { CREATE_PROMPT, SYNC_PROMPTS, DELETE_PROMPT } from '~/graphql/mutations/prompt_mutations';
 
 interface Prompt {
   id: string;
@@ -15,11 +15,27 @@ interface Prompt {
   parentPromptId?: string | null;
 }
 
+interface SyncResult {
+  success: boolean;
+  message: string;
+  initialCount: number;
+  finalCount: number;
+  syncedCount: number;
+}
+
+interface DeleteResult {
+  success: boolean;
+  message: string;
+}
+
 interface PromptState {
   prompts: Prompt[];
   loading: boolean;
   error: string;
   selectedPrompt: Prompt | null;
+  syncing: boolean;
+  syncResult: SyncResult | null;
+  deleteResult: DeleteResult | null;
 }
 
 export const usePromptStore = defineStore('prompt', {
@@ -28,6 +44,9 @@ export const usePromptStore = defineStore('prompt', {
     loading: false,
     error: '',
     selectedPrompt: null,
+    syncing: false,
+    syncResult: null,
+    deleteResult: null,
   }),
 
   actions: {
@@ -121,6 +140,64 @@ export const usePromptStore = defineStore('prompt', {
       }
     },
 
+    async syncPrompts() {
+      this.syncing = true;
+      this.error = '';
+      this.syncResult = null;
+
+      try {
+        const { mutate } = useMutation(SYNC_PROMPTS);
+        const response = await mutate();
+
+        if (response?.data?.syncPrompts) {
+          this.syncResult = response.data.syncPrompts;
+          
+          // If sync was successful, refresh the prompts list
+          if (this.syncResult.success) {
+            await this.fetchActivePrompts();
+          }
+          
+          return this.syncResult;
+        }
+        throw new Error('Failed to sync prompts: No data returned');
+      } catch (e: any) {
+        this.error = e.message;
+        throw e;
+      } finally {
+        this.syncing = false;
+      }
+    },
+
+    async deletePrompt(id: string) {
+      this.loading = true;
+      this.error = '';
+      this.deleteResult = null;
+
+      try {
+        const { mutate } = useMutation(DELETE_PROMPT);
+        const response = await mutate({
+          input: { id },
+        });
+
+        if (response?.data?.deletePrompt) {
+          this.deleteResult = response.data.deletePrompt;
+          
+          // If deletion was successful, refresh the prompts list
+          if (this.deleteResult.success) {
+            await this.fetchActivePrompts();
+          }
+          
+          return this.deleteResult;
+        }
+        throw new Error('Failed to delete prompt: No data returned');
+      } catch (e: any) {
+        this.error = e.message;
+        throw e;
+      } finally {
+        this.loading = false;
+      }
+    },
+
     setSelectedPrompt(prompt: Prompt | null) {
       this.selectedPrompt = prompt;
     },
@@ -128,6 +205,14 @@ export const usePromptStore = defineStore('prompt', {
     clearError() {
       this.error = '';
     },
+    
+    clearSyncResult() {
+      this.syncResult = null;
+    },
+    
+    clearDeleteResult() {
+      this.deleteResult = null;
+    }
   },
 
   getters: {
@@ -135,5 +220,8 @@ export const usePromptStore = defineStore('prompt', {
     getLoading: (state): boolean => state.loading,
     getError: (state): string => state.error,
     getSelectedPrompt: (state): Prompt | null => state.selectedPrompt,
+    isSyncing: (state): boolean => state.syncing,
+    getSyncResult: (state): SyncResult | null => state.syncResult,
+    getDeleteResult: (state): DeleteResult | null => state.deleteResult,
   },
 });

@@ -44,7 +44,17 @@ export type CreatePromptInput = {
   description?: InputMaybe<Scalars['String']['input']>;
   name: Scalars['String']['input'];
   promptContent: Scalars['String']['input'];
-  suitableForModel?: InputMaybe<Scalars['String']['input']>;
+  suitableForModels?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type DeletePromptInput = {
+  id: Scalars['String']['input'];
+};
+
+export type DeletePromptResult = {
+  __typename?: 'DeletePromptResult';
+  message: Scalars['String']['output'];
+  success: Scalars['Boolean']['output'];
 };
 
 export type MarkActivePromptInput = {
@@ -70,6 +80,7 @@ export type Mutation = {
   createFileOrFolder: Scalars['String']['output'];
   createPrompt: Prompt;
   deleteFileOrFolder: Scalars['String']['output'];
+  deletePrompt: DeletePromptResult;
   executeBashCommands: CommandExecutionResult;
   markActivePrompt: Prompt;
   moveFileOrFolder: Scalars['String']['output'];
@@ -78,6 +89,7 @@ export type Mutation = {
   sendStepRequirement: Scalars['String']['output'];
   setLlmProviderApiKey: Scalars['String']['output'];
   startWorkflow: Scalars['Boolean']['output'];
+  syncPrompts: SyncPromptsResult;
   updatePrompt: Prompt;
   updateServerSetting: Scalars['String']['output'];
   writeFileContent: Scalars['String']['output'];
@@ -111,6 +123,11 @@ export type MutationCreatePromptArgs = {
 export type MutationDeleteFileOrFolderArgs = {
   path: Scalars['String']['input'];
   workspaceId: Scalars['String']['input'];
+};
+
+
+export type MutationDeletePromptArgs = {
+  input: DeletePromptInput;
 };
 
 
@@ -186,7 +203,7 @@ export type Prompt = {
   name: Scalars['String']['output'];
   parentPromptId?: Maybe<Scalars['String']['output']>;
   promptContent: Scalars['String']['output'];
-  suitableForModel?: Maybe<Scalars['String']['output']>;
+  suitableForModels?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
   version: Scalars['Int']['output'];
 };
@@ -313,6 +330,15 @@ export type SubscriptionStepResponseArgs = {
   workspaceId: Scalars['String']['input'];
 };
 
+export type SyncPromptsResult = {
+  __typename?: 'SyncPromptsResult';
+  finalCount: Scalars['Int']['output'];
+  initialCount: Scalars['Int']['output'];
+  message: Scalars['String']['output'];
+  success: Scalars['Boolean']['output'];
+  syncedCount: Scalars['Int']['output'];
+};
+
 export type UpdatePromptInput = {
   id: Scalars['String']['input'];
   newPromptContent: Scalars['String']['input'];
@@ -403,7 +429,19 @@ export type CreatePromptMutationVariables = Exact<{
 }>;
 
 
-export type CreatePromptMutation = { __typename?: 'Mutation', createPrompt: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModel?: string | null, version: number, createdAt: any, parentPromptId?: string | null } };
+export type CreatePromptMutation = { __typename?: 'Mutation', createPrompt: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null } };
+
+export type SyncPromptsMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type SyncPromptsMutation = { __typename?: 'Mutation', syncPrompts: { __typename?: 'SyncPromptsResult', success: boolean, message: string, initialCount: number, finalCount: number, syncedCount: number } };
+
+export type DeletePromptMutationVariables = Exact<{
+  input: DeletePromptInput;
+}>;
+
+
+export type DeletePromptMutation = { __typename?: 'Mutation', deletePrompt: { __typename?: 'DeletePromptResult', success: boolean, message: string } };
 
 export type UpdateServerSettingMutationVariables = Exact<{
   key: Scalars['String']['input'];
@@ -509,14 +547,14 @@ export type GetAvailableProvidersQuery = { __typename?: 'Query', availableProvid
 export type GetPromptsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetPromptsQuery = { __typename?: 'Query', activePrompts: Array<{ __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModel?: string | null, version: number, createdAt: any, parentPromptId?: string | null }> };
+export type GetPromptsQuery = { __typename?: 'Query', activePrompts: Array<{ __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null }> };
 
 export type GetPromptByIdQueryVariables = Exact<{
   id: Scalars['String']['input'];
 }>;
 
 
-export type GetPromptByIdQuery = { __typename?: 'Query', promptDetails?: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModel?: string | null, version: number, createdAt: any, parentPromptId?: string | null } | null };
+export type GetPromptByIdQuery = { __typename?: 'Query', promptDetails?: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null } | null };
 
 export type GetServerSettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -768,7 +806,7 @@ export const CreatePromptDocument = gql`
     category
     promptContent
     description
-    suitableForModel
+    suitableForModels
     version
     createdAt
     parentPromptId
@@ -797,6 +835,65 @@ export function useCreatePromptMutation(options: VueApolloComposable.UseMutation
   return VueApolloComposable.useMutation<CreatePromptMutation, CreatePromptMutationVariables>(CreatePromptDocument, options);
 }
 export type CreatePromptMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<CreatePromptMutation, CreatePromptMutationVariables>;
+export const SyncPromptsDocument = gql`
+    mutation SyncPrompts {
+  syncPrompts {
+    success
+    message
+    initialCount
+    finalCount
+    syncedCount
+  }
+}
+    `;
+
+/**
+ * __useSyncPromptsMutation__
+ *
+ * To run a mutation, you first call `useSyncPromptsMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useSyncPromptsMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useSyncPromptsMutation();
+ */
+export function useSyncPromptsMutation(options: VueApolloComposable.UseMutationOptions<SyncPromptsMutation, SyncPromptsMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<SyncPromptsMutation, SyncPromptsMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<SyncPromptsMutation, SyncPromptsMutationVariables>(SyncPromptsDocument, options);
+}
+export type SyncPromptsMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<SyncPromptsMutation, SyncPromptsMutationVariables>;
+export const DeletePromptDocument = gql`
+    mutation DeletePrompt($input: DeletePromptInput!) {
+  deletePrompt(input: $input) {
+    success
+    message
+  }
+}
+    `;
+
+/**
+ * __useDeletePromptMutation__
+ *
+ * To run a mutation, you first call `useDeletePromptMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useDeletePromptMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useDeletePromptMutation({
+ *   variables: {
+ *     input: // value for 'input'
+ *   },
+ * });
+ */
+export function useDeletePromptMutation(options: VueApolloComposable.UseMutationOptions<DeletePromptMutation, DeletePromptMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<DeletePromptMutation, DeletePromptMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<DeletePromptMutation, DeletePromptMutationVariables>(DeletePromptDocument, options);
+}
+export type DeletePromptMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<DeletePromptMutation, DeletePromptMutationVariables>;
 export const UpdateServerSettingDocument = gql`
     mutation UpdateServerSetting($key: String!, $value: String!) {
   updateServerSetting(key: $key, value: $value)
@@ -1209,7 +1306,7 @@ export const GetPromptsDocument = gql`
     category
     promptContent
     description
-    suitableForModel
+    suitableForModels
     version
     createdAt
     parentPromptId
@@ -1244,9 +1341,10 @@ export const GetPromptByIdDocument = gql`
     category
     promptContent
     description
-    suitableForModel
+    suitableForModels
     version
     createdAt
+    updatedAt
     parentPromptId
   }
 }

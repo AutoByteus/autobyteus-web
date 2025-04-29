@@ -15,3 +15,24 @@ export const CREATE_PROMPT = gql`
     }
   }
 `;
+
+export const SYNC_PROMPTS = gql`
+  mutation SyncPrompts {
+    syncPrompts {
+      success
+      message
+      initialCount
+      finalCount
+      syncedCount
+    }
+  }
+`;
+
+export const DELETE_PROMPT = gql`
+  mutation DeletePrompt($input: DeletePromptInput!) {
+    deletePrompt(input: $input) {
+      success
+      message
+    }
+  }
+`;
