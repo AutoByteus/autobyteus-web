@@ -16,6 +16,39 @@ export const CREATE_PROMPT = gql`
   }
 `;
 
+export const UPDATE_PROMPT = gql`
+  mutation UpdatePrompt($input: UpdatePromptInput!) {
+    updatePrompt(input: $input) {
+      id
+      name
+      category
+      promptContent
+      description
+      suitableForModels
+      version
+      createdAt
+      updatedAt
+      parentPromptId
+    }
+  }
+`;
+
+export const ADD_NEW_PROMPT_REVISION = gql`
+  mutation AddNewPromptRevision($input: AddNewPromptRevisionInput!) {
+    addNewPromptRevision(input: $input) {
+      id
+      name
+      category
+      promptContent
+      description
+      suitableForModels
+      version
+      createdAt
+      parentPromptId
+    }
+  }
+`;
+
 export const SYNC_PROMPTS = gql`
   mutation SyncPrompts {
     syncPrompts {

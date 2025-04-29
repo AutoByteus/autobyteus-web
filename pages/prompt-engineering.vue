@@ -28,43 +28,27 @@
         </nav>
       </div>
     </div>
-
     <!-- Main Content Area -->
     <div class="flex-1 p-6">
-      <!-- Marketplace View -->
+      <!-- Marketplace View - Removed duplicate header -->
       <div v-if="currentView === 'marketplace'">
-        <div class="flex justify-between items-center mb-6">
-          <h1 class="text-2xl font-bold">Prompts Marketplace</h1>
-          <button 
-            @click="showModal = true" 
-            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Create Prompt
-          </button>
-        </div>
-
         <PromptMarketplace 
           :selectedPromptId="selectedPromptId"
           @select-prompt="handlePromptSelect"
         />
       </div>
-
       <!-- Generation View - Empty placeholder for now -->
       <div v-if="currentView === 'generation'">
         <h1 class="text-2xl font-bold mb-6">Prompt Generation</h1>
         <!-- Future prompt generation implementation will go here -->
       </div>
     </div>
-
     <!-- Prompt Details Side Panel -->
     <PromptDetails 
       v-if="selectedPromptId" 
       :promptId="selectedPromptId"
       @close="selectedPromptId = null"
     />
-
-    <!-- Create Prompt Modal -->
-    <CreatePromptModal v-if="showModal" @close="showModal = false" />
   </div>
 </template>
 
@@ -72,11 +56,9 @@
 import { ref } from 'vue';
 import PromptMarketplace from '~/components/promptEngineering/PromptMarketplace.vue';
 import PromptDetails from '~/components/promptEngineering/PromptDetails.vue';
-import CreatePromptModal from '~/components/promptEngineering/CreatePromptModal.vue';
 
 const currentView = ref('marketplace');
 const selectedPromptId = ref<string | null>(null);
-const showModal = ref(false);
 
 const handlePromptSelect = (id: string) => {
   selectedPromptId.value = id;

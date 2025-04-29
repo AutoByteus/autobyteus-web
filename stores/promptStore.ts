@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { useQuery, useMutation } from '@vue/apollo-composable';
 import { GET_PROMPTS, GET_PROMPT_BY_ID } from '~/graphql/queries/prompt_queries';
-import { CREATE_PROMPT, SYNC_PROMPTS, DELETE_PROMPT } from '~/graphql/mutations/prompt_mutations';
+import { CREATE_PROMPT, UPDATE_PROMPT, ADD_NEW_PROMPT_REVISION, SYNC_PROMPTS, DELETE_PROMPT } from '~/graphql/mutations/prompt_mutations';
 
 interface Prompt {
   id: string;
@@ -134,6 +134,50 @@ export const usePromptStore = defineStore('prompt', {
           return response.data.createPrompt;
         }
         throw new Error('Failed to create prompt: No data returned');
+      } catch (e: any) {
+        this.error = e.message;
+        throw e;
+      }
+    },
+    
+    async updatePrompt(
+      id: string,
+      promptContent?: string,
+      description?: string,
+      suitableForModels?: string,
+    ) {
+      try {
+        const { mutate } = useMutation(UPDATE_PROMPT);
+        const response = await mutate({
+          input: { id, promptContent, description, suitableForModels },
+        });
+
+        if (response?.data?.updatePrompt) {
+          await this.fetchActivePrompts();
+          return response.data.updatePrompt;
+        }
+        throw new Error('Failed to update prompt: No data returned');
+      } catch (e: any) {
+        this.error = e.message;
+        throw e;
+      }
+    },
+
+    async addNewPromptRevision(
+      id: string,
+      newPromptContent: string,
+    ) {
+      try {
+        const { mutate } = useMutation(ADD_NEW_PROMPT_REVISION);
+        const response = await mutate({
+          input: { id, newPromptContent },
+        });
+
+        if (response?.data?.addNewPromptRevision) {
+          await this.fetchActivePrompts();
+          return response.data.addNewPromptRevision;
+        }
+        throw new Error('Failed to add new prompt revision: No data returned');
       } catch (e: any) {
         this.error = e.message;
         throw e;

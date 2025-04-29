@@ -20,6 +20,11 @@ export type Scalars = {
   JSON: { input: any; output: any; }
 };
 
+export type AddNewPromptRevisionInput = {
+  id: Scalars['String']['input'];
+  newPromptContent: Scalars['String']['input'];
+};
+
 export type CommandExecutionResult = {
   __typename?: 'CommandExecutionResult';
   message: Scalars['String']['output'];
@@ -75,6 +80,7 @@ export type Message = {
 
 export type Mutation = {
   __typename?: 'Mutation';
+  addNewPromptRevision: Prompt;
   addWorkspace: WorkspaceInfo;
   closeConversation: Scalars['Boolean']['output'];
   createFileOrFolder: Scalars['String']['output'];
@@ -93,6 +99,11 @@ export type Mutation = {
   updatePrompt: Prompt;
   updateServerSetting: Scalars['String']['output'];
   writeFileContent: Scalars['String']['output'];
+};
+
+
+export type MutationAddNewPromptRevisionArgs = {
+  input: AddNewPromptRevisionInput;
 };
 
 
@@ -340,8 +351,10 @@ export type SyncPromptsResult = {
 };
 
 export type UpdatePromptInput = {
+  description?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
-  newPromptContent: Scalars['String']['input'];
+  promptContent?: InputMaybe<Scalars['String']['input']>;
+  suitableForModels?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UsageStatistics = {
@@ -430,6 +443,20 @@ export type CreatePromptMutationVariables = Exact<{
 
 
 export type CreatePromptMutation = { __typename?: 'Mutation', createPrompt: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null } };
+
+export type UpdatePromptMutationVariables = Exact<{
+  input: UpdatePromptInput;
+}>;
+
+
+export type UpdatePromptMutation = { __typename?: 'Mutation', updatePrompt: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null } };
+
+export type AddNewPromptRevisionMutationVariables = Exact<{
+  input: AddNewPromptRevisionInput;
+}>;
+
+
+export type AddNewPromptRevisionMutation = { __typename?: 'Mutation', addNewPromptRevision: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null } };
 
 export type SyncPromptsMutationVariables = Exact<{ [key: string]: never; }>;
 
@@ -835,6 +862,81 @@ export function useCreatePromptMutation(options: VueApolloComposable.UseMutation
   return VueApolloComposable.useMutation<CreatePromptMutation, CreatePromptMutationVariables>(CreatePromptDocument, options);
 }
 export type CreatePromptMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<CreatePromptMutation, CreatePromptMutationVariables>;
+export const UpdatePromptDocument = gql`
+    mutation UpdatePrompt($input: UpdatePromptInput!) {
+  updatePrompt(input: $input) {
+    id
+    name
+    category
+    promptContent
+    description
+    suitableForModels
+    version
+    createdAt
+    updatedAt
+    parentPromptId
+  }
+}
+    `;
+
+/**
+ * __useUpdatePromptMutation__
+ *
+ * To run a mutation, you first call `useUpdatePromptMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useUpdatePromptMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useUpdatePromptMutation({
+ *   variables: {
+ *     input: // value for 'input'
+ *   },
+ * });
+ */
+export function useUpdatePromptMutation(options: VueApolloComposable.UseMutationOptions<UpdatePromptMutation, UpdatePromptMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<UpdatePromptMutation, UpdatePromptMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<UpdatePromptMutation, UpdatePromptMutationVariables>(UpdatePromptDocument, options);
+}
+export type UpdatePromptMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<UpdatePromptMutation, UpdatePromptMutationVariables>;
+export const AddNewPromptRevisionDocument = gql`
+    mutation AddNewPromptRevision($input: AddNewPromptRevisionInput!) {
+  addNewPromptRevision(input: $input) {
+    id
+    name
+    category
+    promptContent
+    description
+    suitableForModels
+    version
+    createdAt
+    parentPromptId
+  }
+}
+    `;
+
+/**
+ * __useAddNewPromptRevisionMutation__
+ *
+ * To run a mutation, you first call `useAddNewPromptRevisionMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useAddNewPromptRevisionMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useAddNewPromptRevisionMutation({
+ *   variables: {
+ *     input: // value for 'input'
+ *   },
+ * });
+ */
+export function useAddNewPromptRevisionMutation(options: VueApolloComposable.UseMutationOptions<AddNewPromptRevisionMutation, AddNewPromptRevisionMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<AddNewPromptRevisionMutation, AddNewPromptRevisionMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<AddNewPromptRevisionMutation, AddNewPromptRevisionMutationVariables>(AddNewPromptRevisionDocument, options);
+}
+export type AddNewPromptRevisionMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<AddNewPromptRevisionMutation, AddNewPromptRevisionMutationVariables>;
 export const SyncPromptsDocument = gql`
     mutation SyncPrompts {
   syncPrompts {
