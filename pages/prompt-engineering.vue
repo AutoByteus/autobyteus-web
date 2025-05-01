@@ -1,54 +1,42 @@
 <template>
   <div class="flex h-full bg-gray-50">
     <!-- Left Sidebar -->
-    <div class="w-64 bg-white shadow-sm">
-      <div class="p-6">
-        <h2 class="text-xl font-semibold text-gray-800 mb-6">Prompt Engineering</h2>
-        <nav>
-          <ul class="space-y-2">
-            <li>
-              <button 
-                @click="currentView = 'marketplace'"
-                class="w-full text-left px-4 py-2 rounded hover:bg-gray-100"
-                :class="{'bg-gray-100 font-bold': currentView === 'marketplace'}"
-              >
-                Prompts Marketplace
-              </button>
-            </li>
-            <li>
-              <button 
-                @click="currentView = 'generation'"
-                class="w-full text-left px-4 py-2 rounded hover:bg-gray-100"
-                :class="{'bg-gray-100 font-bold': currentView === 'generation'}"
-              >
-                Prompt Generation
-              </button>
-            </li>
-          </ul>
-        </nav>
-      </div>
-    </div>
-    <!-- Main Content Area -->
-    <div class="flex-1 p-6">
-      <!-- Marketplace View - Removed duplicate header -->
-      <div v-if="currentView === 'marketplace'">
-        <PromptMarketplace 
-          :selectedPromptId="selectedPromptId"
-          @select-prompt="handlePromptSelect"
-        />
-      </div>
-      <!-- Generation View - Empty placeholder for now -->
-      <div v-if="currentView === 'generation'">
-        <h1 class="text-2xl font-bold mb-6">Prompt Generation</h1>
-        <!-- Future prompt generation implementation will go here -->
-      </div>
-    </div>
-    <!-- Prompt Details Side Panel -->
-    <PromptDetails 
-      v-if="selectedPromptId" 
-      :promptId="selectedPromptId"
-      @close="selectedPromptId = null"
+    <PromptSidebar
+      title="Prompt Engineering"
+      :menuItems="menuItems"
+      :currentView="currentView"
+      @navigate="navigateTo"
     />
+    
+    <!-- Main Content Area -->
+    <div class="flex-1 p-6 overflow-auto">
+      <!-- Marketplace View -->
+      <transition name="fade" mode="out-in">
+        <div v-if="currentView === 'marketplace' && !selectedPromptId">
+          <PromptMarketplace 
+            :selectedPromptId="selectedPromptId"
+            @select-prompt="handlePromptSelect"
+          />
+        </div>
+      </transition>
+
+      <!-- Prompt Details View -->
+      <transition name="fade" mode="out-in">
+        <PromptDetails 
+          v-if="selectedPromptId" 
+          :promptId="selectedPromptId"
+          @close="closePromptDetails"
+        />
+      </transition>
+      
+      <!-- Generation View -->
+      <transition name="fade" mode="out-in">
+        <div v-if="currentView === 'generation'">
+          <h1 class="text-2xl font-bold mb-6">Prompt Generation</h1>
+          <!-- Future prompt generation implementation will go here -->
+        </div>
+      </transition>
+    </div>
   </div>
 </template>
 
@@ -56,11 +44,41 @@
 import { ref } from 'vue';
 import PromptMarketplace from '~/components/promptEngineering/PromptMarketplace.vue';
 import PromptDetails from '~/components/promptEngineering/PromptDetails.vue';
+import PromptSidebar from '~/components/promptEngineering/PromptSidebar.vue';
 
 const currentView = ref('marketplace');
 const selectedPromptId = ref<string | null>(null);
 
-const handlePromptSelect = (id: string) => {
+const menuItems = [
+  { id: 'marketplace', label: 'Prompts Marketplace' },
+  { id: 'generation', label: 'Prompt Generation' }
+];
+
+function navigateTo(view: string) {
+  // If we're viewing a prompt detail, close it first
+  if (selectedPromptId.value) {
+    selectedPromptId.value = null;
+  }
+  currentView.value = view;
+}
+
+function handlePromptSelect(id: string) {
   selectedPromptId.value = id;
-};
+}
+
+function closePromptDetails() {
+  selectedPromptId.value = null;
+}
 </script>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

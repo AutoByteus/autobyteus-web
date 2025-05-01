@@ -1,6 +1,6 @@
 <template>
   <div class="prompt-marketplace">
-    <!-- Keep the header in the component (unchanged) -->
+    <!-- Header with title and sync button -->
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-xl font-semibold text-gray-800">Prompt Marketplace</h2>
       <button
@@ -116,55 +116,62 @@
       </div>
     </div>
 
+    <!-- Loading State -->
     <div v-if="loading || syncing" class="grid place-items-center h-64">
       <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
     </div>
 
+    <!-- Error State -->
     <div v-else-if="error" class="text-red-500 text-center py-8">
       {{ error }}
     </div>
 
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div
-        v-for="prompt in prompts"
-        :key="prompt.id"
-        class="prompt-card relative bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow duration-200 group"
-        :class="{ 'border-blue-500': selectedPromptId === prompt.id }"
+    <!-- Empty State -->
+    <div v-else-if="prompts.length === 0" class="text-center py-16">
+      <div class="text-gray-500">
+        <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </svg>
+        <p class="text-lg font-medium mb-2">No prompts available</p>
+        <p class="text-gray-400">Sync to fetch the latest prompts</p>
+      </div>
+    </div>
+
+    <!-- Prompts By Category - Clean, Simple Layout -->
+    <div v-else class="space-y-6">
+      <!-- First show prompts without a category (if any) -->
+      <div v-if="promptsByCategory['uncategorized']?.length">
+        <h3 class="text-lg font-medium text-gray-800 mb-4">Uncategorized</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <PromptCard
+            v-for="prompt in promptsByCategory['uncategorized']"
+            :key="prompt.id"
+            :prompt="prompt"
+            :isSelected="selectedPromptId === prompt.id"
+            :showDeleteButton="true"
+            @select="$emit('select-prompt', prompt.id)"
+            @delete="openDeleteConfirm(prompt.id)"
+          />
+        </div>
+      </div>
+      
+      <!-- Then show each category and its prompts -->
+      <div 
+        v-for="category in uniqueCategories" 
+        :key="category"
+        class="pt-2"
       >
-        <!-- Hover delete button -->
-        <button 
-          @click.stop="openDeleteConfirm(prompt.id)"
-          class="absolute top-2 right-2 p-2 rounded-full bg-white shadow opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-50 text-red-600"
-          title="Delete prompt"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </button>
-
-        <div 
-          class="p-6 cursor-pointer" 
-          @click="$emit('select-prompt', prompt.id)"
-        >
-          <div class="flex items-start justify-between">
-            <h3 class="text-lg font-medium text-gray-900">{{ prompt.name }}</h3>
-            <span class="px-2 py-1 text-sm rounded-full bg-gray-100 text-gray-600">
-              {{ prompt.category }}
-            </span>
-          </div>
-
-          <p class="mt-1 text-xs text-gray-500">Version: v{{ prompt.version }}</p>
-
-          <p class="mt-2 text-sm text-gray-500 line-clamp-3">{{ prompt.promptContent }}</p>
-
-          <div class="mt-4 flex flex-wrap gap-2 text-xs text-gray-500">
-            <span>Description: {{ prompt.description || '—' }}</span>
-            <span>Models: {{ prompt.suitableForModels || '—' }}</span>
-          </div>
-
-          <div class="mt-4 text-sm text-gray-500">
-            <span>Created {{ formatDate(prompt.createdAt) }}</span>
-          </div>
+        <h3 class="text-lg font-medium text-gray-800 mb-4 pb-2 border-b">{{ category }}</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <PromptCard
+            v-for="prompt in promptsByCategory[category]"
+            :key="prompt.id"
+            :prompt="prompt"
+            :isSelected="selectedPromptId === prompt.id"
+            :showDeleteButton="true"
+            @select="$emit('select-prompt', prompt.id)"
+            @delete="openDeleteConfirm(prompt.id)"
+          />
         </div>
       </div>
     </div>
@@ -175,6 +182,7 @@
 import { onMounted, computed, ref, watch, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { usePromptStore } from '~/stores/promptStore';
+import PromptCard from '~/components/promptEngineering/PromptCard.vue';
 
 const props = defineProps<{ selectedPromptId: string | null }>();
 defineEmits<{ (e: 'select-prompt', id: string): void }>();
@@ -188,6 +196,40 @@ const promptToDelete = ref<string | null>(null);
 // Timers for auto-dismissing notifications
 let syncNotificationTimer: number | null = null;
 let deleteNotificationTimer: number | null = null;
+
+// Extract unique categories
+const uniqueCategories = computed(() => {
+  const categories = new Set<string>();
+  prompts.value.forEach(prompt => {
+    if (prompt.category) {
+      categories.add(prompt.category);
+    }
+  });
+  return Array.from(categories).sort();
+});
+
+// Group prompts by category
+const promptsByCategory = computed(() => {
+  const grouped: Record<string, any[]> = {
+    uncategorized: []
+  };
+  
+  // Initialize empty arrays for each category
+  uniqueCategories.value.forEach(category => {
+    grouped[category] = [];
+  });
+  
+  // Group prompts by their category
+  prompts.value.forEach(prompt => {
+    if (!prompt.category) {
+      grouped.uncategorized.push(prompt);
+    } else {
+      grouped[prompt.category].push(prompt);
+    }
+  });
+  
+  return grouped;
+});
 
 // Watch for sync result changes
 watch(() => promptStore.syncResult, (newVal) => {
@@ -224,13 +266,6 @@ onMounted(async () => {
     console.error('Failed to fetch prompts:', err);
   }
 });
-
-const formatDate = (dateString: string) =>
-  new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
 
 async function syncPrompts() {
   try {
@@ -279,16 +314,3 @@ async function confirmDelete() {
   showDeleteConfirm.value = false;
 }
 </script>
-
-<style scoped>
-.prompt-card {
-  cursor: pointer;
-}
-
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-</style>
