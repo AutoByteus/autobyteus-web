@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed inset-0 bg-white z-50 overflow-auto">
+  <div class="prompt-compare-modal">
     <div class="h-full flex flex-col">
       <!-- Header with controls -->
       <div class="bg-white border-b p-4 flex justify-between items-center">
@@ -106,7 +106,7 @@
         <div 
           v-if="leftPrompt && rightPrompt"
           ref="diffContainer" 
-          class="diff-container"
+          class="diff-container pt-4"
         ></div>
         <div v-else class="grid place-items-center h-full bg-gray-50">
           <p class="text-gray-500">Select two prompts to compare</p>
@@ -251,9 +251,31 @@ watch([leftPromptId, rightPromptId, viewMode], () => {
 </script>
 
 <style>
+/* Modal styling to respect layout structure */
+.prompt-compare-modal {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  background-color: white;
+  overflow: auto;
+  /* Add left margin to respect the sidebar */
+  margin-left: 50px; /* Adjust this value based on your sidebar width */
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .prompt-compare-modal {
+    margin-left: 0; /* No margin on mobile */
+  }
+}
+
 /* Custom styles for diff2html */
 .d2h-wrapper {
   margin-bottom: 0;
+  padding-top: 10px; /* Add padding to prevent content being cut off */
 }
 
 .d2h-file-wrapper {
@@ -316,6 +338,16 @@ watch([leftPromptId, rightPromptId, viewMode], () => {
 .d2h-code-line del {
   background-color: #fca5a5;
   text-decoration: none;
+}
+
+/* Added styles to fix content being cut off */
+.diff-container {
+  padding-top: 10px; /* Add padding to the top of the diff container */
+}
+
+/* Prevent diff content from being cut off */
+.d2h-file-side-diff {
+  margin-top: 10px;
 }
 
 /* Utility class for hiding elements */

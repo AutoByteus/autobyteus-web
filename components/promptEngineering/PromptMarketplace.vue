@@ -1,5 +1,14 @@
 <template>
   <div class="prompt-marketplace">
+    <!-- Prompt Comparison View (Modal) -->
+    <PromptCompare
+      v-if="comparisonMode"
+      :promptIds="selectedPromptsForComparison"
+      :promptCategory="comparisonCategory"
+      :promptName="comparisonName"
+      @close="exitComparisonMode"
+    />
+
     <!-- Header with title, sync button, and model filter -->
     <div class="flex flex-col gap-4 mb-6">
       <div class="flex justify-between items-center">
@@ -236,37 +245,99 @@
       </div>
     </div>
 
-    <!-- Group by Name & Category View -->
+    <!-- Group by Name & Category View with Compare feature -->
     <div v-else class="space-y-8">
       <div 
         v-for="(promptGroup, groupKey) in promptsByNameAndCategory" 
         :key="groupKey"
         class="bg-white rounded-lg p-4 border"
       >
-        <!-- Group header with name and category -->
+        <!-- Group header with name, category, and comparison button -->
         <div class="border-b pb-3 mb-4">
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-medium text-gray-900">{{ promptGroup[0].name }}</h3>
-            <span class="px-3 py-1 text-sm rounded-full bg-gray-100 text-gray-700">
-              {{ promptGroup[0].category }}
-            </span>
+            <div class="flex items-center gap-3">
+              <span class="px-3 py-1 text-sm rounded-full bg-gray-100 text-gray-700">
+                {{ promptGroup[0].category }}
+              </span>
+              <!-- Only show compare button if there are multiple prompts in the group -->
+              <button 
+                v-if="promptGroup.length > 1" 
+                @click="startCompareMode(promptGroup)"
+                class="flex items-center px-3 py-1 text-sm rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                Compare Versions
+              </button>
+            </div>
           </div>
           <p v-if="promptGroup[0].description" class="text-sm text-gray-600 mt-2">
             {{ promptGroup[0].description }}
           </p>
+          
+          <!-- Selection mode UI when in comparison selection -->
+          <div v-if="isSelectingForComparison && currentComparisonGroup === groupKey" class="mt-4 bg-blue-50 p-3 rounded">
+            <div class="flex justify-between items-center">
+              <p class="text-sm text-blue-700">
+                <span class="font-medium">Select prompts to compare:</span> 
+                {{ selectedPromptsForComparison.length }} selected
+              </p>
+              <div class="flex gap-2">
+                <button 
+                  @click="cancelComparisonSelection"
+                  class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  @click="confirmComparisonSelection"
+                  :disabled="selectedPromptsForComparison.length < 2"
+                  :class="[
+                    'px-3 py-1 text-sm rounded',
+                    selectedPromptsForComparison.length < 2 
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  ]"
+                >
+                  Compare Selected
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         
-        <!-- Group prompts -->
+        <!-- Group prompts with comparison selection -->
         <div :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'space-y-3'">
-          <PromptCard
+          <div
             v-for="prompt in promptGroup"
             :key="prompt.id"
-            :prompt="prompt"
-            :isSelected="selectedPromptId === prompt.id"
-            :showDeleteButton="true"
-            @select="$emit('select-prompt', prompt.id)"
-            @delete="openDeleteConfirm(prompt.id)"
-          />
+            class="relative"
+          >
+            <!-- Selection checkbox overlay when in comparison mode -->
+            <div 
+              v-if="isSelectingForComparison && currentComparisonGroup === groupKey"
+              class="absolute top-4 left-4 z-10"
+            >
+              <input 
+                type="checkbox" 
+                :id="`compare-${prompt.id}`"
+                :value="prompt.id"
+                v-model="selectedPromptsForComparison"
+                class="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+              />
+            </div>
+            
+            <!-- Regular prompt card -->
+            <PromptCard
+              :prompt="prompt"
+              :isSelected="selectedPromptId === prompt.id"
+              :showDeleteButton="!isSelectingForComparison"
+              @select="isSelectingForComparison ? togglePromptSelection(prompt.id) : $emit('select-prompt', prompt.id)"
+              @delete="openDeleteConfirm(prompt.id)"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -278,6 +349,7 @@ import { onMounted, computed, ref, watch, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { usePromptStore } from '~/stores/promptStore';
 import PromptCard from '~/components/promptEngineering/PromptCard.vue';
+import PromptCompare from '~/components/promptEngineering/PromptCompare.vue';
 
 const props = defineProps<{ selectedPromptId: string | null }>();
 defineEmits<{ (e: 'select-prompt', id: string): void }>();
@@ -285,11 +357,20 @@ defineEmits<{ (e: 'select-prompt', id: string): void }>();
 const promptStore = usePromptStore();
 const { prompts, loading, error, syncing, syncResult, deleteResult } = storeToRefs(promptStore);
 
+// Base UI state
 const showDeleteConfirm = ref(false);
 const promptToDelete = ref<string | null>(null);
 const selectedModelFilter = ref('');
-const groupingOption = ref('nameAndCategory'); // Changed default from 'category' to 'nameAndCategory'
+const groupingOption = ref('nameAndCategory'); // Default to Name & Category grouping
 const viewMode = ref('grid'); // 'grid' or 'compact'
+
+// Comparison mode state
+const comparisonMode = ref(false);
+const isSelectingForComparison = ref(false);
+const currentComparisonGroup = ref('');
+const selectedPromptsForComparison = ref<string[]>([]);
+const comparisonCategory = ref('');
+const comparisonName = ref('');
 
 // Timers for auto-dismissing notifications
 let syncNotificationTimer: number | null = null;
@@ -374,6 +455,49 @@ const promptsByNameAndCategory = computed(() => {
   
   return grouped;
 });
+
+// Comparison mode functions
+function startCompareMode(promptGroup: any[]) {
+  // Initialize comparison selection mode
+  isSelectingForComparison.value = true;
+  selectedPromptsForComparison.value = [];
+  currentComparisonGroup.value = `${promptGroup[0].name}__${promptGroup[0].category || 'uncategorized'}`;
+  comparisonName.value = promptGroup[0].name;
+  comparisonCategory.value = promptGroup[0].category || 'uncategorized';
+  
+  // If there are only 2 prompts, auto-select them
+  if (promptGroup.length === 2) {
+    selectedPromptsForComparison.value = [promptGroup[0].id, promptGroup[1].id];
+    confirmComparisonSelection();
+  }
+}
+
+function cancelComparisonSelection() {
+  isSelectingForComparison.value = false;
+  selectedPromptsForComparison.value = [];
+  currentComparisonGroup.value = '';
+}
+
+function confirmComparisonSelection() {
+  if (selectedPromptsForComparison.value.length >= 2) {
+    comparisonMode.value = true;
+    isSelectingForComparison.value = false;
+  }
+}
+
+function exitComparisonMode() {
+  comparisonMode.value = false;
+  selectedPromptsForComparison.value = [];
+}
+
+function togglePromptSelection(promptId: string) {
+  const index = selectedPromptsForComparison.value.indexOf(promptId);
+  if (index > -1) {
+    selectedPromptsForComparison.value.splice(index, 1);
+  } else {
+    selectedPromptsForComparison.value.push(promptId);
+  }
+}
 
 // Watch for sync result changes
 watch(() => promptStore.syncResult, (newVal) => {

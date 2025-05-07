@@ -39,8 +39,17 @@
         </div>
       </div>
 
+      <!-- Comparison View -->
+      <PromptCompare
+        v-if="comparisonMode"
+        :promptIds="[promptId, compareWithPromptId]"
+        :promptCategory="prompt?.category || ''"
+        :promptName="prompt?.name || ''"
+        @close="exitComparisonMode"
+      />
+
       <!-- Loading state -->
-      <div v-if="loading" class="animate-pulse space-y-8">
+      <div v-else-if="loading" class="animate-pulse space-y-8">
         <div class="h-8 bg-gray-200 rounded w-1/3"></div>
         <div class="space-y-4">
           <div class="h-4 bg-gray-200 rounded w-1/4"></div>
@@ -80,12 +89,10 @@
           </div>
         </div>
 
-        <!-- Description and Models in a two-column layout -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <h2 class="text-lg font-semibold text-gray-900 mb-2">Description</h2>
-            <p class="text-gray-700">{{ prompt.description || 'No description provided' }}</p>
-          </div>
+        <!-- Description in a single column layout -->
+        <div class="mb-6">
+          <h2 class="text-lg font-semibold text-gray-900 mb-2">Description</h2>
+          <p class="text-gray-700">{{ prompt.description || 'No description provided' }}</p>
         </div>
 
         <!-- Prompt content -->
@@ -96,7 +103,7 @@
           >{{ prompt.promptContent }}</pre>
         </div>
 
-        <!-- Related prompts section -->
+        <!-- Related prompts section with comparison feature -->
         <div v-if="relatedPrompts.length > 0" class="mt-8 pt-6 border-t">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-gray-900">Related Prompts</h2>
@@ -107,21 +114,36 @@
             <div 
               v-for="relatedPrompt in relatedPrompts" 
               :key="relatedPrompt.id"
-              class="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+              class="border rounded-lg p-4 hover:shadow-md transition-shadow"
               :class="{ 'bg-blue-50 border-blue-300': relatedPrompt.id === prompt.id }"
-              @click="viewRelatedPrompt(relatedPrompt.id)"
             >
               <div class="flex justify-between items-start mb-2">
                 <div>
                   <h3 class="font-medium">{{ relatedPrompt.name }}</h3>
                   <p class="text-xs text-gray-500">v{{ relatedPrompt.version }}</p>
                 </div>
-                <span 
-                  v-if="relatedPrompt.id === prompt.id" 
-                  class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700"
-                >
-                  Current
-                </span>
+                <div class="flex gap-2">
+                  <span 
+                    v-if="relatedPrompt.id === prompt.id" 
+                    class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700"
+                  >
+                    Current
+                  </span>
+                  <button
+                    v-else
+                    @click="compareWithPrompt(relatedPrompt.id)"
+                    class="px-2 py-1 text-xs rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
+                  >
+                    Compare
+                  </button>
+                  <button
+                    v-if="relatedPrompt.id !== prompt.id"
+                    @click="viewRelatedPrompt(relatedPrompt.id)"
+                    class="px-2 py-1 text-xs rounded bg-gray-50 text-gray-600 hover:bg-gray-100"
+                  >
+                    View
+                  </button>
+                </div>
               </div>
               
               <div v-if="relatedPrompt.suitableForModels" class="mt-2">
@@ -142,9 +164,18 @@
         <div v-if="prompt.parentPromptId" class="mt-8 pt-6 border-t">
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-semibold text-gray-900">Parent Prompt</h2>
-            <button @click="toggleParentPrompt" class="text-blue-600 hover:text-blue-700">
-              {{ showParent ? 'Hide Parent' : 'Show Parent' }}
-            </button>
+            <div class="flex gap-2">
+              <button @click="toggleParentPrompt" class="text-blue-600 hover:text-blue-700">
+                {{ showParent ? 'Hide Parent' : 'Show Parent' }}
+              </button>
+              <button 
+                v-if="parentPrompt" 
+                @click="compareWithPrompt(parentPrompt.id)"
+                class="text-blue-600 hover:text-blue-700"
+              >
+                Compare with Parent
+              </button>
+            </div>
           </div>
 
           <div v-if="showParent">
@@ -179,6 +210,7 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import { usePromptStore } from '~/stores/promptStore';
 import ModelBadge from '~/components/promptEngineering/ModelBadge.vue';
+import PromptCompare from '~/components/promptEngineering/PromptCompare.vue';
 
 const props = defineProps<{ promptId: string }>();
 const emit = defineEmits<{ 
@@ -196,6 +228,10 @@ const showParent = ref(false);
 const parentPrompt = ref<any>(null);
 const parentLoading = ref(false);
 const parentError = ref('');
+
+// Comparison mode state
+const comparisonMode = ref(false);
+const compareWithPromptId = ref('');
 
 // Parse models into a list for display
 const modelList = computed(() => {
@@ -279,6 +315,16 @@ function viewRelatedPrompt(promptId: string) {
   emit('select-prompt', promptId);
 }
 
+function compareWithPrompt(promptId: string) {
+  compareWithPromptId.value = promptId;
+  comparisonMode.value = true;
+}
+
+function exitComparisonMode() {
+  comparisonMode.value = false;
+  compareWithPromptId.value = '';
+}
+
 const formatDate = (dateString: string) =>
   new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -290,6 +336,9 @@ watch(
   () => props.promptId,
   () => {
     loadPrompt();
+    // Reset comparison mode when prompt changes
+    comparisonMode.value = false;
+    compareWithPromptId.value = '';
   },
   { immediate: true },
 );
