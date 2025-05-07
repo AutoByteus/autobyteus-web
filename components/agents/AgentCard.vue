@@ -14,25 +14,26 @@
         </div>
         <h3 class="font-medium text-gray-900">{{ agent.name }}</h3>
       </div>
+      
       <p class="text-sm text-gray-500 mb-4 line-clamp-2">{{ agent.description }}</p>
-      <div class="flex justify-between items-center">
-        <span 
-          class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium" 
-          :class="agent.isRemote ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'"
+      
+      <div class="flex justify-end">
+        <button 
+          @click="viewDetails"
+          class="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-500 mr-3"
         >
-          {{ agent.isRemote ? 'Remote' : 'Local' }}
-        </span>
+          View Details
+        </button>
         <button 
           @click="$emit('run', agent)"
-          class="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-500"
+          class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
         >
           Run Agent
-          <span class="i-heroicons-arrow-right-20-solid w-4 h-4 ml-1"></span>
         </button>
       </div>
     </div>
     <div v-if="agent.isRemote" class="px-4 py-2 bg-gray-50 text-xs text-gray-500 border-t border-gray-200">
-      Server: {{ agent.serverName }}
+      Provided by: {{ agent.serverName }}
     </div>
   </div>
 </template>
@@ -47,5 +48,9 @@ const props = defineProps({
   }
 });
 
-defineEmits(['run']);
+const emit = defineEmits(['run', 'view-details']);
+
+function viewDetails() {
+  emit('view-details', props.agent);
+}
 </script>
