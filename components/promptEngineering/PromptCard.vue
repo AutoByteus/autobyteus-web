@@ -37,16 +37,31 @@
         </div>
       </div>
       
-      <!-- Card Footer -->
-      <div class="flex justify-between items-center text-xs text-gray-500 mt-3">
-        <span>{{ formatDate(prompt.createdAt) }}</span>
-        <span v-if="prompt.suitableForModels">{{ prompt.suitableForModels }}</span>
+      <!-- Card Footer with Enhanced Model Display -->
+      <div class="mt-3">
+        <!-- Model compatibility badges -->
+        <div v-if="prompt.suitableForModels" class="mb-2 flex flex-wrap gap-1">
+          <ModelBadge
+            v-for="model in modelList"
+            :key="model"
+            :model="model"
+            size="small"
+          />
+        </div>
+        
+        <!-- Date info -->
+        <div class="flex justify-between items-center text-xs text-gray-500">
+          <span>{{ formatDate(prompt.createdAt) }}</span>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+import ModelBadge from '~/components/promptEngineering/ModelBadge.vue';
+
 interface Prompt {
   id: string;
   name: string;
@@ -67,6 +82,12 @@ const props = defineProps<{  prompt: Prompt;
 const emit = defineEmits<{  (e: 'select', id: string): void;
   (e: 'delete', id: string): void;
 }>();
+
+// Parse models into a list for display
+const modelList = computed(() => {
+  if (!props.prompt.suitableForModels) return [];
+  return props.prompt.suitableForModels.split(',').map(model => model.trim());
+});
 
 const formatDate = (dateString: string) =>
   new Date(dateString).toLocaleDateString('en-US', {

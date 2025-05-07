@@ -68,16 +68,23 @@
           <span class="text-sm text-gray-500">Created {{ formatDate(prompt.createdAt) }}</span>
         </div>
 
+        <!-- Model compatibility badges -->
+        <div v-if="prompt.suitableForModels" class="mb-6">
+          <h2 class="text-lg font-semibold text-gray-900 mb-2">Compatible Models</h2>
+          <div class="flex flex-wrap gap-2">
+            <ModelBadge
+              v-for="model in modelList"
+              :key="model"
+              :model="model"
+            />
+          </div>
+        </div>
+
         <!-- Description and Models in a two-column layout -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <h2 class="text-lg font-semibold text-gray-900 mb-2">Description</h2>
             <p class="text-gray-700">{{ prompt.description || 'No description provided' }}</p>
-          </div>
-          
-          <div>
-            <h2 class="text-lg font-semibold text-gray-900 mb-2">Suitable for Models</h2>
-            <p class="text-gray-700">{{ prompt.suitableForModels || 'Not specified' }}</p>
           </div>
         </div>
 
@@ -89,8 +96,50 @@
           >{{ prompt.promptContent }}</pre>
         </div>
 
+        <!-- Related prompts section -->
+        <div v-if="relatedPrompts.length > 0" class="mt-8 pt-6 border-t">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-900">Related Prompts</h2>
+            <p class="text-sm text-gray-500">Same prompt for different models</p>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div 
+              v-for="relatedPrompt in relatedPrompts" 
+              :key="relatedPrompt.id"
+              class="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+              :class="{ 'bg-blue-50 border-blue-300': relatedPrompt.id === prompt.id }"
+              @click="viewRelatedPrompt(relatedPrompt.id)"
+            >
+              <div class="flex justify-between items-start mb-2">
+                <div>
+                  <h3 class="font-medium">{{ relatedPrompt.name }}</h3>
+                  <p class="text-xs text-gray-500">v{{ relatedPrompt.version }}</p>
+                </div>
+                <span 
+                  v-if="relatedPrompt.id === prompt.id" 
+                  class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700"
+                >
+                  Current
+                </span>
+              </div>
+              
+              <div v-if="relatedPrompt.suitableForModels" class="mt-2">
+                <div class="flex flex-wrap gap-1">
+                  <ModelBadge
+                    v-for="model in parseModelList(relatedPrompt.suitableForModels)"
+                    :key="model"
+                    :model="model"
+                    size="small"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Parent prompt (if exists) -->
-        <div v-if="prompt.parentPromptId" class="mt-6 pt-6 border-t">
+        <div v-if="prompt.parentPromptId" class="mt-8 pt-6 border-t">
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-semibold text-gray-900">Parent Prompt</h2>
             <button @click="toggleParentPrompt" class="text-blue-600 hover:text-blue-700">
@@ -127,31 +176,69 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { usePromptStore } from '~/stores/promptStore';
+import ModelBadge from '~/components/promptEngineering/ModelBadge.vue';
 
 const props = defineProps<{ promptId: string }>();
-const emit = defineEmits<{ (e: 'close'): void }>();
+const emit = defineEmits<{ 
+  (e: 'close'): void;
+  (e: 'select-prompt', id: string): void 
+}>();
 
 const promptStore = usePromptStore();
 const prompt = ref<any>(null);
 const loading = ref(true);
 const error = ref('');
+const relatedPrompts = ref<any[]>([]);
 
 const showParent = ref(false);
 const parentPrompt = ref<any>(null);
 const parentLoading = ref(false);
 const parentError = ref('');
 
+// Parse models into a list for display
+const modelList = computed(() => {
+  if (!prompt.value?.suitableForModels) return [];
+  return prompt.value.suitableForModels.split(',').map((model: string) => model.trim());
+});
+
+function parseModelList(modelsString: string) {
+  if (!modelsString) return [];
+  return modelsString.split(',').map(model => model.trim());
+}
+
 async function loadPrompt() {
   loading.value = true;
   error.value = '';
   try {
     prompt.value = await promptStore.fetchPromptById(props.promptId);
+    if (prompt.value) {
+      await loadRelatedPrompts();
+    }
   } catch (e: any) {
     error.value = e.message;
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadRelatedPrompts() {
+  if (!prompt.value) return;
+  
+  try {
+    // Get all prompts and filter for those with the same name and category
+    const allPrompts = promptStore.getPrompts;
+    relatedPrompts.value = allPrompts.filter(p => 
+      p.name === prompt.value.name && 
+      p.category === prompt.value.category &&
+      p.id !== prompt.value.id
+    );
+    
+    // Add current prompt to the list for completeness
+    relatedPrompts.value.unshift(prompt.value);
+  } catch (e: any) {
+    console.error('Failed to load related prompts:', e);
   }
 }
 
@@ -186,6 +273,10 @@ function copyPrompt() {
       })
       .catch((err) => console.error('Failed to copy prompt:', err));
   }
+}
+
+function viewRelatedPrompt(promptId: string) {
+  emit('select-prompt', promptId);
 }
 
 const formatDate = (dateString: string) =>

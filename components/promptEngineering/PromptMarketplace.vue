@@ -1,21 +1,79 @@
 <template>
   <div class="prompt-marketplace">
-    <!-- Header with title and sync button -->
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-xl font-semibold text-gray-800">Prompt Marketplace</h2>
-      <button
-        @click="syncPrompts"
-        class="flex items-center px-4 py-2 text-sm rounded-lg transition-colors"
-        :class="[
-          syncing ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-50 text-blue-600 hover:bg-blue-100',
-        ]"
-        :disabled="syncing"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        {{ syncing ? 'Syncing...' : 'Sync Prompts' }}
-      </button>
+    <!-- Header with title, sync button, and model filter -->
+    <div class="flex flex-col gap-4 mb-6">
+      <div class="flex justify-between items-center">
+        <h2 class="text-xl font-semibold text-gray-800">Prompt Marketplace</h2>
+        <button
+          @click="syncPrompts"
+          class="flex items-center px-4 py-2 text-sm rounded-lg transition-colors"
+          :class="[
+            syncing ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+          ]"
+          :disabled="syncing"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {{ syncing ? 'Syncing...' : 'Sync Prompts' }}
+        </button>
+      </div>
+      
+      <!-- Filter and Group Controls -->
+      <div class="flex flex-wrap items-center gap-4">
+        <!-- Model Filter Dropdown -->
+        <div class="relative min-w-[200px]">
+          <label for="modelFilter" class="block text-sm font-medium text-gray-700 mb-1">Filter by Model</label>
+          <select
+            id="modelFilter"
+            v-model="selectedModelFilter"
+            class="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">All Models</option>
+            <option v-for="model in availableModels" :key="model" :value="model">
+              {{ model }}
+            </option>
+          </select>
+        </div>
+        
+        <!-- Grouping Options -->
+        <div class="relative min-w-[200px]">
+          <label for="groupingOption" class="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+          <select
+            id="groupingOption"
+            v-model="groupingOption"
+            class="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="category">Group by Category</option>
+            <option value="nameAndCategory">Group by Name & Category</option>
+          </select>
+        </div>
+        
+        <!-- View Toggle -->
+        <div class="relative">
+          <label class="block text-sm font-medium text-gray-700 mb-1">View</label>
+          <div class="flex border border-gray-300 rounded-md overflow-hidden">
+            <button 
+              @click="viewMode = 'grid'"
+              class="px-3 py-2 flex items-center"
+              :class="viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'bg-white text-gray-600'"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </button>
+            <button 
+              @click="viewMode = 'compact'"
+              class="px-3 py-2 flex items-center"
+              :class="viewMode === 'compact' ? 'bg-blue-50 text-blue-600' : 'bg-white text-gray-600'"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Sync Result Message -->
@@ -127,22 +185,24 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="prompts.length === 0" class="text-center py-16">
+    <div v-else-if="filteredPrompts.length === 0" class="text-center py-16">
       <div class="text-gray-500">
         <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
         </svg>
-        <p class="text-lg font-medium mb-2">No prompts available</p>
-        <p class="text-gray-400">Sync to fetch the latest prompts</p>
+        <p class="text-lg font-medium mb-2">No prompts found</p>
+        <p class="text-gray-400">
+          {{ prompts.length === 0 ? "Sync to fetch the latest prompts" : "Try changing your filter settings" }}
+        </p>
       </div>
     </div>
 
-    <!-- Prompts By Category - Clean, Simple Layout -->
-    <div v-else class="space-y-6">
+    <!-- Group by Category View -->
+    <div v-else-if="groupingOption === 'category'" class="space-y-6">
       <!-- First show prompts without a category (if any) -->
       <div v-if="promptsByCategory['uncategorized']?.length">
         <h3 class="text-lg font-medium text-gray-800 mb-4">Uncategorized</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'">
           <PromptCard
             v-for="prompt in promptsByCategory['uncategorized']"
             :key="prompt.id"
@@ -162,9 +222,44 @@
         class="pt-2"
       >
         <h3 class="text-lg font-medium text-gray-800 mb-4 pb-2 border-b">{{ category }}</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'">
           <PromptCard
             v-for="prompt in promptsByCategory[category]"
+            :key="prompt.id"
+            :prompt="prompt"
+            :isSelected="selectedPromptId === prompt.id"
+            :showDeleteButton="true"
+            @select="$emit('select-prompt', prompt.id)"
+            @delete="openDeleteConfirm(prompt.id)"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Group by Name & Category View -->
+    <div v-else class="space-y-8">
+      <div 
+        v-for="(promptGroup, groupKey) in promptsByNameAndCategory" 
+        :key="groupKey"
+        class="bg-white rounded-lg p-4 border"
+      >
+        <!-- Group header with name and category -->
+        <div class="border-b pb-3 mb-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-medium text-gray-900">{{ promptGroup[0].name }}</h3>
+            <span class="px-3 py-1 text-sm rounded-full bg-gray-100 text-gray-700">
+              {{ promptGroup[0].category }}
+            </span>
+          </div>
+          <p v-if="promptGroup[0].description" class="text-sm text-gray-600 mt-2">
+            {{ promptGroup[0].description }}
+          </p>
+        </div>
+        
+        <!-- Group prompts -->
+        <div :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'space-y-3'">
+          <PromptCard
+            v-for="prompt in promptGroup"
             :key="prompt.id"
             :prompt="prompt"
             :isSelected="selectedPromptId === prompt.id"
@@ -192,15 +287,44 @@ const { prompts, loading, error, syncing, syncResult, deleteResult } = storeToRe
 
 const showDeleteConfirm = ref(false);
 const promptToDelete = ref<string | null>(null);
+const selectedModelFilter = ref('');
+const groupingOption = ref('nameAndCategory'); // Changed default from 'category' to 'nameAndCategory'
+const viewMode = ref('grid'); // 'grid' or 'compact'
 
 // Timers for auto-dismissing notifications
 let syncNotificationTimer: number | null = null;
 let deleteNotificationTimer: number | null = null;
 
-// Extract unique categories
+// Extract all unique models from all prompts
+const availableModels = computed(() => {
+  const models = new Set<string>();
+  prompts.value.forEach(prompt => {
+    if (prompt.suitableForModels) {
+      prompt.suitableForModels.split(',').map(model => model.trim()).forEach(model => {
+        models.add(model);
+      });
+    }
+  });
+  return Array.from(models).sort();
+});
+
+// Filter prompts based on model compatibility
+const filteredPrompts = computed(() => {
+  if (!selectedModelFilter.value) {
+    return prompts.value;
+  }
+  
+  return prompts.value.filter(prompt => {
+    if (!prompt.suitableForModels) return false;
+    const modelList = prompt.suitableForModels.split(',').map(model => model.trim());
+    return modelList.includes(selectedModelFilter.value);
+  });
+});
+
+// Extract unique categories from filtered prompts
 const uniqueCategories = computed(() => {
   const categories = new Set<string>();
-  prompts.value.forEach(prompt => {
+  filteredPrompts.value.forEach(prompt => {
     if (prompt.category) {
       categories.add(prompt.category);
     }
@@ -208,7 +332,7 @@ const uniqueCategories = computed(() => {
   return Array.from(categories).sort();
 });
 
-// Group prompts by category
+// Group filtered prompts by category
 const promptsByCategory = computed(() => {
   const grouped: Record<string, any[]> = {
     uncategorized: []
@@ -220,12 +344,32 @@ const promptsByCategory = computed(() => {
   });
   
   // Group prompts by their category
-  prompts.value.forEach(prompt => {
+  filteredPrompts.value.forEach(prompt => {
     if (!prompt.category) {
       grouped.uncategorized.push(prompt);
     } else {
       grouped[prompt.category].push(prompt);
     }
+  });
+  
+  return grouped;
+});
+
+// Group prompts by name and category
+const promptsByNameAndCategory = computed(() => {
+  const grouped: Record<string, any[]> = {};
+  
+  filteredPrompts.value.forEach(prompt => {
+    const key = `${prompt.name}__${prompt.category || 'uncategorized'}`;
+    if (!grouped[key]) {
+      grouped[key] = [];
+    }
+    grouped[key].push(prompt);
+  });
+  
+  // Sort each group by version (descending)
+  Object.keys(grouped).forEach(key => {
+    grouped[key].sort((a, b) => b.version - a.version);
   });
   
   return grouped;
