@@ -102,13 +102,30 @@
       </div>
 
       <!-- Diff Viewer -->
-      <div class="flex-grow relative p-4 overflow-auto">
+      <div class="flex-grow relative p-6 overflow-auto">
+        <!-- Side-by-side diff view -->
         <div 
-          v-if="leftPrompt && rightPrompt"
-          ref="diffContainer" 
-          class="diff-container pt-4"
-        ></div>
-        <div v-else class="grid place-items-center h-full bg-gray-50">
+          v-if="leftPrompt && rightPrompt && viewMode === 'side-by-side'"
+          class="diff-container grid grid-cols-2 gap-6"
+        >
+          <div class="left-diff bg-white border rounded-lg p-4 whitespace-pre-wrap font-mono text-sm">
+            <div v-html="leftDiffContent"></div>
+          </div>
+          <div class="right-diff bg-white border rounded-lg p-4 whitespace-pre-wrap font-mono text-sm">
+            <div v-html="rightDiffContent"></div>
+          </div>
+        </div>
+        
+        <!-- Line-by-line diff view -->
+        <div 
+          v-if="leftPrompt && rightPrompt && viewMode === 'line-by-line'"
+          class="diff-container bg-white border rounded-lg p-4 whitespace-pre-wrap font-mono text-sm"
+        >
+          <div v-html="lineByLineDiffContent"></div>
+        </div>
+        
+        <!-- Prompt selection message -->
+        <div v-else-if="!leftPrompt || !rightPrompt" class="grid place-items-center h-full bg-gray-50">
           <p class="text-gray-500">Select two prompts to compare</p>
         </div>
       </div>
@@ -118,9 +135,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
-import * as Diff from 'diff';
-import * as Diff2Html from 'diff2html';
-import 'diff2html/bundles/css/diff2html.min.css';
+import { diff_match_patch } from 'diff-match-patch';
 import { usePromptStore } from '~/stores/promptStore';
 import ModelBadge from '~/components/promptEngineering/ModelBadge.vue';
 
@@ -139,13 +154,39 @@ const leftPromptId = ref('');
 const rightPromptId = ref('');
 const leftPrompt = ref<any>(null);
 const rightPrompt = ref<any>(null);
-const diffContainer = ref<HTMLElement | null>(null);
 const viewMode = ref<'side-by-side' | 'line-by-line'>('side-by-side');
 
 // Get all prompts with the same name and category
 const prompts = computed(() => {
   return promptStore.getPrompts.filter(
     p => p.name === props.promptName && p.category === props.promptCategory
+  );
+});
+
+// Diff contents for different view modes
+const leftDiffContent = computed(() => {
+  if (!leftPrompt.value || !rightPrompt.value) return '';
+  return computeDiffHighlighting(
+    leftPrompt.value.promptContent || '', 
+    rightPrompt.value.promptContent || '', 
+    'removal'
+  );
+});
+
+const rightDiffContent = computed(() => {
+  if (!leftPrompt.value || !rightPrompt.value) return '';
+  return computeDiffHighlighting(
+    leftPrompt.value.promptContent || '', 
+    rightPrompt.value.promptContent || '', 
+    'addition'
+  );
+});
+
+const lineByLineDiffContent = computed(() => {
+  if (!leftPrompt.value || !rightPrompt.value) return '';
+  return computeLineByLineDiff(
+    leftPrompt.value.promptContent || '',
+    rightPrompt.value.promptContent || ''
   );
 });
 
@@ -162,41 +203,80 @@ function getModelsSummary(prompt: any) {
   return `${models[0]} + ${models.length - 1} more`;
 }
 
-// Generate and render the diff
-function renderDiff() {
-  if (!diffContainer.value || !leftPrompt.value || !rightPrompt.value) return;
+// Compute text differences with highlighting for side-by-side view
+function computeDiffHighlighting(oldText: string, newText: string, highlightType: 'addition' | 'removal') {
+  if (!oldText || !newText) return '';
   
-  const left = leftPrompt.value.promptContent || '';
-  const right = rightPrompt.value.promptContent || '';
+  const dmp = new diff_match_patch();
+  const diffs = dmp.diff_main(oldText, newText);
+  dmp.diff_cleanupSemantic(diffs);
   
-  // Calculate the diff
-  const diffText = Diff.createPatch(
-    'comparison', 
-    left, 
-    right, 
-    'Left Version', 
-    'Right Version'
-  );
+  // Convert to HTML with highlighted differences
+  let html = '';
   
-  // Render with diff2html
-  const diffHtml = Diff2Html.html(diffText, {
-    drawFileList: false,
-    matching: 'lines',
-    outputFormat: viewMode.value,
-    renderNothingWhenEmpty: false,
-    colorScheme: 'light'
-  });
-  
-  diffContainer.value.innerHTML = diffHtml;
-  
-  // Customize the diff appearance
-  if (diffContainer.value) {
-    // Make file header more compact
-    const headers = diffContainer.value.querySelectorAll('.d2h-file-header');
-    headers.forEach(header => {
-      header.classList.add('hidden');
-    });
+  for (const diff of diffs) {
+    const op = diff[0];
+    const text = diff[1];
+    
+    const escapedText = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
+      .replace(/\n/g, '<br>');
+    
+    if (op === 0) { // No change
+      html += escapedText;
+    } else if (op === -1 && highlightType === 'removal') { // Removed in newer version
+      html += `<span class="bg-red-100">${escapedText}</span>`;
+    } else if (op === 1 && highlightType === 'addition') { // Added in newer version
+      html += `<span class="bg-green-100">${escapedText}</span>`;
+    } else {
+      // Skip content that doesn't belong in this view (e.g., additions in the "removal" view)
+      if ((op === 1 && highlightType === 'removal') || (op === -1 && highlightType === 'addition')) {
+        continue;
+      }
+      html += escapedText;
+    }
   }
+  
+  return html;
+}
+
+// Compute line-by-line diff for inline view
+function computeLineByLineDiff(oldText: string, newText: string) {
+  if (!oldText || !newText) return '';
+  
+  const dmp = new diff_match_patch();
+  const diffs = dmp.diff_main(oldText, newText);
+  dmp.diff_cleanupSemantic(diffs);
+  
+  // Convert to HTML with highlighted differences
+  let html = '';
+  
+  for (const diff of diffs) {
+    const op = diff[0];
+    const text = diff[1];
+    
+    const escapedText = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
+      .replace(/\n/g, '<br>');
+    
+    if (op === 0) { // No change
+      html += escapedText;
+    } else if (op === -1) { // Removed
+      html += `<span class="bg-red-100">${escapedText}</span>`;
+    } else if (op === 1) { // Added
+      html += `<span class="bg-green-100">${escapedText}</span>`;
+    }
+  }
+  
+  return html;
 }
 
 // Update the diff view when prompts change
@@ -216,10 +296,6 @@ async function updateDiffView() {
       console.error('Failed to load right prompt:', e);
     }
   }
-  
-  nextTick(() => {
-    renderDiff();
-  });
 }
 
 // Initialize with first two prompts if available
@@ -272,86 +348,13 @@ watch([leftPromptId, rightPromptId, viewMode], () => {
   }
 }
 
-/* Custom styles for diff2html */
-.d2h-wrapper {
-  margin-bottom: 0;
-  padding-top: 10px; /* Add padding to prevent content being cut off */
-}
-
-.d2h-file-wrapper {
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 0;
-}
-
-.d2h-file-header {
-  background-color: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 10px;
-}
-
-.d2h-diff-tbody {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 14px;
-}
-
-.d2h-code-line-ctn {
-  padding: 0 8px;
-}
-
-.d2h-code-linenumber {
-  background-color: #f8fafc;
-  border-right: 1px solid #e2e8f0;
-  color: #94a3b8;
-}
-
-.d2h-ins {
-  background-color: #dcfce7;
-}
-
-.d2h-ins .d2h-code-linenumber {
-  background-color: #dcfce7;
-  border-color: #bbf7d0;
-}
-
-.d2h-del {
-  background-color: #fee2e2;
-}
-
-.d2h-del .d2h-code-linenumber {
-  background-color: #fee2e2;
-  border-color: #fecaca;
-}
-
-.d2h-code-line ins, .d2h-code-line del {
-  display: inline-block;
-  border-radius: 2px;
-  padding: 0 2px;
-}
-
-.d2h-code-line ins {
-  background-color: #86efac;
-  text-decoration: none;
-}
-
-.d2h-code-line del {
-  background-color: #fca5a5;
-  text-decoration: none;
-}
-
-/* Added styles to fix content being cut off */
+/* Add proper spacing and styling for diff blocks */
 .diff-container {
-  padding-top: 10px; /* Add padding to the top of the diff container */
-}
-
-/* Prevent diff content from being cut off */
-.d2h-file-side-diff {
   margin-top: 10px;
 }
 
-/* Utility class for hiding elements */
-.hidden {
-  display: none !important;
+.left-diff, .right-diff {
+  overflow-x: auto;
+  min-height: 200px;
 }
 </style>
