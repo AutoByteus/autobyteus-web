@@ -1,21 +1,88 @@
 <template>
   <div class="prompt-marketplace">
-    <!-- Header with title and sync button -->
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-xl font-semibold text-gray-800">Prompt Marketplace</h2>
-      <button
-        @click="syncPrompts"
-        class="flex items-center px-4 py-2 text-sm rounded-lg transition-colors"
-        :class="[
-          syncing ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-50 text-blue-600 hover:bg-blue-100',
-        ]"
-        :disabled="syncing"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        {{ syncing ? 'Syncing...' : 'Sync Prompts' }}
-      </button>
+    <!-- Prompt Comparison View (Modal) -->
+    <PromptCompare
+      v-if="comparisonMode"
+      :promptIds="selectedPromptsForComparison"
+      :promptCategory="comparisonCategory"
+      :promptName="comparisonName"
+      @close="exitComparisonMode"
+    />
+
+    <!-- Header with title, sync button, and model filter -->
+    <div class="flex flex-col gap-4 mb-6">
+      <div class="flex justify-between items-center">
+        <h2 class="text-xl font-semibold text-gray-800">Prompt Marketplace</h2>
+        <button
+          @click="syncPrompts"
+          class="flex items-center px-4 py-2 text-sm rounded-lg transition-colors"
+          :class="[
+            syncing ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+          ]"
+          :disabled="syncing"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {{ syncing ? 'Syncing...' : 'Sync Prompts' }}
+        </button>
+      </div>
+      
+      <!-- Filter and Group Controls -->
+      <div class="flex flex-wrap items-center gap-4">
+        <!-- Model Filter Dropdown -->
+        <div class="relative min-w-[200px]">
+          <label for="modelFilter" class="block text-sm font-medium text-gray-700 mb-1">Filter by Model</label>
+          <select
+            id="modelFilter"
+            v-model="selectedModelFilter"
+            class="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">All Models</option>
+            <option v-for="model in availableModels" :key="model" :value="model">
+              {{ model }}
+            </option>
+          </select>
+        </div>
+        
+        <!-- Grouping Options -->
+        <div class="relative min-w-[200px]">
+          <label for="groupingOption" class="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+          <select
+            id="groupingOption"
+            v-model="groupingOption"
+            class="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="category">Group by Category</option>
+            <option value="nameAndCategory">Group by Name & Category</option>
+          </select>
+        </div>
+        
+        <!-- View Toggle -->
+        <div class="relative">
+          <label class="block text-sm font-medium text-gray-700 mb-1">View</label>
+          <div class="flex border border-gray-300 rounded-md overflow-hidden">
+            <button 
+              @click="viewMode = 'grid'"
+              class="px-3 py-2 flex items-center"
+              :class="viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'bg-white text-gray-600'"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </button>
+            <button 
+              @click="viewMode = 'compact'"
+              class="px-3 py-2 flex items-center"
+              :class="viewMode === 'compact' ? 'bg-blue-50 text-blue-600' : 'bg-white text-gray-600'"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Sync Result Message -->
@@ -127,22 +194,24 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="prompts.length === 0" class="text-center py-16">
+    <div v-else-if="filteredPrompts.length === 0" class="text-center py-16">
       <div class="text-gray-500">
         <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
         </svg>
-        <p class="text-lg font-medium mb-2">No prompts available</p>
-        <p class="text-gray-400">Sync to fetch the latest prompts</p>
+        <p class="text-lg font-medium mb-2">No prompts found</p>
+        <p class="text-gray-400">
+          {{ prompts.length === 0 ? "Sync to fetch the latest prompts" : "Try changing your filter settings" }}
+        </p>
       </div>
     </div>
 
-    <!-- Prompts By Category - Clean, Simple Layout -->
-    <div v-else class="space-y-6">
+    <!-- Group by Category View -->
+    <div v-else-if="groupingOption === 'category'" class="space-y-6">
       <!-- First show prompts without a category (if any) -->
       <div v-if="promptsByCategory['uncategorized']?.length">
         <h3 class="text-lg font-medium text-gray-800 mb-4">Uncategorized</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'">
           <PromptCard
             v-for="prompt in promptsByCategory['uncategorized']"
             :key="prompt.id"
@@ -162,7 +231,7 @@
         class="pt-2"
       >
         <h3 class="text-lg font-medium text-gray-800 mb-4 pb-2 border-b">{{ category }}</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'">
           <PromptCard
             v-for="prompt in promptsByCategory[category]"
             :key="prompt.id"
@@ -175,6 +244,103 @@
         </div>
       </div>
     </div>
+
+    <!-- Group by Name & Category View with Compare feature -->
+    <div v-else class="space-y-8">
+      <div 
+        v-for="(promptGroup, groupKey) in promptsByNameAndCategory" 
+        :key="groupKey"
+        class="bg-white rounded-lg p-4 border"
+      >
+        <!-- Group header with name, category, and comparison button -->
+        <div class="border-b pb-3 mb-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-medium text-gray-900">{{ promptGroup[0].name }}</h3>
+            <div class="flex items-center gap-3">
+              <span class="px-3 py-1 text-sm rounded-full bg-gray-100 text-gray-700">
+                {{ promptGroup[0].category }}
+              </span>
+              <!-- Only show compare button if there are multiple prompts in the group -->
+              <button 
+                v-if="promptGroup.length > 1" 
+                @click="startCompareMode(promptGroup)"
+                class="flex items-center px-3 py-1 text-sm rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                Compare Versions
+              </button>
+            </div>
+          </div>
+          <p v-if="promptGroup[0].description" class="text-sm text-gray-600 mt-2">
+            {{ promptGroup[0].description }}
+          </p>
+          
+          <!-- Selection mode UI when in comparison selection -->
+          <div v-if="isSelectingForComparison && currentComparisonGroup === groupKey" class="mt-4 bg-blue-50 p-3 rounded">
+            <div class="flex justify-between items-center">
+              <p class="text-sm text-blue-700">
+                <span class="font-medium">Select prompts to compare:</span> 
+                {{ selectedPromptsForComparison.length }} selected
+              </p>
+              <div class="flex gap-2">
+                <button 
+                  @click="cancelComparisonSelection"
+                  class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  @click="confirmComparisonSelection"
+                  :disabled="selectedPromptsForComparison.length < 2"
+                  :class="[
+                    'px-3 py-1 text-sm rounded',
+                    selectedPromptsForComparison.length < 2 
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  ]"
+                >
+                  Compare Selected
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Group prompts with comparison selection -->
+        <div :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'space-y-3'">
+          <div
+            v-for="prompt in promptGroup"
+            :key="prompt.id"
+            class="relative"
+          >
+            <!-- Selection checkbox overlay when in comparison mode -->
+            <div 
+              v-if="isSelectingForComparison && currentComparisonGroup === groupKey"
+              class="absolute top-4 left-4 z-10"
+            >
+              <input 
+                type="checkbox" 
+                :id="`compare-${prompt.id}`"
+                :value="prompt.id"
+                v-model="selectedPromptsForComparison"
+                class="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+              />
+            </div>
+            
+            <!-- Regular prompt card -->
+            <PromptCard
+              :prompt="prompt"
+              :isSelected="selectedPromptId === prompt.id"
+              :showDeleteButton="!isSelectingForComparison"
+              @select="isSelectingForComparison ? togglePromptSelection(prompt.id) : $emit('select-prompt', prompt.id)"
+              @delete="openDeleteConfirm(prompt.id)"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -183,6 +349,7 @@ import { onMounted, computed, ref, watch, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { usePromptStore } from '~/stores/promptStore';
 import PromptCard from '~/components/promptEngineering/PromptCard.vue';
+import PromptCompare from '~/components/promptEngineering/PromptCompare.vue';
 
 const props = defineProps<{ selectedPromptId: string | null }>();
 defineEmits<{ (e: 'select-prompt', id: string): void }>();
@@ -190,17 +357,55 @@ defineEmits<{ (e: 'select-prompt', id: string): void }>();
 const promptStore = usePromptStore();
 const { prompts, loading, error, syncing, syncResult, deleteResult } = storeToRefs(promptStore);
 
+// Base UI state
 const showDeleteConfirm = ref(false);
 const promptToDelete = ref<string | null>(null);
+const selectedModelFilter = ref('');
+const groupingOption = ref('nameAndCategory'); // Default to Name & Category grouping
+const viewMode = ref('grid'); // 'grid' or 'compact'
+
+// Comparison mode state
+const comparisonMode = ref(false);
+const isSelectingForComparison = ref(false);
+const currentComparisonGroup = ref('');
+const selectedPromptsForComparison = ref<string[]>([]);
+const comparisonCategory = ref('');
+const comparisonName = ref('');
 
 // Timers for auto-dismissing notifications
 let syncNotificationTimer: number | null = null;
 let deleteNotificationTimer: number | null = null;
 
-// Extract unique categories
+// Extract all unique models from all prompts
+const availableModels = computed(() => {
+  const models = new Set<string>();
+  prompts.value.forEach(prompt => {
+    if (prompt.suitableForModels) {
+      prompt.suitableForModels.split(',').map(model => model.trim()).forEach(model => {
+        models.add(model);
+      });
+    }
+  });
+  return Array.from(models).sort();
+});
+
+// Filter prompts based on model compatibility
+const filteredPrompts = computed(() => {
+  if (!selectedModelFilter.value) {
+    return prompts.value;
+  }
+  
+  return prompts.value.filter(prompt => {
+    if (!prompt.suitableForModels) return false;
+    const modelList = prompt.suitableForModels.split(',').map(model => model.trim());
+    return modelList.includes(selectedModelFilter.value);
+  });
+});
+
+// Extract unique categories from filtered prompts
 const uniqueCategories = computed(() => {
   const categories = new Set<string>();
-  prompts.value.forEach(prompt => {
+  filteredPrompts.value.forEach(prompt => {
     if (prompt.category) {
       categories.add(prompt.category);
     }
@@ -208,7 +413,7 @@ const uniqueCategories = computed(() => {
   return Array.from(categories).sort();
 });
 
-// Group prompts by category
+// Group filtered prompts by category
 const promptsByCategory = computed(() => {
   const grouped: Record<string, any[]> = {
     uncategorized: []
@@ -220,7 +425,7 @@ const promptsByCategory = computed(() => {
   });
   
   // Group prompts by their category
-  prompts.value.forEach(prompt => {
+  filteredPrompts.value.forEach(prompt => {
     if (!prompt.category) {
       grouped.uncategorized.push(prompt);
     } else {
@@ -230,6 +435,69 @@ const promptsByCategory = computed(() => {
   
   return grouped;
 });
+
+// Group prompts by name and category
+const promptsByNameAndCategory = computed(() => {
+  const grouped: Record<string, any[]> = {};
+  
+  filteredPrompts.value.forEach(prompt => {
+    const key = `${prompt.name}__${prompt.category || 'uncategorized'}`;
+    if (!grouped[key]) {
+      grouped[key] = [];
+    }
+    grouped[key].push(prompt);
+  });
+  
+  // Sort each group by version (descending)
+  Object.keys(grouped).forEach(key => {
+    grouped[key].sort((a, b) => b.version - a.version);
+  });
+  
+  return grouped;
+});
+
+// Comparison mode functions
+function startCompareMode(promptGroup: any[]) {
+  // Initialize comparison selection mode
+  isSelectingForComparison.value = true;
+  selectedPromptsForComparison.value = [];
+  currentComparisonGroup.value = `${promptGroup[0].name}__${promptGroup[0].category || 'uncategorized'}`;
+  comparisonName.value = promptGroup[0].name;
+  comparisonCategory.value = promptGroup[0].category || 'uncategorized';
+  
+  // If there are only 2 prompts, auto-select them
+  if (promptGroup.length === 2) {
+    selectedPromptsForComparison.value = [promptGroup[0].id, promptGroup[1].id];
+    confirmComparisonSelection();
+  }
+}
+
+function cancelComparisonSelection() {
+  isSelectingForComparison.value = false;
+  selectedPromptsForComparison.value = [];
+  currentComparisonGroup.value = '';
+}
+
+function confirmComparisonSelection() {
+  if (selectedPromptsForComparison.value.length >= 2) {
+    comparisonMode.value = true;
+    isSelectingForComparison.value = false;
+  }
+}
+
+function exitComparisonMode() {
+  comparisonMode.value = false;
+  selectedPromptsForComparison.value = [];
+}
+
+function togglePromptSelection(promptId: string) {
+  const index = selectedPromptsForComparison.value.indexOf(promptId);
+  if (index > -1) {
+    selectedPromptsForComparison.value.splice(index, 1);
+  } else {
+    selectedPromptsForComparison.value.push(promptId);
+  }
+}
 
 // Watch for sync result changes
 watch(() => promptStore.syncResult, (newVal) => {
