@@ -12,7 +12,7 @@
       <svg class="h-8 w-8 text-red-500 dark:text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
       </svg>
-      <span class="mt-3 text-sm text-red-600 dark:text-red-400 text-center">{{ error }}</span>
+      <span class="mt-3 text-sm text-red-600 dark:text-red-400 text-center" style="white-space: pre-wrap;">{{ error }}</span>
     </div>
 
     <div v-else-if="imageUrl" class="diagram-content relative">
@@ -92,7 +92,7 @@ const loadDiagram = async () => {
     imageUrl.value = newBlobUrl;
     plantUMLSuccessCache.set(id, newBlobUrl);
   } catch (err: any) {
-    const errorMessage = err.message || 'Failed to generate diagram.';
+    const errorMessage = err.message || 'Failed to generate diagram.'; 
     error.value = errorMessage;
     plantUMLErrorCache.set(id, errorMessage);
   } finally {
@@ -122,18 +122,11 @@ onMounted(() => {
 });
 
 watch(() => props.content, () => {
-  // Re-calculate ID if content changes and ID was auto-generated
-  // This watch assumes diagramId prop doesn't change, only content.
-  // If diagramId prop can change, watch it too.
   loadDiagram();
 });
 
 onBeforeUnmount(() => {
   if (currentBlobUrl) {
-    // Revoke only if this specific instance created it and it's not a shared cache URL that might be a data URL
-    // For simplicity here, we assume if currentBlobUrl is set, it's from this instance.
-    // More robust cache management might be needed if cache stores non-blob URLs (e.g. data URLs).
-    // For now, only revoking if it looks like a blob URL from THIS instance
     if (plantUMLSuccessCache.get(uniqueDiagramId.value) === currentBlobUrl && currentBlobUrl.startsWith('blob:')) {
          URL.revokeObjectURL(currentBlobUrl);
     }
