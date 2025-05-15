@@ -16,7 +16,7 @@
         />
       </div>
       
-      <!-- Server Management -->
+      <!-- Server Management Form -->
       <div v-else-if="showAddServerForm || editingServer">
         <ServerForm
           :initial-data="editingServer || {}"
@@ -25,9 +25,17 @@
           @cancel="cancelServerForm"
         />
       </div>
+
+      <!-- Agent Creation Form -->
+      <AgentForm
+        v-if="showAgentCreationForm"
+        form-title="Create New Local Agent"
+        @submit="handleAgentFormSubmit"
+        @cancel="cancelAgentForm"
+      />
       
       <!-- Agent Detail - Local or Remote -->
-      <div v-else-if="activeAgent && isLocalAgent(activeAgent)">
+      <div v-else-if="activeAgent && isLocalAgent(activeAgent) && !showAgentCreationForm && !showServerManagement">
         <AgentDetailPage
           :agent="activeAgent"
           @run="runAgent"
@@ -35,11 +43,12 @@
       </div>
       
       <!-- Marketplace Agent Detail -->
-      <div v-else-if="activeAgent && isMarketplaceAgent(activeAgent)">
+      <div v-else-if="activeAgent && isMarketplaceAgent(activeAgent) && !showAgentCreationForm && !showServerManagement">
         <MarketplaceAgentDetail
           :agent="activeAgent"
           @install="installMarketplaceAgent"
           @navigate-to-details="handleNavigationAfterInstall"
+          @back="clearActiveAgent" 
         />
       </div>
 
@@ -72,6 +81,13 @@
               <h1 class="text-2xl font-bold text-gray-900">Local Agents</h1>
               <p class="text-gray-500">Access your installed local AI agents</p>
             </div>
+            <button
+              @click="openAgentCreationForm"
+              class="px-4 py-2 bg-indigo-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              <span class="i-heroicons-plus-circle-20-solid w-5 h-5 mr-2 inline-block"></span>
+              Create New Agent
+            </button>
           </div>
           
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -85,7 +101,7 @@
             <div v-if="agentsStore.getLocalAgents.length === 0" class="col-span-full text-center py-8 bg-white rounded-lg border border-gray-200">
               <span class="i-heroicons-face-frown-20-solid w-10 h-10 text-gray-400 mx-auto mb-3"></span>
               <p class="text-gray-500">No local agents available</p>
-              <p class="text-gray-500 mt-2">Install agents from the marketplace to get started</p>
+              <p class="text-gray-500 mt-2">Install agents from the marketplace or create a new one.</p>
               <button
                 @click="changePage('marketplace')"
                 class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
@@ -180,8 +196,9 @@ import LocalAgentCard from '~/components/agents/LocalAgentCard.vue';
 import RemoteAgentCard from '~/components/agents/RemoteAgentCard.vue';
 import MarketplacePage from '~/components/agents/pages/MarketplacePage.vue';
 import WorkflowsPage from '~/components/agents/pages/WorkflowsPage.vue';
+import AgentForm from '~/components/agents/AgentForm.vue'; // Import AgentForm
 import { useServersStore } from '~/stores/servers';
-import { useAgentsStore } from '~/stores/agents';
+import { useAgentsStore, type NewLocalAgentData } from '~/stores/agents'; // Import NewLocalAgentData
 import type { LocalAgent, MarketplaceAgent } from '~/stores/agents';
 
 definePageMeta({
@@ -207,6 +224,7 @@ const advancedFilters = ref({
 });
 const showChatInterface = ref(false);
 const activeChatAgent = ref<LocalAgent | MarketplaceAgent | null>(null);
+const showAgentCreationForm = ref(false); // State for agent creation form
 
 // Set Local Agents as the default page on mount
 onMounted(() => {
@@ -219,7 +237,34 @@ const changePage = (page: string) => {
   clearActiveAgent();
   showServerManagement.value = false;
   showAddServerForm.value = false;
+  showAgentCreationForm.value = false; // Close agent creation form on page change
 };
+
+// Agent Creation Form handlers
+const openAgentCreationForm = () => {
+  clearActiveAgent(); // Ensure no agent detail page is shown
+  showAgentCreationForm.value = true;
+};
+
+const handleAgentFormSubmit = (agentData: NewLocalAgentData) => {
+  try {
+    agentsStore.createLocalAgent(agentData);
+    console.log('Agent created successfully:', agentData.name);
+    showAgentCreationForm.value = false;
+    // Optionally, navigate to the local agents page or refresh the view
+    if (activePage.value !== 'local-agents') {
+      changePage('local-agents');
+    }
+  } catch (error) {
+    console.error('Failed to create agent:', error);
+    // Handle error display to user if necessary
+  }
+};
+
+const cancelAgentForm = () => {
+  showAgentCreationForm.value = false;
+};
+
 
 // Filter handlers
 const handleMarketplaceFilter = (filter: string) => {
@@ -264,40 +309,49 @@ const installMarketplaceAgent = (agent: MarketplaceAgent) => {
 };
 
 // Handle navigation after installation
-const handleNavigationAfterInstall = (navigationInfo) => {
+const handleNavigationAfterInstall = (navigationInfo: {type: 'local' | 'remote', id: string}) => {
+  clearActiveAgent(); // Clear current active agent before navigating
   if (navigationInfo.type === 'local') {
     changePage('local-agents');
+    // Use nextTick or setTimeout to ensure the page has changed before setting active agent
     setTimeout(() => {
-      setActiveAgent(agentsStore.getAgentById(navigationInfo.id)!);
-    }, 100);
+      const agent = agentsStore.getAgentById(navigationInfo.id);
+      if (agent) setActiveAgent(agent);
+    }, 0);
   } else if (navigationInfo.type === 'remote') {
     changePage('remote-agents');
     setTimeout(() => {
-      setActiveAgent(agentsStore.getAgentById(navigationInfo.id)!);
-    }, 100);
+      const agent = agentsStore.getAgentById(navigationInfo.id);
+      if (agent) setActiveAgent(agent);
+    }, 0);
   }
 };
 
 // Server management
 const agentServers = computed(() => serversStore.agentServers);
-const handleServerFormSubmit = (server) => {
+const handleServerFormSubmit = (serverData: any) => {
   if (editingServer.value) {
-    serversStore.updateServer(server);
+    serversStore.updateServer(serverData);
   } else {
-    serversStore.addServer(server);
+    serversStore.addServer(serverData);
   }
   showAddServerForm.value = false;
   editingServer.value = null;
-  changePage('remote-agents');
+  // Ensure that after server form submission, the view is appropriate e.g. remote agents list
+  if (activePage.value !== 'remote-agents') {
+     changePage('remote-agents');
+  }
+  showServerManagement.value = false; // Go back to the list view or relevant page
 };
 
-const editServer = (server) => {
+const editServer = (server: any) => {
   editingServer.value = { ...server };
   showAddServerForm.value = true;
-  showServerManagement.value = false;
+  showServerManagement.value = false; // Hide server list to show form
+  clearActiveAgent(); // Clear active agent to prevent detail view conflict
 };
 
-const deleteServer = (serverId) => {
+const deleteServer = (serverId: string) => {
   // Remove agents associated with this server
   agentsStore.deleteAgentsByServerId(serverId);
   
@@ -308,41 +362,65 @@ const deleteServer = (serverId) => {
 const cancelServerForm = () => {
   showAddServerForm.value = false;
   editingServer.value = null;
-  changePage('remote-agents');
+   // Decide where to navigate after cancel, e.g., back to server management or remote agents list
+  if (showServerManagement.value) {
+      //  showServerManagement.value = true; // Already true or stay on it
+  } else {
+      changePage('remote-agents'); // Or whatever is appropriate
+  }
 };
 
 // Agent management
 const activeAgent = ref<LocalAgent | MarketplaceAgent | null>(null);
-const setActiveAgent = (agent: LocalAgent | MarketplaceAgent | string) => {
-  if (typeof agent === 'string') {
-    // If it's just the ID, find the full agent object
-    activeAgent.value = agentsStore.getAgentById(agent) as LocalAgent | MarketplaceAgent | null;
+const setActiveAgent = (agentOrId: LocalAgent | MarketplaceAgent | string) => {
+  showAgentCreationForm.value = false; // Ensure creation form is hidden
+  showServerManagement.value = false; // Ensure server management is hidden
+  showAddServerForm.value = false; // Ensure server form is hidden
+  
+  if (typeof agentOrId === 'string') {
+    activeAgent.value = agentsStore.getAgentById(agentOrId) as LocalAgent | MarketplaceAgent | null;
   } else {
-    activeAgent.value = agent;
+    activeAgent.value = agentOrId;
   }
+  console.log('Active agent set:', activeAgent.value?.name);
 };
 
 const runAgent = (agent: LocalAgent | MarketplaceAgent) => {
   activeChatAgent.value = agent;
   showChatInterface.value = true;
-  activeAgent.value = null;
+  activeAgent.value = null; // Clear detail view
+  showAgentCreationForm.value = false; // Ensure creation form is hidden
 };
 
 const closeChatInterface = () => {
   showChatInterface.value = false;
   activeChatAgent.value = null;
+  // Decide where to go back, e.g., to the previous page or a default agent list
+  if (activePage.value !== 'local-agents' && activePage.value !== 'remote-agents') {
+    changePage('local-agents'); // Default back to local agents list
+  }
 };
 
 const clearActiveAgent = () => {
   activeAgent.value = null;
+  // Ensure we are not on a sub-view that requires an activeAgent
+  if (activePage.value !== 'local-agents' && 
+      activePage.value !== 'remote-agents' && 
+      activePage.value !== 'marketplace' && 
+      activePage.value !== 'workflows') {
+    // If clearing active agent from a detail page, navigate to a list page
+    // This logic might need refinement based on where clearActiveAgent is called
+    // For now, if called from marketplace detail, it should go back to marketplace list.
+    // The @back emit from MarketplaceAgentDetail.vue handles this for marketplace.
+  }
 };
 
 // Type guards
 const isLocalAgent = (agent: any): agent is LocalAgent => {
-  return 'isRemote' in agent;
+  return agent && 'isRemote' in agent;
 };
 
 const isMarketplaceAgent = (agent: any): agent is MarketplaceAgent => {
-  return 'executionType' in agent;
+  return agent && 'executionType' in agent;
 };
 </script>
