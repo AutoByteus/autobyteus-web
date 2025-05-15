@@ -15,7 +15,7 @@ export interface MarketplaceAgent {
   downloads: number;
   version: string;
   author: string;
-  tools: string[];
+  tools: string[]; // Now stores GitHub URLs
   createdAt: string;
   updatedAt: string;
   status?: 'active' | 'inactive'; // Only for P2P agents
@@ -47,9 +47,22 @@ export interface LocalAgent {
   serverName?: string;
   role?: string;
   systemPrompt?: string;
+  tools?: string[]; // Now stores GitHub URLs
+  skills?: string[];
+  // Indicates if this local agent has been published to the marketplace
+  isPublishedToMarketplace?: boolean; 
+}
+
+// Data for creating a new local agent
+export interface NewLocalAgentData {
+  name: string;
+  description: string;
+  role?: string;
+  systemPrompt?: string;
   tools?: string[];
   skills?: string[];
 }
+
 
 export const useAgentsStore = defineStore('agents', () => {
   // State for local agents (enhanced model with more properties)
@@ -62,8 +75,9 @@ export const useAgentsStore = defineStore('agents', () => {
       isRemote: false,
       role: 'Coding Assistant',
       systemPrompt: 'You are a helpful coding assistant specializing in helping users write clean, efficient, and bug-free code. Provide code snippets, explain programming concepts, and help debug issues.',
-      tools: ['VSCode', 'Git', 'npm', 'Python', 'JavaScript Runtime'],
-      skills: ['JavaScript', 'Python', 'Code Reviews', 'Debugging', 'Documentation', 'Best Practices']
+      tools: ['https://github.com/example-org/vscode-utils-tool', 'https://github.com/example-org/git-cli-tool', 'https://github.com/example-org/npm-bridge-tool', 'https://github.com/example-org/python-runtime-tool', 'https://github.com/example-org/js-runtime-tool'],
+      skills: ['JavaScript', 'Python', 'Code Reviews', 'Debugging', 'Documentation', 'Best Practices'],
+      isPublishedToMarketplace: false,
     },
     {
       id: 'data-analyzer',
@@ -73,8 +87,9 @@ export const useAgentsStore = defineStore('agents', () => {
       isRemote: false,
       role: 'Data Analyst',
       systemPrompt: 'You are a data analysis assistant that helps users understand their data, generate insights, and create visualizations. Provide statistical analysis and help with data processing tasks.',
-      tools: ['Pandas', 'NumPy', 'Matplotlib', 'Jupyter', 'R Studio'],
-      skills: ['Data Visualization', 'Statistical Analysis', 'Data Cleaning', 'Reporting', 'Predictive Modeling', 'Trend Analysis']
+      tools: ['https://github.com/example-org/pandas-wrapper-tool', 'https://github.com/example-org/numpy-bindings-tool', 'https://github.com/example-org/matplotlib-support-tool', 'https://github.com/example-org/jupyter-kernel-tool', 'https://github.com/example-org/r-integration-tool'],
+      skills: ['Data Visualization', 'Statistical Analysis', 'Data Cleaning', 'Reporting', 'Predictive Modeling', 'Trend Analysis'],
+      isPublishedToMarketplace: false,
     },
     {
       id: 'text-summarizer',
@@ -84,8 +99,9 @@ export const useAgentsStore = defineStore('agents', () => {
       isRemote: false,
       role: 'Content Processor',
       systemPrompt: 'You are a text summarization assistant that helps users condense long documents while preserving key information. Generate concise summaries that capture the essential points.',
-      tools: ['NLP Engine', 'Text Processor', 'Language Models'],
-      skills: ['Text Summarization', 'Key Point Extraction', 'Multiple Format Support', 'Language Processing', 'Content Analysis']
+      tools: ['https://github.com/example-org/nlp-engine-core', 'https://github.com/example-org/text-processing-lib', 'https://github.com/example-org/language-model-interface'],
+      skills: ['Text Summarization', 'Key Point Extraction', 'Multiple Format Support', 'Language Processing', 'Content Analysis'],
+      isPublishedToMarketplace: false,
     },
     
     // Remote agents (example)
@@ -99,7 +115,7 @@ export const useAgentsStore = defineStore('agents', () => {
       serverName: 'Default Agent Server',
       role: 'Documentation Specialist',
       systemPrompt: 'You generate comprehensive documentation from code. Document classes, functions, APIs, and usage examples clearly and thoroughly.',
-      tools: ['Sphinx', 'JSDoc', 'ReadTheDocs', 'API Blueprint'],
+      tools: ['https://github.com/example-org/sphinx-generator-tool', 'https://github.com/example-org/jsdoc-parser-tool', 'https://github.com/example-org/readthedocs-publisher-tool', 'https://github.com/example-org/api-blueprint-tool'],
       skills: ['API Documentation', 'Code Documentation', 'Markdown Generation', 'Usage Examples', 'Technical Writing']
     },
     {
@@ -112,7 +128,7 @@ export const useAgentsStore = defineStore('agents', () => {
       serverName: 'Default Agent Server',
       role: 'QA Engineer',
       systemPrompt: 'You are a test case generator that helps users create thorough test suites for their applications. Generate unit tests, integration tests, and edge cases to ensure code quality.',
-      tools: ['Jest', 'PyTest', 'JUnit', 'Mocha', 'Selenium'],
+      tools: ['https://github.com/example-org/jest-runner-tool', 'https://github.com/example-org/pytest-adapter-tool', 'https://github.com/example-org/junit-interface-tool', 'https://github.com/example-org/mocha-scaffold-tool', 'https://github.com/example-org/selenium-grid-tool'],
       skills: ['Unit Testing', 'Integration Testing', 'Test Coverage Analysis', 'Edge Case Detection', 'Regression Testing']
     }
   ]);
@@ -132,7 +148,7 @@ export const useAgentsStore = defineStore('agents', () => {
       downloads: 15000,
       version: '3.2.0',
       author: 'AI Solutions Inc.',
-      tools: ['tensorflow', 'pytorch', 'cuda', 'sklearn', 'optuna'],
+      tools: ['https://github.com/tensorflow/tensorflow', 'https://github.com/pytorch/pytorch', 'https://github.com/NVIDIA/cuda-samples', 'https://github.com/scikit-learn/scikit-learn', 'https://github.com/optuna/optuna'],
       createdAt: '2024-01-01',
       updatedAt: '2024-03-10',
       status: 'active',
@@ -162,7 +178,7 @@ export const useAgentsStore = defineStore('agents', () => {
       downloads: 8200,
       version: '1.8.0',
       author: 'MediaTech Ltd.',
-      tools: ['ffmpeg', 'opencv', 'gpu-processing', 'media-encoder', 'video-compressor'],
+      tools: ['https://github.com/FFmpeg/FFmpeg', 'https://github.com/opencv/opencv', 'https://github.com/example-org/gpu-processing-framework', 'https://github.com/example-org/media-encoder-suite', 'https://github.com/example-org/video-compressor-lib'],
       createdAt: '2024-01-15',
       updatedAt: '2024-03-15',
       status: 'active',
@@ -192,7 +208,7 @@ export const useAgentsStore = defineStore('agents', () => {
       downloads: 22000,
       version: '2.5.0',
       author: 'ContentPro AI',
-      tools: ['gpt-4', 'content-optimizer', 'seo-tools', 'grammar-checker', 'plagiarism-detector'],
+      tools: ['https://github.com/openai/gpt-3', 'https://github.com/example-org/content-optimizer-tool', 'https://github.com/example-org/seo-tools-suite', 'https://github.com/example-org/grammar-checker-api', 'https://github.com/example-org/plagiarism-detector-service'],
       createdAt: '2024-01-10',
       updatedAt: '2024-03-25',
       status: 'active',
@@ -223,7 +239,7 @@ export const useAgentsStore = defineStore('agents', () => {
       downloads: 12500,
       version: '1.2.0',
       author: 'TextTools Co.',
-      tools: ['nlp-engine', 'text-processor', 'language-models', 'keyword-extractor', 'sentiment-analyzer'],
+      tools: ['https://github.com/example-org/local-nlp-engine', 'https://github.com/example-org/text-processor-core', 'https://github.com/example-org/lightweight-lm', 'https://github.com/example-org/keyword-extractor-lib', 'https://github.com/example-org/sentiment-analyzer-local'],
       createdAt: '2024-02-01',
       updatedAt: '2024-03-20',
       role: 'Content Processor',
@@ -242,7 +258,7 @@ export const useAgentsStore = defineStore('agents', () => {
       downloads: 18500,
       version: '2.1.0',
       author: 'CodeBetter',
-      tools: ['prettier', 'eslint', 'black', 'gofmt', 'clang-format'],
+      tools: ['https://github.com/prettier/prettier', 'https://github.com/eslint/eslint', 'https://github.com/psf/black', 'https://github.com/golang/tools/tree/master/cmd/gofmt', 'https://github.com/llvm/llvm-project/tree/main/clang/tools/clang-format'],
       createdAt: '2024-01-15',
       updatedAt: '2024-03-10',
       role: 'Code Formatter',
@@ -261,7 +277,7 @@ export const useAgentsStore = defineStore('agents', () => {
       downloads: 15200,
       version: '2.0.0',
       author: 'OrganizeIt Ltd.',
-      tools: ['file-analyzer', 'metadata-extractor', 'content-classifier', 'tag-manager', 'duplicate-finder'],
+      tools: ['https://github.com/example-org/file-analyzer-core', 'https://github.com/example-org/metadata-extractor-lib', 'https://github.com/example-org/content-classifier-ai', 'https://github.com/example-org/tag-manager-tool', 'https://github.com/example-org/duplicate-finder-app'],
       createdAt: '2024-01-25',
       updatedAt: '2024-03-22',
       role: 'File Manager',
@@ -285,7 +301,7 @@ export const useAgentsStore = defineStore('agents', () => {
       downloads: 5500,
       version: '1.5.0',
       author: 'DBOptimize Inc.',
-      tools: ['sql-analyzer', 'query-optimizer', 'index-manager', 'execution-planner', 'schema-designer'],
+      tools: ['https://github.com/example-org/sql-analyzer-engine', 'https://github.com/example-org/query-optimizer-ai', 'https://github.com/example-org/index-manager-pro', 'https://github.com/example-org/execution-planner-vis', 'https://github.com/example-org/schema-designer-tool'],
       createdAt: '2024-02-01',
       updatedAt: '2024-03-20',
       status: 'active',
@@ -315,7 +331,7 @@ export const useAgentsStore = defineStore('agents', () => {
       downloads: 9800,
       version: '1.0.5',
       author: 'ImageLite',
-      tools: ['image-magick', 'basic-filters', 'color-adjuster', 'format-converter', 'batch-processor'],
+      tools: ['https://github.com/ImageMagick/ImageMagick', 'https://github.com/example-org/basic-image-filters', 'https://github.com/example-org/color-adjuster-lib', 'https://github.com/example-org/format-converter-cli', 'https://github.com/example-org/batch-image-processor'],
       createdAt: '2024-02-10',
       updatedAt: '2024-03-18',
       role: 'Image Editor',
@@ -334,7 +350,7 @@ export const useAgentsStore = defineStore('agents', () => {
       downloads: 7600,
       version: '1.3.0',
       author: 'TaskMaster',
-      tools: ['scheduler', 'notification-system', 'calendar-integration', 'priority-analyzer', 'deadline-tracker'],
+      tools: ['https://github.com/example-org/smart-scheduler-core', 'https://github.com/example-org/notification-system-lib', 'https://github.com/example-org/calendar-integration-api', 'https://github.com/example-org/priority-analyzer-ai', 'https://github.com/example-org/deadline-tracker-tool'],
       createdAt: '2024-02-15',
       updatedAt: '2024-03-19',
       role: 'Task Manager',
@@ -353,7 +369,7 @@ export const useAgentsStore = defineStore('agents', () => {
       downloads: 11200,
       version: '1.4.2',
       author: 'ScanPro Inc.',
-      tools: ['tesseract', 'image-preprocessor', 'text-detector', 'layout-analyzer', 'format-converter'],
+      tools: ['https://github.com/tesseract-ocr/tesseract', 'https://github.com/example-org/image-preprocessor-ocr', 'https://github.com/example-org/text-detector-ml', 'https://github.com/example-org/layout-analyzer-tool', 'https://github.com/example-org/ocr-format-converter'],
       createdAt: '2024-01-20',
       updatedAt: '2024-03-23',
       role: 'Document Processor',
@@ -372,7 +388,7 @@ export const useAgentsStore = defineStore('agents', () => {
       downloads: 8900,
       version: '2.2.0',
       author: 'VisualizeData',
-      tools: ['d3.js', 'chart.js', 'matplotlib', 'tableau-connector', 'power-bi-integration'],
+      tools: ['https://github.com/d3/d3', 'https://github.com/chartjs/Chart.js', 'https://github.com/matplotlib/matplotlib', 'https://github.com/example-org/tableau-connector-lib', 'https://github.com/example-org/power-bi-integration-sdk'],
       createdAt: '2024-02-05',
       updatedAt: '2024-04-10',
       role: 'Data Visualization Expert',
@@ -391,7 +407,7 @@ export const useAgentsStore = defineStore('agents', () => {
       downloads: 6300,
       version: '3.0.1',
       author: 'SecureCode Systems',
-      tools: ['static-analyzer', 'vulnerability-scanner', 'dependency-checker', 'owasp-rules', 'security-best-practices'],
+      tools: ['https://github.com/example-org/static-analyzer-sec', 'https://github.com/example-org/vulnerability-scanner-api', 'https://github.com/example-org/dependency-checker-tool', 'https://github.com/OWASP/ २०RuleSet', 'https://github.com/example-org/security-best-practices-db'],
       createdAt: '2024-03-01',
       updatedAt: '2024-04-15',
       status: 'active',
@@ -432,6 +448,25 @@ export const useAgentsStore = defineStore('agents', () => {
     localAgents.value.push(agent);
   };
 
+  const createLocalAgent = (agentData: NewLocalAgentData) => {
+    console.log('Creating local agent with data:', agentData);
+    const newAgent: LocalAgent = {
+      id: `local-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, // More unique ID
+      name: agentData.name,
+      description: agentData.description,
+      role: agentData.role || 'General Purpose Agent',
+      systemPrompt: agentData.systemPrompt || 'You are a helpful AI assistant.',
+      tools: agentData.tools || [],
+      skills: agentData.skills || [],
+      isRemote: false,
+      icon: 'i-heroicons-user-circle-20-solid', // Default icon for new local agents
+      isPublishedToMarketplace: false,
+    };
+    localAgents.value.push(newAgent);
+    console.log('New local agent created:', newAgent);
+    return newAgent;
+  };
+
   const updateAgent = (updatedAgent: LocalAgent) => {
     const index = localAgents.value.findIndex(a => a.id === updatedAgent.id);
     if (index !== -1) {
@@ -465,24 +500,90 @@ export const useAgentsStore = defineStore('agents', () => {
     hiddenMarketplaceAgents.value = [];
   };
 
-  const publishAgent = (agent: LocalAgent) => {
-    // Simulate publishing agent to marketplace
-    console.log('Publishing agent to marketplace:', agent.name);
+  const publishLocalAgentToMarketplace = (agentId: string): MarketplaceAgent | null => {
+    const localAgentIndex = localAgents.value.findIndex(agent => agent.id === agentId);
+    if (localAgentIndex === -1) {
+      console.error(`Local agent with ID ${agentId} not found for publishing.`);
+      return null;
+    }
+    const agentToPublish = localAgents.value[localAgentIndex];
+
+    const existingMarketplaceAgentIndex = marketplaceAgents.value.findIndex(ma => ma.id === agentToPublish.id);
+    
+    let publishedMarketplaceAgent: MarketplaceAgent;
+
+    if (existingMarketplaceAgentIndex !== -1) {
+      console.log(`Agent ${agentId} already exists in marketplace. Updating it.`);
+      const existingAgent = marketplaceAgents.value[existingMarketplaceAgentIndex];
+      publishedMarketplaceAgent = {
+        ...existingAgent,
+        name: agentToPublish.name,
+        description: agentToPublish.description,
+        role: agentToPublish.role || 'User Submitted Agent',
+        systemPrompt: agentToPublish.systemPrompt,
+        tools: agentToPublish.tools || [],
+        skills: agentToPublish.skills || [],
+        updatedAt: new Date().toISOString(),
+        author: existingAgent.author === 'Local User' ? 'Local User (Updated)' : existingAgent.author, // Keep original author if not 'Local User'
+        version: existingAgent.version || '1.0.1', // Simple version update logic
+      };
+      marketplaceAgents.value[existingMarketplaceAgentIndex] = publishedMarketplaceAgent;
+    } else {
+      publishedMarketplaceAgent = {
+        id: agentToPublish.id, 
+        name: agentToPublish.name,
+        description: agentToPublish.description,
+        category: 'User Submitted', 
+        price: 0, 
+        priceType: 'free',
+        executionType: 'LOCAL', 
+        rating: 0, 
+        downloads: 0, 
+        version: '1.0.0', 
+        author: 'Local User', 
+        tools: agentToPublish.tools || [],
+        skills: agentToPublish.skills || [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        role: agentToPublish.role || 'User Submitted Agent',
+        systemPrompt: agentToPublish.systemPrompt,
+      };
+      marketplaceAgents.value.push(publishedMarketplaceAgent);
+    }
+    
+    localAgents.value[localAgentIndex].isPublishedToMarketplace = true;
+    localAgents.value[localAgentIndex] = {...localAgents.value[localAgentIndex]}; // Trigger reactivity for the local agent item itself
+    
+    console.log('Local agent published/updated in marketplace:', publishedMarketplaceAgent);
+    return publishedMarketplaceAgent;
   };
 
   const installMarketplaceAgent = (agent: MarketplaceAgent) => {
-    // Convert marketplace agent to local agent with complete data
     const localAgent: LocalAgent = {
       id: agent.id,
       name: agent.name,
       description: agent.description,
-      isRemote: false,
+      isRemote: false, 
       role: agent.role,
       systemPrompt: agent.systemPrompt,
-      tools: agent.tools,
-      skills: agent.skills
+      tools: agent.tools, 
+      skills: agent.skills,
+      isPublishedToMarketplace: true 
     };
-    addAgent(localAgent);
+    if (!localAgents.value.some(la => la.id === localAgent.id)) {
+        addAgent(localAgent);
+    } else {
+      // If it exists, perhaps update it with marketplace data?
+      // For now, just ensures it's marked as from marketplace if installed.
+      const existingIndex = localAgents.value.findIndex(la => la.id === localAgent.id);
+      if (existingIndex !== -1) {
+        localAgents.value[existingIndex] = {
+          ...localAgents.value[existingIndex], // Keep existing local data not overridden
+          ...localAgent, // Override with marketplace data
+          isPublishedToMarketplace: true, // Ensure this is set
+        };
+      }
+    }
   };
 
   return {
@@ -493,6 +594,7 @@ export const useAgentsStore = defineStore('agents', () => {
     getAgentsByServerId,
     getAgentById,
     addAgent,
+    createLocalAgent, 
     updateAgent,
     deleteAgent,
     deleteAgentsByServerId,
@@ -500,7 +602,7 @@ export const useAgentsStore = defineStore('agents', () => {
     // Marketplace agents
     marketplaceAgents,
     syncMarketplace,
-    publishAgent,
+    publishLocalAgentToMarketplace, // Ensure this is returned
     installMarketplaceAgent
   };
 });

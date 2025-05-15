@@ -1,44 +1,52 @@
 <template>
-  <div class="w-64 bg-white shadow-sm overflow-y-auto h-full">
-    <div class="p-6">
-      <h2 class="text-xl font-semibold text-gray-800 mb-6">AI Agents</h2>
+  <div class="w-64 bg-white shadow-sm overflow-y-auto h-full border-r border-gray-200">
+    <div class="p-4"> 
+      <h2 class="text-xl font-semibold text-gray-800 mb-6 px-2">AI Agents</h2> 
       
       <nav class="w-full">
-        <ul class="w-full space-y-2">
+        <ul class="w-full space-y-1"> 
           <li>
             <button 
               @click="$emit('change-page', 'local-agents')"
-              class="flex w-full items-center justify-start px-4 py-3 rounded-md transition-colors duration-200 text-gray-700 hover:bg-gray-100 hover:text-gray-900 group"
-              :class="{ 'bg-gray-100 text-gray-900 font-medium': activePage === 'local-agents' }"
+              class="flex w-full items-center justify-start px-4 py-3 rounded-md transition-colors duration-150 ease-in-out"
+              :class="activePage === 'local-agents' 
+                ? 'bg-indigo-600 text-white shadow-sm' 
+                : 'text-gray-700 hover:bg-indigo-100 hover:text-indigo-700'"
             >
-              <span class="text-left">Local Agents</span>
+              <span class="text-left font-medium">Local Agents</span>
             </button>
           </li>
           <li>
             <button 
               @click="$emit('change-page', 'remote-agents')"
-              class="flex w-full items-center justify-start px-4 py-3 rounded-md transition-colors duration-200 text-gray-700 hover:bg-gray-100 hover:text-gray-900 group"
-              :class="{ 'bg-gray-100 text-gray-900 font-medium': activePage === 'remote-agents' }"
+              class="flex w-full items-center justify-start px-4 py-3 rounded-md transition-colors duration-150 ease-in-out"
+              :class="activePage === 'remote-agents' 
+                ? 'bg-indigo-600 text-white shadow-sm' 
+                : 'text-gray-700 hover:bg-indigo-100 hover:text-indigo-700'"
             >
-              <span class="text-left">Remote Agents</span>
+              <span class="text-left font-medium">Remote Agents</span>
             </button>
           </li>
           <li>
             <button 
               @click="$emit('change-page', 'marketplace')"
-              class="flex w-full items-center justify-start px-4 py-3 rounded-md transition-colors duration-200 text-gray-700 hover:bg-gray-100 hover:text-gray-900 group"
-              :class="{ 'bg-gray-100 text-gray-900 font-medium': activePage === 'marketplace' }"
+              class="flex w-full items-center justify-start px-4 py-3 rounded-md transition-colors duration-150 ease-in-out"
+              :class="activePage === 'marketplace' 
+                ? 'bg-indigo-600 text-white shadow-sm' 
+                : 'text-gray-700 hover:bg-indigo-100 hover:text-indigo-700'"
             >
-              <span class="text-left">Agent Marketplace</span>
+              <span class="text-left font-medium">Agent Marketplace</span>
             </button>
           </li>
           <li>
             <button 
               @click="$emit('change-page', 'workflows')"
-              class="flex w-full items-center justify-start px-4 py-3 rounded-md transition-colors duration-200 text-gray-700 hover:bg-gray-100 hover:text-gray-900 group"
-              :class="{ 'bg-gray-100 text-gray-900 font-medium': activePage === 'workflows' }"
+              class="flex w-full items-center justify-start px-4 py-3 rounded-md transition-colors duration-150 ease-in-out"
+              :class="activePage === 'workflows' 
+                ? 'bg-indigo-600 text-white shadow-sm' 
+                : 'text-gray-700 hover:bg-indigo-100 hover:text-indigo-700'"
             >
-              <span class="text-left">Workflows</span>
+              <span class="text-left font-medium">Workflows</span>
             </button>
           </li>
         </ul>

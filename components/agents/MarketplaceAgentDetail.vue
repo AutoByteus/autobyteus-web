@@ -81,23 +81,34 @@
           
           <!-- Required Tools - Technical requirements -->
           <div v-if="showLocalInfo" class="mb-6">
-            <h2 class="text-lg font-medium text-gray-800 mb-3">Required Tools</h2>
+            <h2 class="text-lg font-medium text-gray-800 mb-3">Required Tool Libraries</h2>
             <div class="flex flex-wrap gap-2">
               <span
-                v-for="tool in agent.tools"
-                :key="tool"
-                class="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full"
+                v-for="toolUrl in agent.tools"
+                :key="toolUrl"
+                class="px-3 py-1 bg-gray-100 text-gray-800 text-sm rounded-full hover:bg-gray-200 transition-colors duration-150"
               >
-                {{ tool }}
+                <a 
+                  :href="toolUrl" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  class="text-blue-600 hover:text-blue-800 hover:underline"
+                  :title="toolUrl"
+                >
+                  {{ getToolNameFromUrl(toolUrl) }}
+                </a>
+              </span>
+               <span v-if="!agent.tools || agent.tools.length === 0" class="text-gray-500 italic">
+                No specific tool libraries specified
               </span>
             </div>
           </div>
           
           <!-- System Prompt - Important for understanding behavior -->
-          <div v-if="showLocalInfo" class="mb-6">
+          <div v-if="showLocalInfo && agent.systemPrompt" class="mb-6">
             <h2 class="text-lg font-medium text-gray-800 mb-3">System Prompt</h2>
             <div class="bg-gray-50 p-4 rounded-lg">
-              <pre class="text-sm text-gray-700 whitespace-pre-wrap">{{ agent.systemPrompt || 'No system prompt defined' }}</pre>
+              <pre class="text-sm text-gray-700 whitespace-pre-wrap font-sans">{{ agent.systemPrompt }}</pre>
             </div>
           </div>
           
@@ -116,7 +127,7 @@
           <!-- P2P agent specific information - Important for P2P agents -->
           <template v-if="showP2PInfo">
             <div class="space-y-6 mb-8">
-              <div>
+              <div v-if="agent.p2pInfo?.performanceMetrics">
                 <h2 class="text-lg font-medium text-gray-800 mb-3">Performance Metrics</h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div class="bg-gray-50 p-4 rounded-lg">
@@ -134,14 +145,14 @@
                 </div>
               </div>
               
-              <div>
+              <div v-if="agent.p2pInfo?.securityLevel || (agent.p2pInfo?.accessControl && agent.p2pInfo.accessControl.length > 0)">
                 <h2 class="text-lg font-medium text-gray-800 mb-3">Security Information</h2>
                 <div class="bg-gray-50 p-4 rounded-lg space-y-3">
-                  <div>
+                  <div v-if="agent.p2pInfo.securityLevel">
                     <p class="text-sm text-gray-600">Security Level</p>
                     <p class="text-gray-900 font-medium">{{ agent.p2pInfo.securityLevel }}</p>
                   </div>
-                  <div>
+                  <div v-if="agent.p2pInfo.accessControl && agent.p2pInfo.accessControl.length > 0">
                     <p class="text-sm text-gray-600">Access Control</p>
                     <div class="flex flex-wrap gap-2 mt-1">
                       <span
@@ -156,7 +167,7 @@
                 </div>
               </div>
               
-              <div v-if="agent.p2pInfo.connectionRequirements">
+              <div v-if="agent.p2pInfo?.connectionRequirements && agent.p2pInfo.connectionRequirements.length > 0">
                 <h2 class="text-lg font-medium text-gray-800 mb-3">Connection Requirements</h2>
                 <div class="space-y-2">
                   <div
@@ -242,20 +253,36 @@ const props = defineProps({
   }
 });
 
-// Add navigation events
 const emit = defineEmits(['install', 'navigate-to-details', 'back']);
 
 const agentsStore = useAgentsStore();
 const showLocalInstallModal = ref(false);
 const showP2PConfigModal = ref(false);
 
+// Helper function to extract tool name from URL
+function getToolNameFromUrl(url: string): string {
+  if (!url) return 'Unnamed Tool';
+  try {
+    const path = new URL(url).pathname;
+    const parts = path.split('/');
+    const lastPart = parts[parts.length - 1] || parts[parts.length - 2] || 'tool';
+    return lastPart.replace(/\.git$/, '');
+  } catch (e) {
+    console.warn(`Could not parse tool name from URL: ${url}`, e);
+    const simpleName = url.substring(url.lastIndexOf('/') + 1).replace(/\.git$/, '');
+    return simpleName || url;
+  }
+}
+
 const isInstalled = computed(() => {
   const installed = agentsStore.getAgentById(props.agent.id);
+  // Check if it's a LocalAgent (which has isRemote property) and not remote
   return installed && 'isRemote' in installed && !installed.isRemote;
 });
 
 const isP2PInstalled = computed(() => {
   const installed = agentsStore.getAgentById(`p2p-${props.agent.id}`);
+  // Check if it's a LocalAgent (which has isRemote property) and is remote
   return installed && 'isRemote' in installed && installed.isRemote;
 });
 
@@ -276,7 +303,7 @@ const priceDisplay = computed(() => {
   if (props.agent.price === 0) {
     return 'Free';
   }
-  return `$${props.agent.price}`;
+  return `$${props.agent.price.toFixed(2)}`;
 });
 
 const priceType = computed(() => {
@@ -289,6 +316,8 @@ const priceType = computed(() => {
       return 'Yearly subscription';
     case 'usage-based':
       return 'Usage-based pricing';
+    case 'free':
+      return ''; // Or "Free Tier"
     default:
       return '';
   }
@@ -318,22 +347,16 @@ function installP2PAgent() {
   showP2PConfigModal.value = true;
 }
 
-// Modified to navigate to details page after installation
 function handleLocalAgentInstalled() {
   agentsStore.installMarketplaceAgent(props.agent);
   emit('install', props.agent);
-  
-  // Navigate to local agent details page
   emit('navigate-to-details', {
     type: 'local',
     id: props.agent.id
   });
 }
 
-// Modified to navigate to details page after installation
 function handleP2PAgentInstalled() {
-  // P2P agent installation is handled by the modal
-  // Navigate to remote agent details page
   emit('navigate-to-details', {
     type: 'remote',
     id: `p2p-${props.agent.id}`
@@ -341,8 +364,13 @@ function handleP2PAgentInstalled() {
 }
 
 function formatDate(dateString: string): string {
+  if (!dateString) return 'N/A';
   const date = new Date(dateString);
-  return date.toLocaleDateString();
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
 }
 
 function formatDownloads(downloads: number): string {

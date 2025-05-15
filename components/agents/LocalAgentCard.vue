@@ -27,15 +27,23 @@
       
       <!-- Tools Required -->
       <div class="mb-4">
-        <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Tools Required</span>
+        <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Tools Required (Libraries)</span>
         <div class="flex flex-wrap gap-2 mt-1">
           <template v-if="agent.tools && agent.tools.length > 0">
             <span 
-              v-for="tool in displayedTools" 
-              :key="tool" 
-              class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
+              v-for="toolUrl in displayedTools" 
+              :key="toolUrl" 
+              class="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full hover:bg-gray-200 transition-colors duration-150"
             >
-              {{ tool }}
+              <a 
+                :href="toolUrl" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                class="text-blue-600 hover:text-blue-800 hover:underline"
+                :title="toolUrl"
+              >
+                {{ getToolNameFromUrl(toolUrl) }}
+              </a>
             </span>
             <span 
               v-if="agent.tools.length > maxItemsToShow" 
@@ -44,7 +52,7 @@
               +{{ agent.tools.length - maxItemsToShow }} more
             </span>
           </template>
-          <span v-else class="text-xs text-gray-500 italic">No tools specified</span>
+          <span v-else class="text-xs text-gray-500 italic">No specific tool libraries specified</span>
         </div>
       </div>
       
@@ -92,7 +100,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { LocalAgent } from '~/stores/agents';
+import type { LocalAgent } from '~/stores/agents'; // Assuming LocalAgent has tools: string[]
 
 const props = defineProps({
   agent: {
@@ -105,11 +113,26 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['run', 'view-details']);
+defineEmits(['run', 'view-details']);
+
+// Helper function to extract tool name from URL
+function getToolNameFromUrl(url: string): string {
+  if (!url) return 'Unnamed Tool';
+  try {
+    const path = new URL(url).pathname;
+    const parts = path.split('/');
+    const lastPart = parts[parts.length - 1] || parts[parts.length - 2] || 'tool';
+    return lastPart.replace(/\.git$/, '');
+  } catch (e) {
+    console.warn(`Could not parse tool name from URL: ${url}`, e);
+    const simpleName = url.substring(url.lastIndexOf('/') + 1).replace(/\.git$/, '');
+    return simpleName || url;
+  }
+}
 
 const displayedTools = computed(() => {
   if (!props.agent.tools || props.agent.tools.length === 0) return [];
-  return props.agent.tools.slice(0, props.maxItemsToShow);
+  return props.agent.tools.slice(0, props.maxItemsToShow); // Contains URLs
 });
 
 const displayedSkills = computed(() => {
