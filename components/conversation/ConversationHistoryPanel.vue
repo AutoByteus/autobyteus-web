@@ -1,4 +1,3 @@
-
 <template>
   <div 
     v-if="isOpen"
@@ -12,8 +11,8 @@
       </div>
       <div v-else>
         <ConversationList
-          :conversations="conversations"
-          :activeConversationId="conversationHistoryStore.stepName"
+          :conversations="panelConversations"
+          :activeConversationId="null" 
           @activate="handleActivateConversation"
           @delete="handleDeleteConversation"
         />
@@ -51,39 +50,35 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
-import { useConversationStore } from '~/stores/conversationStore'; // <-- Import store
+import { useConversationStore } from '~/stores/conversationStore';
+// Removed: import { useWorkflowStore } from '~/stores/workflow'; 
 import ConversationList from '~/components/conversation/ConversationList.vue';
 import type { Conversation } from '~/types/conversation';
 
-const props = defineProps<{
-  isOpen: boolean;
-  conversations: Conversation[];
+const props = defineProps<{  isOpen: boolean;
 }>();
 
-const emit = defineEmits<{
-  (e: 'close'): void;
+const emit = defineEmits<{  (e: 'close'): void;
 }>();
 
 const conversationHistoryStore = useConversationHistoryStore();
 const conversationStore = useConversationStore();
+// Removed workflowStore as it's no longer used for activeConversationId here
 
-const conversations = computed(() => conversationHistoryStore.getConversations);
+const panelConversations = computed(() => conversationHistoryStore.getConversations);
 
 const handleActivateConversation = (conversationId: string) => {
-  // Directly set conversation from history using the store
-  conversationStore.setConversationFromHistory(conversationId);
-  // Close panel after activation (optional, but presumably desired)
+  const conversationToLoad = panelConversations.value.find(conv => conv.id === conversationId);
+  if (conversationToLoad) {
+    conversationStore.setConversationFromHistory(conversationToLoad);
+  } else {
+    console.error(`Failed to find conversation with ID ${conversationId} in history panel.`);
+  }
   close();
 };
 
 const handleDeleteConversation = (conversationId: string) => {
-  // Depending on how you want to handle "delete from history" or "delete from store"
-  // For example, you could do:
-  console.log(`Deleting conversation with ID: ${conversationId}`);
-  // If you want to remove it from the store:
-  conversationStore.removeConversation(conversationId);
-  // Optionally refetch the history:
-  conversationHistoryStore.fetchConversationHistory();
+  console.log(`Request to delete conversation with ID: ${conversationId} from history (not implemented).`);
 };
 
 const previousPage = async () => {

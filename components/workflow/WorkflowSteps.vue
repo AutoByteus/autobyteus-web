@@ -6,15 +6,15 @@
         :key="step.id"
         class="workflow-step-item p-3 border border-gray-200 rounded-lg cursor-pointer transition-all duration-200"
         :class="{
-          'bg-blue-50 border-blue-500 shadow-sm': selectedStepId === step.id,
-          'hover:bg-gray-50 hover:border-gray-300': selectedStepId !== step.id
+          'bg-blue-50 border-blue-500 shadow-sm': currentSelectedStepId === step.id,
+          'hover:bg-gray-50 hover:border-gray-300': currentSelectedStepId !== step.id
         }"
-        @click="selectStep(step.id)"
+        @click="handleSelectStep(step.id)"
       >
         <div class="flex items-center gap-3">
           <div 
             class="step-number w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
-            :class="selectedStepId === step.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'"
+            :class="currentSelectedStepId === step.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'"
           >
             {{ steps.indexOf(step) + 1 }}
           </div>
@@ -32,20 +32,23 @@
 import { computed } from 'vue'
 import { useWorkflowStore } from '~/stores/workflow'
 import { useWorkflowUIStore } from '~/stores/workflowUI'
+import { useConversationStore } from '~/stores/conversationStore'; // Added
 
 const workflowStore = useWorkflowStore()
 const workflowUIStore = useWorkflowUIStore()
+const conversationStore = useConversationStore(); // Added
 
 const steps = computed(() => {
   if (!workflowStore.currentWorkflow) return []
   return Object.values(workflowStore.currentWorkflow.steps)
 })
 
-const selectedStepId = computed(() => workflowStore.currentSelectedStepId)
+const currentSelectedStepId = computed(() => workflowStore.currentSelectedStepId)
 
-const selectStep = (stepId: string) => {
-  workflowStore.setSelectedStepId(stepId)
-  workflowUIStore.closeWorkflow()
+const handleSelectStep = (stepId: string) => {
+  workflowStore.setSelectedStepId(stepId) // Sets the sidebar highlight and current workflow step
+  conversationStore.createTemporaryConversation(stepId) // Creates a new tab for this step and makes it active
+  workflowUIStore.closeWorkflow() // Existing UI behavior for closing panel on mobile
 }
 </script>
 
@@ -70,7 +73,8 @@ const selectStep = (stepId: string) => {
   transition: background-color 0.2s ease;
 }
 
-.workflow-step-item.selected::before {
-  background-color: #3b82f6;
+/* This class was 'selected', changed to match class binding */
+.workflow-step-item.bg-blue-50::before {
+  background-color: #3b82f6; /* Tailwind blue-500 */
 }
 </style>

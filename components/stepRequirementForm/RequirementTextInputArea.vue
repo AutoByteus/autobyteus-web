@@ -75,20 +75,17 @@ import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useConversationStore } from '~/stores/conversationStore';
 import { useWorkspaceStore } from '~/stores/workspace';
-import { useWorkflowStore } from '~/stores/workflow';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import AudioRecorder from '~/components/AudioRecorder.vue';
 
 // Initialize stores
 const conversationStore = useConversationStore();
 const workspaceStore = useWorkspaceStore();
-const workflowStore = useWorkflowStore();
 const llmProviderConfigStore = useLLMProviderConfigStore();
 
 // Use storeToRefs for reactive state properties
 const { currentRequirement, isCurrentlySending, currentModelSelection, selectedConversation, conversationMessages } = storeToRefs(conversationStore);
 const { currentSelectedWorkspaceId } = storeToRefs(workspaceStore);
-const { selectedStep } = storeToRefs(workflowStore);
 const { models, isLoadingModels } = storeToRefs(llmProviderConfigStore);
 
 // Local component state
@@ -123,23 +120,10 @@ const handleSend = async () => {
     alert('Please enter a user requirement before sending.');
     return;
   }
-
   const workspaceId = currentSelectedWorkspaceId.value;
-  const currentStep = selectedStep.value;
-
-  if (!workspaceId || !currentStep) {
-    alert('Workspace or step is not selected.');
-    return;
-  }
-
   try {
-    // Use the selectedModel from the computed property
-    const llmModelToSend = isFirstMessage() ? selectedModel.value : undefined;
-
     await conversationStore.sendStepRequirementAndSubscribe(
       workspaceId,
-      currentStep.id,
-      llmModelToSend
     );
 
     adjustTextareaHeight();

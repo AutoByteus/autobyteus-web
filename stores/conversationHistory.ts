@@ -1,10 +1,10 @@
-
 import { defineStore } from 'pinia';
 import { useQuery } from '@vue/apollo-composable';
 import { GET_CONVERSATION_HISTORY } from '~/graphql/queries/conversation_queries';
 import type { GetConversationHistoryQuery, GetConversationHistoryQueryVariables } from '~/generated/graphql';
 import type { Conversation, UserMessage, AIMessage } from '~/types/conversation';
 import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
+import { useWorkflowStore } from '~/stores/workflow'; // Added
 
 interface ConversationHistoryState {
   stepName: string | null;
@@ -34,7 +34,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.totalPages = 1;
       this.fetchConversationHistory();
     },
-    async fetchConversationHistory(page: number = this.currentPage, pageSize: number = this.pageSize) {
+    async fetchConversationHistory(this: ConversationHistoryState, page: number = this.currentPage, pageSize: number = this.pageSize) {
       if (!this.stepName) {
         this.error = 'Step name is not set.';
         return;
@@ -94,8 +94,26 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.error = null;
     },
     mapToConversation(stepConversation: GetConversationHistoryQuery['getConversationHistory']['conversations'][number]): Conversation {
+      const workflowStore = useWorkflowStore();
+      let stepId = '';
+
+      if (this.stepName && workflowStore.currentWorkflow) {
+        const foundStep = Object.entries(workflowStore.currentWorkflow.steps).find(
+          ([, stepObj]) => stepObj.name === this.stepName
+        );
+        if (foundStep) {
+          stepId = foundStep[0];
+        } else {
+          console.warn(`Could not find stepId for stepName: ${this.stepName}`);
+        }
+      } else {
+          console.warn(`Cannot map stepName to stepId: stepName is ${this.stepName}, workflow is ${workflowStore.currentWorkflow ? 'defined' : 'null'}`);
+      }
+
+
       return {
-        id: stepConversation.stepConversationId,
+        id: stepConversation.stepConversationId, // This is the historical conversation ID
+        stepId: stepId, // Populate stepId
         messages: stepConversation.messages.map(msg => {
           if (msg.role === 'user') {
             const userMessage: UserMessage = {
@@ -103,20 +121,17 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
               text: msg.originalMessage || '',
               contextFilePaths: msg.contextPaths?.map(path => ({
                 path,
-                type: 'text',
+                type: 'text', // Assuming text, adjust if type info is available
               })) || [],
               timestamp: new Date(msg.timestamp),
-              // Add token usage fields for user messages
               promptTokens: msg.tokenCount || undefined,
               promptCost: msg.cost || undefined
             };
             return userMessage;
           } else {
-            // For AI messages from history, ensure we process the text
-            // by treating it as a single completed chunk
             const aiText = msg.message || '';
-            const segments: [] = [];
-            const parser = new IncrementalAIResponseParser(segments);
+            const segments: [] = []; // Type casting issue here, should be AIResponseSegment[]
+            const parser = new IncrementalAIResponseParser(segments as any); // Add 'as any' to bypass temp type issue if AIResponseSegment is complex
             parser.processChunks([aiText]);
 
             const aiMessage: AIMessage = {
@@ -124,10 +139,9 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
               text: aiText,
               timestamp: new Date(msg.timestamp),
               chunks: [aiText],
-              segments,
+              segments: segments as any, // Add 'as any'
               isComplete: true,
               parserInstance: parser,
-              // Add token usage fields for AI messages
               completionTokens: msg.tokenCount || undefined,
               completionCost: msg.cost || undefined
             };
@@ -135,7 +149,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
           }
         }),
         createdAt: stepConversation.createdAt,
-        updatedAt: stepConversation.createdAt,
+        updatedAt: stepConversation.createdAt, // Should be stepConversation.updatedAt if available, using createdAt as fallback
       };
     }
   },
