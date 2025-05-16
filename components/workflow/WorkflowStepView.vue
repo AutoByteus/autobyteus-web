@@ -10,7 +10,7 @@
 
     <!-- Main Content -->
     <div v-if="currentSelectedStepInWorkflow" class="flex flex-col h-full">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 sm:gap-0">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-1 gap-2 sm:gap-0 px-3">
         <h4 class="text-lg font-medium text-gray-700">{{ currentSelectedStepInWorkflow.name }}</h4>
         <div class="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
           <button 

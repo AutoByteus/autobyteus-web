@@ -1,8 +1,7 @@
-```vue
 <template>
   <div class="md:hidden flex flex-1 flex-col min-h-0">
     <!-- Mobile Navigation -->
-    <div class="flex mb-4 bg-white rounded-lg shadow p-2 gap-2 overflow-x-auto">
+    <div class="flex bg-white shadow p-2 gap-2 overflow-x-auto">
       <button 
         v-for="(tab, index) in availableTabs"
         :key="index"
@@ -17,29 +16,29 @@
     </div>
 
     <!-- Mobile Panels -->
-    <div class="flex-1 bg-white rounded-lg shadow overflow-hidden relative">
+    <div class="flex-1 bg-white shadow overflow-hidden relative mt-2"> 
       <!-- File Explorer -->
-      <div v-show="activeMobilePanel === 'explorer'" class="h-full p-4 overflow-auto">
+      <div v-show="activeMobilePanel === 'explorer'" class="h-full p-0 overflow-auto">
         <FileExplorer />
       </div>
 
       <!-- Content Viewer -->
-      <div v-show="activeMobilePanel === 'content'" class="h-full p-4 overflow-auto">
+      <div v-show="activeMobilePanel === 'content'" class="h-full p-0 overflow-auto">
         <ContentViewer :expandedMode="true" />
       </div>
 
       <!-- Workspace/Workflow Selector -->
-      <div v-show="activeMobilePanel === 'selector'" class="h-full p-4 overflow-auto">
+      <div v-show="activeMobilePanel === 'selector'" class="h-full p-0 overflow-auto">
         <WorkspaceWorkflowSelector />
       </div>
 
       <!-- Workflow View -->
-      <div v-show="activeMobilePanel === 'workflow'" class="h-full p-4 overflow-auto">
+      <div v-show="activeMobilePanel === 'workflow'" class="h-full p-0 overflow-auto">
         <WorkflowStepView />
       </div>
 
       <!-- Terminal -->
-      <div v-show="activeMobilePanel === 'terminal'" class="h-full p-4 overflow-auto">
+      <div v-show="activeMobilePanel === 'terminal'" class="h-full p-0 overflow-auto">
         <RightSideTabs />
       </div>
     </div>
@@ -130,4 +129,3 @@ const handleTabClick = (tabId: string) => {
   -webkit-overflow-scrolling: touch;
 }
 </style>
-```

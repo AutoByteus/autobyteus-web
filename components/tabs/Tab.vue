@@ -1,7 +1,10 @@
 <template>
   <div 
-    class="px-3 py-2 cursor-pointer border border-gray-300 mr-1 border-b-0 transition-colors duration-200 ease-in-out"
-    :class="{ 'bg-white border-t-4 border-t-blue-500': isActive, 'hover:bg-gray-100': !isActive }"
+    class="px-3 py-1 cursor-pointer border border-gray-300 mr-1 border-b-0 rounded-t-md transition-colors duration-200 ease-in-out"
+    :class="{ 
+      'bg-white text-blue-600': isActive, 
+      'bg-gray-100 text-gray-700 hover:bg-gray-200': !isActive 
+    }"
     @click="selectTab"
   >
     <slot />

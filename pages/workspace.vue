@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full bg-gray-100 p-5 sm:p-5 font-sans text-gray-800">
+  <div class="flex flex-col h-full bg-gray-100 px-2 py-1 border-t border-b border-gray-300 font-sans text-gray-800">
     <DesktopLayout :show-file-content="showFileContent" />
     <MobileLayout :show-file-content="showFileContent" />
     

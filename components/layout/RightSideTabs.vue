@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full">
+  <div class="flex flex-col h-full pt-2">
     <TabList
       :tabs="tabs"
       :selectedTab="activeTab"
@@ -7,7 +7,7 @@
     />
 
     <!-- Tab Content - using v-if for proper mounting/unmounting -->
-    <div class="flex-grow overflow-auto mt-2 relative">
+    <div class="flex-grow overflow-auto relative mt-2">
       <!-- Use v-if instead of v-show to actually mount/unmount components -->
       <div v-if="activeTab === 'Terminal'" class="h-full">
         <Terminal />
@@ -50,6 +50,6 @@ const setActiveTab = (tabName: string) => {
 
 .h-full {
   height: 100%;
-  min-height: 300px;
+  min-height: 300px; /* This min-height might be something to review if true full height is an issue in very small containers */
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="border border-gray-300 rounded-lg shadow-sm overflow-hidden bg-white">
+  <div class="border border-gray-300 shadow-sm overflow-hidden bg-white">
     <ContextFilePathInputArea />
     <div class="border-t border-gray-200">
       <RequirementTextInputArea />

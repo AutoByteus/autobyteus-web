@@ -1,7 +1,7 @@
 <template>
   <div class="hidden md:flex flex-1 relative space-x-0 min-h-0">
     <!-- File Explorer Container -->
-    <div :style="{ width: fileExplorerWidth + 'px' }" class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0 relative">
+    <div :style="{ width: fileExplorerWidth + 'px' }" class="bg-white p-0 shadow flex flex-col min-h-0 relative">
       <div class="flex-1 overflow-auto">
         <FileExplorer />
       </div>
@@ -9,12 +9,12 @@
       <!-- Workflow Overlay -->
       <div 
         v-show="isWorkflowOpen"
-        class="absolute left-0 top-0 h-full bg-white rounded-lg border border-gray-200 shadow-xl flex flex-col overflow-hidden transition-all duration-200 min-w-[300px] max-w-[500px]"
+        class="absolute left-0 top-0 h-full bg-white border border-gray-200 shadow-xl flex flex-col overflow-hidden transition-all duration-200 min-w-[300px] max-w-[500px]"
         :class="[
           isWorkflowOpen ? 'opacity-100 z-10' : 'opacity-0 -z-10'
         ]"
       >
-        <div class="flex-1 overflow-auto p-4">
+        <div class="flex-1 overflow-auto p-0">
           <LeftSidebarOverlay />
         </div>
       </div>
@@ -24,7 +24,7 @@
 
     <!-- Content Area -->
     <div v-if="isFullscreenMode" 
-      class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0 flex-1 min-w-[200px] max-w-[calc(100%-200px)]"
+      class="bg-white p-0 shadow flex flex-col min-h-0 flex-1 min-w-[200px] max-w-[calc(100%-200px)]"
     >
       <div class="flex-1 overflow-auto relative">
         <ContentViewer />
@@ -32,7 +32,7 @@
     </div>
 
     <template v-else>
-      <div class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0 flex-1 min-w-[200px]">
+      <div class="bg-white p-0 shadow flex flex-col min-h-0 flex-1 min-w-[200px]">
         <div class="flex-1 overflow-auto">
           <WorkflowStepView />
         </div>
@@ -44,7 +44,7 @@
       <div 
         v-show="isRightPanelVisible"
         :style="{ width: rightPanelWidth + 'px' }" 
-        class="bg-white p-4 rounded-lg shadow flex flex-col min-h-0 relative"
+        class="bg-white p-0 shadow flex flex-col min-h-0 relative"
       >
         <RightSideTabs />
         
@@ -141,5 +141,9 @@ const handleExpandContent = () => {
 
 .transition-all {
   transition-property: all;
+}
+/* Ensure Workflow Overlay content padding is also p-0 if its container is p-0 */
+.absolute.left-0.top-0 .p-0 { /* Targeting the inner div if its parent is p-0 now */
+  padding: 0rem !important; /* explicit p-0 for child if needed */
 }
 </style>
