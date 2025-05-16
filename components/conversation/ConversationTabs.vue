@@ -1,8 +1,9 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Tabs Header -->
-    <div class="tabs-container">
-      <div class="flex space-x-1 bg-gray-100 p-1 rounded-t conversation-tabs whitespace-nowrap">
+    <div class="tabs-container flex-shrink-0">
+      <!-- Tab bar container with a bottom border for inactive tabs to sit on -->
+      <div class="flex space-x-1 bg-gray-100 px-1 rounded-t conversation-tabs whitespace-nowrap border-b border-gray-200">
         <div
           v-for="conversation in allOpenConversations"
           :key="conversation.id"
@@ -10,10 +11,10 @@
         >
           <button
             :class="[
-              'px-4 py-2 rounded-t text-sm font-medium flex items-center',
+              'px-4 py-2 rounded-t text-sm font-medium flex items-center', // Base classes
               conversation.id === currentSelectedConversationId
-                ? 'bg-white text-blue-600'
-                : 'bg-gray-200 text-gray-600 hover:bg-gray-300',
+                ? 'bg-white text-blue-600 border border-gray-200' // Active tab: full border, no -mb-px
+                : 'bg-gray-200 text-gray-600 hover:bg-gray-300', // Inactive tab styling
               conversation.id.startsWith('temp-') && 'italic'
             ]"
             @click="handleSelectConversation(conversation.id)"
@@ -31,10 +32,12 @@
       </div>
     </div>
     <!-- Active Conversation Content -->
-    <div class="flex-grow overflow-y-auto bg-white">
+    <!-- Changed to flex flex-col to enable sticky footer for the form inside Conversation.vue -->
+    <div class="flex flex-col flex-grow overflow-y-auto bg-white min-h-0">
       <Conversation
         v-if="currentSelectedConversation"
         :conversation="currentSelectedConversation"
+        class="flex-grow" 
       />
       <div v-else class="p-4 text-center text-gray-500">
         Select a conversation or start a new one.

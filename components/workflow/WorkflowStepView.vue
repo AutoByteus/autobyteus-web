@@ -10,44 +10,45 @@
 
     <!-- Main Content -->
     <div v-if="currentSelectedStepInWorkflow" class="flex flex-col h-full">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-1 gap-2 sm:gap-0 px-3">
+      <!-- Header: Step Name, New/History buttons - THIS STAYS VISIBLE -->
+      <!-- Changed padding to pt-1 pb-0. Reduced button and icon sizes. -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 px-3 pt-1 pb-0">
         <h4 class="text-lg font-medium text-gray-700">{{ currentSelectedStepInWorkflow.name }}</h4>
         <div class="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
           <button 
             @click="handleInitiateNewConversation" 
-            class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-gray-100 text-blue-500 tooltip transition-colors"
+            class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-blue-500 tooltip transition-colors"
             aria-label="New Conversation"
             data-tooltip="New Conversation"
             :disabled="!workflowStore.currentSelectedStepId"
           >
-            <PlusCircleIcon class="w-8 h-8" />
+            <PlusCircleIcon class="w-6 h-6" />
           </button>
           <button 
             @click="handleShowConversationHistory" 
-            class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 tooltip transition-colors"
+            class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 tooltip transition-colors"
             aria-label="History"
             data-tooltip="History"
             :disabled="!currentSelectedStepInWorkflow"
           >
-            <ClockIcon class="w-8 h-8" />
+            <ClockIcon class="w-6 h-6" />
           </button>
         </div>
       </div>
 
-      <!-- Main content area -->
-      <div class="flex flex-col flex-grow">
-        <!-- Conversation Tabs -->
-        <ConversationTabs />
+      <!-- Area for Conversation and Input Form -->
+      <!-- This container will manage the layout of ConversationTabs -->
+      <!-- ConversationTabs will now contain the WorkflowStepRequirementForm internally -->
+      <div class="flex flex-col flex-grow overflow-hidden">
+        
+        <!-- ConversationTabs takes up the majority of the space and handles its own scrolling -->
+        <!-- Its internal structure (tabs + scrollable content panel) will now include the form -->
+        <ConversationTabs class="flex-grow min-h-0" />
 
-        <!-- Content Area -->
-        <div class="flex-grow">
-          <div class="w-full bg-white pt-4">
-            <WorkflowStepRequirementForm />
-          </div>
-        </div>
+        <!-- WorkflowStepRequirementForm is REMOVED from here -->
       </div>
 
-      <!-- Conversation History Panel -->
+      <!-- Conversation History Panel (modal, separate from this layout flow) -->
       <ConversationHistoryPanel 
         :isOpen="isHistoryPanelOpen"
         :conversations="historicalConversations" 
@@ -72,7 +73,7 @@ import { useWorkflowStore } from '~/stores/workflow';
 import { useConversationStore } from '~/stores/conversationStore';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import { useWorkspaceStore } from '~/stores/workspace';
-import WorkflowStepRequirementForm from '~/components/stepRequirementForm/WorkflowStepRequirementForm.vue';
+// WorkflowStepRequirementForm import is removed
 import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue';
 import ConversationTabs from '~/components/conversation/ConversationTabs.vue';
 import { 
@@ -101,10 +102,10 @@ const loadWorkflowForCurrentWorkspace = async () => {
     try {
       await workflowStore.fetchWorkflowConfig(workspaceStore.currentSelectedWorkspaceId);
       // Initial conversation ensuring is now handled within workflowStore.fetchWorkflowConfig
-    } catch (err: any) {
+    } catch (err: any) { // Added opening curly brace
       error.value = err.message || 'Failed to fetch workflow.';
       console.error("Workflow fetch error in component:", err);
-    } finally {
+    } finally { // Closing curly brace for catch block
       loading.value = false;
     }
   } else {
