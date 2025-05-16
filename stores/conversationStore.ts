@@ -566,11 +566,7 @@ export const useConversationStore = defineStore('conversation', {
         throw err;
       }
     },
-
-    getConversationById(conversationId: string): Conversation | undefined {
-      return this.activeConversations.get(conversationId);
-    },
-
+    
     ensureConversationForStep(stepId: string): void {
         if (!stepId) {
             console.warn("ensureConversationForStep called without stepId");
