@@ -3,13 +3,14 @@
     <!-- Textarea container -->
     <div class="flex-grow">
       <textarea
-        :value="userRequirement"
-        @input="updateRequirement"
+        :value="internalRequirement"
+        @input="handleInput"
         ref="textarea"
         class="w-full p-4 border-0 focus:ring-0 focus:outline-none resize-none bg-transparent"
         :style="{ height: textareaHeight + 'px', minHeight: '150px' }"
         placeholder="Enter your requirement here..."
         @keydown="handleKeyDown"
+        @blur="handleBlur"
       ></textarea>
     </div>
 
@@ -28,16 +29,14 @@
         </option>
       </select>
       
-      <!-- Audio recorder component -->
       <AudioRecorder
         :disabled="isSending"
       />
       
       <div class="flex flex-col sm:flex-row gap-3 sm:gap-2">
-        <!-- Search Context Button -->
         <button
           @click="handleSearchContext"
-          :disabled="isSending || !userRequirement.trim() || isSearching"
+          :disabled="isSending || !internalRequirement.trim() || isSearching"
           class="flex items-center justify-center px-4 py-2.5 bg-green-500 text-white text-sm font-medium rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
         >
           <svg v-if="isSearching" class="animate-spin h-4 w-4 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -50,10 +49,9 @@
           <span class="whitespace-nowrap">{{ isSearching ? 'Searching...' : 'Search Context' }}</span>
         </button>
 
-        <!-- Send button -->
         <button 
           @click="handleSend"
-          :disabled="isSending || !userRequirement.trim()"
+          :disabled="isSending || !internalRequirement.trim()"
           class="flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
         >
           <svg v-if="isSending" class="animate-spin h-4 w-4 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -83,50 +81,131 @@ const conversationStore = useConversationStore();
 const workspaceStore = useWorkspaceStore();
 const llmProviderConfigStore = useLLMProviderConfigStore();
 
-// Use storeToRefs for reactive state properties
-const { currentRequirement, isCurrentlySending, currentModelSelection, selectedConversation, conversationMessages } = storeToRefs(conversationStore);
+// Store refs
+const { currentRequirement: storeCurrentRequirement, isCurrentlySending, currentModelSelection, selectedConversation, conversationMessages } = storeToRefs(conversationStore);
 const { currentSelectedWorkspaceId } = storeToRefs(workspaceStore);
 const { models, isLoadingModels } = storeToRefs(llmProviderConfigStore);
 
 // Local component state
-const userRequirement = computed(() => currentRequirement.value);
+const internalRequirement = ref(''); // Local state for textarea
 const isSending = computed(() => isCurrentlySending.value);
 const textarea = ref<HTMLTextAreaElement | null>(null);
 const controlsRef = ref<HTMLDivElement | null>(null);
 const textareaHeight = ref(150);
 const isSearching = ref(false);
 
-// Computed property for selectedModel that gets/sets the conversation's model selection
 const selectedModel = computed({
   get: () => currentModelSelection.value,
   set: (value: string) => conversationStore.updateModelSelection(value)
 });
 
-// Ensure models is always an array
 const availableModels = computed(() => models.value || []);
 
 const isFirstMessage = () => {
   return !selectedConversation.value || conversationMessages.value.length === 0;
 };
 
-const updateRequirement = (event: Event) => {
+// Enhanced Debounce function
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  delay: number
+): { call: (...args: Parameters<T>) => void; cancel: () => void; flush: () => void; } {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let lastArgs: Parameters<T> | undefined;
+
+  const call = (...args: Parameters<T>) => {
+    lastArgs = args;
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(() => {
+      if (lastArgs) {
+        func.apply(this, lastArgs);
+      }
+      timeoutId = null;
+      lastArgs = undefined;
+    }, delay);
+  };
+
+  const cancel = () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+      lastArgs = undefined;
+    }
+  };
+
+  const flush = () => {
+    // If there was a pending call, execute it immediately
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+      if (lastArgs) {
+        func.apply(this, lastArgs);
+        lastArgs = undefined; // Clear lastArgs after flushing
+      }
+    }
+  };
+
+  return { call, cancel, flush };
+}
+
+const adjustTextareaHeight = () => {
+  if (textarea.value) {
+    textarea.value.style.height = '150px'; 
+    const scrollHeight = textarea.value.scrollHeight;
+    const controlsHeight = controlsRef.value?.offsetHeight || 0;
+    const maxHeight = window.innerHeight * 0.6; 
+    const newHeight = Math.min(Math.max(scrollHeight, 150), maxHeight - controlsHeight - 40);
+    textarea.value.style.height = `${newHeight}px`;
+    textareaHeight.value = newHeight;
+  }
+};
+
+const { call: debouncedUpdateStore, cancel: cancelDebouncedUpdateStore, flush: flushDebouncedUpdateStore } = 
+  debounce((text: string) => {
+    if (text !== storeCurrentRequirement.value) {
+      conversationStore.updateUserRequirement(text);
+    }
+  }, 750);
+
+watch(storeCurrentRequirement, (newValFromStore) => {
+  if (newValFromStore !== internalRequirement.value) {
+    internalRequirement.value = newValFromStore;
+    nextTick(adjustTextareaHeight); 
+  }
+}, { immediate: true }); 
+
+const handleInput = (event: Event) => {
   const target = event.target as HTMLTextAreaElement;
-  conversationStore.updateUserRequirement(target.value);
-  adjustTextareaHeight();
+  internalRequirement.value = target.value; 
+  
+  nextTick(adjustTextareaHeight);
+  
+  debouncedUpdateStore(internalRequirement.value);
+};
+
+const syncStoreImmediately = () => {
+  cancelDebouncedUpdateStore(); 
+  if (internalRequirement.value !== storeCurrentRequirement.value) {
+    conversationStore.updateUserRequirement(internalRequirement.value);
+  }
+};
+
+const handleBlur = () => {
+  flushDebouncedUpdateStore(); 
 };
 
 const handleSend = async () => {
-  if (!userRequirement.value.trim()) {
+  if (!internalRequirement.value.trim()) {
     alert('Please enter a user requirement before sending.');
     return;
   }
+  syncStoreImmediately(); 
+
   const workspaceId = currentSelectedWorkspaceId.value;
   try {
-    await conversationStore.sendStepRequirementAndSubscribe(
-      workspaceId,
-    );
-
-    adjustTextareaHeight();
+    await conversationStore.sendStepRequirementAndSubscribe(workspaceId);
   } catch (error) {
     console.error('Error sending requirement:', error);
     alert('Failed to send requirement. Please try again.');
@@ -134,15 +213,13 @@ const handleSend = async () => {
 };
 
 const handleSearchContext = async () => {
-  if (!userRequirement.value.trim()) {
+  if (!internalRequirement.value.trim()) {
     alert('Please enter a requirement to search context.');
     return;
   }
-
   isSearching.value = true;
   try {
-    await conversationStore.searchContextFiles(userRequirement.value);
-    // Scroll to context files area for better UX
+    await conversationStore.searchContextFiles(internalRequirement.value); 
     document.querySelector('.context-files-area')?.scrollIntoView({
       behavior: 'smooth',
       block: 'start'
@@ -152,21 +229,6 @@ const handleSearchContext = async () => {
     alert('Failed to search context. Please try again.');
   } finally {
     isSearching.value = false;
-  }
-};
-
-const adjustTextareaHeight = () => {
-  if (textarea.value) {
-    textarea.value.style.height = '150px';
-    const scrollHeight = textarea.value.scrollHeight;
-    const controlsHeight = controlsRef.value?.offsetHeight || 0;
-    const maxHeight = window.innerHeight * 0.6;
-    const newHeight = Math.min(
-      Math.max(scrollHeight, 150),
-      maxHeight - controlsHeight - 40
-    );
-    textarea.value.style.height = `${newHeight}px`;
-    textareaHeight.value = newHeight;
   }
 };
 
@@ -184,32 +246,24 @@ const handleResize = () => {
 const initializeModels = async () => {
   try {
     await llmProviderConfigStore.fetchModels();
-    // Only set a default model if no model has already been selected and models are available
     if (availableModels.value.length > 0 && !selectedModel.value) {
       selectedModel.value = availableModels.value[0];
     }
-  } catch (error) {
+  } catch (error) { // Corrected syntax: removed "_w"
     console.error('Failed to fetch available models:', error);
   }
 };
 
 onMounted(() => {
-  nextTick(() => {
-    adjustTextareaHeight();
-    window.addEventListener('resize', handleResize);
-    initializeModels();
-  });
+  window.addEventListener('resize', handleResize);
+  initializeModels();
 });
 
 onUnmounted(() => {
+  flushDebouncedUpdateStore(); 
   window.removeEventListener('resize', handleResize);
 });
 
-watch(userRequirement, () => {
-  nextTick(() => {
-    adjustTextareaHeight();
-  });
-});
 </script>
 
 <style scoped>
@@ -217,15 +271,6 @@ textarea {
   outline: none;
   overflow-y: auto;
 }
-
-/* Hide scrollbar for Chrome, Safari and Opera */
-textarea::-webkit-scrollbar {
-  display: none;
-}
-
-/* Hide scrollbar for IE, Edge and Firefox */
-textarea {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
-}
+textarea::-webkit-scrollbar { display: none; }
+textarea { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
