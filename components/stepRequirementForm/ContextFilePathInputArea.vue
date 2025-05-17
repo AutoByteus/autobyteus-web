@@ -1,6 +1,6 @@
 <template>
   <div
-    class="bg-gray-50 hover:shadow-md transition-shadow duration-200 p-3 border border-gray-200"
+    class="bg-gray-50 hover:shadow-md transition-shadow duration-200 p-4 border border-gray-200"
     @dragover.prevent
     @drop.prevent="onFileDrop"
     @paste="onPaste"
