@@ -1,13 +1,13 @@
 <template>
   <div
-    class="bg-gray-50 hover:shadow-md transition-shadow duration-200 p-3 rounded-md border border-gray-200"
+    class="bg-gray-50 hover:shadow-md transition-shadow duration-200 p-3 border border-gray-200"
     @dragover.prevent
     @drop.prevent="onFileDrop"
     @paste="onPaste"
   >
     <!-- Clickable Header Area -->
-    <div 
-      @click="toggleContextList" 
+    <div
+      @click="toggleContextList"
       class="flex items-center justify-between cursor-pointer p-2 -m-2 mb-1 rounded hover:bg-gray-100 transition-colors"
       :class="{ 'mb-2': isContextListExpanded && contextFilePaths.length > 0 }"
       role="button"
@@ -16,13 +16,13 @@
     >
       <div class="flex items-center">
         <!-- Chevron icon is now conditional -->
-        <svg 
+        <svg
           v-if="contextFilePaths.length > 0"
-          class="w-5 h-5 transform transition-transform text-gray-600 mr-2 flex-shrink-0" 
-          :class="{ 'rotate-90': isContextListExpanded }" 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24" 
+          class="w-5 h-5 transform transition-transform text-gray-600 mr-2 flex-shrink-0"
+          :class="{ 'rotate-90': isContextListExpanded }"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
           xmlns="http://www.w3.org/2000/svg"
         >
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -36,14 +36,14 @@
     </div>
 
     <!-- File List (conditionally rendered) -->
-    <ul 
-      v-if="isContextListExpanded && contextFilePaths.length > 0" 
+    <ul
+      v-if="isContextListExpanded && contextFilePaths.length > 0"
       id="context-file-list"
-      class="space-y-2" 
+      class="space-y-2"
     >
-      <li 
-        v-for="(filePath, index) in contextFilePaths" 
-        :key="filePath.path" 
+      <li
+        v-for="(filePath, index) in contextFilePaths"
+        :key="filePath.path"
         class="bg-gray-100 p-2 rounded transition-colors duration-300 flex items-center justify-between"
       >
         <div class="flex items-center space-x-2 flex-grow min-w-0">
@@ -55,8 +55,8 @@
             <i class="fas fa-spinner fa-spin mr-1"></i>Uploading...
           </span>
         </div>
-        <button 
-          @click.stop="removeContextFilePath(index)" 
+        <button
+          @click.stop="removeContextFilePath(index)"
           class="text-red-500 hover:text-white hover:bg-red-500 transition-colors duration-300 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 ml-2 flex-shrink-0"
           title="Remove this file"
           aria-label="Remove file"
@@ -68,11 +68,11 @@
         </button>
       </li>
     </ul>
-    
+
     <!-- "Clear All" Button Footer (conditionally rendered) -->
-    <div v-if="contextFilePaths.length > 0" class="flex justify-end pt-2 border-t border-gray-200 mt-2">
-      <button 
-        @click.stop="clearAllContextFilePaths" 
+    <div v-if="contextFilePaths.length > 0" class="flex justify-end pt-2 mt-2">
+      <button
+        @click.stop="clearAllContextFilePaths"
         class="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300 flex items-center text-xs"
       >
         <i class="fas fa-trash-alt mr-2"></i>
@@ -83,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'; // Added watch
+import { ref, computed, watch } from 'vue';
 import { useConversationStore } from '~/stores/conversationStore';
 import { getFilePathsFromFolder, determineFileType } from '~/utils/fileExplorer/fileUtils';
 import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
@@ -92,14 +92,18 @@ const conversationStore = useConversationStore();
 
 const contextFilePaths = computed(() => conversationStore.currentContextPaths);
 const uploadingFiles = ref<string[]>([]);
-const isContextListExpanded = ref(true); 
+const isContextListExpanded = ref(true);
 
 const toggleContextList = () => {
   if (contextFilePaths.value.length > 0) {
     isContextListExpanded.value = !isContextListExpanded.value;
   } else {
-    isContextListExpanded.value = true; 
+    isContextListExpanded.value = true;
   }
+};
+
+const removeContextFilePath = (index: number) => {
+  conversationStore.removeContextFilePath(index);
 };
 
 const addFileAndExpand = (filePath: string, fileType: 'text' | 'image') => {
@@ -112,7 +116,7 @@ const addFileAndExpand = (filePath: string, fileType: 'text' | 'image') => {
 
 const clearAllContextFilePaths = () => {
   conversationStore.clearContextFilePaths();
-  isContextListExpanded.value = true; 
+  isContextListExpanded.value = true;
 };
 
 const onFileDrop = async (event: DragEvent) => {
@@ -133,13 +137,11 @@ const onFileDrop = async (event: DragEvent) => {
       const fileType = file.type.startsWith('image/') ? 'image' : 'text';
       conversationStore.addContextFilePath({ path: tempPath, type: fileType });
       uploadingFiles.value.push(tempPath);
-      
+
       try {
         const uploadedFilePath = await conversationStore.uploadFile(file);
-        // Update the path from temp to actual, remove temp
         const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
         if (tempIndex !== -1) {
-          // Ideally, replace directly or remove and add. For simplicity:
           conversationStore.removeContextFilePath(tempIndex);
         }
         conversationStore.addContextFilePath({ path: uploadedFilePath, type: fileType });
@@ -174,12 +176,12 @@ const onPaste = async (event: ClipboardEvent) => {
           const tempPath = URL.createObjectURL(blob);
           conversationStore.addContextFilePath({ path: tempPath, type: 'image' });
           uploadingFiles.value.push(tempPath);
-          
+
           try {
             const uploadedFilePath = await conversationStore.uploadFile(blob);
             const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
             if (tempIndex !== -1) {
-               conversationStore.removeContextFilePath(tempIndex); 
+               conversationStore.removeContextFilePath(tempIndex);
             }
             conversationStore.addContextFilePath({ path: uploadedFilePath, type: 'image' });
             uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath && path !== uploadedFilePath);
@@ -206,9 +208,6 @@ watch(contextFilePaths, (newPaths) => {
         isContextListExpanded.value = true;
     }
 }, { deep: true });
-
-// `removeContextFilePath` is called directly on the store from the template
-// so no specific local function needed here unless more logic was required.
 
 </script>
 

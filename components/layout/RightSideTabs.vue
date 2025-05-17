@@ -6,8 +6,8 @@
       @select="setActiveTab"
     />
 
-    <!-- Tab Content - using v-if for proper mounting/unmounting -->
-    <div class="flex-grow overflow-auto relative mt-2">
+    <!-- Tab Content - added top border for separation -->
+    <div class="flex-grow overflow-auto relative border-t border-gray-200">
       <!-- Use v-if instead of v-show to actually mount/unmount components -->
       <div v-if="activeTab === 'Terminal'" class="h-full">
         <Terminal />
@@ -38,10 +38,6 @@ const setActiveTab = (tabName: string) => {
 </script>
 
 <style scoped>
-.mt-2 {
-  margin-top: 0.5rem;
-}
-
 /* Ensure content fills available space */
 .flex-grow {
   display: flex;

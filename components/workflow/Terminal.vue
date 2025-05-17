@@ -250,7 +250,7 @@ onBeforeUnmount(() => {
 <style>
 .terminal-container {
   background-color: #1e1e1e;
-  border-radius: 5px;
+  /* border-radius: 5px; Removed */
   overflow: hidden;
   height: 100%;
   cursor: text;

@@ -109,7 +109,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .vnc-container { 
   background-color: #1e1e1e; 
-  border-radius: 5px; 
+  /* border-radius: 5px; Removed */
   overflow: hidden; 
   display: flex;
   flex-direction: column;
