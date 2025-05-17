@@ -32,11 +32,11 @@
 import { computed } from 'vue'
 import { useWorkflowStore } from '~/stores/workflow'
 import { useWorkflowUIStore } from '~/stores/workflowUI'
-import { useConversationStore } from '~/stores/conversationStore'; // Added
+import { useConversationStore } from '~/stores/conversationStore';
 
 const workflowStore = useWorkflowStore()
 const workflowUIStore = useWorkflowUIStore()
-const conversationStore = useConversationStore(); // Added
+const conversationStore = useConversationStore();
 
 const steps = computed(() => {
   if (!workflowStore.currentWorkflow) return []
@@ -47,7 +47,10 @@ const currentSelectedStepId = computed(() => workflowStore.currentSelectedStepId
 
 const handleSelectStep = (stepId: string) => {
   workflowStore.setSelectedStepId(stepId) // Sets the sidebar highlight and current workflow step
-  conversationStore.createTemporaryConversation(stepId) // Creates a new tab for this step and makes it active
+  // Changed from createTemporaryConversation to ensureConversationForStep
+  // This will select an existing conversation for the step if one exists,
+  // or create a new temporary one if no conversations for this step exist.
+  conversationStore.ensureConversationForStep(stepId); 
   workflowUIStore.closeWorkflow() // Existing UI behavior for closing panel on mobile
 }
 </script>
