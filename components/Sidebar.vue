@@ -3,7 +3,7 @@
     <!-- Logo Container -->
     <NuxtLink 
       to="/"
-      class="px-4 py-4 hover:bg-gray-700 transition-colors group relative"
+      class="px-2 py-2 hover:bg-gray-700 transition-colors group relative"
       title="Home"
     >
       <img 
@@ -38,7 +38,7 @@
     </button>
 
     <!-- Main Navigation -->
-    <nav class="flex-1 px-2 mt-8">
+    <nav class="flex-1 px-2 mt-4">
       <ul class="space-y-2">
         <li class="relative">
           <NuxtLink 
@@ -103,7 +103,7 @@
     </nav>
 
     <!-- Bottom Navigation (Settings) -->
-    <div class="px-2 pb-4">
+    <div class="px-2 pb-2">
       <ul class="space-y-2">
         <li class="relative">
           <NuxtLink 

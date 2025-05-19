@@ -1,35 +1,50 @@
 <template>
-  <div class="space-y-4 mb-4">
-    <div
-      v-for="(message, index) in conversation.messages"
-      :key="message.timestamp + '-' + message.type + '-' + index"
-      :class="[
-        'p-3 rounded-lg max-w-full relative shadow-sm hover:shadow-md transition-shadow duration-200 break-words',
-        message.type === 'user' ? 'ml-auto bg-blue-100 text-blue-800' : 'mr-auto bg-gray-100 text-gray-800'
-      ]"
-    >
-      <UserMessage
-        v-if="message.type === 'user'"
-        :message="message"
-      />
-      <AIMessage
-        v-else
-        :message="message"
-        :conversation-id="conversationId"
-        :message-index="index"
-      />
+  <!-- This root div is a flex column aiming to fill its parent's height (from ConversationTabs) -->
+  <div class="flex flex-col h-full p-4"> <!-- Added p-4 for overall padding inside the conversation area -->
+    
+    <!-- Messages and Totals -->
+    <!-- This div will take its natural height. No flex-grow here, allow it to be short. -->
+    <div>
+      <div class="space-y-4 mb-4">
+        <div
+          v-for="(message, index) in conversation.messages"
+          :key="message.timestamp + '-' + message.type + '-' + index"
+          :class="[
+            'p-3 rounded-lg max-w-full relative shadow-sm hover:shadow-md transition-shadow duration-200 break-words',
+            message.type === 'user' ? 'ml-auto bg-blue-100 text-blue-800' : 'mr-auto bg-gray-100 text-gray-800'
+          ]"
+        >
+          <UserMessage
+            v-if="message.type === 'user'"
+            :message="message"
+          />
+          <AIMessage
+            v-else
+            :message="message"
+            :conversation-id="conversationId"
+            :message-index="index"
+          />
 
-      <span class="text-xs text-blue-700 font-medium absolute bottom-1 right-2">
-        {{ formatTokenCost(message) }}
-      </span>
+          <span class="text-xs text-blue-700 font-medium absolute bottom-1 right-2">
+            {{ formatTokenCost(message) }}
+          </span>
+        </div>
+      </div>
+      <!-- Display total tokens and total cost at the bottom of the conversation -->
+      <div
+        v-if="totalUsage.totalTokens > 0"
+        class="text-xs text-blue-700 font-medium mt-2 text-right mb-4"
+      >
+        Total: {{ totalUsage.totalTokens }} tokens / ${{ totalUsage.totalCost.toFixed(4) }}
+      </div>
     </div>
-  </div>
-  <!-- Display total tokens and total cost at the bottom of the conversation -->
-  <div
-    v-if="totalUsage.totalTokens > 0"
-    class="text-xs text-blue-700 font-medium mt-2 text-right"
-  >
-    Total: {{ totalUsage.totalTokens }} tokens / ${{ totalUsage.totalCost.toFixed(4) }}
+
+    <!-- WorkflowStepRequirementForm wrapper -->
+    <!-- mt-auto pushes this to the bottom if there's space. -->
+    <!-- pt-4 provides some top padding for the form itself from messages or top of its box. -->
+    <div class="mt-auto pt-4"> 
+      <WorkflowStepRequirementForm />
+    </div>
   </div>
 </template>
 
@@ -38,6 +53,7 @@ import { computed } from 'vue';
 import type { Conversation, Message } from '~/types/conversation';
 import UserMessage from '~/components/conversation/UserMessage.vue';
 import AIMessage from '~/components/conversation/AIMessage.vue';
+import WorkflowStepRequirementForm from '~/components/stepRequirementForm/WorkflowStepRequirementForm.vue';
 
 const props = defineProps<{  conversation: Conversation;
 }>();
@@ -90,4 +106,5 @@ const totalUsage = computed(() => {
 
 <style scoped>
 /* Ensure messages wrap properly on small screens */
+/* h-full and flex flex-col on the root div are crucial for the sticky footer effect */
 </style>

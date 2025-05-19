@@ -12,7 +12,7 @@ import type {
   SearchContextFilesQuery,
   SearchContextFilesQueryVariables
 } from '~/generated/graphql';
-import type { Conversation, Message, ContextFilePath } from '~/types/conversation';
+import type { Conversation, Message, ContextFilePath, AIMessage } from '~/types/conversation';
 import apiService from '~/services/api';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
@@ -21,347 +21,286 @@ import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementa
 import type { AIResponseSegment } from '~/utils/aiResponseParser/types';
 
 interface ConversationStoreState {
-  conversationsPerStep: Map<string, Map<string, Conversation>>;
-  activeConversationIdsByStep: Map<string, string>;  // stepId -> conversationId
-  currentStepId: string | null;
-  conversationRequirements: Map<string, string>;
-  conversationContextPaths: Map<string, ContextFilePath[]>;
-  conversationModelSelection: Map<string, string>;
-  isSubscribed: boolean;
-  isSending: boolean;
+  activeConversations: Map<string, Conversation>; 
+  selectedConversationId: string | null; 
+  conversationRequirements: Map<string, string>; 
+  conversationContextPaths: Map<string, ContextFilePath[]>; 
+  conversationModelSelection: Map<string, string>; 
+  isSendingMap: Map<string, boolean>; // Key: conversationId -> sending status
+  isSubscribedMap: Map<string, boolean>; // Key: conversationId -> subscribed status
 }
 
 export const useConversationStore = defineStore('conversation', {
   state: (): ConversationStoreState => ({
-    conversationsPerStep: new Map(),
-    activeConversationIdsByStep: new Map(),
-    currentStepId: null,
+    activeConversations: new Map(), 
+    selectedConversationId: null,
     conversationRequirements: new Map(),
     conversationContextPaths: new Map(),
     conversationModelSelection: new Map(),
-    isSubscribed: false,
-    isSending: false,
+    isSendingMap: new Map(), // Initialize as Map
+    isSubscribedMap: new Map(), // Initialize as Map
   }),
 
   getters: {
-    activeConversations: (state) => {
-      const stepId = state.currentStepId;
-      if (stepId && state.conversationsPerStep.has(stepId)) {
-        return Array.from(state.conversationsPerStep.get(stepId)!.values());
-      }
-      return [];
-    },
-
-    selectedConversationId: (state): string | null => {
-      if (!state.currentStepId) return null;
-      return state.activeConversationIdsByStep.get(state.currentStepId) || null;
+    allOpenConversations: (state): Conversation[] => {
+      // Sort by updatedAt in ascending order (oldest first, newest at the end)
+      return Array.from(state.activeConversations.values()) 
+        .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
     },
 
     selectedConversation: (state): Conversation | null => {
-      const stepId = state.currentStepId;
-      if (!stepId) return null;
-      
-      const conversationId = state.activeConversationIdsByStep.get(stepId);
-      if (!conversationId || !state.conversationsPerStep.has(stepId)) return null;
-      
-      return state.conversationsPerStep.get(stepId)!.get(conversationId) || null;
+      if (!state.selectedConversationId) return null;
+      return state.activeConversations.get(state.selectedConversationId) || null;
     },
 
     currentContextPaths: (state): ContextFilePath[] => {
-      const conversationId = state.activeConversationIdsByStep.get(state.currentStepId!) || null;
-      if (!conversationId) return [];
-      return state.conversationContextPaths.get(conversationId) || [];
+      if (!state.selectedConversationId) return [];
+      return state.conversationContextPaths.get(state.selectedConversationId) || [];
     },
 
     currentModelSelection: (state): string => {
-      const conversationId = state.activeConversationIdsByStep.get(state.currentStepId!);
-      if (!conversationId) return '';
-      return state.conversationModelSelection.get(conversationId) || '';
+      if (!state.selectedConversationId) return '';
+      return state.conversationModelSelection.get(state.selectedConversationId) || '';
     },
 
-    isCurrentlySending: (state): boolean => state.isSending,
-
-    isConversationActive: (state): boolean => {
-      const stepId = state.currentStepId;
-      return stepId ? state.activeConversationIdsByStep.has(stepId) : false;
+    // This getter now reflects the sending state of the *currently selected* conversation
+    isCurrentlySending(state): boolean {
+      if (!state.selectedConversationId) return false;
+      return !!state.isSendingMap.get(state.selectedConversationId);
     },
 
-    conversationMessages: (state): Message[] => {
-      const stepId = state.currentStepId;
-      if (!stepId) return [];
-      
-      const conversationId = state.activeConversationIdsByStep.get(stepId);
-      if (!conversationId) return [];
-      
-      const conversations = state.conversationsPerStep.get(stepId);
-      if (!conversations) return [];
-      
-      const conversation = conversations.get(conversationId);
-      return conversation ? conversation.messages : [];
+    // Optional: Getter for specific conversation's sending state
+    getIsSendingForConversation: (state) => (conversationId: string): boolean => {
+      return !!state.isSendingMap.get(conversationId);
+    },
+
+    // Optional: Getter for specific conversation's subscribed state
+    getIsSubscribedForConversation: (state) => (conversationId: string): boolean => {
+      return !!state.isSubscribedMap.get(conversationId);
+    },
+
+    conversationMessages(state): Message[] {
+      const conv: Conversation | null = this.selectedConversation; 
+      return conv ? conv.messages : [];
     },
 
     currentRequirement: (state): string => {
-      const conversationId = state.activeConversationIdsByStep.get(state.currentStepId!) || null;
-      if (!conversationId) return '';
-      return state.conversationRequirements.get(conversationId) || '';
+      if (!state.selectedConversationId) return '';
+      return state.conversationRequirements.get(state.selectedConversationId) || '';
     },
   },
 
   actions: {
-    hasConversationsForStep(stepId: string): boolean {
-      return this.conversationsPerStep.has(stepId) && 
-             this.conversationsPerStep.get(stepId)!.size > 0;
-    },
-
-    setCurrentStepId(stepId: string | null) {
-      const previousStepId = this.currentStepId;
-      this.currentStepId = stepId;
-      
-      if (stepId) {
-        // Initialize the conversations map for this step if it doesn't exist
-        if (!this.conversationsPerStep.has(stepId)) {
-          this.conversationsPerStep.set(stepId, new Map());
-        }
-
-        // Get conversations for this step
-        const stepConversations = this.conversationsPerStep.get(stepId)!;
-        
-        // If there are existing conversations
-        if (stepConversations.size > 0) {
-          // If no conversation is selected for this step, select the first one
-          if (!this.activeConversationIdsByStep.has(stepId)) {
-            const firstConversation = Array.from(stepConversations.values())[0];
-            this.activeConversationIdsByStep.set(stepId, firstConversation.id);
-          }
-        } else {
-          // Create a temporary conversation if there are no conversations
-          this.createTemporaryConversation();
-        }
-      } else {
-        // Clear selection when no step is selected
-        this.activeConversationIdsByStep.delete(previousStepId!);
-      }
-    },
-
     setSelectedConversationId(conversationId: string | null) {
-      if (!this.currentStepId) return;
-      
-      if (conversationId) {
-        this.activeConversationIdsByStep.set(this.currentStepId, conversationId);
-      } else {
-        this.activeConversationIdsByStep.delete(this.currentStepId);
-      }
+      this.selectedConversationId = conversationId;
     },
 
-    createTemporaryConversation() {
-      const currentStepId = this.currentStepId;
-      if (!currentStepId) return;
+    createTemporaryConversation(stepId: string) {
+      if (!stepId) {
+        console.warn('Cannot create temporary conversation without stepId');
+        return;
+      }
 
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const now = new Date().toISOString();
       const newConversation: Conversation = {
         id: tempId,
-        stepId: currentStepId,
+        stepId: stepId,
         messages: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now, // Ensure updatedAt is set on creation
       };
 
-      if (!this.conversationsPerStep.has(currentStepId)) {
-        this.conversationsPerStep.set(currentStepId, new Map());
-      }
-
-      this.conversationsPerStep.get(currentStepId)!.set(tempId, newConversation);
-      this.activeConversationIdsByStep.set(currentStepId, tempId);
+      this.activeConversations.set(tempId, newConversation);
       
-      // Initialize maps for new conversation
       this.conversationRequirements.set(tempId, '');
       this.conversationContextPaths.set(tempId, []);
-      this.conversationModelSelection.set(tempId, '');
+      this.conversationModelSelection.set(tempId, ''); 
+      this.isSendingMap.set(tempId, false);
+      this.isSubscribedMap.set(tempId, false);
+      
+      this.setSelectedConversationId(tempId);
     },
 
     updateUserRequirement(newRequirement: string) {
-      const conversationId = this.activeConversationIdsByStep.get(this.currentStepId!);
-      if (conversationId) {
-        this.conversationRequirements.set(conversationId, newRequirement);
+      if (this.selectedConversationId) {
+        this.conversationRequirements.set(this.selectedConversationId, newRequirement);
+        const conv = this.activeConversations.get(this.selectedConversationId);
+        if (conv) conv.updatedAt = new Date().toISOString(); // Keep updatedAt fresh
       }
     },
 
     updateModelSelection(newModel: string) {
-      const conversationId = this.activeConversationIdsByStep.get(this.currentStepId!);
-      if (conversationId) {
-        this.conversationModelSelection.set(conversationId, newModel);
+      if (this.selectedConversationId) {
+        this.conversationModelSelection.set(this.selectedConversationId, newModel);
+        const conv = this.activeConversations.get(this.selectedConversationId);
+        if (conv) conv.updatedAt = new Date().toISOString(); // Keep updatedAt fresh
       }
     },
+    
+    async closeConversation(conversationIdToClose: string) {
+      const conversationToClose = this.activeConversations.get(conversationIdToClose);
+      if (!conversationToClose) return;
 
-    addConversation(conversation: Conversation) {
-      const stepId = this.currentStepId;
-      if (!stepId) return;
+      const stepId = conversationToClose.stepId;
+      this.activeConversations.delete(conversationIdToClose);
 
-      if (!this.conversationsPerStep.has(stepId)) {
-        this.conversationsPerStep.set(stepId, new Map());
-      }
+      this.conversationRequirements.delete(conversationIdToClose);
+      this.conversationContextPaths.delete(conversationIdToClose);
+      this.conversationModelSelection.delete(conversationIdToClose);
+      this.isSendingMap.delete(conversationIdToClose);
+      this.isSubscribedMap.delete(conversationIdToClose);
 
-      this.conversationsPerStep.get(stepId)!.set(conversation.id, conversation);
-      this.activeConversationIdsByStep.set(stepId, conversation.id);
-    },
 
-    async closeConversation(conversationId: string) {
-      const stepId = this.currentStepId;
-      if (!stepId) return;
-
-      try {
-        // Remove from conversationsPerStep
-        if (this.conversationsPerStep.has(stepId)) {
-          this.conversationsPerStep.get(stepId)!.delete(conversationId);
-        }
-
-        // Clean up conversation data
-        this.conversationRequirements.delete(conversationId);
-        this.conversationContextPaths.delete(conversationId);
-        this.conversationModelSelection.delete(conversationId);
-
-        // Update selected conversation
-        if (this.activeConversationIdsByStep.get(stepId) === conversationId) {
-          const stepConversations = this.conversationsPerStep.get(stepId)!;
-          if (stepConversations.size > 0) {
-            // Select another conversation if available
-            const nextConversation = Array.from(stepConversations.values())[0];
-            this.activeConversationIdsByStep.set(stepId, nextConversation.id);
+      if (this.selectedConversationId === conversationIdToClose) {
+        const openConversationsArray = this.allOpenConversations; // This will be sorted ascending by time
+        if (openConversationsArray.length > 0) {
+          // Select the last one (most recent) if multiple are open
+          this.setSelectedConversationId(openConversationsArray[openConversationsArray.length - 1].id);
+        } else {
+          const workflowStore = useWorkflowStore();
+          if (workflowStore.currentSelectedStepId) {
+            this.createTemporaryConversation(workflowStore.currentSelectedStepId);
           } else {
-            // Create a new conversation if this was the last one
-            this.createTemporaryConversation();
+            this.setSelectedConversationId(null);
           }
         }
+      }
 
-        // Handle backend cleanup for non-temporary conversations
-        if (!conversationId.startsWith('temp-')) {
-          const workspaceStore = useWorkspaceStore();
-          const currentWorkspaceId = workspaceStore.currentSelectedWorkspaceId;
-
-          if (currentWorkspaceId && stepId) {
+      if (!conversationIdToClose.startsWith('temp-')) {
+        const workspaceStore = useWorkspaceStore();
+        const currentWorkspaceId = workspaceStore.currentSelectedWorkspaceId;
+        if (currentWorkspaceId) {
+          try {
             const { mutate: closeConversationMutation } = useMutation(CloseConversation);
             await closeConversationMutation({
               workspaceId: currentWorkspaceId,
-              stepId: stepId,
-              conversationId
+              stepId: stepId, 
+              conversationId: conversationIdToClose
             });
+          } catch (error) {
+            console.error('Error closing conversation on backend:', error);
           }
         }
-      } catch (error) {
-        console.error('Error closing conversation:', error);
-        throw error;
       }
     },
 
     addMessageToConversation(conversationId: string, message: Message) {
-      const stepId = this.currentStepId;
-
-      if (!stepId || !this.conversationsPerStep.has(stepId)) {
-        console.error('No step selected or conversations not initialized');
+      const conversation = this.activeConversations.get(conversationId);
+      if (!conversation) {
+        console.error(`Conversation ${conversationId} not found to add message.`);
         return;
       }
-
-      const conversation = this.conversationsPerStep.get(stepId)!.get(conversationId);
-      if (conversation) {
-        conversation.messages.push(message);
-        conversation.updatedAt = new Date().toISOString();
-        this.conversationsPerStep.get(stepId)!.set(conversationId, { ...conversation });
-      }
+      conversation.messages.push(message);
+      conversation.updatedAt = new Date().toISOString();
+      this.activeConversations.set(conversationId, { ...conversation }); 
     },
 
-    async sendStepRequirementAndSubscribe(
-      workspaceId: string,
-      stepId: string,
-      llmModel?: string
-    ): Promise<void> {
-      const { mutate: sendStepRequirementMutation } = useMutation<SendStepRequirementMutation, SendStepRequirementMutationVariables>(SendStepRequirement);
-
-      this.isSending = true;
-      try {
-        const conversationId = this.activeConversationIdsByStep.get(stepId);
-        if (!conversationId) {
-          throw new Error('No active conversation');
+    async sendStepRequirementAndSubscribe(workspaceId: string): Promise<void> {
+      const currentConversation = this.selectedConversation;
+      if (!currentConversation) {
+        throw new Error('No active conversation selected.');
+      }
+      const conversationId = currentConversation.id; 
+      
+      currentConversation.updatedAt = new Date().toISOString(); // Update timestamp before sending
+      
+      const conversationIdForRequest = conversationId.startsWith('temp-') ? null : conversationId;
+      const currentRequirementText = this.conversationRequirements.get(conversationId) || '';
+      const contextPaths = this.conversationContextPaths.get(conversationId) || [];
+      
+      let modelForMutation: string | null = null;
+      if (currentConversation.messages.length === 0) {
+        modelForMutation = this.conversationModelSelection.get(conversationId) || null;
+        if (!modelForMutation) {
+            console.error("Model not selected for the first message. Check RequirementTextInputArea logic.");
+            this.isSendingMap.set(conversationId, false); 
+            throw new Error("Please select a model for the first message.");
         }
+      }
 
-        const currentContextPaths = this.conversationContextPaths.get(conversationId) || [];
-        const currentRequirement = this.conversationRequirements.get(conversationId) || '';
+      const { mutate: sendStepRequirementMutation } = useMutation<SendStepRequirementMutation, SendStepRequirementMutationVariables>(SendStepRequirement);
+      this.isSendingMap.set(conversationId, true);
 
-        const formattedContextFilePaths: ContextFilePathInput[] = currentContextPaths.map(cf => ({
+      try {
+        const formattedContextFilePaths: ContextFilePathInput[] = contextPaths.map(cf => ({
           path: cf.path,
           type: cf.type,
         }));
 
         const mutationVariables: SendStepRequirementMutationVariables = {
           workspaceId,
-          stepId,
+          stepId: currentConversation.stepId,
           contextFilePaths: formattedContextFilePaths,
-          requirement: currentRequirement,
-          conversationId: conversationId.startsWith('temp-') ? null : conversationId,
-          llmModel: llmModel || null,
+          requirement: currentRequirementText,
+          conversationId: conversationIdForRequest,
+          llmModel: modelForMutation,
         };
 
         const result = await sendStepRequirementMutation(mutationVariables);
 
         if (result?.data?.sendStepRequirement) {
-          const conversation_id = result.data.sendStepRequirement;
+          const permanentConversationId = result.data.sendStepRequirement;
+          let finalConversationId = conversationId;
 
-          if (conversationId.startsWith('temp-')) {
-            // Transfer data from temporary conversation to new one
-            const tempRequirement = this.conversationRequirements.get(conversationId);
-            const tempContextPaths = this.conversationContextPaths.get(conversationId);
-            const tempModelSelection = this.conversationModelSelection.get(conversationId);
-            
-            if (tempRequirement) {
-              this.conversationRequirements.set(conversation_id, tempRequirement);
-            }
-            if (tempContextPaths) {
-              this.conversationContextPaths.set(conversation_id, tempContextPaths);
-            }
-            if (tempModelSelection) {
-              this.conversationModelSelection.set(conversation_id, tempModelSelection);
-            }
-            
-            await this.closeConversation(conversationId);
-          }
-
-          if (!this.conversationsPerStep.get(stepId)!.has(conversation_id)) {
-            const newConversation: Conversation = {
-              id: conversation_id,
-              stepId: stepId,
-              messages: [],
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            };
-            this.addConversation(newConversation);
-          }
-
-          // Initially, we won't have token usage for the user message until the final step response is complete.
-          this.addMessageToConversation(conversation_id, {
+          this.addMessageToConversation(conversationId, { 
             type: 'user',
-            text: currentRequirement,
+            text: currentRequirementText,
             timestamp: new Date(),
-            contextFilePaths: currentContextPaths
+            contextFilePaths: contextPaths
           });
+          
+          if (conversationId.startsWith('temp-') && conversationId !== permanentConversationId) {
+            const oldTempConversation = this.activeConversations.get(conversationId)!;
+            oldTempConversation.id = permanentConversationId; 
+            oldTempConversation.updatedAt = new Date().toISOString(); // Ensure new ID also has fresh timestamp
+            
+            this.activeConversations.delete(conversationId);
+            this.activeConversations.set(permanentConversationId, oldTempConversation);
+            finalConversationId = permanentConversationId;
 
-          this.clearContextFilePaths();
-          this.subscribeToStepResponse(workspaceId, stepId, conversation_id);
-          this.updateUserRequirement('');
+            this.conversationRequirements.set(permanentConversationId, this.conversationRequirements.get(conversationId) || '');
+            this.conversationContextPaths.set(permanentConversationId, this.conversationContextPaths.get(conversationId) || []);
+            this.conversationModelSelection.set(permanentConversationId, this.conversationModelSelection.get(conversationId) || '');
+            
+            this.isSendingMap.set(permanentConversationId, this.isSendingMap.get(conversationId) || false);
+            this.isSubscribedMap.set(permanentConversationId, this.isSubscribedMap.get(conversationId) || false);
+
+
+            this.conversationRequirements.delete(conversationId);
+            this.conversationContextPaths.delete(conversationId); // Clear paths for temp id
+            this.conversationModelSelection.delete(conversationId);
+            this.isSendingMap.delete(conversationId);
+            this.isSubscribedMap.delete(conversationId);
+            
+            if (this.selectedConversationId === conversationId) {
+              this.setSelectedConversationId(permanentConversationId);
+            }
+          }
+          
+          this.conversationContextPaths.set(finalConversationId, []);
+          this.conversationRequirements.set(finalConversationId, ''); 
+
+          this.subscribeToStepResponse(workspaceId, currentConversation.stepId, finalConversationId);
 
           const conversationHistoryStore = useConversationHistoryStore();
-          await conversationHistoryStore.fetchConversationHistory();
+          const workflowStore = useWorkflowStore();
+          if (conversationHistoryStore.stepName === workflowStore.getStepNameById(currentConversation.stepId)) {
+             await conversationHistoryStore.fetchConversationHistory();
+          }
         } else {
-          throw new Error('Failed to send step requirement');
+          this.isSendingMap.set(conversationId, false); 
+          throw new Error('Failed to send step requirement: No conversation ID returned.');
         }
       } catch (error) {
         console.error('Error sending step requirement:', error);
+        this.isSendingMap.set(conversationId, false); 
         throw error;
-      } finally {
-        this.isSending = false;
       }
     },
 
     subscribeToStepResponse(workspaceId: string, stepId: string, conversationId: string) {
-      const { onResult, onError } = useSubscription<StepResponseSubscriptionType, StepResponseSubscriptionVariables>(
+      const { onResult, onError, stop } = useSubscription<StepResponseSubscriptionType, StepResponseSubscriptionVariables>(
         StepResponseSubscription,
         {
           workspaceId,
@@ -369,161 +308,111 @@ export const useConversationStore = defineStore('conversation', {
           conversationId,
         }
       );
+      this.isSubscribedMap.set(conversationId, true);
 
       onResult(({ data }) => {
+        this.isSendingMap.set(conversationId, false); 
         if (data?.stepResponse) {
           const {
-            conversationId,
+            conversationId: respConvId, 
             messageChunk,
             isComplete,
             promptTokens,
             completionTokens,
-            totalTokens,
             promptCost,
             completionCost,
-            totalCost
           } = data.stepResponse;
+          
+          const conv = this.activeConversations.get(respConvId);
+          if(conv) conv.updatedAt = new Date().toISOString(); // Update on new chunk
 
           this.appendToMessageInConversation(
-            conversationId,
+            respConvId,
             messageChunk,
             isComplete,
             promptTokens,
             completionTokens,
             promptCost,
-            completionCost,
-            totalCost
+            completionCost
           );
+          if (isComplete) {
+            stop(); 
+            this.isSubscribedMap.set(conversationId, false);
+          }
         }
       });
 
       onError((error) => {
-        console.error('Subscription error:', error);
+        console.error(`Subscription error for conversation ${conversationId}:`, error);
+        this.isSendingMap.set(conversationId, false);
+        this.isSubscribedMap.set(conversationId, false);
+        const errorMsg = `Error receiving AI response: ${error.message}`;
+        if (this.activeConversations.has(conversationId)){
+            const conv = this.activeConversations.get(conversationId)!;
+            conv.updatedAt = new Date().toISOString(); // Update on error too
+            this.appendToMessageInConversation(conversationId, errorMsg, true);
+        }
       });
-
-      this.isSubscribed = true;
     },
 
-    /**
-     * Append streaming chunks to the last AI message. If the final chunk
-     * arrives (isComplete = true) with no message chunk, it only means
-     * we have token usage info for the entire conversation.
-     */
     appendToMessageInConversation(
       conversationId: string,
       messageChunk: string | null,
       isComplete: boolean,
-      promptTokens?: number,
-      completionTokens?: number,
-      promptCost?: number,
-      completionCost?: number,
-      totalCost?: number
+      promptTokens?: number | null,
+      completionTokens?: number | null,
+      promptCost?: number | null,
+      completionCost?: number | null
     ) {
-      const stepId = this.currentStepId;
-      if (!stepId || !this.conversationsPerStep.has(stepId)) {
-        console.error('No step selected or conversations not initialized');
-        return;
-      }
-
-      const conversation = this.conversationsPerStep.get(stepId)!.get(conversationId);
+      const conversation = this.activeConversations.get(conversationId);
       if (!conversation) return;
 
-      // If we are NOT at the final chunk AND we have a messageChunk,
-      // we should keep streaming the partial text to the AI message.
-      if (!isComplete) {
-        if (messageChunk) {
-          const lastMessage = conversation.messages[conversation.messages.length - 1];
-          if (lastMessage && lastMessage.type === 'ai' && lastMessage.isComplete === false) {
-            // Append chunk to existing AI message
+      let lastMessage = conversation.messages[conversation.messages.length - 1] as AIMessage | undefined;
+
+      if (messageChunk || (!lastMessage || lastMessage?.type !== 'ai' || lastMessage?.isComplete)) {
+         if (!lastMessage || lastMessage.type !== 'ai' || lastMessage.isComplete) {
+            const segments: AIResponseSegment[] = [];
+            const newAiMessage: AIMessage = {
+              type: 'ai',
+              text: '', 
+              timestamp: new Date(),
+              chunks: messageChunk ? [messageChunk] : [],
+              isComplete: false, 
+              segments,
+              parserInstance: new IncrementalAIResponseParser(segments)
+            };
+            if (messageChunk) newAiMessage.parserInstance.processChunks([messageChunk]);
+            conversation.messages.push(newAiMessage);
+            lastMessage = newAiMessage;
+          } else if (messageChunk) {
             lastMessage.chunks = lastMessage.chunks || [];
             lastMessage.chunks.push(messageChunk);
-
-            if (!lastMessage.parserInstance) {
-              lastMessage.segments = lastMessage.segments || [];
-              lastMessage.parserInstance = new IncrementalAIResponseParser(lastMessage.segments);
-              lastMessage.parserInstance.processChunks([messageChunk]);
-            } else {
-              lastMessage.parserInstance.processChunks([messageChunk]);
-            }
-          } else {
-            // Create a new AI message
-            const segments: AIResponseSegment[] = [];
-            const newMessage: Message = {
-              type: 'ai',
-              text: '',
-              timestamp: new Date(),
-              chunks: [messageChunk],
-              isComplete: false,
-              segments,
-              parserInstance: new IncrementalAIResponseParser(segments)
-            };
-            newMessage.parserInstance.processChunks([messageChunk]);
-            conversation.messages.push(newMessage);
-          }
-        }
-      } else {
-        // If isComplete = true, then we only have usage info (the final chunk may or may not contain message text).
-        // 1) If there's an AI message in progress, mark it isComplete and append any leftover chunk.
-        const lastMessage = conversation.messages[conversation.messages.length - 1];
-        const isAiMessageInProgress = lastMessage && lastMessage.type === 'ai' && lastMessage.isComplete === false;
-        if (isAiMessageInProgress && messageChunk) {
-          // If there's still some text in the final chunk, let's add it before concluding
-          lastMessage.chunks = lastMessage.chunks || [];
-          lastMessage.chunks.push(messageChunk);
-
-          if (!lastMessage.parserInstance) {
-            lastMessage.segments = lastMessage.segments || [];
-            lastMessage.parserInstance = new IncrementalAIResponseParser(lastMessage.segments);
-            lastMessage.parserInstance.processChunks([messageChunk]);
-          } else {
             lastMessage.parserInstance.processChunks([messageChunk]);
           }
-        }
-        if (isAiMessageInProgress) {
-          lastMessage.isComplete = true;
-        } else {
-          // If there's no AI message in progress, but we do have a final chunk text, let's create a fresh AI message
-          if (messageChunk) {
-            const segments: AIResponseSegment[] = [];
-            const newAiMessage: Message = {
-              type: 'ai',
-              text: '',
-              timestamp: new Date(),
-              chunks: [messageChunk],
-              isComplete: true,
-              segments,
-              parserInstance: new IncrementalAIResponseParser(segments)
-            };
-            newAiMessage.parserInstance.processChunks([messageChunk]);
-            conversation.messages.push(newAiMessage);
-          }
-        }
-
-        // 2) Attach final token usage to the last user message and the last AI message
-        //    The step_response has usage data only in the final chunk.
-        //    We recorded from the backend that prompt usage belongs to the user message,
-        //    and completion usage belongs to the AI message.
-        const lastUserMsg = [...conversation.messages].reverse().find(m => m.type === 'user');
-        if (lastUserMsg && typeof promptTokens === 'number' && typeof promptCost === 'number') {
-          lastUserMsg.promptTokens = promptTokens;
-          lastUserMsg.promptCost = promptCost;
-        }
-
-        const lastAiMsg = [...conversation.messages].reverse().find(m => m.type === 'ai');
-        if (lastAiMsg && typeof completionTokens === 'number' && typeof completionCost === 'number') {
-          lastAiMsg.completionTokens = completionTokens;
-          lastAiMsg.completionCost = completionCost;
-        }
       }
 
-      // Finally, update conversation's timestamp
+      if (isComplete && lastMessage && lastMessage.type === 'ai') {
+        lastMessage.isComplete = true;
+        const userMessage = conversation.messages.findLast(m => m.type === 'user');
+        if (userMessage && promptTokens != null && promptCost != null) {
+          userMessage.promptTokens = promptTokens;
+          userMessage.promptCost = promptCost;
+        }
+        if (completionTokens != null && completionCost != null) {
+          lastMessage.completionTokens = completionTokens;
+          lastMessage.completionCost = completionCost;
+        }
+      }
+      
       conversation.updatedAt = new Date().toISOString();
-      this.conversationsPerStep.get(stepId)!.set(conversationId, { ...conversation });
+      this.activeConversations.set(conversationId, { ...conversation });
     },
 
     async uploadFile(file: File): Promise<string> {
       const workspaceStore = useWorkspaceStore();
       const workspaceId = workspaceStore.currentSelectedWorkspaceId;
+      if (!workspaceId) throw new Error("Workspace ID not available for file upload.");
+      
       const formData = new FormData();
       formData.append('file', file);
       formData.append('workspace_id', workspaceId);
@@ -542,62 +431,89 @@ export const useConversationStore = defineStore('conversation', {
     },
 
     addContextFilePath(contextFilePath: ContextFilePath) {
-      const conversationId = this.activeConversationIdsByStep.get(this.currentStepId!);
-      if (conversationId) {
-        const currentPaths = this.conversationContextPaths.get(conversationId) || [];
-        this.conversationContextPaths.set(conversationId, [...currentPaths, contextFilePath]);
+      if (this.selectedConversationId) {
+        const currentPaths = this.conversationContextPaths.get(this.selectedConversationId) || [];
+        this.conversationContextPaths.set(this.selectedConversationId, [...currentPaths, contextFilePath]);
+        const conv = this.activeConversations.get(this.selectedConversationId);
+        if (conv) conv.updatedAt = new Date().toISOString(); 
       }
     },
 
     removeContextFilePath(index: number) {
-      const conversationId = this.activeConversationIdsByStep.get(this.currentStepId!);
-      if (conversationId) {
-        const currentPaths = this.conversationContextPaths.get(conversationId) || [];
+      if (this.selectedConversationId) {
+        const currentPaths = this.conversationContextPaths.get(this.selectedConversationId) || [];
         const newPaths = [...currentPaths];
         newPaths.splice(index, 1);
-        this.conversationContextPaths.set(conversationId, newPaths);
+        this.conversationContextPaths.set(this.selectedConversationId, newPaths);
+        const conv = this.activeConversations.get(this.selectedConversationId);
+        if (conv) conv.updatedAt = new Date().toISOString(); 
       }
     },
 
     clearContextFilePaths() {
-      const conversationId = this.activeConversationIdsByStep.get(this.currentStepId!);
-      if (conversationId) {
-        this.conversationContextPaths.set(conversationId, []);
+      if (this.selectedConversationId) {
+        this.conversationContextPaths.set(this.selectedConversationId, []);
+        const conv = this.activeConversations.get(this.selectedConversationId);
+        if (conv) conv.updatedAt = new Date().toISOString(); 
       }
     },
 
-    setConversationFromHistory(conversationId: string) {
-      const stepId = this.currentStepId;
-
-      if (!stepId) {
-        console.warn('No step selected.');
+    setConversationFromHistory(historicalConversationData: Conversation) {
+      if (typeof historicalConversationData !== 'object' || historicalConversationData === null) {
+        console.error('Invalid historical conversation data provided:', historicalConversationData);
         return;
       }
 
-      const conversationHistoryStore = useConversationHistoryStore();
-      const conversation = conversationHistoryStore.getConversations.find(conv => conv.id === conversationId);
-      
-      if (conversation) {
-        const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const actualStepId = conversation.stepId || stepId;
-        
-        const newConversation: Conversation = {
-          id: tempId,
-          stepId: actualStepId,
-          messages: conversation.messages,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
+      let stepIdToUse = historicalConversationData.stepId;
 
-        if (!this.conversationsPerStep.has(actualStepId)) {
-          this.conversationsPerStep.set(actualStepId, new Map());
+      if (!stepIdToUse) {
+        console.warn('Historical conversation is missing stepId. Falling back to current workflow step.');
+        const workflowStore = useWorkflowStore();
+        if (!workflowStore.currentSelectedStepId) {
+            console.error('Cannot load historical conversation: no current step fallback and historical data missing stepId.');
+            return;
         }
-
-        this.conversationsPerStep.get(actualStepId)!.set(tempId, newConversation);
-        this.activeConversationIdsByStep.set(actualStepId, tempId);
-      } else {
-        console.warn(`Conversation with ID ${conversationId} not found in history.`);
+        stepIdToUse = workflowStore.currentSelectedStepId;
       }
+      
+      const tempId = `temp-hist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const now = new Date().toISOString();
+      
+      const copiedMessages = historicalConversationData.messages.map(m => {
+        const messageCopy = { ...m };
+        if (messageCopy.type === 'ai') {
+          const segments: AIResponseSegment[] = [];
+          const parser = new IncrementalAIResponseParser(segments);
+          if (messageCopy.text) { 
+            parser.processChunks([messageCopy.text]);
+          } else if (messageCopy.chunks && messageCopy.chunks.length > 0) { 
+             parser.processChunks(messageCopy.chunks);
+          }
+          messageCopy.segments = segments;
+          messageCopy.parserInstance = parser;
+          messageCopy.isComplete = true; 
+        }
+        return messageCopy;
+      });
+
+      const newConversation: Conversation = {
+        ...historicalConversationData, 
+        id: tempId, 
+        stepId: stepIdToUse, 
+        messages: copiedMessages,
+        createdAt: historicalConversationData.createdAt || now, // Use original or now
+        updatedAt: now, // Loaded from history, so it's "updated" now
+      };
+
+      this.activeConversations.set(tempId, newConversation);
+      
+      this.conversationRequirements.set(tempId, ''); 
+      this.conversationContextPaths.set(tempId, []);
+      this.conversationModelSelection.set(tempId, ''); 
+      this.isSendingMap.set(tempId, false);
+      this.isSubscribedMap.set(tempId, false);
+
+      this.setSelectedConversationId(tempId);
     },
     
     async searchContextFiles(requirement: string): Promise<void> {
@@ -607,51 +523,71 @@ export const useConversationStore = defineStore('conversation', {
       if (!workspaceId) {
         throw new Error('No workspace selected');
       }
+      if (!this.selectedConversationId) {
+        throw new Error('No conversation selected for context search.');
+      }
+      const targetConversationId = this.selectedConversationId;
 
       try {
-        const { onResult, onError } = useQuery<SearchContextFilesQuery, SearchContextFilesQueryVariables>(
-          SearchContextFiles,
-          {
-            workspaceId,
-            query: requirement
-          }
-        );
-
-        onResult((result) => {
-          const conversationId = this.activeConversationIdsByStep.get(this.currentStepId!);
-          if (!conversationId) return;
+        const result = await new Promise<SearchContextFilesQuery | null>((resolve, reject) => {
+            const { onResult, onError: onQueryError } = useQuery<SearchContextFilesQuery, SearchContextFilesQueryVariables>(
+              SearchContextFiles,
+              {
+                workspaceId,
+                query: requirement
+              },
+              { fetchPolicy: 'network-only' } 
+            );
+            onResult(queryResult => resolve(queryResult.data || null));
+            onQueryError(error => reject(error));
+        });
           
-          if (result.data?.hackathonSearch) {
+        if (result?.hackathonSearch) {
             this.conversationContextPaths.set(
-              conversationId,
-              result.data.hackathonSearch.map(path => ({
+              targetConversationId, 
+              result.hackathonSearch.map(path => ({
                 path,
-                type: 'text'
+                type: 'text' 
               }))
             );
-          } else {
-            this.conversationContextPaths.set(conversationId, []);
-          }
-        });
-
-        onError((error) => {
-          console.error('Error searching context files:', error);
-          throw error;
-        });
+        } else {
+            this.conversationContextPaths.set(targetConversationId, []);
+        }
+        const conv = this.activeConversations.get(targetConversationId);
+        if (conv) conv.updatedAt = new Date().toISOString();
 
       } catch (err) {
         console.error('Error searching context files:', err);
+        if (this.selectedConversationId === targetConversationId) { 
+            this.conversationContextPaths.set(targetConversationId, []); 
+            const conv = this.activeConversations.get(targetConversationId);
+            if (conv) conv.updatedAt = new Date().toISOString();
+        }
         throw err;
       }
     },
+    
+    ensureConversationForStep(stepId: string): void {
+        if (!stepId) {
+            console.warn("ensureConversationForStep called without stepId");
+            return;
+        }
 
-    getConversationById(conversationId: string): Conversation | undefined {
-      const stepId = this.currentStepId;
+        const currentSelectedConv = this.selectedConversation;
 
-      if (stepId && this.conversationsPerStep.has(stepId)) {
-        return this.conversationsPerStep.get(stepId)!.get(conversationId);
-      }
-      return undefined;
-    }
+        if (!currentSelectedConv || currentSelectedConv.stepId !== stepId) {
+          // When switching steps, try to pick the most recently updated conversation for that step.
+          // Since allOpenConversations is sorted ascending (oldest first), we'd take the last one.
+            const conversationsForStep = Array.from(this.activeConversations.values())
+                .filter(c => c.stepId === stepId)
+                .sort((a,b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()); // Ascending
+
+            if (conversationsForStep.length > 0) {
+                this.setSelectedConversationId(conversationsForStep[conversationsForStep.length - 1].id); // Last one is most recent
+            } else {
+                this.createTemporaryConversation(stepId);
+            }
+        }
+    },
   },
 });

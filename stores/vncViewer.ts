@@ -7,36 +7,37 @@ import RFB from '~/lib/novnc/core/rfb'; // Local ESM import
 import { useServerSettingsStore } from '~/stores/serverSettings';
 
 export const useVncViewerStore = defineStore('vncViewer', () => {
-  // Runtime config is still used for other settings like the VNC password.
   const config = useRuntimeConfig();
-
-  // Access the server settings store
   const serverSettingsStore = useServerSettingsStore();
 
   // Utility function to fetch a setting value by key with an optional fallback.
+  // This function is kept for clarity if preferred, but could be inlined in vncServerUrl.
   function getServerSetting(key: string, fallback: string): string {
     const found = serverSettingsStore.getSettingByKey(key);
     if (!found || !found.value) {
+      // Log if fallback is used for the specific VNC URL key
+      if (key === 'AUTOBYTEUS_VNC_SERVER_URL') {
+        console.warn(`[vncViewerStore] Setting for ${key} not found or has no value. Using fallback: ${fallback}`);
+      }
       return fallback;
     }
     return found.value;
   }
 
-  // Computed property to fetch the complete VNC server URL from settings.
-  // It expects a setting with the key 'AUTOBYTEUS_VNC_SERVER_URL' (e.g., "ws://localhost:6080").
-  // If the provided value does not start with "ws://" or "wss://", "ws://" is prepended.
   const vncServerUrl = computed(() => {
+    // Use the utility function or directly access serverSettingsStore.getSettingByKey
     let url = getServerSetting('AUTOBYTEUS_VNC_SERVER_URL', 'localhost:6080');
+    
     if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
       url = `ws://${url}`;
     }
+    // Log the computed URL, source of settings, and loading state for debugging
+    console.log(`[vncViewerStore] vncServerUrl computed. Value: "${url}". Settings count: ${serverSettingsStore.settings.length}, isLoading: ${serverSettingsStore.isLoading}, Error: ${serverSettingsStore.error ? serverSettingsStore.error : 'null'}`);
     return url;
   });
 
-  // VNC path can remain empty unless we need user customization.
-  const vncPath = ref('');
+  const vncPath = ref(''); // VNC path can remain empty unless user customization is needed.
 
-  // Connection status and other store states
   const connectionStatus = ref<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const password = ref(config.public.vncPassword || 'mysecretpassword');
   const errorMessage = ref('');
@@ -56,144 +57,155 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
   });
 
   function setContainer(element: HTMLElement | null) {
-    console.log('VNC container set:', element
-      ? `Container size: ${element.offsetWidth}x${element.offsetHeight}`
+    console.log('[vncViewerStore] VNC container set:', element
+      ? `Container dimensions: ${element.offsetWidth}x${element.offsetHeight}`
       : 'Container is null'
     );
     container.value = element;
   }
 
   function connect() {
-    // Don't connect if we're already connected or connecting, or if container is missing
     if (connectionStatus.value !== 'disconnected' || !container.value) {
-      console.log('Not connecting: already in state:', connectionStatus.value, 'or container missing');
+      console.warn('[vncViewerStore] Connect called but not in disconnected state or container missing.', 
+        { status: connectionStatus.value, hasContainer: !!container.value });
+      if (!container.value) {
+        errorMessage.value = 'VNC container not set.';
+      }
       return;
     }
 
-    // Clean up any existing connection first
+    // Explicitly check if server settings are still loading.
+    // VncViewer.vue should ideally prevent calling connect() if settings are loading,
+    // but this is an additional safeguard.
+    if (serverSettingsStore.isLoading) {
+        console.warn('[vncViewerStore] Connect called while server settings are still loading. Deferring may be needed or VncViewer.vue logic improved.');
+        // Setting an error message or status might be appropriate here if this path is hit unexpectedly.
+        // For now, it will proceed using whatever vncServerUrl.value currently is.
+    }
+
     if (rfb.value) {
-      console.log('Cleaning up existing connection before connecting');
-      disconnect();
+      console.log('[vncViewerStore] Cleaning up existing RFB instance before new connection attempt.');
+      disconnect(); // Ensure proper cleanup via store's disconnect
     }
 
     connectionStatus.value = 'connecting';
     errorMessage.value = '';
 
     try {
+      // vncServerUrl is a computed property. It will have its latest value here.
       const wsUrl = `${vncServerUrl.value}${vncPath.value}`;
-      console.log(`Connecting to VNC at ${wsUrl}`);
+      console.log(`[vncViewerStore] Attempting to connect to VNC at: ${wsUrl}`);
 
       rfb.value = new RFB(container.value, wsUrl, {
         credentials: { password: password.value },
         shared: true,
         scaleViewport: true,
         resizeSession: true,
-        // The constructor's "viewOnly" is ignored by RFB, so we set it explicitly below.
-        viewOnly: viewOnly.value,
-        qualityLevel: 6,       // Higher quality (0-9, 9 being highest)
-        compressionLevel: 0,   // Highest compression (0-9, 0 being highest)
-        clipViewport: false,   // Don't clip the viewport
-        showDotCursor: true,   // Show dot cursor when in view-only mode
-        background: '#1e1e1e', // Match background color to our container
+        viewOnly: viewOnly.value, // Set initial viewOnly state
+        qualityLevel: 6,
+        compressionLevel: 0,
+        clipViewport: false,
+        showDotCursor: true,
+        background: '#1e1e1e',
       });
 
-      // Must set viewOnly explicitly (constructor option is not used by noVNC).
-      rfb.value.viewOnly = viewOnly.value;
+      rfb.value.viewOnly = viewOnly.value; // Ensure viewOnly is explicitly set post-construction
 
       rfb.value.addEventListener('connect', () => {
         connectionStatus.value = 'connected';
         errorMessage.value = '';
-        console.log('Connected to VNC server');
-
-        // Apply proper scaling after connection
+        console.log('[vncViewerStore] Successfully connected to VNC server.');
         if (rfb.value) {
           rfb.value.scaleViewport = true;
           rfb.value.resizeSession = true;
-
-          // Force a resize event to ensure scaling is applied
-          window.dispatchEvent(new Event('resize'));
+          window.dispatchEvent(new Event('resize')); // Force resize to apply scaling
         }
       });
 
-      rfb.value.addEventListener('disconnect', (e) => {
-        if (!e.detail.clean) {
-          errorMessage.value = e.detail.reason || 'Disconnected unexpectedly';
-          console.error('VNC disconnected with error:', e.detail);
+      rfb.value.addEventListener('disconnect', (e: any) => { // Use 'any' for event detail if specific type is unknown/complex
+        const reason = e.detail?.reason || 'Disconnected unexpectedly';
+        if (!e.detail?.clean) {
+          errorMessage.value = reason;
+          console.error('[vncViewerStore] VNC disconnected with error:', reason, e.detail);
         } else {
-          console.log('VNC disconnected cleanly');
+          console.log('[vncViewerStore] VNC disconnected cleanly.');
+          errorMessage.value = 'Disconnected.'; // Set a generic disconnected message
         }
         cleanupConnection();
       });
 
       rfb.value.addEventListener('credentialsrequired', () => {
-        console.log('VNC credentials required');
+        console.log('[vncViewerStore] VNC credentialsrequired event.');
         if (rfb.value) rfb.value.sendCredentials({ password: password.value });
       });
 
-      // Resize event handler for logging purposes
       rfb.value.addEventListener('resize', () => {
-        console.log('VNC resize event received from server');
+        console.log('[vncViewerStore] VNC resize event received from server.');
       });
-    } catch (err) {
-      console.error('Connection failed:', err);
+
+    } catch (err: any) { // Catch synchronous errors from RFB constructor or setup
+      console.error('[vncViewerStore] VNC connection failed during setup:', err);
       connectionStatus.value = 'disconnected';
-      errorMessage.value = `Connection failed: ${err instanceof Error ? err.message : String(err)}`;
-      cleanupConnection();
+      errorMessage.value = `Connection setup failed: ${err.message || String(err)}`;
+      cleanupConnection(); // Ensure rfb is nullified
     }
   }
 
   function disconnect() {
-    console.log('Disconnecting from VNC server');
+    console.log('[vncViewerStore] Disconnecting from VNC server...');
     if (rfb.value) {
       try {
         rfb.value.disconnect();
       } catch (e) {
-        console.warn('Error during disconnect:', e);
+        // Log error but proceed with cleanup. RFB might throw if already disconnecting/disconnected.
+        console.warn('[vncViewerStore] Error during RFB disconnect method call:', e);
       }
-      cleanupConnection();
     }
+    // Always perform cleanup, even if rfb.disconnect() threw an error or rfb.value was already null.
+    cleanupConnection(); 
     connectionStatus.value = 'disconnected';
-    errorMessage.value = '';
+    if (!errorMessage.value || errorMessage.value === 'Connected to VNC server' || errorMessage.value === 'Connecting to VNC server...') {
+        errorMessage.value = 'Disconnected'; // Set a default disconnected message if no specific error occurred.
+    }
+    // Do not clear errorMessage if it was set due to a disconnect error.
   }
 
   function cleanupConnection() {
     if (rfb.value) {
-      console.log('Cleaning up RFB connection');
+      // Remove event listeners if they were added directly to rfb instance and not auto-cleaned up.
+      // NoVNC RFB class usually handles its own listener cleanup on disconnect.
+      console.log('[vncViewerStore] Cleaning up RFB instance.');
       rfb.value = null;
     }
   }
 
   function sendCtrlAltDel() {
-    if (rfb.value && connectionStatus.value === 'connected') {
-      console.log('Sending Ctrl+Alt+Del');
+    if (rfb.value && connectionStatus.value === 'connected' && !viewOnly.value) {
+      console.log('[vncViewerStore] Sending Ctrl+Alt+Del.');
       rfb.value.sendCtrlAltDel();
+    } else {
+      console.warn('[vncViewerStore] Cannot send Ctrl+Alt+Del. Not connected, in view-only mode, or no RFB instance.',
+        { isConnected: isConnected.value, viewOnly: viewOnly.value, hasRfb: !!rfb.value });
     }
   }
 
   function toggleViewOnly() {
     viewOnly.value = !viewOnly.value;
-    console.log(`View-only mode ${viewOnly.value ? 'enabled' : 'disabled'}`);
-
-    // If connected, update the RFB instance
+    console.log(`[vncViewerStore] View-only mode toggled to: ${viewOnly.value ? 'enabled' : 'disabled'}`);
     if (rfb.value) {
       rfb.value.viewOnly = viewOnly.value;
     }
   }
 
   return {
-    // State
     connectionStatus,
     errorMessage,
-    rfb,
-    container,
+    rfb, // Exposing rfb might be for advanced use or debugging, typically not needed by components
+    container, // Exposing container, similar to rfb
     viewOnly,
-
-    // Computed
     isConnected,
     isConnecting,
     statusMessage,
-
-    // Methods
     setContainer,
     connect,
     disconnect,

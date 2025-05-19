@@ -1,6 +1,6 @@
 <template>
   <div class="file-explorer flex flex-col h-full pt-4">
-    <div v-if="activeWorkspace" class="mb-4 px-0.5">
+    <div v-if="activeWorkspace" class="mb-4 px-2">
       <input
         v-model="searchQuery"
         type="text"

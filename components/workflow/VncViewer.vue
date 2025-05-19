@@ -63,53 +63,82 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, nextTick } from 'vue';
+import { onMounted, onBeforeUnmount, ref, nextTick, watch } from 'vue'; // Added watch
 import { useVncViewerStore } from '~/stores/vncViewer';
+import { useServerSettingsStore } from '~/stores/serverSettings'; // Added import
 
 const vncStore = useVncViewerStore();
+const serverSettingsStore = useServerSettingsStore(); // Added instance
 const screen = ref<HTMLElement | null>(null);
 
 // Handle window resize
 const handleWindowResize = () => {
-  console.log('Window resize event triggered');
+  console.log('VNC Viewer: Window resize event triggered');
+  // Potential future enhancement: if rfb instance exists, call rfb.resize() or similar if needed
 };
 
 onMounted(() => {
-  console.log('VNC Viewer component mounted');
-  
-  // Add window resize listener
+  console.log('VNC Viewer: Component mounted');
   window.addEventListener('resize', handleWindowResize);
   
-  // Wait for DOM to settle
   nextTick(() => {
     if (screen.value) {
-      // Set the container reference
-      vncStore.setContainer(screen.value);
+      vncStore.setContainer(screen.value); // Set container once screen element is available
       
-      // Wait a short delay to ensure the container is fully rendered
-      setTimeout(() => {
-        // Auto-connect when component is mounted
-        vncStore.connect();
-      }, 300);
+      const attemptConnection = () => {
+        // The 300ms delay can help ensure the container's dimensions are fully settled in the DOM,
+        // which might be important for noVNC's initial scaling.
+        setTimeout(() => {
+          // Check if component is still mounted before connecting
+          if (screen.value) { // screen.value being non-null implies component is still mounted effectively
+             console.log('VNC Viewer: Attempting VNC connection via vncStore.connect()');
+             vncStore.connect();
+          } else {
+             console.log('VNC Viewer: Connection attempt aborted, component unmounted or screen became null.');
+          }
+        }, 300);
+      };
+
+      // Check current state of server settings before attempting to connect
+      if (serverSettingsStore.isLoading) {
+        console.log('VNC Viewer: Server settings are currently loading. Waiting for completion.');
+        const unwatch = watch(() => serverSettingsStore.isLoading, (newIsLoading) => {
+          if (!newIsLoading) { // Finished loading
+            console.log('VNC Viewer: Server settings finished loading. Proceeding with connection attempt.');
+            attemptConnection();
+            unwatch(); // Clean up watcher once done
+          }
+        });
+      } else { 
+        // Not currently loading. This means settings are either:
+        // 1. Already loaded successfully.
+        // 2. Fetch was attempted and failed (serverSettingsStore.error would be set).
+        // 3. Fetch was never initiated by workspace.vue (less likely with the new change, but possible if workspace mount failed).
+        if (serverSettingsStore.settings.length === 0 && !serverSettingsStore.error && !serverSettingsStore.isLoading) {
+            console.warn('VNC Viewer: Server settings appear not to be loaded, and not currently loading. The fetch from workspace.vue might not have been initiated or completed. Connection attempt will proceed and may use fallback URLs.');
+        } else if (serverSettingsStore.error) {
+            console.error('VNC Viewer: Server settings fetch previously failed with an error. Connection attempt will proceed and may use fallback URLs.', serverSettingsStore.error);
+        } else {
+            console.log('VNC Viewer: Server settings are already loaded or not applicable (e.g., fetch completed). Proceeding with connection attempt.');
+        }
+        attemptConnection();
+      }
     } else {
-      console.error('Screen element not available after mount');
+      console.error('VNC Viewer: Screen element not available after mount and nextTick.');
     }
   });
 });
 
 onBeforeUnmount(() => {
-  console.log('VNC Viewer component unmounting');
-  // Remove resize listener
+  console.log('VNC Viewer: Component unmounting');
   window.removeEventListener('resize', handleWindowResize);
-  // Always disconnect when component is unmounted
-  vncStore.disconnect();
+  vncStore.disconnect(); // Always disconnect when component is unmounted
 });
 </script>
 
 <style scoped>
 .vnc-container { 
   background-color: #1e1e1e; 
-  border-radius: 5px; 
   overflow: hidden; 
   display: flex;
   flex-direction: column;
@@ -126,7 +155,6 @@ onBeforeUnmount(() => {
 }
 
 .vnc-display {
-  /* Position at top instead of center */
   position: absolute;
   top: 0;
   left: 0;
@@ -135,15 +163,13 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start; /* Align to top */
+  justify-content: flex-start; 
 }
 
 :deep(.vnc-display canvas) {
-  /* Allow canvas to scale properly */
   max-width: 100%;
   object-fit: contain;
-  margin-top: 0; /* Ensure it sticks to the top */
-  /* Don't force height to 100% to avoid stretching */
+  margin-top: 0; 
 }
 
 .status-indicator { box-shadow: 0 0 4px currentColor; }

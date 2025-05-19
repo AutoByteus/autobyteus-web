@@ -1,13 +1,13 @@
 <template>
-  <div class="flex flex-col h-full">
+  <div class="flex flex-col h-full pt-2">
     <TabList
       :tabs="tabs"
       :selectedTab="activeTab"
       @select="setActiveTab"
     />
 
-    <!-- Tab Content - using v-if for proper mounting/unmounting -->
-    <div class="flex-grow overflow-auto mt-2 relative">
+    <!-- Tab Content - added top border for separation -->
+    <div class="flex-grow overflow-auto relative border-t border-gray-200">
       <!-- Use v-if instead of v-show to actually mount/unmount components -->
       <div v-if="activeTab === 'Terminal'" class="h-full">
         <Terminal />
@@ -38,10 +38,6 @@ const setActiveTab = (tabName: string) => {
 </script>
 
 <style scoped>
-.mt-2 {
-  margin-top: 0.5rem;
-}
-
 /* Ensure content fills available space */
 .flex-grow {
   display: flex;
@@ -50,6 +46,6 @@ const setActiveTab = (tabName: string) => {
 
 .h-full {
   height: 100%;
-  min-height: 300px;
+  min-height: 300px; /* This min-height might be something to review if true full height is an issue in very small containers */
 }
 </style>
