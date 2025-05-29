@@ -43,9 +43,8 @@ export const useConversationStore = defineStore('conversation', {
 
   getters: {
     allOpenConversations: (state): Conversation[] => {
-      // Sort by updatedAt in ascending order (oldest first, newest at the end)
-      return Array.from(state.activeConversations.values()) 
-        .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
+      // Return conversations in insertion order (stable tab order)
+      return Array.from(state.activeConversations.values());
     },
 
     selectedConversation: (state): Conversation | null => {
@@ -125,16 +124,14 @@ export const useConversationStore = defineStore('conversation', {
     updateUserRequirement(newRequirement: string) {
       if (this.selectedConversationId) {
         this.conversationRequirements.set(this.selectedConversationId, newRequirement);
-        const conv = this.activeConversations.get(this.selectedConversationId);
-        if (conv) conv.updatedAt = new Date().toISOString(); // Keep updatedAt fresh
+        // PERFORMANCE FIX: Removed updating conv.updatedAt here as it caused excessive re-sorting
       }
     },
 
     updateModelSelection(newModel: string) {
       if (this.selectedConversationId) {
         this.conversationModelSelection.set(this.selectedConversationId, newModel);
-        const conv = this.activeConversations.get(this.selectedConversationId);
-        if (conv) conv.updatedAt = new Date().toISOString(); // Keep updatedAt fresh
+        // PERFORMANCE FIX: Removed updating conv.updatedAt here
       }
     },
     
@@ -153,9 +150,10 @@ export const useConversationStore = defineStore('conversation', {
 
 
       if (this.selectedConversationId === conversationIdToClose) {
-        const openConversationsArray = this.allOpenConversations; // This will be sorted ascending by time
+        // Get conversations in their current (insertion) order
+        const openConversationsArray = Array.from(this.activeConversations.values());
         if (openConversationsArray.length > 0) {
-          // Select the last one (most recent) if multiple are open
+          // Select the last one if multiple are open (maintains a LIFO-like feel for selection after close)
           this.setSelectedConversationId(openConversationsArray[openConversationsArray.length - 1].id);
         } else {
           const workflowStore = useWorkflowStore();
@@ -193,7 +191,7 @@ export const useConversationStore = defineStore('conversation', {
       }
       conversation.messages.push(message);
       conversation.updatedAt = new Date().toISOString();
-      this.activeConversations.set(conversationId, { ...conversation }); 
+      // No need to do this.activeConversations.set(...) if 'conversation' is already the reactive object from the Map
     },
 
     async sendStepRequirementAndSubscribe(workspaceId: string): Promise<void> {
@@ -252,10 +250,18 @@ export const useConversationStore = defineStore('conversation', {
           
           if (conversationId.startsWith('temp-') && conversationId !== permanentConversationId) {
             const oldTempConversation = this.activeConversations.get(conversationId)!;
+            // Preserve messages and other relevant data before deleting and re-adding
+            const preservedMessages = oldTempConversation.messages;
+            const preservedCreatedAt = oldTempConversation.createdAt;
+
+            this.activeConversations.delete(conversationId); // Delete old temp entry
+
+            // Re-add with new permanent ID, preserving data
             oldTempConversation.id = permanentConversationId; 
-            oldTempConversation.updatedAt = new Date().toISOString(); // Ensure new ID also has fresh timestamp
+            oldTempConversation.messages = preservedMessages; // Restore messages
+            oldTempConversation.createdAt = preservedCreatedAt; // Restore original creation if needed
+            oldTempConversation.updatedAt = new Date().toISOString(); 
             
-            this.activeConversations.delete(conversationId);
             this.activeConversations.set(permanentConversationId, oldTempConversation);
             finalConversationId = permanentConversationId;
 
@@ -266,9 +272,8 @@ export const useConversationStore = defineStore('conversation', {
             this.isSendingMap.set(permanentConversationId, this.isSendingMap.get(conversationId) || false);
             this.isSubscribedMap.set(permanentConversationId, this.isSubscribedMap.get(conversationId) || false);
 
-
             this.conversationRequirements.delete(conversationId);
-            this.conversationContextPaths.delete(conversationId); // Clear paths for temp id
+            this.conversationContextPaths.delete(conversationId); 
             this.conversationModelSelection.delete(conversationId);
             this.isSendingMap.delete(conversationId);
             this.isSubscribedMap.delete(conversationId);
@@ -405,7 +410,7 @@ export const useConversationStore = defineStore('conversation', {
       }
       
       conversation.updatedAt = new Date().toISOString();
-      this.activeConversations.set(conversationId, { ...conversation });
+      // No need to do this.activeConversations.set(...) if 'conversation' is already the reactive object from the Map
     },
 
     async uploadFile(file: File): Promise<string> {
@@ -576,14 +581,13 @@ export const useConversationStore = defineStore('conversation', {
         const currentSelectedConv = this.selectedConversation;
 
         if (!currentSelectedConv || currentSelectedConv.stepId !== stepId) {
-          // When switching steps, try to pick the most recently updated conversation for that step.
-          // Since allOpenConversations is sorted ascending (oldest first), we'd take the last one.
             const conversationsForStep = Array.from(this.activeConversations.values())
-                .filter(c => c.stepId === stepId)
-                .sort((a,b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()); // Ascending
-
+                .filter(c => c.stepId === stepId);
+            
+            // If there are conversations for this step, select the most recently *inserted* one.
+            // Since Maps preserve insertion order, the last one in the filtered list is correct.
             if (conversationsForStep.length > 0) {
-                this.setSelectedConversationId(conversationsForStep[conversationsForStep.length - 1].id); // Last one is most recent
+                this.setSelectedConversationId(conversationsForStep[conversationsForStep.length - 1].id);
             } else {
                 this.createTemporaryConversation(stepId);
             }
