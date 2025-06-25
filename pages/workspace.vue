@@ -23,7 +23,7 @@ definePageMeta({
 const fileExplorerStore = useFileExplorerStore()
 const serverSettingsStore = useServerSettingsStore(); // Added instance
 
-const showFileContent = computed(() => fileExplorerStore.openFiles.length > 0)
+const showFileContent = computed(() => fileExplorerStore.getOpenFiles.length > 0)
 
 onMounted(() => {
   // Fetch server settings when the workspace page is mounted

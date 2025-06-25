@@ -6,7 +6,6 @@ import type { AddWorkspaceMutation, AddWorkspaceMutationVariables, GetAllWorkspa
 import { TreeNode, convertJsonToTreeNode } from '~/utils/fileExplorer/TreeNode'
 import { createNodeIdToNodeDictionary, handleFileSystemChange } from '~/utils/fileExplorer/fileUtils'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
-import { useFileExplorerStore } from '~/stores/fileExplorer' // Added import
 
 interface WorkspaceInfo {
   workspaceId: string;
@@ -28,18 +27,26 @@ export const useWorkspaceStore = defineStore('workspace', {
   actions: {
     setSelectedWorkspaceId(id: string) {
       if (this.workspaces[id]) {
+        // Do nothing if the same workspace is selected again
+        if (this.selectedWorkspaceId === id) {
+          return;
+        }
+
         this.selectedWorkspaceId = id
-        const fileExplorerStore = useFileExplorerStore() // Get the fileExplorer store
-        fileExplorerStore.resetState() // Reset the fileExplorer state
+        
+        // No longer need to reset any other stores here.
+        // They will react to the change in selectedWorkspaceId.
+
       } else {
         console.warn(`Attempted to select non-existent workspace id: ${id}`)
       }
     },
-    async addWorkspace(newWorkspacePath: string): Promise<void> {
+    async addWorkspace(newWorkspacePath: string, name: string): Promise<void> {
       const { mutate: addWorkspaceMutation } = useMutation<AddWorkspaceMutation, AddWorkspaceMutationVariables>(AddWorkspace)
       try {
         const result = await addWorkspaceMutation({
           workspaceRootPath: newWorkspacePath,
+          name: name,
         })
         if (!result || !result.data?.addWorkspace) {
           throw new Error('Failed to add workspace: No data returned')
