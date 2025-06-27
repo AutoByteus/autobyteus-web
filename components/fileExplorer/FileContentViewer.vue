@@ -84,11 +84,13 @@
 import { computed, watch, onMounted, ref, onBeforeMount, onBeforeUnmount } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useFileExplorerStore } from '~/stores/fileExplorer'
+import { useWorkspaceStore } from '~/stores/workspace'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import { getLanguage } from '~/utils/aiResponseParser/languageDetector'
 import MonacoEditor from '~/components/fileExplorer/MonacoEditor.vue'
 
 const fileExplorerStore = useFileExplorerStore()
+const workspaceStore = useWorkspaceStore()
 const fileContentDisplayModeStore = useFileContentDisplayModeStore()
 const { isFullscreenMode, isMinimizedMode } = storeToRefs(fileContentDisplayModeStore)
 
@@ -180,9 +182,14 @@ async function saveChanges() {
   if (!activeFile.value || fileContent.value === null) return
   
   console.log('Saving changes for file:', activeFile.value)
+
+  const workspaceId = workspaceStore.currentSelectedWorkspaceId
+  if (!workspaceId) {
+    throw new Error('No workspace selected, cannot save file.')
+  }
   
   await fileExplorerStore.writeBasicFileContent(
-    fileExplorerStore.workspaceId, 
+    workspaceId, 
     activeFile.value, 
     fileContent.value
   )

@@ -120,6 +120,18 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       const wsState = (state as any)._currentWorkspaceFileExplorerState;
       return wsState ? wsState.contentError[filePath] || null : null;
     },
+    getSearchResults: (state): any[] => {
+      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+      return wsState ? wsState.searchResults : [];
+    },
+    isSearchLoading: (state): boolean => {
+      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+      return wsState ? wsState.searchLoading : false;
+    },
+    getSearchError: (state): string | null => {
+      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+      return wsState ? wsState.searchError : null;
+    },
   },
 
   actions: {
@@ -157,8 +169,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       delete wsState.fileContents[filePath];
       delete wsState.contentLoading[filePath];
       delete wsState.contentError[filePath];
-      // Note: appliedChanges might need a more robust clearing strategy if it spans workspaces, but for now this is fine.
-      // delete wsState.appliedChanges[filePath]; 
       if (wsState.activeFile === filePath) {
         wsState.activeFile = wsState.openFiles[wsState.openFiles.length - 1] || null;
         if (!wsState.activeFile) {
@@ -184,6 +194,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
 
       const workspaceStore = useWorkspaceStore();
       const workspaceId = workspaceStore.currentSelectedWorkspaceId;
+      if (!workspaceId) throw new Error("No workspace selected");
 
       try {
         const { onResult, onError } = useQuery<GetFileContentQuery, GetFileContentQueryVariables>(
@@ -192,7 +203,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
 
         return new Promise((resolve, reject) => {
           onResult((result) => {
-            if (result.data?.fileContent) {
+            if (result.data) {
               wsState.fileContents[filePath] = result.data.fileContent;
               wsState.contentLoading[filePath] = false;
               resolve(result.data.fileContent);
@@ -210,6 +221,33 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         wsState.contentError[filePath] = error instanceof Error ? error.message : 'Failed to fetch file content';
         wsState.contentLoading[filePath] = false;
         throw error;
+      }
+    },
+
+    async writeBasicFileContent(workspaceId: string, filePath: string, content: string) {
+      const wsState = this._getOrCreateCurrentWorkspaceState();
+      wsState.basicFileChangeError[filePath] = null;
+      wsState.basicFileChangeLoading[filePath] = true;
+
+      const { mutate } = useMutation<WriteFileContentMutation, WriteFileContentMutationVariables>(WriteFileContent);
+
+      try {
+        const result = await mutate({ workspaceId, filePath, content });
+        
+        if (result?.data?.writeFileContent) {
+          wsState.fileContents[filePath] = content;
+          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.writeFileContent);
+          const workspaceStore = useWorkspaceStore();
+          workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
+        }
+
+        wsState.basicFileChangeLoading[filePath] = false;
+        return result;
+      } catch (err) {
+        console.error('Failed to write basic file content:', err);
+        wsState.basicFileChangeError[filePath] = err instanceof Error ? err.message : 'An unknown error occurred';
+        wsState.basicFileChangeLoading[filePath] = false;
+        throw err;
       }
     },
 
@@ -259,6 +297,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
 
       const workspaceStore = useWorkspaceStore();
       const workspaceId = workspaceStore.currentSelectedWorkspaceId;
+      if (!workspaceId) throw new Error("No workspace selected");
 
       try {
         const { mutate } = useMutation<DeleteFileOrFolderMutation, DeleteFileOrFolderMutationVariables>(DeleteFileOrFolder);
@@ -281,8 +320,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
     
-    // Other actions like move, rename, create, search should be similarly refactored
-    // For brevity, I will show the pattern and you can apply it. Let's refactor one more complex one.
     async renameFileOrFolder(targetPath: string, newName: string) {
       const wsState = this._getOrCreateCurrentWorkspaceState();
       wsState.renameError[targetPath] = null;
@@ -290,6 +327,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
 
       const workspaceStore = useWorkspaceStore();
       const workspaceId = workspaceStore.currentSelectedWorkspaceId;
+      if (!workspaceId) throw new Error("No workspace selected");
 
       const { mutate } = useMutation<RenameFileOrFolderMutation, RenameFileOrFolderMutationVariables>(RenameFileOrFolder);
 
@@ -301,10 +339,9 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
           segments[segments.length - 1] = newName;
           const newPath = segments.join('/');
 
-          // Update open files state
-          const openIndex = wsState.openFiles.indexOf(targetPath);
-          if (openIndex > -1) {
-            wsState.openFiles[openIndex] = newPath;
+          const index = wsState.openFiles.indexOf(targetPath);
+          if (index > -1) {
+            wsState.openFiles[index] = newPath;
           }
           if (wsState.activeFile === targetPath) {
             wsState.activeFile = newPath;
@@ -328,21 +365,131 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
 
-    // Simplified stubs for other actions to illustrate the pattern
     async moveFileOrFolder(sourcePath: string, destinationPath: string) {
       const wsState = this._getOrCreateCurrentWorkspaceState();
-      // ... implementation using wsState
+      wsState.moveError[sourcePath] = null;
+      wsState.moveLoading[sourcePath] = true;
+
+      const workspaceStore = useWorkspaceStore();
+      const workspaceId = workspaceStore.currentSelectedWorkspaceId;
+      if (!workspaceId) throw new Error("No workspace selected");
+      
+      const { mutate } = useMutation<MoveFileOrFolderMutation, MoveFileOrFolderMutationVariables>(MoveFileOrFolder);
+
+      try {
+        const result = await mutate({ workspaceId, sourcePath, destinationPath });
+
+        if (result?.data?.moveFileOrFolder) {
+          if (wsState.openFiles.includes(sourcePath)) {
+            const newPath = destinationPath;
+            const index = wsState.openFiles.indexOf(sourcePath);
+            wsState.openFiles[index] = newPath;
+            if (wsState.activeFile === sourcePath) {
+              wsState.activeFile = newPath;
+            }
+            if (wsState.fileContents[sourcePath] !== undefined) {
+              wsState.fileContents[newPath] = wsState.fileContents[sourcePath];
+              delete wsState.fileContents[sourcePath];
+            }
+          }
+
+          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.moveFileOrFolder);
+          workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
+        }
+        wsState.moveLoading[sourcePath] = false;
+        return result;
+
+      } catch (err) {
+        console.error('Failed to move file/folder:', err);
+        wsState.moveError[sourcePath] = err instanceof Error ? err.message : 'An unknown error occurred';
+        wsState.moveLoading[sourcePath] = false;
+        throw err;
+      }
     },
-    async createFileOrFolder(finalPath: string, isFile: boolean) {
+
+    async createFileOrFolder(path: string, isFile: boolean) {
       const wsState = this._getOrCreateCurrentWorkspaceState();
-      // ... implementation using wsState
+      wsState.createError[path] = null;
+      wsState.createLoading[path] = true;
+
+      const workspaceStore = useWorkspaceStore();
+      const workspaceId = workspaceStore.currentSelectedWorkspaceId;
+      if (!workspaceId) throw new Error("No workspace selected");
+
+      const { mutate } = useMutation<CreateFileOrFolderMutation, CreateFileOrFolderMutationVariables>(CreateFileOrFolder);
+
+      try {
+        const result = await mutate({ workspaceId, path, isFile });
+
+        if (result?.data?.createFileOrFolder) {
+            const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.createFileOrFolder);
+            workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
+        }
+        wsState.createLoading[path] = false;
+        return result;
+
+      } catch(err) {
+        console.error('Failed to create file/folder:', err);
+        wsState.createError[path] = err instanceof Error ? err.message : 'An unknown error occurred';
+        wsState.createLoading[path] = false;
+        throw err;
+      }
     },
+
     async searchFiles(query: string) {
       const wsState = this._getOrCreateCurrentWorkspaceState();
-      // ... implementation using wsState
+      const workspaceStore = useWorkspaceStore();
+      
+      wsState.searchLoading = true;
+      wsState.searchError = null;
+      
+      if (!query.trim()) {
+        // When query is cleared, searchResults should be empty to show the file tree.
+        wsState.searchResults = [];
+        wsState.searchLoading = false;
+        return;
+      }
+      
+      const workspaceId = workspaceStore.currentSelectedWorkspaceId;
+      if (!workspaceId) {
+        wsState.searchError = "No workspace selected.";
+        wsState.searchLoading = false;
+        return;
+      }
+      
+      try {
+        const { onResult, onError } = useQuery<SearchFilesQuery, SearchFilesQueryVariables>(
+          SearchFiles,
+          { workspaceId, query }
+        );
+
+        return new Promise<void>((resolve, reject) => {
+          onResult((result) => {
+            if (result.data?.searchFiles) {
+              const matchedPaths = result.data.searchFiles;
+              // Use findFileByPath to look up nodes from the main tree
+              wsState.searchResults = matchedPaths.map(path => {
+                return findFileByPath(workspaceStore.currentWorkspaceTree?.children || [], path);
+              }).filter((file): file is NonNullable<typeof file> => file !== null);
+            }
+            wsState.searchLoading = false;
+            resolve();
+          });
+
+          onError((error) => {
+            console.error('Error searching files:', error);
+            wsState.searchError = error.message;
+            wsState.searchLoading = false;
+            reject(error);
+          });
+        });
+      } catch (error) {
+        wsState.searchError = error instanceof Error ? error.message : 'Failed to search files';
+        wsState.searchLoading = false;
+        throw error;
+      }
     },
     
-    // Getters for specific states (can be refactored as needed, but they are verbose)
     isApplyChangeInProgress(conversationId: string, messageIndex: number, filePath: string): boolean {
       const wsState = this._getOrCreateCurrentWorkspaceState();
       return !!(wsState.applyChangeLoading[conversationId]?.[messageIndex]?.[filePath]);
