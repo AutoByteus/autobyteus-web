@@ -238,8 +238,13 @@ onMounted(() => {
 
 async function handleApply() {
   try {
+    const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
+    if (!workspaceId) {
+      throw new Error("No active workspace selected. Cannot apply file changes.");
+    }
+
     await fileExplorerStore.writeFileContent(
-      workspaceStore.currentSelectedWorkspaceId,
+      workspaceId,
       props.fileSegment.path,
       props.fileSegment.originalContent,
       props.conversationId,

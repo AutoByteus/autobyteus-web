@@ -102,17 +102,14 @@
 </template>
 
 <script setup lang="ts">
-import { useWorkspaceStore } from '~/stores/workspace';
-import { useWorkflowStore } from '~/stores/workflow';
+import { useAgentSessionStore } from '~/stores/agentSessionStore';
 import { useAudioStore } from '~/stores/audioStore';
 import { ref, watch, onUnmounted, computed } from 'vue';
 
-const props = defineProps<{
-  disabled?: boolean
+const props = defineProps<{  disabled?: boolean
 }>();
 
-const workspaceStore = useWorkspaceStore();
-const workflowStore = useWorkflowStore();
+const agentSessionStore = useAgentSessionStore();
 const audioStore = useAudioStore();
 
 const errorMessage = ref<string | null>(null);
@@ -123,19 +120,19 @@ const buttonText = computed(() => {
 });
 
 const handleRecordingToggle = async () => {
-  const workspaceId = workspaceStore.currentSelectedWorkspaceId;
-  const stepId = workflowStore.selectedStep?.id;
+  const workspaceId = agentSessionStore.activeSession?.workspaceId;
+  const agentDefinitionId = agentSessionStore.activeSession?.agentDefinition.id;
 
-  if (!workspaceId || !stepId) {
-    alert('Workspace or step is not selected.');
+  if (!workspaceId || !agentDefinitionId) {
+    alert('An active workspace and agent session are required to start recording.');
     return;
   }
 
   try {
     if (!audioStore.isRecording) {
-      await audioStore.startRecording(workspaceId, stepId);
+      await audioStore.startRecording(workspaceId, agentDefinitionId);
     } else {
-      await audioStore.stopRecording(workspaceId, stepId);
+      await audioStore.stopRecording(workspaceId, agentDefinitionId);
     }
   } catch (error: any) {
     console.error('Recording error:', error);
@@ -151,9 +148,9 @@ watch(
 );
 
 onUnmounted(async () => {
-  const workspaceId = workspaceStore.currentSelectedWorkspaceId;
-  const stepId = workflowStore.selectedStep?.id;
-  await audioStore.cleanup(workspaceId, stepId);
+  const workspaceId = agentSessionStore.activeSession?.workspaceId;
+  const agentDefinitionId = agentSessionStore.activeSession?.agentDefinition.id;
+  await audioStore.cleanup(workspaceId, agentDefinitionId);
 });
 </script>
 

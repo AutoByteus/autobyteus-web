@@ -12,7 +12,10 @@ interface Prompt {
   suitableForModels?: string | null;
   version: number;
   createdAt: string;
+  updatedAt: string;
   parentPromptId?: string | null;
+  isActive: boolean;
+  isForWorkflow: boolean;
 }
 
 interface SyncResult {
@@ -122,11 +125,12 @@ export const usePromptStore = defineStore('prompt', {
       promptContent: string,
       description?: string,
       suitableForModels?: string,
+      isForWorkflow?: boolean,
     ) {
       try {
         const { mutate } = useMutation(CREATE_PROMPT);
         const response = await mutate({
-          input: { name, category, promptContent, description, suitableForModels },
+          input: { name, category, promptContent, description, suitableForModels, isForWorkflow },
         });
 
         if (response?.data?.createPrompt) {
@@ -145,11 +149,12 @@ export const usePromptStore = defineStore('prompt', {
       promptContent?: string,
       description?: string,
       suitableForModels?: string,
+      isActive?: boolean
     ) {
       try {
         const { mutate } = useMutation(UPDATE_PROMPT);
         const response = await mutate({
-          input: { id, promptContent, description, suitableForModels },
+          input: { id, promptContent, description, suitableForModels, isActive },
         });
 
         if (response?.data?.updatePrompt) {

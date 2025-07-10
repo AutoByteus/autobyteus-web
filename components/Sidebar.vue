@@ -16,14 +16,14 @@
       </span>
     </NuxtLink>
 
-    <!-- Sidebar Toggle Button -->
+    <!-- Sidebar Toggle Button for Agent Session Panel -->
     <button 
-      @click="toggleWorkflowDisplay"
+      @click="toggleSessionPanel"
       class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 p-1 bg-gray-700 rounded-full text-gray-300 hover:text-white hover:bg-gray-600 transition-all duration-200"
     >
       <svg 
         class="w-3 h-3 transition-transform duration-200" 
-        :class="{ 'rotate-180': isWorkflowOpen }"
+        :class="{ 'rotate-180': isSessionPanelOpen }"
         fill="none" 
         stroke="currentColor" 
         viewBox="0 0 24 24"
@@ -40,21 +40,40 @@
     <!-- Main Navigation -->
     <nav class="flex-1 px-2 mt-4">
       <ul class="space-y-2">
+        <!-- Main workspace/agent view -->
+        <li class="relative">
+          <NuxtLink 
+            to="/workspace"
+            class="flex justify-center items-center p-3 rounded-md hover:text-blue-300 hover:bg-gray-700 transition-colors group relative"
+            :class="{'bg-gray-700': $route.path === '/workspace'}"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            <span class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
+              Workspace
+            </span>
+          </NuxtLink>
+        </li>
+
         <li class="relative">
           <NuxtLink 
             to="/agents" 
             class="flex justify-center items-center p-3 rounded-md hover:text-blue-300 hover:bg-gray-700 transition-colors group relative"
-            :class="{'bg-gray-700': $route.path === '/agents'}"
+            :class="{'bg-gray-700': $route.path.startsWith('/agents')}"
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.125-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.125-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
             </svg>
             <span class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
               Agents
             </span>
           </NuxtLink>
         </li>
-
+        
         <li class="relative">
           <NuxtLink 
             to="/prompt-engineering" 
@@ -74,30 +93,15 @@
           <NuxtLink 
             to="/tools" 
             class="flex justify-center items-center p-3 rounded-md hover:text-blue-300 hover:bg-gray-700 transition-colors group relative"
-            :class="{'bg-gray-700': $route.path === '/tools'}"
+            :class="{'bg-gray-700': $route.path.startsWith('/tools')}"
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
             </svg>
             <span class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
               Tools
             </span>
           </NuxtLink>
-        </li>
-
-        <!-- Add Workspace Button -->
-        <li class="relative">
-          <button 
-            @click="showAddWorkspaceForm = true"
-            class="w-full flex justify-center items-center p-3 rounded-md hover:text-blue-300 hover:bg-gray-700 transition-colors group relative"
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            <span class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
-              Add Workspace
-            </span>
-          </button>
         </li>
       </ul>
     </nav>
@@ -122,36 +126,19 @@
         </li>
       </ul>
     </div>
-
-    <!-- Add Workspace Form Modal -->
-    <div v-if="showAddWorkspaceForm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="max-w-md w-full mx-4">
-        <AddWorkspaceForm 
-          @close="showAddWorkspaceForm = false"
-          @workspace-added="handleWorkspaceAdded"
-        />
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useWorkflowUIStore } from '~/stores/workflowUI'
-import AddWorkspaceForm from './workspace/AddWorkspaceForm.vue'
+import { storeToRefs } from 'pinia';
+import { useAgentSessionPanelOverlayStore } from '~/stores/agentSessionPanelOverlayStore';
 
-const workflowUIStore = useWorkflowUIStore()
-const { isWorkflowOpen } = storeToRefs(workflowUIStore)
-const showAddWorkspaceForm = ref(false)
+const agentSessionPanelOverlayStore = useAgentSessionPanelOverlayStore();
+const { isOpen: isSessionPanelOpen } = storeToRefs(agentSessionPanelOverlayStore);
 
-const toggleWorkflowDisplay = () => {
-  workflowUIStore.toggleWorkflow()
-}
-
-const handleWorkspaceAdded = () => {
-  showAddWorkspaceForm.value = false
-}
+const toggleSessionPanel = () => {
+  agentSessionPanelOverlayStore.toggle();
+};
 </script>
 
 <style scoped>
@@ -161,7 +148,6 @@ const handleWorkspaceAdded = () => {
   z-index: 30;
 }
 
-/* Add tooltip styles if needed */
 [title]:hover::after {
   z-index: 30;
 }

@@ -1,17 +1,19 @@
-import gql from 'graphql-tag';
+import { gql } from 'graphql-tag'
 
-export const GetWorkflowConfig = gql`
-  query GetWorkflowConfig($workspaceId: String!) {
-    workflowConfig(workspaceId: $workspaceId)
-  }
-`;
-
-export const GetAllWorkspaces = gql`
-  query GetAllWorkspaces {
-    allWorkspaces {
-      workspaceId
-      name
-      fileExplorer
+export const GetAvailableWorkspaceDefinitions = gql`
+  query GetAvailableWorkspaceDefinitions {
+    availableWorkspaceDefinitions {
+      workspaceTypeName
+      description
+      configSchema {
+        name
+        type
+        description
+        required
+        defaultValue
+      }
     }
   }
-`;
+`
+
+// REMOVED: GetAllWorkspaces query is no longer used.

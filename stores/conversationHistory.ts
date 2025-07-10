@@ -4,10 +4,9 @@ import { GET_CONVERSATION_HISTORY } from '~/graphql/queries/conversation_queries
 import type { GetConversationHistoryQuery, GetConversationHistoryQueryVariables } from '~/generated/graphql';
 import type { Conversation, UserMessage, AIMessage } from '~/types/conversation';
 import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
-import { useWorkflowStore } from '~/stores/workflow'; // Added
 
 interface ConversationHistoryState {
-  stepName: string | null;
+  agentDefinitionId: string | null;
   conversations: Conversation[];
   currentPage: number;
   pageSize: number;
@@ -18,7 +17,7 @@ interface ConversationHistoryState {
 
 export const useConversationHistoryStore = defineStore('conversationHistory', {
   state: (): ConversationHistoryState => ({
-    stepName: null,
+    agentDefinitionId: null,
     conversations: [],
     currentPage: 1,
     pageSize: 10,
@@ -27,16 +26,16 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
     error: null,
   }),
   actions: {
-    setStepName(stepName: string) {
-      this.stepName = stepName;
+    setAgentDefinitionId(agentDefinitionId: string) {
+      this.agentDefinitionId = agentDefinitionId;
       this.currentPage = 1;
       this.conversations = [];
       this.totalPages = 1;
       this.fetchConversationHistory();
     },
     async fetchConversationHistory(this: ConversationHistoryState, page: number = this.currentPage, pageSize: number = this.pageSize) {
-      if (!this.stepName) {
-        this.error = 'Step name is not set.';
+      if (!this.agentDefinitionId) {
+        this.error = 'Agent definition ID is not set.';
         return;
       }
 
@@ -44,7 +43,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.error = null;
 
       const variables: GetConversationHistoryQueryVariables = {
-        stepName: this.stepName,
+        agentDefinitionId: this.agentDefinitionId,
         page,
         pageSize,
       };
@@ -73,19 +72,19 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       });
     },
     async nextPage() {
-      if (this.currentPage < this.totalPages && this.stepName) {
+      if (this.currentPage < this.totalPages && this.agentDefinitionId) {
         this.currentPage += 1;
         await this.fetchConversationHistory(this.currentPage, this.pageSize);
       }
     },
     async previousPage() {
-      if (this.currentPage > 1 && this.stepName) {
+      if (this.currentPage > 1 && this.agentDefinitionId) {
         this.currentPage -= 1;
         await this.fetchConversationHistory(this.currentPage, this.pageSize);
       }
     },
     reset() {
-      this.stepName = null;
+      this.agentDefinitionId = null;
       this.conversations = [];
       this.currentPage = 1;
       this.pageSize = 10;
@@ -93,28 +92,12 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.loading = false;
       this.error = null;
     },
-    mapToConversation(stepConversation: GetConversationHistoryQuery['getConversationHistory']['conversations'][number]): Conversation {
-      const workflowStore = useWorkflowStore();
-      let stepId = '';
-
-      if (this.stepName && workflowStore.currentWorkflow) {
-        const foundStep = Object.entries(workflowStore.currentWorkflow.steps).find(
-          ([, stepObj]) => stepObj.name === this.stepName
-        );
-        if (foundStep) {
-          stepId = foundStep[0];
-        } else {
-          console.warn(`Could not find stepId for stepName: ${this.stepName}`);
-        }
-      } else {
-          console.warn(`Cannot map stepName to stepId: stepName is ${this.stepName}, workflow is ${workflowStore.currentWorkflow ? 'defined' : 'null'}`);
-      }
-
-
+    mapToConversation(agentConversation: GetConversationHistoryQuery['getConversationHistory']['conversations'][number]): Conversation {
+      // The concept of a workflow and steps has been removed.
+      // The `stepId` has been removed from the Conversation type.
       return {
-        id: stepConversation.stepConversationId, // This is the historical conversation ID
-        stepId: stepId, // Populate stepId
-        messages: stepConversation.messages.map(msg => {
+        id: agentConversation.agentId, // This is the historical conversation ID
+        messages: agentConversation.messages.map(msg => {
           if (msg.role === 'user') {
             const userMessage: UserMessage = {
               type: 'user',
@@ -148,8 +131,13 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
             return aiMessage;
           }
         }),
-        createdAt: stepConversation.createdAt,
-        updatedAt: stepConversation.createdAt, // Should be stepConversation.updatedAt if available, using createdAt as fallback
+        createdAt: agentConversation.createdAt,
+        updatedAt: agentConversation.createdAt, // Should be agentConversation.updatedAt if available, using createdAt as fallback
+        // Pass along additional properties for when continuing a conversation.
+        // This assumes the Conversation type supports these optional fields.
+        llmModelName: agentConversation.llmModel || undefined,
+        useXmlToolFormat: agentConversation.useXmlToolFormat,
+        agentDefinitionId: agentConversation.agentDefinitionId,
       };
     }
   },

@@ -8,10 +8,12 @@ export const CREATE_PROMPT = gql`
       category
       promptContent
       description
-      suitableForModels     # plural
+      suitableForModels
       version
       createdAt
       parentPromptId
+      isActive
+      isForWorkflow
     }
   }
 `;
@@ -29,6 +31,8 @@ export const UPDATE_PROMPT = gql`
       createdAt
       updatedAt
       parentPromptId
+      isActive
+      isForWorkflow
     }
   }
 `;
@@ -45,6 +49,8 @@ export const ADD_NEW_PROMPT_REVISION = gql`
       version
       createdAt
       parentPromptId
+      isActive
+      isForWorkflow
     }
   }
 `;

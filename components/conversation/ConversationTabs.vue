@@ -49,25 +49,25 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useConversationStore } from '~/stores/conversationStore';
+import { useAgentSessionStore } from '~/stores/agentSessionStore';
 import Conversation from './Conversation.vue';
-import { useWorkflowStore } from '~/stores/workflow';
 import type { Conversation as ConversationType } from '~/types/conversation';
 
 const conversationStore = useConversationStore();
-const workflowStore = useWorkflowStore();
+const agentSessionStore = useAgentSessionStore();
 
 const allOpenConversations = computed(() => conversationStore.allOpenConversations);
 const currentSelectedConversationId = computed(() => conversationStore.selectedConversationId);
 const currentSelectedConversation = computed(() => conversationStore.selectedConversation);
+const activeSession = computed(() => agentSessionStore.activeSession);
 
 const getConversationLabel = (conversation: ConversationType) => {
-  const stepName = workflowStore.getStepNameById(conversation.stepId);
+  if (!activeSession.value) return '...';
   if (conversation.id.startsWith('temp-')) {
-    return `New - ${stepName}`;
+    return `New - ${activeSession.value.name}`;
   }
-  // Truncate ID for display, e.g. last 4 chars
   const idSuffix = conversation.id.slice(-4).toUpperCase();
-  return `${stepName} - ${idSuffix}`;
+  return `${activeSession.value.name} - ${idSuffix}`;
 };
 
 const handleCloseConv = async (conversation: ConversationType) => {
@@ -75,13 +75,11 @@ const handleCloseConv = async (conversation: ConversationType) => {
     await conversationStore.closeConversation(conversation.id);
   } catch (error) {
     console.error('Error closing conversation:', error);
-    // Optional: Show error notification to user
   }
 };
 
 const handleSelectConversation = (conversationId: string) => {
   conversationStore.setSelectedConversationId(conversationId);
-  // Watcher in WorkflowStepView will sync workflowStore.currentSelectedStepId
 };
 </script>
 

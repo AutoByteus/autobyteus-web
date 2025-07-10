@@ -1,10 +1,5 @@
 /* autobyteus-web/utils/aiResponseParser/types.ts */
 
-export interface BashCommand {
-  command: string;
-  description: string;
-}
-
 export interface ParsedFile {
   path: string;
   originalContent: string;
@@ -15,12 +10,6 @@ export interface ParsedFile {
 export interface AIResponseTextSegment {
   type: 'text';
   content: string;
-}
-
-export interface BashCommandSegment {
-  type: 'bash_command';
-  command: string;
-  description: string;
 }
 
 export interface FileSegment {
@@ -37,11 +26,23 @@ export interface ThinkSegment {
   content: string;
 }
 
+export interface ToolCallSegment {
+  type: 'tool_call';
+  invocationId: string;
+  toolName: string;
+  arguments: Record<string, any>;
+  status: 'parsing' | 'parsed' | 'awaiting-approval' | 'executing' | 'success' | 'error' | 'denied';
+  logs: string[];
+  result: any | null;
+  error: string | null;
+  rawJsonContent?: string; // Buffer for streaming raw JSON
+}
+
 export type AIResponseSegment = 
   | AIResponseTextSegment 
-  | BashCommandSegment 
   | FileSegment 
-  | ThinkSegment;
+  | ThinkSegment
+  | ToolCallSegment;
 
 export interface ParsedAIResponse {
   segments: AIResponseSegment[];

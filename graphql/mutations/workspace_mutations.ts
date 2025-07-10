@@ -1,19 +1,14 @@
-import gql from 'graphql-tag';
+import { gql } from 'graphql-tag'
 
-export interface CommandExecutionResult {
-  success: boolean;
-  message: string;
-}
-
-export const AddWorkspace = gql`
-  mutation AddWorkspace($workspaceRootPath: String!) {
-    addWorkspace(workspaceRootPath: $workspaceRootPath) {
+export const CreateWorkspace = gql`
+  mutation CreateWorkspace($input: CreateWorkspaceInput!) {
+    createWorkspace(input: $input) {
       workspaceId
       name
       fileExplorer
     }
   }
-`;
+`
 
 export const EXECUTE_BASH_COMMANDS = gql`
   mutation ExecuteBashCommands($workspaceId: String!, $command: String!) {
@@ -22,4 +17,4 @@ export const EXECUTE_BASH_COMMANDS = gql`
       message
     }
   }
-`;
+`

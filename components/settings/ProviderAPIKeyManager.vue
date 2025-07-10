@@ -152,11 +152,10 @@ import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig'
 
 const store = useLLMProviderConfigStore()
 // Use storeToRefs for reactive state properties
-const { isLoadingModels, models, isReloadingModels } = storeToRefs(store)
+const { isLoadingModels, models, isReloadingModels, providers } = storeToRefs(store)
 
 const loading = ref(true)
 const saving = ref(false)
-const providers = ref<string[]>([])
 const selectedProvider = ref('')
 const apiKey = ref('')
 const showApiKey = ref(false)
@@ -180,7 +179,7 @@ const refreshModels = async () => {
 
 onMounted(async () => {
   try {
-    providers.value = await store.fetchProviders()
+    await store.fetchProvidersWithModels()
     
     // Load existing configurations
     for (const provider of providers.value) {
@@ -199,12 +198,9 @@ onMounted(async () => {
         providerConfigs.value[provider] = {}
       }
     }
-    
-    // Load available models
-    await store.fetchModels()
   } catch (error) {
     console.error('Failed to load providers or models:', error)
-    showNotification('Failed to load providers', 'error')
+    showNotification('Failed to load providers and models', 'error')
   } finally {
     loading.value = false
   }

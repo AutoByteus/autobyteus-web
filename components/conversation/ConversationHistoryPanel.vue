@@ -51,11 +51,10 @@
 import { computed } from 'vue';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import { useConversationStore } from '~/stores/conversationStore';
-// Removed: import { useWorkflowStore } from '~/stores/workflow'; 
 import ConversationList from '~/components/conversation/ConversationList.vue';
-import type { Conversation } from '~/types/conversation';
 
 const props = defineProps<{  isOpen: boolean;
+  conversations: any[]; // Kept for now, but will be driven by the store
 }>();
 
 const emit = defineEmits<{  (e: 'close'): void;
@@ -63,7 +62,6 @@ const emit = defineEmits<{  (e: 'close'): void;
 
 const conversationHistoryStore = useConversationHistoryStore();
 const conversationStore = useConversationStore();
-// Removed workflowStore as it's no longer used for activeConversationId here
 
 const panelConversations = computed(() => conversationHistoryStore.getConversations);
 

@@ -1,76 +1,68 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { StateMachine } from '../StateMachine';
 import type { AIResponseSegment } from '../../types';
+import { XmlStreamingStrategy } from '../../streaming_strategies/xml_strategy';
+import { OpenAiStreamingStrategy } from '../../streaming_strategies/openai_strategy';
 
-describe('StateMachine', () => {
-  it('should parse a mix of text, bash command, and file segments', () => {
+vi.mock('~/utils/toolUtils', () => ({
+  generateInvocationId: (toolName: string, args: Record<string, any>): string => {
+    const argString = JSON.stringify(Object.keys(args).sort().reduce((acc, key) => ({...acc, [key]: args[key]}), {}));
+    return `call_mock_${toolName}_${argString}`;
+  }
+}));
+
+describe('StateMachine with a pre-selected Strategy', () => {
+  it('should parse a mix of text and XML tags when given XmlStreamingStrategy', () => {
     const segments: AIResponseSegment[] = [];
-    const machine = new StateMachine(segments);
+    const xmlStrategy = new XmlStreamingStrategy();
+    const machine = new StateMachine(segments, xmlStrategy, true); // useXml = true
 
     machine.appendChunks([
       'Intro text ',
-      '<bash command="echo Hello" description="Print hello"/>',
-      ' Middle text ',
-      '<file path="src/test.js">console.log("Hi")</file>',
-      ' Ending text'
+      '<tool name="xml_tool"><arguments><arg name="p1">v1</arg></arguments></tool>',
+      ' Final text'
     ]);
     machine.run();
 
     expect(segments).toEqual([
       { type: 'text', content: 'Intro text ' },
-      { type: 'bash_command', command: 'echo Hello', description: 'Print hello' },
-      { type: 'text', content: ' Middle text ' },
-      {
-        type: 'file',
-        path: 'src/test.js',
-        originalContent: 'console.log("Hi")',
-        language: 'javascript'
-      },
-      { type: 'text', content: ' Ending text' }
+      expect.objectContaining({
+        type: 'tool_call',
+        toolName: 'xml_tool',
+        arguments: { p1: 'v1' },
+      }),
+      { type: 'text', content: ' Final text' }
     ]);
   });
 
-  it('should handle incremental parsing', () => {
+  it('should parse a mix of text and JSON when given OpenAiStreamingStrategy', () => {
     const segments: AIResponseSegment[] = [];
-    const machine = new StateMachine(segments);
+    const openAiStrategy = new OpenAiStreamingStrategy();
+    const machine = new StateMachine(segments, openAiStrategy, false); // useXml = false
 
-    machine.appendChunks(['Hello']);
+    machine.appendChunks(['Hello {"tool_calls":[{"function":{"name":"test","arguments":"{}"}}]} and done.']);
     machine.run();
-    expect(segments).toEqual([{ type: 'text', content: 'Hello' }]);
-
-    machine.appendChunks([' <bash command="ls" description="List files"/> More text']);
-    machine.run();
+    
     expect(segments).toEqual([
-      { type: 'text', content: 'Hello ' },
-      { type: 'bash_command', command: 'ls', description: 'List files' },
-      { type: 'text', content: ' More text' }
+        { type: 'text', content: 'Hello ' },
+        expect.objectContaining({
+            type: 'tool_call',
+            toolName: 'test',
+            status: 'parsed',
+        }),
+        { type: 'text', content: ' and done.' },
     ]);
   });
 
-  it('should handle an unknown tag as text', () => {
+  it('should treat an unknown tag as text', () => {
     const segments: AIResponseSegment[] = [];
-    const machine = new StateMachine(segments);
+    // Give it a JSON strategy, so it won't recognize XML tags other than <tool>
+    const machine = new StateMachine(segments, new OpenAiStreamingStrategy(), false);
 
     machine.appendChunks(['Some <unknown>tag</unknown> text']);
     machine.run();
     expect(segments).toEqual([
       { type: 'text', content: 'Some <unknown>tag</unknown> text' }
-    ]);
-  });
-
-  // New test for llm_reasoning_token segment
-  it('should parse a llm_reasoning_token segment received in multiple chunks', () => {
-    const segments: AIResponseSegment[] = [];
-    const machine = new StateMachine(segments);
-
-    machine.appendChunks([
-      '<llm_reasoning_token>',
-      'This is a think content',
-      '</llm_reasoning_token>'
-    ]);
-    machine.run();
-    expect(segments).toEqual([
-      { type: 'think', content: 'This is a think content' }
     ]);
   });
 });

@@ -89,11 +89,12 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
   }),
 
   getters: {
+    // REFACTORED: This now derives its state from the active workspace.
     _currentWorkspaceFileExplorerState(state): WorkspaceFileExplorerState | null {
       const workspaceStore = useWorkspaceStore();
-      const currentWorkspaceId = workspaceStore.currentSelectedWorkspaceId;
-      if (!currentWorkspaceId) return null;
-      return state.fileExplorerStateByWorkspace.get(currentWorkspaceId) || null;
+      const activeWorkspaceId = workspaceStore.activeWorkspace?.workspaceId;
+      if (!activeWorkspaceId) return null;
+      return state.fileExplorerStateByWorkspace.get(activeWorkspaceId) || null;
     },
 
     isFolderOpen: (state) => (folderPath: string): boolean => {
@@ -135,16 +136,17 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
   },
 
   actions: {
+    // REFACTORED: This now gets the workspace ID from the active workspace.
     _getOrCreateCurrentWorkspaceState(): WorkspaceFileExplorerState {
       const workspaceStore = useWorkspaceStore();
-      const currentWorkspaceId = workspaceStore.currentSelectedWorkspaceId;
-      if (!currentWorkspaceId) {
-        throw new Error("Cannot get file explorer state: No workspace is selected.");
+      const activeWorkspaceId = workspaceStore.activeWorkspace?.workspaceId;
+      if (!activeWorkspaceId) {
+        throw new Error("Cannot get file explorer state: No active workspace session.");
       }
-      if (!this.fileExplorerStateByWorkspace.has(currentWorkspaceId)) {
-        this.fileExplorerStateByWorkspace.set(currentWorkspaceId, createDefaultWorkspaceFileExplorerState());
+      if (!this.fileExplorerStateByWorkspace.has(activeWorkspaceId)) {
+        this.fileExplorerStateByWorkspace.set(activeWorkspaceId, createDefaultWorkspaceFileExplorerState());
       }
-      return this.fileExplorerStateByWorkspace.get(currentWorkspaceId)!;
+      return this.fileExplorerStateByWorkspace.get(activeWorkspaceId)!;
     },
 
     toggleFolder(folderPath: string) {
@@ -193,8 +195,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       wsState.contentError[filePath] = null;
 
       const workspaceStore = useWorkspaceStore();
-      const workspaceId = workspaceStore.currentSelectedWorkspaceId;
-      if (!workspaceId) throw new Error("No workspace selected");
+      const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
+      if (!workspaceId) throw new Error("No active workspace session");
 
       try {
         const { onResult, onError } = useQuery<GetFileContentQuery, GetFileContentQueryVariables>(
@@ -296,8 +298,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       wsState.deleteLoading[filePath] = true;
 
       const workspaceStore = useWorkspaceStore();
-      const workspaceId = workspaceStore.currentSelectedWorkspaceId;
-      if (!workspaceId) throw new Error("No workspace selected");
+      const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
+      if (!workspaceId) throw new Error("No active workspace session");
 
       try {
         const { mutate } = useMutation<DeleteFileOrFolderMutation, DeleteFileOrFolderMutationVariables>(DeleteFileOrFolder);
@@ -326,8 +328,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       wsState.renameLoading[targetPath] = true;
 
       const workspaceStore = useWorkspaceStore();
-      const workspaceId = workspaceStore.currentSelectedWorkspaceId;
-      if (!workspaceId) throw new Error("No workspace selected");
+      const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
+      if (!workspaceId) throw new Error("No active workspace session");
 
       const { mutate } = useMutation<RenameFileOrFolderMutation, RenameFileOrFolderMutationVariables>(RenameFileOrFolder);
 
@@ -371,8 +373,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       wsState.moveLoading[sourcePath] = true;
 
       const workspaceStore = useWorkspaceStore();
-      const workspaceId = workspaceStore.currentSelectedWorkspaceId;
-      if (!workspaceId) throw new Error("No workspace selected");
+      const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
+      if (!workspaceId) throw new Error("No active workspace session");
       
       const { mutate } = useMutation<MoveFileOrFolderMutation, MoveFileOrFolderMutationVariables>(MoveFileOrFolder);
 
@@ -413,8 +415,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       wsState.createLoading[path] = true;
 
       const workspaceStore = useWorkspaceStore();
-      const workspaceId = workspaceStore.currentSelectedWorkspaceId;
-      if (!workspaceId) throw new Error("No workspace selected");
+      const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
+      if (!workspaceId) throw new Error("No active workspace session");
 
       const { mutate } = useMutation<CreateFileOrFolderMutation, CreateFileOrFolderMutationVariables>(CreateFileOrFolder);
 
@@ -450,9 +452,9 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         return;
       }
       
-      const workspaceId = workspaceStore.currentSelectedWorkspaceId;
+      const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
       if (!workspaceId) {
-        wsState.searchError = "No workspace selected.";
+        wsState.searchError = "No active workspace session.";
         wsState.searchLoading = false;
         return;
       }

@@ -1,13 +1,22 @@
-
-import gql from 'graphql-tag';
+import { gql } from 'graphql-tag'
 
 export const GET_CONVERSATION_HISTORY = gql`
-  query GetConversationHistory($stepName: String!, $page: Int!, $pageSize: Int!) {
-    getConversationHistory(stepName: $stepName, page: $page, pageSize: $pageSize) {
+  query GetConversationHistory(
+    $agentDefinitionId: String!
+    $page: Int
+    $pageSize: Int
+  ) {
+    getConversationHistory(
+      agentDefinitionId: $agentDefinitionId
+      page: $page
+      pageSize: $pageSize
+    ) {
       conversations {
-        stepConversationId
-        stepName
+        agentId
+        agentDefinitionId
         createdAt
+        llmModel
+        useXmlToolFormat
         messages {
           messageId
           role
@@ -19,7 +28,6 @@ export const GET_CONVERSATION_HISTORY = gql`
           cost
         }
       }
-      totalConversations
       totalPages
       currentPage
     }

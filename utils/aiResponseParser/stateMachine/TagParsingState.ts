@@ -2,7 +2,6 @@ import { BaseState, ParserStateType } from './State';
 import { TextState } from './TextState';
 import { FileContentReadingState } from './FileContentReadingState';
 import { ParserContext } from './ParserContext';
-import { ThinkContentReadingState } from './ThinkContentReadingState';
 
 export class TagParsingState extends BaseState {
   stateType = ParserStateType.TAG_PARSING_STATE;
@@ -18,55 +17,21 @@ export class TagParsingState extends BaseState {
       this.context.advance();
 
       const { tagBuffer } = this.context;
-      if (tagBuffer.startsWith('<bash')) {
-        const closeIdx = tagBuffer.indexOf('/>');
-        if (closeIdx !== -1) {
-          const fullTag = tagBuffer.slice(0, closeIdx + 2);
-          this.context.parseBashTag(fullTag);
-
-          const leftover = tagBuffer.slice(closeIdx + 2);
-          if (leftover.length > 0) {
-            this.context.appendTextSegment(leftover);
-          }
-          this.context.tagBuffer = '';
-          this.context.transitionTo(new TextState(this.context));
-          return;
-        }
-      } else if (tagBuffer.startsWith('<file')) {
-        const gtIdx = tagBuffer.indexOf('>');
-        if (gtIdx !== -1) {
-          const fileTag = tagBuffer.slice(0, gtIdx + 1);
-          const pathMatch = fileTag.match(/path=['"]([^'"]+)['"]/);
-          // Clear the tagBuffer regardless
-          this.context.tagBuffer = '';
-
+      
+      // This state correctly handles non-tool XML tags like <file>.
+      // The logic for <tool> tags, which depends on the selected strategy,
+      // has been correctly moved to TagInitializationState.
+      if (tagBuffer.startsWith('<file')) {
+        if (this.handleStandardTag(tagBuffer, new FileContentReadingState(this.context), (tag) => {
+          const pathMatch = tag.match(/path=['"]([^'"]+)['"]/);
           if (pathMatch) {
-            // Valid file tag with path attribute: start file segment
             this.context.startFileSegment(pathMatch[1]);
-            this.context.transitionTo(new FileContentReadingState(this.context));
-          } else {
-            // Invalid file tag (no path): treat as plain text
-            this.context.appendTextSegment(fileTag);
-            this.context.transitionTo(new TextState(this.context));
+            return true;
           }
-          return;
-        }
-      } else if (tagBuffer.startsWith('<llm_reasoning_token')) {
-        // For <llm_reasoning_token>, we do not expect attributes; simply start a think segment.
-        const gtIdx = tagBuffer.indexOf('>');
-        if (gtIdx !== -1) {
-          this.context.startThinkSegment();
-          this.context.tagBuffer = '';
-          this.context.transitionTo(new ThinkContentReadingState(this.context));
-          return;
-        }
+          return false;
+        })) return;
       } else {
-        // If it's no longer matching any known tag, revert to text
-        if (
-          !('<bash'.startsWith(tagBuffer)) &&
-          !('<file'.startsWith(tagBuffer)) &&
-          !('<llm_reasoning_token'.startsWith(tagBuffer))
-        ) {
+        if (this.isNoLongerPotentialTag(tagBuffer)) {
           this.context.appendTextSegment(tagBuffer);
           this.context.tagBuffer = '';
           this.context.transitionTo(new TextState(this.context));
@@ -74,5 +39,27 @@ export class TagParsingState extends BaseState {
         }
       }
     }
+  }
+
+  private handleStandardTag(buffer: string, nextState: BaseState, onFound: (tag: string) => boolean): boolean {
+      const gtIdx = buffer.indexOf('>');
+      if (gtIdx !== -1) {
+          const fullTag = buffer.slice(0, gtIdx + 1);
+          if (onFound(fullTag)) {
+              this.context.transitionTo(nextState);
+          } else {
+              // Tag was found but was malformed, treat as text
+              this.context.appendTextSegment(fullTag);
+              this.context.transitionTo(new TextState(this.context));
+          }
+          this.context.tagBuffer = '';
+          return true;
+      }
+      return false;
+  }
+
+  private isNoLongerPotentialTag(buffer: string): boolean {
+    const knownTags = ['<file'];
+    return !knownTags.some(tag => tag.startsWith(buffer));
   }
 }

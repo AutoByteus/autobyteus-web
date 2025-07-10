@@ -1,6 +1,7 @@
 import { IncrementalAIResponseParser } from '../incrementalAIResponseParser';
 import type { AIResponseSegment } from '../types';
 import { describe, it, expect, beforeEach } from 'vitest';
+import { LLMProvider } from '~/types/llm';
 
 describe('IncrementalAIResponseParser with think segments', () => {
   let parser: IncrementalAIResponseParser;
@@ -8,8 +9,13 @@ describe('IncrementalAIResponseParser with think segments', () => {
 
   beforeEach(() => {
     segments = [];
-    parser = new IncrementalAIResponseParser(segments);
+    // Provide a default provider and useXml setting for the test
+    parser = new IncrementalAIResponseParser(segments, LLMProvider.ANTHROPIC, true);
   });
+
+  // The existing tests for think segments do not involve tool parsing,
+  // so they are compatible with the refactored state machine as long as
+  // the parser is initialized correctly. No changes to the test bodies are needed.
 
   it('should parse a complete think segment received in one chunk', () => {
     parser.processChunks(['<llm_reasoning_token>Thinking output here</llm_reasoning_token>']);

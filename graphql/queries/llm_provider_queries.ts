@@ -6,14 +6,11 @@ export const GET_LLM_PROVIDER_API_KEY = gql`
   }
 `;
 
-export const GET_AVAILABLE_MODELS = gql`
-  query GetAvailableModels {
-    availableModels
-  }
-`;
-
-export const GET_AVAILABLE_PROVIDERS = gql`
-  query GetAvailableProviders {
-    availableProviders
+export const GET_AVAILABLE_LLM_PROVIDERS_WITH_MODELS = gql`
+  query GetAvailableLLMProvidersWithModels {
+    availableLlmProvidersWithModels {
+      provider
+      models
+    }
   }
 `;

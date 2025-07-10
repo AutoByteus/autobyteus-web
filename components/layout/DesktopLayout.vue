@@ -6,16 +6,16 @@
         <FileExplorer />
       </div>
 
-      <!-- Workflow Overlay -->
+      <!-- Agent Session Panel Overlay -->
       <div 
-        v-show="isWorkflowOpen"
+        v-show="isSessionPanelOpen"
         class="absolute left-0 top-0 h-full bg-white border border-gray-200 shadow-xl flex flex-col overflow-hidden transition-all duration-200 min-w-[300px] max-w-[500px]"
         :class="[
-          isWorkflowOpen ? 'opacity-100 z-10' : 'opacity-0 -z-10'
+          isSessionPanelOpen ? 'opacity-100 z-10' : 'opacity-0 -z-10'
         ]"
       >
         <div class="flex-1 overflow-auto p-0">
-          <LeftSidebarOverlay />
+          <AgentSessionPanel />
         </div>
       </div>
     </div>
@@ -34,7 +34,7 @@
     <template v-else>
       <div class="bg-white p-0 shadow flex flex-col min-h-0 flex-1 min-w-[200px]">
         <div class="flex-1 overflow-auto">
-          <WorkflowStepView />
+          <AgentSessionView />
         </div>
       </div>
 
@@ -101,26 +101,22 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
-import { useWorkflowUIStore } from '~/stores/workflowUI'
+import { useAgentSessionPanelOverlayStore } from '~/stores/agentSessionPanelOverlayStore'
 import { useRightPanel } from '~/composables/useRightPanel'
 import { usePanelResize } from '~/composables/usePanelResize'
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
 import ContentViewer from '~/components/fileExplorer/FileContentViewer.vue'
-import WorkflowStepView from '~/components/workflow/WorkflowStepView.vue'
+import AgentSessionView from '~/components/agentSessions/AgentSessionView.vue'
 import RightSideTabs from './RightSideTabs.vue'
-import LeftSidebarOverlay from '~/components/workflow/LeftSidebarOverlay.vue'
+import AgentSessionPanel from '~/components/agentSessions/AgentSessionPanel.vue'
 
-const workflowUIStore = useWorkflowUIStore()
+const agentSessionPanelOverlayStore = useAgentSessionPanelOverlayStore()
 const fileContentDisplayModeStore = useFileContentDisplayModeStore()
 
 const { isFullscreenMode, isMinimizedMode } = storeToRefs(fileContentDisplayModeStore)
-const { isWorkflowOpen } = storeToRefs(workflowUIStore)
+const { isOpen: isSessionPanelOpen } = storeToRefs(agentSessionPanelOverlayStore)
 const { fileExplorerWidth, initDragFileToContent } = usePanelResize()
 const { isRightPanelVisible, rightPanelWidth, toggleRightPanel, initDragRightPanel } = useRightPanel()
-
-const handleExpandContent = () => {
-  fileContentDisplayModeStore.showFullscreen()
-}
 </script>
 
 <style scoped>
@@ -142,7 +138,7 @@ const handleExpandContent = () => {
 .transition-all {
   transition-property: all;
 }
-/* Ensure Workflow Overlay content padding is also p-0 if its container is p-0 */
+/* Ensure Agent Session Panel Overlay content padding is also p-0 if its container is p-0 */
 .absolute.left-0.top-0 .p-0 { /* Targeting the inner div if its parent is p-0 now */
   padding: 0rem !important; /* explicit p-0 for child if needed */
 }

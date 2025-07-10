@@ -27,14 +27,14 @@
         <ContentViewer :expandedMode="true" />
       </div>
 
-      <!-- Workspace/Workflow Selector -->
-      <div v-show="activeMobilePanel === 'selector'" class="h-full p-0 overflow-auto">
-        <WorkspaceWorkflowSelector />
+      <!-- Agent Session Panel -->
+      <div v-show="activeMobilePanel === 'sessions'" class="h-full p-0 overflow-auto">
+        <AgentSessionPanel />
       </div>
 
-      <!-- Workflow View -->
-      <div v-show="activeMobilePanel === 'workflow'" class="h-full p-0 overflow-auto">
-        <WorkflowStepView />
+      <!-- Agent View -->
+      <div v-show="activeMobilePanel === 'agent'" class="h-full p-0 overflow-auto">
+        <AgentSessionView />
       </div>
 
       <!-- Terminal -->
@@ -54,13 +54,13 @@
         Open Editor
       </button>
 
-      <!-- Workflow step button -->
+      <!-- Agent session button -->
       <button
-        v-if="activeMobilePanel === 'workflow' && !selectedStepId"
-        @click="activeMobilePanel = 'selector'"
+        v-if="activeMobilePanel === 'agent' && !activeSessionId"
+        @click="activeMobilePanel = 'sessions'"
         class="px-4 py-2 bg-blue-500 text-white rounded shadow-lg z-20 text-sm"
       >
-        Select Step
+        Select Session
       </button>
     </div>
   </div>
@@ -71,27 +71,27 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
 import ContentViewer from '~/components/fileExplorer/FileContentViewer.vue'
-import WorkspaceWorkflowSelector from '~/components/workflow/LeftSidebarOverlay.vue'
-import WorkflowStepView from '~/components/workflow/WorkflowStepView.vue'
+import AgentSessionPanel from '~/components/agentSessions/AgentSessionPanel.vue'
+import AgentSessionView from '~/components/agentSessions/AgentSessionView.vue'
 import RightSideTabs from './RightSideTabs.vue'
 import { useMobilePanels } from '~/composables/useMobilePanels'
-import { useWorkflowStore } from '~/stores/workflow'
+import { useAgentSessionStore } from '~/stores/agentSessionStore'
 
 const props = defineProps<{  
   showFileContent: boolean
 }>()
 
-const workflowStore = useWorkflowStore()
+const agentSessionStore = useAgentSessionStore()
 const { activeMobilePanel } = useMobilePanels()
 
-const selectedStepId = computed(() => workflowStore.currentSelectedStepId)
+const activeSessionId = computed(() => agentSessionStore.activeSessionId)
 
-// Available tabs with updated selector tab
+// Available tabs with updated agent session tabs
 const availableTabs = computed(() => {
   const tabs = [
     { id: 'explorer', label: 'Files' },
-    { id: 'selector', label: 'Select' },
-    { id: 'workflow', label: 'Workflow' },
+    { id: 'sessions', label: 'Sessions' },
+    { id: 'agent', label: 'Agent' },
     { id: 'terminal', label: 'Terminal' }
   ]
   
@@ -103,12 +103,12 @@ const availableTabs = computed(() => {
   return tabs
 })
 
-// Handle tab clicks with special logic for workflow/selector
+// Handle tab clicks with special logic for agent/sessions
 const handleTabClick = (tabId: string) => {
-  // If clicking workflow tab without a selected step,
-  // redirect to selector tab first
-  if (tabId === 'workflow' && !selectedStepId.value) {
-    activeMobilePanel.value = 'selector'
+  // If clicking agent tab without an active session,
+  // redirect to sessions tab first
+  if (tabId === 'agent' && !activeSessionId.value) {
+    activeMobilePanel.value = 'sessions'
   } else {
     activeMobilePanel.value = tabId
   }

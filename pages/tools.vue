@@ -1,272 +1,146 @@
 <template>
-  <div class="flex h-full bg-gray-100">
-    <!-- Sidebar Component -->
-    <ToolsSidebar
-      :active-page="activePage"
-      @navigate="handleNavigation"
-    />
+  <div class="flex h-screen bg-gray-100">
+    <ToolsSidebar :active-page="activeView" @navigate="handleNavigation" />
 
-    <!-- Content section -->
-    <div class="flex-1 overflow-auto">
-      <!-- Tool Testing Interface -->
-      <div v-if="testingTool" class="max-w-7xl mx-auto p-6">
-        <ToolTestInterface
-          :tool="testingTool"
-          @back="testingTool = null"
+    <main class="flex-1 p-8 overflow-y-auto">
+      <!-- Local Tools View -->
+      <div v-if="activeView === 'local-tools'">
+        <ToolList 
+          title="Local Tools"
+          :tools="store.getLocalTools"
+          :loading="store.getLoading && activeView === 'local-tools'"
+          source="Local"
+          @details="showToolDetails"
+        />
+      </div>
+
+      <!-- MCP Servers List View -->
+      <div v-else-if="activeView === 'mcp-servers'">
+        <McpServerList
+          :servers="store.getMcpServers"
+          :loading="store.getLoading && activeView.startsWith('mcp-')"
+          @add="showAddServerForm"
+          @edit="showEditServerForm"
+          @delete="confirmDeleteServer"
+          @view-tools="viewToolsForServer"
         />
       </div>
       
-      <!-- Tool Details -->
-      <div v-else-if="selectedTool" class="max-w-7xl mx-auto p-6">
-        <ToolDetails
-          :tool="selectedTool"
-          @back="selectedTool = null"
-          @test="startToolTest"
+      <!-- MCP Server Form View (Add/Edit) -->
+      <div v-else-if="activeView === 'mcp-form'">
+        <McpServerFormModal
+          :server="selectedServer"
+          @cancel="handleNavigation('mcp-servers')"
+          @save="handleServerSave"
         />
       </div>
-      
-      <!-- Server Management -->
-      <div v-else-if="showAddServerForm || editingServer" class="max-w-2xl mx-auto p-6">
-        <ServerForm
-          :initial-data="editingServer || {}"
-          server-type="mcp"
-          @submit="handleServerFormSubmit"
-          @cancel="cancelServerForm"
+
+      <!-- Tools for a specific MCP Server -->
+      <div v-else-if="activeView.startsWith('mcp-tools-')">
+         <ToolList
+          :title="`Tools for ${currentServerId}`"
+          :tools="store.getToolsForServer(currentServerId!)"
+          :loading="store.getLoading && activeView === `mcp-tools-${currentServerId}`"
+          :source="currentServerId!"
+          show-back-button
+          @back="handleNavigation('mcp-servers')"
+          @details="showToolDetails"
         />
       </div>
-      
-      <!-- Settings Page -->
-      <div v-else-if="activePage === 'settings'" class="max-w-4xl mx-auto p-6">
-        <div class="mb-6">
-          <h1 class="text-2xl font-bold text-gray-900 mb-2">Settings</h1>
-          <p class="text-gray-500">
-            Manage servers and configurations
-          </p>
-        </div>
-        
-        <ServerList 
-          :servers="mcpServers" 
-          server-type="mcp" 
-          title="MCP Servers"
-          @add="showAddServerForm = true"
-          @edit="editServer"
-          @delete="deleteServer"
-        />
-      </div>
-      
-      <!-- Local Tools Page -->
-      <div v-else-if="activePage === 'local-tools'" class="max-w-7xl mx-auto p-6">
-        <div class="flex justify-between items-center mb-6">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">Local Tools</h1>
-            <p class="text-gray-500">Tools that run on your local machine</p>
-          </div>
-        </div>
-        
-        <ToolList
-          title="Available Tools"
-          :tools="localTools"
-          @run="startToolTest"
-          @details="viewToolDetails"
-        />
-      </div>
-      
-      <!-- Remote Tools Page -->
-      <div v-else-if="activePage === 'remote-tools'" class="max-w-7xl mx-auto p-6">
-        <div class="flex justify-between items-center mb-6">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">Remote Tools</h1>
-            <p class="text-gray-500">Tools that run on remote MCP servers</p>
-          </div>
-          <div class="flex space-x-3">
-            <button
-              @click="showAddServerForm = true"
-              class="px-4 py-2 bg-indigo-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700"
-            >
-              <span class="i-heroicons-plus-20-solid w-5 h-5 mr-2 inline-block"></span>
-              Add Server
-            </button>
-          </div>
-        </div>
-        
-        <ToolList
-          title="Remote Tools"
-          :tools="remoteTools"
-          emptyIcon="i-heroicons-server-20-solid"
-          emptyMessage="No remote tools available"
-          showEmptyButton="true"
-          emptyButtonText="Add MCP Server"
-          @add="showAddServerForm = true"
-          @run="startToolTest"
-          @details="viewToolDetails"
-        />
-      </div>
-      
-      <!-- Default Dashboard -->
-      <div v-else class="max-w-7xl mx-auto p-6">
-        <!-- Header -->
-        <div class="flex justify-between items-center mb-6">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">Tools Dashboard</h1>
-            <p class="text-gray-500">Access all available tools in one place</p>
-          </div>
-          <div class="flex space-x-3">
-            <button
-              @click="activePage = 'settings'"
-              class="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <span class="i-heroicons-cog-6-tooth-20-solid w-5 h-5 mr-2 inline-block"></span>
-              Settings
-            </button>
-            <button
-              @click="showAddServerForm = true"
-              class="px-4 py-2 bg-indigo-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700"
-            >
-              <span class="i-heroicons-plus-20-solid w-5 h-5 mr-2 inline-block"></span>
-              Add Server
-            </button>
-          </div>
-        </div>
-        
-        <!-- Local Tools Section -->
-        <div class="mb-8">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-medium text-gray-900">Local Tools</h2>
-            <button
-              @click="activePage = 'local-tools'"
-              class="text-sm font-medium text-indigo-600 hover:text-indigo-500"
-            >
-              View All
-              <span class="i-heroicons-arrow-right-20-solid w-4 h-4 ml-1 inline-block"></span>
-            </button>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <ToolCard 
-              v-for="tool in localTools" 
-              :key="tool.id" 
-              :tool="tool"
-              @run="startToolTest"
-              @details="viewToolDetails"
-            />
-          </div>
-        </div>
-        
-        <!-- Remote Tools Section -->
-        <div>
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-medium text-gray-900">Remote Tools</h2>
-            <button
-              @click="activePage = 'remote-tools'"
-              class="text-sm font-medium text-indigo-600 hover:text-indigo-500"
-            >
-              View All
-              <span class="i-heroicons-arrow-right-20-solid w-4 h-4 ml-1 inline-block"></span>
-            </button>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <ToolCard 
-              v-for="tool in remoteTools.slice(0, 3)" 
-              :key="tool.id" 
-              :tool="tool"
-              @run="startToolTest"
-              @details="viewToolDetails"
-            />
-            <div v-if="remoteTools.length === 0" class="col-span-full text-center py-6 bg-white rounded-lg border border-gray-200">
-              <span class="i-heroicons-server-20-solid w-10 h-10 text-gray-400 mx-auto mb-3"></span>
-              <p class="text-gray-500 mb-2">No MCP servers connected</p>
-              <button
-                @click="showAddServerForm = true"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
-              >
-                <span class="i-heroicons-plus-20-solid w-4 h-4 mr-1"></span>
-                Add MCP Server
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </main>
+
+    <!-- Modals -->
+    <ToolDetailsModal
+      :show="isToolDetailVisible"
+      :tool="selectedTool"
+      @close="isToolDetailVisible = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import ToolsSidebar from '~/components/tools/ToolsSidebar.vue';
-import ToolCard from '~/components/tools/ToolCard.vue';
-import ToolList from '~/components/tools/ToolList.vue';
-import ToolDetails from '~/components/tools/ToolDetails.vue';
-import ToolTestInterface from '~/components/tools/ToolTestInterface.vue';
-import ServerForm from '~/components/servers/ServerForm.vue';
-import ServerList from '~/components/servers/ServerList.vue';
-import { useServersStore } from '~/stores/servers';
-import { useToolsStore } from '~/stores/tools';
+import { ref, onMounted, computed } from 'vue';
+import { useToolManagementStore } from '~/stores/toolManagementStore';
+import type { Tool, McpServer } from '~/stores/toolManagementStore';
 
-definePageMeta({
-  title: 'Tools',
-  description: 'Access local and remote tools'
+import ToolsSidebar from '~/components/tools/ToolsSidebar.vue';
+import ToolList from '~/components/tools/ToolList.vue';
+import ToolDetailsModal from '~/components/tools/ToolDetailsModal.vue';
+import McpServerList from '~/components/tools/McpServerList.vue';
+import McpServerFormModal from '~/components/tools/McpServerFormModal.vue';
+
+const store = useToolManagementStore();
+
+// --- State ---
+const activeView = ref('local-tools'); // 'local-tools', 'mcp-servers', 'mcp-form', 'mcp-tools-<serverId>'
+const isToolDetailVisible = ref(false);
+const selectedTool = ref<Tool | null>(null);
+const selectedServer = ref<McpServer | null>(null);
+
+const currentServerId = computed(() => {
+  if (activeView.value.startsWith('mcp-tools-')) {
+    return activeView.value.replace('mcp-tools-', '');
+  }
+  return null;
 });
 
-// Store references
-const serversStore = useServersStore();
-const toolsStore = useToolsStore();
+// --- Lifecycle ---
+onMounted(() => {
+  store.fetchLocalTools();
+  store.fetchMcpServers();
+});
 
-// Navigation state
-const activePage = ref('dashboard');
-
-// Tool management
-const localTools = computed(() => toolsStore.localTools);
-const remoteTools = computed(() => toolsStore.remoteTools);
-const selectedTool = ref(null);
-const testingTool = ref(null);
-const mcpServers = computed(() => serversStore.mcpServers);
-
-// Server management
-const showAddServerForm = ref(false);
-const editingServer = ref(null);
-
-const handleNavigation = (page) => {
-  activePage.value = page;
-  selectedTool.value = null;
-  testingTool.value = null;
-  showAddServerForm.value = false;
-  editingServer.value = null;
-};
-
-const viewToolDetails = (tool) => {
-  selectedTool.value = tool;
-  testingTool.value = null;
-};
-
-const startToolTest = (tool) => {
-  testingTool.value = tool;
-  selectedTool.value = null;
-};
-
-const handleServerFormSubmit = (server) => {
-  if (editingServer.value) {
-    serversStore.updateServer(server);
-  } else {
-    serversStore.addServer(server);
+// --- Methods ---
+const handleNavigation = (view: string) => {
+  activeView.value = view;
+  if (view === 'local-tools') {
+    store.fetchLocalTools();
+  } else if (view === 'mcp-servers') {
+    store.fetchMcpServers();
   }
-  showAddServerForm.value = false;
-  editingServer.value = null;
 };
 
-const editServer = (server) => {
-  editingServer.value = { ...server };
-  showAddServerForm.value = true;
+const showToolDetails = (tool: Tool) => {
+  selectedTool.value = tool;
+  isToolDetailVisible.value = true;
 };
 
-const deleteServer = (serverId) => {
-  // Remove tools associated with this server
-  toolsStore.deleteToolsByServerId(serverId);
-  
-  // Remove the server itself
-  serversStore.deleteServer(serverId);
+const showAddServerForm = () => {
+  selectedServer.value = null;
+  activeView.value = 'mcp-form';
 };
 
-const cancelServerForm = () => {
-  showAddServerForm.value = false;
-  editingServer.value = null;
+const showEditServerForm = (server: McpServer) => {
+  selectedServer.value = server;
+  activeView.value = 'mcp-form';
+};
+
+const viewToolsForServer = (serverId: string) => {
+  activeView.value = `mcp-tools-${serverId}`;
+  store.fetchToolsForServer(serverId);
+};
+
+const handleServerSave = () => {
+  activeView.value = 'mcp-servers';
+};
+
+const confirmDeleteServer = async (serverId: string) => {
+  if (confirm(`Are you sure you want to delete the server "${serverId}"? This cannot be undone.`)) {
+    try {
+      await store.deleteMcpServer(serverId);
+      alert(`Server ${serverId} deleted successfully.`);
+      // The store action now handles refetching, so no need to call it here.
+    } catch(e: any) {
+      alert(`Failed to delete server: ${e.message}`);
+    }
+  }
 };
 </script>
+
+<style>
+/* To ensure full height layout */
+html, body, #__nuxt {
+  height: 100%;
+  margin: 0;
+}
+</style>

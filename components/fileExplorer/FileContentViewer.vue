@@ -183,7 +183,7 @@ async function saveChanges() {
   
   console.log('Saving changes for file:', activeFile.value)
 
-  const workspaceId = workspaceStore.currentSelectedWorkspaceId
+  const workspaceId = workspaceStore.activeWorkspace?.workspaceId
   if (!workspaceId) {
     throw new Error('No workspace selected, cannot save file.')
   }

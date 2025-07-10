@@ -39,11 +39,9 @@
       </div>
     </div>
 
-    <!-- WorkflowStepRequirementForm wrapper -->
-    <!-- mt-auto pushes this to the bottom if there's space. -->
-    <!-- pt-4 provides some top padding for the form itself from messages or top of its box. -->
+    <!-- AgentUserInputForm wrapper -->
     <div class="mt-auto pt-4"> 
-      <WorkflowStepRequirementForm />
+      <AgentUserInputForm />
     </div>
   </div>
 </template>
@@ -53,7 +51,7 @@ import { computed } from 'vue';
 import type { Conversation, Message } from '~/types/conversation';
 import UserMessage from '~/components/conversation/UserMessage.vue';
 import AIMessage from '~/components/conversation/AIMessage.vue';
-import WorkflowStepRequirementForm from '~/components/stepRequirementForm/WorkflowStepRequirementForm.vue';
+import AgentUserInputForm from '~/components/agentInput/AgentUserInputForm.vue';
 
 const props = defineProps<{  conversation: Conversation;
 }>();

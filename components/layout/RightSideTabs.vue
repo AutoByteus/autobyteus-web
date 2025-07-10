@@ -22,8 +22,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import TabList from '~/components/tabs/TabList.vue'
-import Terminal from '~/components/workflow/Terminal.vue'
-import VncViewer from '~/components/workflow/VncViewer.vue'
+import Terminal from '~/components/agentSessions/Terminal.vue'
+import VncViewer from '~/components/agentSessions/VncViewer.vue'
 
 const activeTab = ref('Terminal')
 const tabs = [

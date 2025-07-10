@@ -1,43 +1,45 @@
-
+import type { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
 import type { AIResponseSegment } from '~/utils/aiResponseParser/types';
-import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
+import type { ContextFileType } from '~/generated/graphql';
 
 export interface ContextFilePath {
   path: string;
-  type: string;
+  type: keyof typeof ContextFileType;
 }
 
-export interface BaseMessage {
-  text: string;
-  timestamp: Date;  // We'll keep the timestamp field if we still want it for internal tracking,
-                    // but we won't display it anymore in the UI.
+export interface Message {
+  type: 'user' | 'ai';
+  timestamp: Date;
 }
 
-export interface UserMessage extends BaseMessage {
+export interface UserMessage extends Message {
   type: 'user';
+  text: string;
   contextFilePaths?: ContextFilePath[];
-  // Token usage fields for user messages
   promptTokens?: number;
   promptCost?: number;
 }
 
-export interface AIMessage extends BaseMessage {
+export interface AIMessage extends Message {
   type: 'ai';
-  chunks?: string[];
-  segments?: AIResponseSegment[];
-  isComplete?: boolean;
-  parserInstance?: IncrementalAIResponseParser;
-  // Token usage fields for AI messages
+  text: string;
+  chunks: string[];
+  segments: AIResponseSegment[];
+  isComplete: boolean;
+  parserInstance: IncrementalAIResponseParser;
   completionTokens?: number;
   completionCost?: number;
 }
 
-export type Message = UserMessage | AIMessage;
-
 export interface Conversation {
-  id: string;
-  stepId: string;
-  messages: Message[];
+  id: string; // This will be agentId after the first message
+  messages: (UserMessage | AIMessage)[];
   createdAt: string;
   updatedAt: string;
+  // This is used for sending the first message to create a new agent instance.
+  agentDefinitionId?: string;
+  // This is set on the first turn and persists for the conversation.
+  llmModelName?: string;
+  // This is set on the first turn and persists for the conversation.
+  useXmlToolFormat?: boolean;
 }

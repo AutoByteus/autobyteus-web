@@ -1,12 +1,33 @@
 import { defineStore } from 'pinia'
 import { useMutation, useQuery } from '@vue/apollo-composable'
-import { AddWorkspace } from '~/graphql/mutations/workspace_mutations'
-import { GetAllWorkspaces } from '~/graphql/queries/workspace_queries'
-import type { AddWorkspaceMutation, AddWorkspaceMutationVariables, GetAllWorkspacesQuery } from '~/generated/graphql'
+import { CreateWorkspace } from '~/graphql/mutations/workspace_mutations'
+import { GetAvailableWorkspaceDefinitions } from '~/graphql/queries/workspace_queries'
+import type {
+  CreateWorkspaceMutation,
+  CreateWorkspaceMutationVariables,
+  GetAvailableWorkspaceDefinitionsQuery
+} from '~/generated/graphql'
 import { TreeNode, convertJsonToTreeNode } from '~/utils/fileExplorer/TreeNode'
 import { createNodeIdToNodeDictionary, handleFileSystemChange } from '~/utils/fileExplorer/fileUtils'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
+import { useAgentSessionStore } from '~/stores/agentSessionStore';
 
+// Interface for workspace type definitions used in the creation modal
+export interface WorkspaceType {
+  name: string;
+  description: string;
+  config_schema: {
+    parameters: {
+      name: string;
+      param_type: string;
+      description: string;
+      required: boolean;
+      default_value?: any;
+    }[];
+  };
+}
+
+// Richer WorkspaceInfo to include file explorer data
 interface WorkspaceInfo {
   workspaceId: string;
   name: string;
@@ -14,87 +35,91 @@ interface WorkspaceInfo {
   nodeIdToNode: Record<string, TreeNode>;
 }
 
+// REFACTORED: WorkspaceState no longer tracks the selected ID.
 interface WorkspaceState {
   workspaces: Record<string, WorkspaceInfo>;
-  selectedWorkspaceId: string;
+  availableWorkspaceTypes: WorkspaceType[];
+  loading: boolean;
+  error: any;
 }
 
 export const useWorkspaceStore = defineStore('workspace', {
   state: (): WorkspaceState => ({
     workspaces: {},
-    selectedWorkspaceId: ''
+    availableWorkspaceTypes: [],
+    loading: false,
+    error: null,
   }),
-  actions: {
-    setSelectedWorkspaceId(id: string) {
-      if (this.workspaces[id]) {
-        // Do nothing if the same workspace is selected again
-        if (this.selectedWorkspaceId === id) {
-          return;
-        }
-
-        this.selectedWorkspaceId = id
-        
-        // No longer need to reset any other stores here.
-        // They will react to the change in selectedWorkspaceId.
-
-      } else {
-        console.warn(`Attempted to select non-existent workspace id: ${id}`)
-      }
-    },
-    async addWorkspace(newWorkspacePath: string, name: string): Promise<void> {
-      const { mutate: addWorkspaceMutation } = useMutation<AddWorkspaceMutation, AddWorkspaceMutationVariables>(AddWorkspace)
+  actions: {    
+    async createWorkspace(workspaceTypeName: string, config: Record<string, any>): Promise<string> {
+      this.loading = true;
+      this.error = null;
+      const { mutate } = useMutation<CreateWorkspaceMutation, CreateWorkspaceMutationVariables>(CreateWorkspace);
       try {
-        const result = await addWorkspaceMutation({
-          workspaceRootPath: newWorkspacePath,
-          name: name,
-        })
-        if (!result || !result.data?.addWorkspace) {
-          throw new Error('Failed to add workspace: No data returned')
+        const result = await mutate({
+          input: {
+            workspaceTypeName: workspaceTypeName,
+            config: config
+          }
+        });
+
+        if (result?.errors) {
+          throw new Error(result.errors.map(e => e.message).join(', '));
         }
-        const newWorkspaceData = result.data.addWorkspace
-        const treeNode = convertJsonToTreeNode(newWorkspaceData.fileExplorer)
-        
-        const newWorkspaceInfo: WorkspaceInfo = {
-          workspaceId: newWorkspaceData.workspaceId,
-          name: newWorkspaceData.name,
-          fileExplorer: treeNode,
-          nodeIdToNode: createNodeIdToNodeDictionary(treeNode)
+
+        if (result?.data?.createWorkspace) {
+          const newWorkspace = result.data.createWorkspace;
+          
+          const treeNode = convertJsonToTreeNode(newWorkspace.fileExplorer);
+          const nodeIdToNode = createNodeIdToNodeDictionary(treeNode);
+
+          this.workspaces[newWorkspace.workspaceId] = {
+            workspaceId: newWorkspace.workspaceId,
+            name: newWorkspace.name,
+            fileExplorer: treeNode,
+            nodeIdToNode: nodeIdToNode,
+          };
+          return newWorkspace.workspaceId;
+        } else {
+          throw new Error('Failed to create workspace: No data returned.');
         }
-        
-        this.workspaces[newWorkspaceInfo.workspaceId] = newWorkspaceInfo
-        this.setSelectedWorkspaceId(newWorkspaceInfo.workspaceId)
-      } catch (error) {
-        console.error('Error adding workspace:', error)
-        throw error
+      } catch (e: any) {
+        this.error = e;
+        console.error('Error creating workspace:', e);
+        throw e;
+      } finally {
+        this.loading = false;
       }
     },
-    fetchAllWorkspaces() {
-      const { onResult, onError } = useQuery<GetAllWorkspacesQuery>(GetAllWorkspaces)
+    async fetchAvailableWorkspaceTypes() {
+      this.loading = true;
+      this.error = null;
+      const { onResult, onError } = useQuery<GetAvailableWorkspaceDefinitionsQuery>(GetAvailableWorkspaceDefinitions, null, { fetchPolicy: 'network-only' });
 
-      onResult((result) => {
-        if (result.data?.allWorkspaces) {
-          result.data.allWorkspaces.forEach(ws => {
-            const treeNode = convertJsonToTreeNode(ws.fileExplorer)
-            const workspaceInfo: WorkspaceInfo = {
-              workspaceId: ws.workspaceId,
-              name: ws.name,
-              fileExplorer: treeNode,
-              nodeIdToNode: createNodeIdToNodeDictionary(treeNode)
+      onResult(result => {
+        if (result.data) {
+          this.availableWorkspaceTypes = result.data.availableWorkspaceDefinitions.map(def => ({
+            name: def.workspaceTypeName,
+            description: def.description,
+            config_schema: {
+              parameters: def.configSchema.map(param => ({
+                name: param.name,
+                param_type: param.type,
+                description: param.description,
+                required: param.required,
+                default_value: param.defaultValue,
+              }))
             }
-            this.workspaces[workspaceInfo.workspaceId] = workspaceInfo
-          })
-
-          if (result.data.allWorkspaces.length > 0 && !this.selectedWorkspaceId) {
-            this.setSelectedWorkspaceId(result.data.allWorkspaces[0].workspaceId)
-          }
+          }));
         }
-      })
+        this.loading = false;
+      });
 
-      onError((error) => {
-        console.error('Error fetching all workspaces:', error)
-      })
-
-      return { onResult, onError }
+      onError(error => {
+        console.error("Failed to fetch available workspace types:", error);
+        this.error = error;
+        this.loading = false;
+      });
     },
     handleFileSystemChange(workspaceId: string, event: FileSystemChangeEvent) {
       const workspace = this.workspaces[workspaceId];
@@ -106,13 +131,23 @@ export const useWorkspaceStore = defineStore('workspace', {
     }
   },
   getters: {
-    activeWorkspace: (state): WorkspaceInfo | null => 
-      state.workspaces[state.selectedWorkspaceId] || null,
-    currentWorkspaceTree(): TreeNode | null {
-      const activeWorkspace = this.activeWorkspace
-      return activeWorkspace ? activeWorkspace.fileExplorer : null
+    // REWRITTEN: activeWorkspace now derives its value from agentSessionStore.
+    activeWorkspace(): WorkspaceInfo | null {
+      const agentSessionStore = useAgentSessionStore();
+      const activeSession = agentSessionStore.activeSession;
+      if (activeSession?.workspaceId && this.workspaces[activeSession.workspaceId]) {
+        return this.workspaces[activeSession.workspaceId];
+      }
+      return null;
     },
-    currentSelectedWorkspaceId: (state): string => state.selectedWorkspaceId,
-    allWorkspaceIds: (state): string[] => Object.keys(state.workspaces)
+    
+    // REMOVED: currentSelectedWorkspaceId is no longer needed.
+    
+    allWorkspaceIds: (state): string[] => Object.keys(state.workspaces),
+    
+    // REWRITTEN: currentWorkspaceTree now uses the new activeWorkspace getter.
+    currentWorkspaceTree(): TreeNode | null {
+      return this.activeWorkspace ? this.activeWorkspace.fileExplorer : null;
+    }
   }
 })

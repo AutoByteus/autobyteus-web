@@ -87,12 +87,12 @@ export const useAudioStore = defineStore('audio', {
       this.waitingToClose = false;
     },
 
-    async startRecording(workspaceId: string, stepId: string): Promise<void> {
+    async startRecording(workspaceId: string, agentDefinitionId: string): Promise<void> {
       try {
         this.error = null;
 
         const transcriptionStore = useTranscriptionStore();
-        await transcriptionStore.connectWebSocket(workspaceId, stepId);
+        await transcriptionStore.connectWebSocket(workspaceId, agentDefinitionId);
 
         this.stream = await navigator.mediaDevices.getUserMedia(this.getAudioConstraints());
 
@@ -135,7 +135,7 @@ export const useAudioStore = defineStore('audio', {
             };
 
             this.audioChunks.push(chunk);
-            await transcriptionStore2.sendAudioChunk(workspaceId, stepId, chunk.wavData.buffer);
+            await transcriptionStore2.sendAudioChunk(workspaceId, agentDefinitionId, chunk.wavData.buffer);
           } else if (type === 'flush_done') {
             if (this.flushPromiseResolve) {
               this.flushPromiseResolve();
@@ -152,12 +152,12 @@ export const useAudioStore = defineStore('audio', {
 
       } catch (err: any) {
         this.error = err.message;
-        await this.stopRecording(workspaceId, stepId);
+        await this.stopRecording(workspaceId, agentDefinitionId);
         throw err;
       }
     },
 
-    async stopRecording(workspaceId: string, stepId: string): Promise<void> {
+    async stopRecording(workspaceId: string, agentDefinitionId: string): Promise<void> {
       try {
         this.isStopping = true;
 
@@ -199,9 +199,9 @@ export const useAudioStore = defineStore('audio', {
       }
     },
 
-    async cleanup(workspaceId: string | null = null, stepId: string | null = null): Promise<void> {
-      if (this.isRecording && workspaceId && stepId) {
-        await this.stopRecording(workspaceId, stepId);
+    async cleanup(workspaceId: string | null = null, agentDefinitionId: string | null = null): Promise<void> {
+      if (this.isRecording && workspaceId && agentDefinitionId) {
+        await this.stopRecording(workspaceId, agentDefinitionId);
       }
       this.clearAllChunks();
     }

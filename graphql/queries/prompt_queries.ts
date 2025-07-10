@@ -32,3 +32,12 @@ export const GET_PROMPT_BY_ID = gql`
     }
   }
 `;
+
+export const GetPromptDetailsByNameAndCategory = gql`
+  query GetPromptDetailsByNameAndCategory($category: String!, $name: String!) {
+    promptDetailsByNameAndCategory(category: $category, name: $name) {
+      description
+      promptContent
+    }
+  }
+`;

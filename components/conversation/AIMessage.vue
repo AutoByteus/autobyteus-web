@@ -13,16 +13,14 @@
           :conversation-id="conversationId"
           :message-index="messageIndex"
         />
-        <BashCommandSegment
-          v-else-if="segment.type === 'bash_command'"
-          :command="segment.command"
-          :description="segment.description"
-          :conversation-id="conversationId"
-          :message-index="messageIndex"
-        />
         <ThinkSegment
           v-else-if="segment.type === 'think'"
           :content="segment.content"
+        />
+        <ToolCallSegment
+          v-else-if="segment.type === 'tool_call'"
+          :segment="segment"
+          :conversation-id="conversationId"
         />
       </template>
     </div>
@@ -33,8 +31,8 @@
 import type { AIMessage } from '~/types/conversation';
 import TextSegment from '~/components/conversation/segments/TextSegment.vue';
 import FileContentSegment from '~/components/conversation/segments/FileContentSegment.vue';
-import BashCommandSegment from '~/components/conversation/segments/BashCommandSegment.vue';
 import ThinkSegment from '~/components/conversation/segments/ThinkSegment.vue';
+import ToolCallSegment from '~/components/conversation/segments/ToolCallSegment.vue';
 
 const props = defineProps<{  message: AIMessage;
   conversationId: string;
