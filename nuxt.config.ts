@@ -29,6 +29,14 @@ console.log('Nuxt config: REST URL:', serverUrls.restBaseUrl)
 
 const baseConfig = {
   ssr: false,
+
+  css: [
+    '@fortawesome/fontawesome-svg-core/styles.css'
+  ],
+
+  plugins: [
+    '~/plugins/fontawesome.ts'
+  ],
   
   modules: [
     '@nuxtjs/apollo',
