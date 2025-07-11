@@ -18,57 +18,17 @@
     <div ref="controlsRef" class="flex flex-col sm:flex-row justify-end items-center p-3 bg-gray-50 border-t border-gray-200 space-y-3 sm:space-y-0 sm:space-x-2">
       <!-- All controls are now grouped on the right -->
       <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-2">
-        <!-- Settings Button and Popover -->
-        <div class="relative">
-          <button
-            @click="toggleSettingsPopover"
-            ref="settingsButtonRef"
-            title="Agent Settings"
-            class="h-10 w-10 flex items-center justify-center rounded-md bg-gray-200 text-gray-600 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-            :class="{ 'bg-gray-300 text-gray-700': isSettingsPopoverOpen }"
-          >
-            <font-awesome-icon icon="cog" class="h-5 w-5" />
-          </button>
-          <!-- Settings Popover - STYLING ENHANCED -->
-          <div
-            v-if="isSettingsPopoverOpen"
-            ref="popoverRef"
-            class="absolute bottom-full right-0 mb-2 w-80 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-2xl p-5 z-10"
-          >
-            <!-- Model Selector -->
-            <div class="space-y-1 pb-4">
-              <label for="model-select" class="block text-sm font-medium text-gray-800 dark:text-gray-200">Model</label>
-              <GroupedSelect
-                id="model-select"
-                v-model="selectedModel"
-                :options="groupedModelOptions"
-                :loading="isLoadingModels"
-                :disabled="isLoadingModels"
-                placeholder="Select a model"
-              />
-            </div>
-            
-            <div class="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-              <!-- Auto-execute Tools Toggle -->
-              <label for="auto-execute-toggle" class="flex items-center justify-between cursor-pointer">
-                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Auto-execute Tools</span>
-                <div class="relative">
-                  <input type="checkbox" id="auto-execute-toggle" class="sr-only peer" v-model="autoExecuteTools">
-                  <div class="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-400 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </div>
-              </label>
-
-              <!-- Use XML Tool Format Toggle -->
-              <label for="xml-format-toggle" class="flex items-center justify-between cursor-pointer">
-                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Use XML Tool Format</span>
-                <div class="relative">
-                  <input type="checkbox" id="xml-format-toggle" class="sr-only peer" v-model="useXmlToolFormat">
-                  <div class="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-400 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </div>
-              </label>
-            </div>
-          </div>
-        </div>
+        <!-- Unified Model and Settings Selector -->
+        <GroupedSelect
+          class="min-w-[240px]"
+          v-model="selectedModel"
+          v-model:autoExecuteTools="autoExecuteTools"
+          v-model:useXmlToolFormat="useXmlToolFormat"
+          :options="groupedModelOptions"
+          :loading="isLoadingModels"
+          :disabled="isLoadingModels"
+          placeholder="Select a model"
+        />
 
         <AudioRecorder
           :disabled="isSending"
@@ -116,7 +76,7 @@ import { storeToRefs } from 'pinia';
 import { useConversationStore } from '~/stores/conversationStore';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import AudioRecorder from '~/components/AudioRecorder.vue';
-import GroupedSelect from '~/components/common/GroupedSelect.vue';
+import GroupedSelect from '~/components/agentInput/GroupedSelect.vue';
 
 // Initialize stores
 const conversationStore = useConversationStore();
@@ -133,9 +93,6 @@ const textarea = ref<HTMLTextAreaElement | null>(null);
 const controlsRef = ref<HTMLDivElement | null>(null);
 const textareaHeight = ref(150);
 const isSearching = ref(false);
-const isSettingsPopoverOpen = ref(false);
-const settingsButtonRef = ref<HTMLButtonElement | null>(null);
-const popoverRef = ref<HTMLDivElement | null>(null);
 
 // Computed properties for v-model binding to the store
 const selectedModel = computed({
@@ -284,39 +241,21 @@ const initializeModels = async () => {
     await llmProviderConfigStore.fetchProvidersWithModels();
     const allModels = llmProviderConfigStore.models;
     if (allModels.length > 0 && (!selectedModel.value || !allModels.includes(selectedModel.value))) {
-      selectedModel.value = allModels[0];
+      selectedModel.value = allModels;
     }
   } catch (error) {
     console.error('Failed to fetch available models:', error);
   }
 };
 
-const toggleSettingsPopover = () => {
-  isSettingsPopoverOpen.value = !isSettingsPopoverOpen.value;
-};
-
-const handleClickOutside = (event: MouseEvent) => {
-  if (
-    isSettingsPopoverOpen.value &&
-    settingsButtonRef.value &&
-    !settingsButtonRef.value.contains(event.target as Node) &&
-    popoverRef.value &&
-    !popoverRef.value.contains(event.target as Node)
-  ) {
-    isSettingsPopoverOpen.value = false;
-  }
-};
-
 onMounted(() => {
   window.addEventListener('resize', handleResize);
-  document.addEventListener('mousedown', handleClickOutside);
   initializeModels();
 });
 
 onUnmounted(() => {
   flushDebouncedUpdateStore(); 
   window.removeEventListener('resize', handleResize);
-  document.removeEventListener('mousedown', handleClickOutside);
 });
 
 </script>
