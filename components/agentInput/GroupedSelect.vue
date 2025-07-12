@@ -5,7 +5,7 @@
       @click="toggleDropdown"
       :disabled="disabled || loading"
       type="button"
-      class="px-3 py-2 text-sm text-left border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-200 flex items-center justify-between w-full"
+      class="px-3 py-2 text-base text-left border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-200 flex items-center justify-between w-full"
       :class="{ 'cursor-not-allowed opacity-50': disabled || loading }"
     >
       <span v-if="loading" class="text-gray-500">Loading...</span>
@@ -23,7 +23,7 @@
     <div
       v-if="isOpen"
       ref="popoverRef"
-      class="absolute z-20 bottom-full right-0 mb-1 w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-[30rem] overflow-y-auto flex flex-col"
+      class="absolute z-20 bottom-full right-0 mb-1 min-w-full max-w-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-[30rem] overflow-y-auto flex flex-col"
     >
       <!-- Search Input -->
       <div class="p-2 sticky top-0 bg-white dark:bg-gray-800/95 z-10 backdrop-blur-sm">
@@ -32,13 +32,13 @@
           v-model="searchTerm"
           type="text"
           placeholder="Search models..."
-          class="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          class="w-full px-2 py-1.5 text-base border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
 
       <!-- Options List -->
       <div class="flex-grow overflow-y-auto">
-        <div v-if="filteredOptions.length === 0" class="p-3 text-sm text-center text-gray-500">
+        <div v-if="filteredOptions.length === 0" class="p-3 text-base text-center text-gray-500">
           No models found.
         </div>
         <div v-for="group in filteredOptions" :key="group.label" class="py-1">
@@ -50,11 +50,11 @@
               v-for="item in group.items"
               :key="item"
               @click="selectItem(item)"
-              class="pl-6 pr-3 py-2 text-sm text-gray-800 dark:text-gray-200 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/50 flex items-center justify-between"
+              class="pl-6 pr-3 py-2 text-base text-gray-800 dark:text-gray-200 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/50 flex items-center justify-between"
               :class="{ 'bg-blue-100 dark:bg-blue-800': modelValue === item }"
             >
-              <span class="truncate">{{ item }}</span>
-              <svg v-if="modelValue === item" class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span>{{ item }}</span>
+              <svg v-if="modelValue === item" class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
               </svg>
             </li>
@@ -66,7 +66,7 @@
       <div class="p-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
         <!-- Auto-execute Tools Toggle -->
         <label for="auto-execute-toggle" class="flex items-center justify-between cursor-pointer">
-          <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Auto-execute Tools</span>
+          <span class="text-base font-medium text-gray-800 dark:text-gray-200">Auto-execute Tools</span>
           <div class="relative">
             <input 
               type="checkbox" 
@@ -81,7 +81,7 @@
 
         <!-- Use XML Tool Format Toggle -->
         <label for="xml-format-toggle" class="flex items-center justify-between cursor-pointer">
-          <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Use XML Tool Format</span>
+          <span class="text-base font-medium text-gray-800 dark:text-gray-200">Use XML Tool Format</span>
           <div class="relative">
             <input 
               type="checkbox" 

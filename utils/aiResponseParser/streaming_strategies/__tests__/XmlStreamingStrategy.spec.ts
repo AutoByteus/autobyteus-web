@@ -48,7 +48,6 @@ describe('XmlStreamingStrategy', () => {
             strategy.processChar(char, context);
         }
         
-        // Finalize the segment, as the ToolParsingState would do
         strategy.finalize(context);
 
         expect(strategy.isComplete()).toBe(true);
@@ -105,6 +104,29 @@ describe('XmlStreamingStrategy', () => {
             path: '/src/main.js',
             content: 'console.log("hello");'
         });
+    });
+
+    it('should parse a tool call with no arguments and an XML comment', () => {
+        const signatureBuffer = '<tool';
+        strategy.startSegment(context, signatureBuffer);
+        
+        const contentStream = ` name="sqlite_list_tables">\n    <!-- This tool takes no arguments -->\n</tool>`;
+
+        for (const char of contentStream) {
+            strategy.processChar(char, context);
+        }
+        
+        strategy.finalize(context);
+
+        expect(strategy.isComplete()).toBe(true);
+        expect(segments.length).toBe(1);
+
+        const segment = segments[0] as ToolCallSegment;
+        expect(segment.type).toBe('tool_call');
+        expect(segment.toolName).toBe('sqlite_list_tables');
+        expect(segment.arguments).toEqual({});
+        expect(segment.status).toBe('parsed');
+        expect(segment.invocationId).toBe('call_mock_sqlite_list_tables_{}');
     });
 
     // --- Edge Cases ---

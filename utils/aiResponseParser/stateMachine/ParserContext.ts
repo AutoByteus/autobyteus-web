@@ -90,7 +90,7 @@ export class ParserContext {
     }
   }
 
-  startToolCallSegment(toolName: string): void {
+  startXmlToolCallSegment(toolName: string): void {
       const invocationId = generateInvocationId(toolName, {}); // Initially empty args
       const toolCallSegment: ToolCallSegment = {
           type: 'tool_call',

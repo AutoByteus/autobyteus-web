@@ -23,7 +23,7 @@ export class XmlStreamingStrategy implements ToolParsingStrategy {
     }
 
     startSegment(context: ParserContext, signatureBuffer: string): void {
-        context.startToolCallSegment(''); // toolName is not known yet
+        context.startXmlToolCallSegment(''); // toolName is not known yet
         this.buffer = signatureBuffer;
     }
 
@@ -72,12 +72,20 @@ export class XmlStreamingStrategy implements ToolParsingStrategy {
             return;
         }
 
-        // This part handles the main XML structure tags
-        this.buffer += char;
-        if (char === '>') {
-            this.handleTag(context);
-            this.buffer = ''; // Reset buffer after processing a tag
+        // This part handles the main XML structure tags by only buffering from '<' to '>'.
+        // It ignores characters between tags, like whitespace or comments not inside an argument.
+        if (this.buffer.startsWith('<')) {
+            // We are already inside a tag, keep appending
+            this.buffer += char;
+            if (char === '>') {
+                this.handleTag(context);
+                this.buffer = ''; // We've processed the tag, so reset.
+            }
+        } else if (char === '<') {
+            // We are not inside a tag, and we just found the start of one.
+            this.buffer = '<';
         }
+        // If neither of the above, we are between tags (e.g., whitespace). Ignore the char.
     }
 
     private handleTag(context: ParserContext): void {

@@ -33,6 +33,9 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
     },
     models(state): string[] {
       return state.providersWithModels.flatMap(p => p.models);
+    },
+    providersWithModelsForSelection(state): ProviderWithModels[] {
+      return state.providersWithModels.filter(p => p.models && p.models.length > 0);
     }
   },
   actions: {

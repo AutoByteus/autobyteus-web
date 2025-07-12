@@ -241,7 +241,7 @@ const initializeModels = async () => {
     await llmProviderConfigStore.fetchProvidersWithModels();
     const allModels = llmProviderConfigStore.models;
     if (allModels.length > 0 && (!selectedModel.value || !allModels.includes(selectedModel.value))) {
-      selectedModel.value = allModels;
+      selectedModel.value = allModels[0];;
     }
   } catch (error) {
     console.error('Failed to fetch available models:', error);
