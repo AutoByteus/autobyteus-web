@@ -71,15 +71,6 @@ export class ParserContext {
   endFileSegment(): void {
     this.currentSegment = null;
   }
-
-  appendToCurrentToolArgument(argName: string, char: string): void {
-    if (this.currentSegment && this.currentSegment.type === 'tool_call') {
-      if (!this.currentSegment.arguments[argName]) {
-        this.currentSegment.arguments[argName] = '';
-      }
-      this.currentSegment.arguments[argName] += char;
-    }
-  }
   
   appendToCurrentToolRawJson(char: string): void {
     if (this.currentSegment && this.currentSegment.type === 'tool_call' && this.currentSegment.status === 'parsing') {
@@ -87,6 +78,15 @@ export class ParserContext {
             this.currentSegment.rawJsonContent = '';
         }
         this.currentSegment.rawJsonContent += char;
+    }
+  }
+  
+  appendToCurrentToolArgument(argName: string, value: string): void {
+    if (this.currentSegment && this.currentSegment.type === 'tool_call') {
+      if (!this.currentSegment.arguments[argName]) {
+        this.currentSegment.arguments[argName] = '';
+      }
+      this.currentSegment.arguments[argName] += value;
     }
   }
 

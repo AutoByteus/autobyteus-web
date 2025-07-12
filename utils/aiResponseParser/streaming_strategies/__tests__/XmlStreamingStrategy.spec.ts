@@ -129,6 +129,39 @@ describe('XmlStreamingStrategy', () => {
         expect(segment.invocationId).toBe('call_mock_sqlite_list_tables_{}');
     });
 
+    it('should stream argument values character by character', () => {
+        const signatureBuffer = '<tool';
+        strategy.startSegment(context, signatureBuffer);
+        
+        // Stream up to the start of an argument value
+        const preContentStream = ` name="echo"><arguments><arg name="text">`;
+        for (const char of preContentStream) {
+            strategy.processChar(char, context);
+        }
+    
+        const segment = segments[0] as ToolCallSegment;
+        expect(segment.arguments['text']).toBeDefined();
+        expect(segment.arguments['text']).toBe('');
+    
+        // Stream first character of value
+        strategy.processChar('H', context);
+        expect(segment.arguments['text']).toBe('H');
+    
+        // Stream second character
+        strategy.processChar('i', context);
+        expect(segment.arguments['text']).toBe('Hi');
+    
+        // Stream the rest
+        const postContentStream = `</arg></arguments></tool>`;
+        for (const char of postContentStream) {
+            strategy.processChar(char, context);
+        }
+        strategy.finalize(context);
+    
+        expect(segment.status).toBe('parsed');
+        expect(segment.arguments).toEqual({ text: 'Hi' });
+    });
+
     // --- Edge Cases ---
     it('should handle arguments containing XML-like syntax', () => {
         const signatureBuffer = '<tool';
