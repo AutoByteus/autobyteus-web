@@ -32,7 +32,6 @@ const tabs = [
 ]
 
 const setActiveTab = (tabName: string) => {
-  console.log(`Tab changed to: ${tabName}`);
   activeTab.value = tabName;
 }
 </script>
@@ -46,6 +45,5 @@ const setActiveTab = (tabName: string) => {
 
 .h-full {
   height: 100%;
-  min-height: 300px; /* This min-height might be something to review if true full height is an issue in very small containers */
 }
 </style>

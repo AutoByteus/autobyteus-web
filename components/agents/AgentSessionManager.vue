@@ -53,14 +53,14 @@
           </div>
         </div>
 
-        <!-- Past Sessions -->
+        <!-- Inactive Sessions -->
         <div>
-          <h2 class="text-xl font-semibold text-gray-800 mb-4">Past Sessions</h2>
-          <div v-if="pastSessions.length === 0 && activeSessions.length > 0" class="text-center bg-gray-50 rounded-lg py-12 px-6 border border-gray-200">
-             <h3 class="text-lg font-medium text-gray-900">No Past Sessions</h3>
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">Inactive Sessions</h2>
+          <div v-if="inactiveSessions.length === 0 && activeSessions.length > 0" class="text-center bg-gray-50 rounded-lg py-12 px-6 border border-gray-200">
+             <h3 class="text-lg font-medium text-gray-900">No Inactive Sessions</h3>
              <p class="mt-1 text-sm text-gray-500">Your session history is clear.</p>
           </div>
-          <div v-else-if="pastSessions.length === 0 && activeSessions.length === 0" class="text-center bg-gray-50 rounded-lg py-12 px-6 border border-gray-200">
+          <div v-else-if="inactiveSessions.length === 0 && activeSessions.length === 0" class="text-center bg-gray-50 rounded-lg py-12 px-6 border border-gray-200">
             <h3 class="text-lg font-medium text-gray-900">No Saved Sessions</h3>
             <p class="mt-1 text-sm text-gray-500">
               Start a new session from the "Local Agents" list to see it here.
@@ -68,7 +68,7 @@
           </div>
           <div v-else class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
              <div 
-               v-for="session in pastSessions" 
+               v-for="session in inactiveSessions" 
                :key="session.sessionId"
                class="bg-gray-50 rounded-lg border border-gray-200 p-5 flex flex-col justify-between transition-all duration-200 hover:shadow-lg hover:border-gray-300 cursor-pointer"
                @click="resumeSession(session.sessionId)"
@@ -112,7 +112,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-import { useAgentSessionStore, type AgentSession } from '~/stores/agentSessionStore';
+import { useAgentSessionStore, type AgentSession, SESSION_STORAGE_KEY } from '~/stores/agentSessionStore';
 import { useWorkspaceStore } from '~/stores/workspace';
 import AgentDeleteConfirmDialog from '~/components/agents/AgentDeleteConfirmDialog.vue';
 
@@ -121,19 +121,19 @@ const workspaceStore = useWorkspaceStore();
 const router = useRouter();
 
 onMounted(() => {
-  sessionStore.loadSessions();
+  try {
+    const storedSessionsJSON = localStorage.getItem(SESSION_STORAGE_KEY);
+    const allSessions = storedSessionsJSON ? JSON.parse(storedSessionsJSON) : {};
+    const activeWorkspaceIds = workspaceStore.allWorkspaceIds;
+    sessionStore.partitionSessions(allSessions, activeWorkspaceIds);
+  } catch (error) {
+    console.error("Failed to load and partition sessions in component:", error);
+    sessionStore.partitionSessions({}, []);
+  }
 });
 
-const allSessions = computed(() => sessionStore.sessionList);
-const activeWorkspaceIds = computed(() => workspaceStore.allWorkspaceIds);
-
-const activeSessions = computed(() => 
-  allSessions.value.filter(s => s.workspaceId && activeWorkspaceIds.value.includes(s.workspaceId))
-);
-
-const pastSessions = computed(() => 
-  allSessions.value.filter(s => !s.workspaceId || !activeWorkspaceIds.value.includes(s.workspaceId))
-);
+const activeSessions = computed(() => sessionStore.activeSessionList);
+const inactiveSessions = computed(() => sessionStore.inactiveSessionList);
 
 const isRestoring = ref(false);
 const showDeleteConfirm = ref(false);
@@ -151,8 +151,6 @@ const resumeSession = async (sessionId: string) => {
     if (success) {
       await router.push('/workspace');
     } else {
-      // Alert is handled inside the store action for legacy sessions.
-      // For other failures, a more robust notification system would be ideal.
       alert('Failed to resume session. Please check the console for details.');
     }
   } catch (error) {

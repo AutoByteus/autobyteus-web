@@ -1,35 +1,59 @@
 <template>
-  <div class="agent-session-panel h-full flex flex-col p-4">
-    <div class="mb-6">
-      <h2 class="text-lg font-semibold text-gray-900">Agent Sessions</h2>
+  <div class="flex flex-col h-full bg-white">
+    <!-- Header -->
+    <div class="p-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-800">Agent Sessions</h2>
       <p class="text-sm text-gray-500">Manage your active agent sessions.</p>
     </div>
 
-    <div class="flex-1 overflow-y-auto -mx-2">
-      <AgentSessionList />
+    <!-- Session List -->
+    <div class="flex-1 overflow-y-auto p-4">
+      <AgentSessionList
+        :sessions="sessions"
+        :active-session-id="activeSessionId"
+        @select-session="selectSession"
+        @delete-session="deleteSession"
+      />
     </div>
 
-    <div class="mt-4 pt-4">
-      <button
+    <!-- Footer Button -->
+    <div class="p-4 border-t border-gray-200">
+      <button 
         @click="startNewSession"
-        class="w-full px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+        class="w-full flex items-center justify-center px-4 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
       >
-        + Start New Agent Session
+        <span class="i-heroicons-plus-20-solid w-5 h-5 mr-2"></span>
+        Start New Agent Session
       </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
-import AgentSessionList from '~/components/agentSessions/AgentSessionList.vue';
+import { computed } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useAgentSessionStore } from '~/stores/agentSessionStore';
 import { useAgentSessionPanelOverlayStore } from '~/stores/agentSessionPanelOverlayStore';
+import AgentSessionList from './AgentSessionList.vue';
 
 const router = useRouter();
-const agentSessionPanelOverlayStore = useAgentSessionPanelOverlayStore();
+const sessionStore = useAgentSessionStore();
+const panelStore = useAgentSessionPanelOverlayStore();
+
+const sessions = computed(() => sessionStore.activeSessionList);
+const { activeSessionId } = storeToRefs(sessionStore);
+
+const selectSession = (sessionId: string) => {
+  sessionStore.setActiveSession(sessionId);
+  panelStore.close(); // Close the panel on selection
+};
+
+const deleteSession = (sessionId: string) => {
+  sessionStore.deleteSession(sessionId);
+};
 
 const startNewSession = () => {
-  agentSessionPanelOverlayStore.close();
-  router.push('/');
+  router.push('/agents');
+  panelStore.close();
 };
 </script>

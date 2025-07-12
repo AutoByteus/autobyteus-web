@@ -1,26 +1,28 @@
 <template>
   <div class="hidden md:flex flex-1 relative space-x-0 min-h-0">
-    <!-- File Explorer Container -->
-    <div :style="{ width: fileExplorerWidth + 'px' }" class="bg-white p-0 shadow flex flex-col min-h-0 relative">
-      <div class="flex-1 overflow-auto">
-        <FileExplorer />
-      </div>
-
-      <!-- Agent Session Panel Overlay -->
-      <div 
-        v-show="isSessionPanelOpen"
-        class="absolute left-0 top-0 h-full bg-white border border-gray-200 shadow-xl flex flex-col overflow-hidden transition-all duration-200 min-w-[300px] max-w-[500px]"
-        :class="[
-          isSessionPanelOpen ? 'opacity-100 z-10' : 'opacity-0 -z-10'
-        ]"
-      >
-        <div class="flex-1 overflow-auto p-0">
-          <AgentSessionPanel />
-        </div>
+    <!-- Agent Session Panel Overlay -->
+    <div 
+      v-show="isSessionPanelOpen"
+      class="absolute left-0 top-0 h-full bg-white border border-gray-200 shadow-xl flex flex-col overflow-hidden transition-all duration-200 min-w-[300px] max-w-[500px] z-10"
+      :class="[
+        isSessionPanelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+      ]"
+    >
+      <div class="flex-1 overflow-auto p-0">
+        <AgentSessionPanel />
       </div>
     </div>
 
-    <div class="drag-handle" @mousedown="initDragFileToContent"></div>
+    <!-- File Explorer Container - Conditionally rendered -->
+    <template v-if="activeSessionHasWorkspace">
+      <div :style="{ width: fileExplorerWidth + 'px' }" class="bg-white p-0 shadow flex flex-col min-h-0 relative">
+        <div class="flex-1 overflow-auto">
+          <FileExplorer />
+        </div>
+      </div>
+
+      <div class="drag-handle" @mousedown="initDragFileToContent"></div>
+    </template>
 
     <!-- Content Area -->
     <div v-if="isFullscreenMode" 
@@ -102,6 +104,7 @@ import { storeToRefs } from 'pinia'
 import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import { useAgentSessionPanelOverlayStore } from '~/stores/agentSessionPanelOverlayStore'
+import { useAgentSessionStore } from '~/stores/agentSessionStore';
 import { useRightPanel } from '~/composables/useRightPanel'
 import { usePanelResize } from '~/composables/usePanelResize'
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
@@ -112,11 +115,14 @@ import AgentSessionPanel from '~/components/agentSessions/AgentSessionPanel.vue'
 
 const agentSessionPanelOverlayStore = useAgentSessionPanelOverlayStore()
 const fileContentDisplayModeStore = useFileContentDisplayModeStore()
+const agentSessionStore = useAgentSessionStore()
 
 const { isFullscreenMode, isMinimizedMode } = storeToRefs(fileContentDisplayModeStore)
 const { isOpen: isSessionPanelOpen } = storeToRefs(agentSessionPanelOverlayStore)
 const { fileExplorerWidth, initDragFileToContent } = usePanelResize()
 const { isRightPanelVisible, rightPanelWidth, toggleRightPanel, initDragRightPanel } = useRightPanel()
+
+const activeSessionHasWorkspace = computed(() => !!agentSessionStore.activeSession?.workspaceId);
 </script>
 
 <style scoped>

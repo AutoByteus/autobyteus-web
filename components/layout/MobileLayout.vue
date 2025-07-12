@@ -18,7 +18,7 @@
     <!-- Mobile Panels -->
     <div class="flex-1 bg-white shadow overflow-hidden relative mt-2"> 
       <!-- File Explorer -->
-      <div v-show="activeMobilePanel === 'explorer'" class="h-full p-0 overflow-auto">
+      <div v-if="activeSessionHasWorkspace" v-show="activeMobilePanel === 'explorer'" class="h-full p-0 overflow-auto">
         <FileExplorer />
       </div>
 
@@ -85,19 +85,21 @@ const agentSessionStore = useAgentSessionStore()
 const { activeMobilePanel } = useMobilePanels()
 
 const activeSessionId = computed(() => agentSessionStore.activeSessionId)
+const activeSessionHasWorkspace = computed(() => !!agentSessionStore.activeSession?.workspaceId)
 
-// Available tabs with updated agent session tabs
 const availableTabs = computed(() => {
   const tabs = [
-    { id: 'explorer', label: 'Files' },
+    ...(activeSessionHasWorkspace.value ? [{ id: 'explorer', label: 'Files' }] : []),
     { id: 'sessions', label: 'Sessions' },
     { id: 'agent', label: 'Agent' },
     { id: 'terminal', label: 'Terminal' }
   ]
   
-  if (props.showFileContent) {
-    // Insert content tab after explorer
-    tabs.splice(1, 0, { id: 'content', label: 'Content' })
+  if (props.showFileContent && activeSessionHasWorkspace.value) {
+    const explorerIndex = tabs.findIndex(t => t.id === 'explorer');
+    if (explorerIndex !== -1) {
+      tabs.splice(explorerIndex + 1, 0, { id: 'content', label: 'Content' });
+    }
   }
   
   return tabs

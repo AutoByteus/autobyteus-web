@@ -10,18 +10,23 @@
           <div class="px-6 py-5 space-y-6 max-h-[70vh] overflow-y-auto">
             <!-- Workspace Type Selector -->
             <div>
-              <label for="workspace-type" class="block text-sm font-medium text-gray-700">Workspace Type *</label>
-              <select 
-                id="workspace-type" 
-                v-model="selectedWorkspaceType" 
-                required
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              >
-                <option disabled value="">Please select a type</option>
-                <option v-for="type in workspaceStore.availableWorkspaceTypes" :key="type.name" :value="type.name">
-                  {{ type.name }} ({{ type.description }})
-                </option>
-              </select>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Workspace Type *</label>
+              <div class="space-y-3">
+                <div
+                  v-for="type in workspaceOptions"
+                  :key="type.name"
+                  @click="selectedWorkspaceType = type.name"
+                  :class="[
+                    'p-4 border rounded-lg cursor-pointer transition-all duration-150',
+                    selectedWorkspaceType === type.name
+                      ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500'
+                      : 'bg-gray-50 border-gray-300 hover:bg-gray-100 hover:border-gray-400'
+                  ]"
+                >
+                  <h4 class="font-semibold text-gray-800">{{ type.name }}</h4>
+                  <p class="text-sm text-gray-600 mt-1">{{ type.description }}</p>
+                </div>
+              </div>
             </div>
 
             <!-- Dynamic Form Fields -->
@@ -52,7 +57,7 @@
           <div class="bg-gray-50 px-6 py-3 sm:flex sm:flex-row-reverse">
             <button 
               type="submit"
-              :disabled="workspaceStore.loading"
+              :disabled="workspaceStore.loading || !selectedWorkspaceType"
               class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
             >
               <span v-if="workspaceStore.loading" class="i-heroicons-arrow-path-20-solid w-5 h-5 mr-2 animate-spin"></span>
@@ -92,21 +97,32 @@ const selectedWorkspaceType = ref('');
 const formData = ref<Record<string, any>>({});
 const error = ref<string | null>(null);
 
+const workspaceOptions = computed(() => {
+  const noWorkspaceOption = {
+    name: 'No Workspace',
+    description: 'Run the agent without a file system or pre-configured environment.',
+    config_schema: null,
+  };
+  return [noWorkspaceOption, ...workspaceStore.availableWorkspaceTypes];
+});
+
 onMounted(async () => {
   await workspaceStore.fetchAvailableWorkspaceTypes();
-  if(workspaceStore.availableWorkspaceTypes.length === 1) {
-    selectedWorkspaceType.value = workspaceStore.availableWorkspaceTypes[0].name;
+  if (workspaceStore.availableWorkspaceTypes.length === 0) {
+    selectedWorkspaceType.value = 'No Workspace';
   }
 });
 
 const selectedSchema = computed(() => {
+  if (selectedWorkspaceType.value === 'No Workspace') return null;
   return workspaceStore.availableWorkspaceTypes.find(t => t.name === selectedWorkspaceType.value)?.config_schema;
 });
 
-watch(selectedSchema, (newSchema) => {
+watch(selectedWorkspaceType, (newType) => {
+  const schema = workspaceStore.availableWorkspaceTypes.find(t => t.name === newType)?.config_schema;
   formData.value = {};
-  if (newSchema) {
-    for (const param of newSchema.parameters) {
+  if (schema) {
+    for (const param of schema.parameters) {
       formData.value[param.name] = param.default_value ?? '';
     }
   }
@@ -128,25 +144,32 @@ const handleSubmit = async () => {
   }
   
   try {
-    // Step 1: Create workspace
-    const newWorkspaceId = await workspaceStore.createWorkspace(selectedWorkspaceType.value, formData.value);
+    const agentDef = agentDefinitionStore.getAgentDefinitionById(props.agentDefinitionId);
+    if (!agentDef) {
+      throw new Error("Could not find agent definition to create session.");
+    }
+    
+    let workspaceId = null;
+    let workspaceName = 'No Workspace';
+
+    if (selectedWorkspaceType.value !== 'No Workspace') {
+      // Step 1: Create workspace if one is selected
+      workspaceId = await workspaceStore.createWorkspace(selectedWorkspaceType.value, formData.value);
+      const workspaceInfo = workspaceStore.workspaces[workspaceId];
+      if (workspaceInfo) {
+        workspaceName = workspaceInfo.name;
+      }
+    }
     
     // Step 2: Create agent session
-    const agentDef = agentDefinitionStore.getAgentDefinitionById(props.agentDefinitionId);
-    const workspaceInfo = workspaceStore.workspaces[newWorkspaceId];
-    if (agentDef && workspaceInfo) {
-      // Pass the reactive form data directly; the store is now responsible for sanitizing it.
-      const newSession = agentSessionStore.createSession(
-        agentDef,
-        newWorkspaceId,
-        workspaceInfo.name,
-        selectedWorkspaceType.value,
-        formData.value
-      );
-      agentSessionStore.setActiveSession(newSession.sessionId);
-    } else {
-      throw new Error("Could not find agent definition or workspace info to create session.");
-    }
+    const newSession = agentSessionStore.createSession(
+      agentDef,
+      workspaceId,
+      workspaceName,
+      selectedWorkspaceType.value,
+      formData.value
+    );
+    agentSessionStore.setActiveSession(newSession.sessionId);
     
     // Step 3: Emit success to parent
     emit('success');
