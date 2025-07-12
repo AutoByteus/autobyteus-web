@@ -48,13 +48,13 @@
           <ul>
             <li
               v-for="item in group.items"
-              :key="item"
-              @click="selectItem(item)"
+              :key="item.name"
+              @click="selectItem(item.name)"
               class="pl-6 pr-3 py-2 text-base text-gray-800 dark:text-gray-200 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/50 flex items-center justify-between"
-              :class="{ 'bg-blue-100 dark:bg-blue-800': modelValue === item }"
+              :class="{ 'bg-blue-100 dark:bg-blue-800': modelValue === item.name }"
             >
-              <span>{{ item }}</span>
-              <svg v-if="modelValue === item" class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span>{{ item.name }}</span>
+              <svg v-if="modelValue === item.name" class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
               </svg>
             </li>
@@ -101,9 +101,16 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 
+// Define the structure of a model item
+export interface ModelItem {
+  name: string;
+  canonicalName: string;
+}
+
+// Define the structure for a group of options
 export interface GroupedOption {
   label: string;
-  items: string[];
+  items: ModelItem[];
 }
 
 const props = withDefaults(defineProps<{  modelValue: string | null;
@@ -134,7 +141,10 @@ const filteredOptions = computed(() => {
   return props.options
     .map(group => ({
       ...group,
-      items: group.items.filter(item => item.toLowerCase().includes(searchLower))
+      items: group.items.filter(item => 
+        item.name.toLowerCase().includes(searchLower) ||
+        item.canonicalName.toLowerCase().includes(searchLower)
+      )
     }))
     .filter(group => group.items.length > 0);
 });
@@ -144,8 +154,8 @@ const toggleDropdown = () => {
   isOpen.value = !isOpen.value;
 };
 
-const selectItem = (item: string) => {
-  emit('update:modelValue', item);
+const selectItem = (itemName: string) => {
+  emit('update:modelValue', itemName);
   isOpen.value = false;
   searchTerm.value = '';
 };

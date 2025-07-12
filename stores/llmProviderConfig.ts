@@ -15,9 +15,14 @@ interface LLMProviderConfig {
   apiKey?: string
 }
 
+interface ModelInfo {
+  name: string
+  canonicalName: string
+}
+
 interface ProviderWithModels {
   provider: string
-  models: string[]
+  models: ModelInfo[]
 }
 
 export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
@@ -32,11 +37,25 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
       return state.providersWithModels.map(p => p.provider);
     },
     models(state): string[] {
-      return state.providersWithModels.flatMap(p => p.models);
+      return state.providersWithModels.flatMap(p => p.models.map(m => m.name));
     },
     providersWithModelsForSelection(state): ProviderWithModels[] {
       return state.providersWithModels.filter(p => p.models && p.models.length > 0);
-    }
+    },
+    /**
+     * Corrected Getter: Provides a sorted list of unique canonical model names.
+     */
+    canonicalModels(state): string[] {
+      const canonicalSet = new Set<string>();
+      state.providersWithModels.forEach(provider => {
+        provider.models.forEach(model => {
+          if (model.canonicalName) {
+            canonicalSet.add(model.canonicalName);
+          }
+        });
+      });
+      return Array.from(canonicalSet).sort();
+    },
   },
   actions: {
     getProviderForModel(modelName: string): LLMProvider | null {
@@ -45,7 +64,7 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
       }
     
       for (const providerGroup of this.providersWithModels) {
-        if (providerGroup.models.includes(modelName)) {
+        if (providerGroup.models.some(m => m.name === modelName)) {
           const providerKey = providerGroup.provider.toUpperCase() as keyof typeof LLMProviderEnum;
           if (Object.values(LLMProviderEnum).includes(providerKey as LLMProvider)) {
             return providerKey as LLMProvider;

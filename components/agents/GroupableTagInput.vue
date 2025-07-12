@@ -31,7 +31,7 @@
       
       <!-- Grouped Layout -->
       <div v-else-if="source.type === 'grouped'">
-        <details v-for="group in filteredGroups" :key="group.name" class="border-t" open>
+        <details v-for="group in filteredGroups" :key="group.name" class="border-t">
           <summary class="px-4 py-2 cursor-pointer font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center">
             <span>{{ group.name }}</span>
             <button v-if="group.allowAll" @click.stop.prevent="emitAddAll(group.name)" class="px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200">

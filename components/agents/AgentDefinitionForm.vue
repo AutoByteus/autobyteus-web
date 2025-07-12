@@ -116,8 +116,8 @@
 import { reactive, watch, toRefs, computed, onMounted } from 'vue';
 import { useAgentDefinitionOptionsStore } from '~/stores/agentDefinitionOptionsStore';
 import { useToolManagementStore } from '~/stores/toolManagementStore';
-import GroupableTagInput from '~/components/common/GroupableTagInput.vue';
-import type { GroupedSource, FlatSource } from '~/components/common/GroupableTagInput.vue';
+import GroupableTagInput from '~/components/agents/GroupableTagInput.vue';
+import type { GroupedSource, FlatSource } from '~/components/agents/GroupableTagInput.vue';
 
 
 const props = defineProps<{  initialData?: any;

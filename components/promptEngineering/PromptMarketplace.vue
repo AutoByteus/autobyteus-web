@@ -13,19 +13,30 @@
     <div class="flex flex-col gap-4 mb-6">
       <div class="flex justify-between items-center">
         <h2 class="text-xl font-semibold text-gray-800">Prompt Marketplace</h2>
-        <button
-          @click="syncPrompts"
-          class="flex items-center px-4 py-2 text-sm rounded-lg transition-colors"
-          :class="[
-            syncing ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-50 text-blue-600 hover:bg-blue-100',
-          ]"
-          :disabled="syncing"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          {{ syncing ? 'Syncing...' : 'Sync Prompts' }}
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            @click="syncPrompts"
+            class="flex items-center px-4 py-2 text-sm rounded-lg transition-colors"
+            :class="[
+              syncing ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+            ]"
+            :disabled="syncing"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {{ syncing ? 'Syncing...' : 'Sync Prompts' }}
+          </button>
+          <button
+            @click="viewStore.showCreatePromptView"
+            class="flex items-center px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Create Prompt
+          </button>
+        </div>
       </div>
       
       <!-- Filter and Group Controls -->
@@ -348,6 +359,7 @@
 import { onMounted, computed, ref, watch, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { usePromptStore } from '~/stores/promptStore';
+import { usePromptEngineeringViewStore } from '~/stores/promptEngineeringViewStore';
 import PromptCard from '~/components/promptEngineering/PromptCard.vue';
 import PromptCompare from '~/components/promptEngineering/PromptCompare.vue';
 
@@ -355,6 +367,7 @@ const props = defineProps<{ selectedPromptId: string | null }>();
 defineEmits<{ (e: 'select-prompt', id: string): void }>();
 
 const promptStore = usePromptStore();
+const viewStore = usePromptEngineeringViewStore();
 const { prompts, loading, error, syncing, syncResult, deleteResult } = storeToRefs(promptStore);
 
 // Base UI state

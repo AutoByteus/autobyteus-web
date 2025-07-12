@@ -4,34 +4,33 @@
     <PromptSidebar
       title="Prompt Engineering"
       :menuItems="menuItems"
-      :currentView="currentView"
+      :currentView="sidebarView"
       @navigate="navigateTo"
     />
     
     <!-- Main Content Area -->
     <div class="flex-1 p-6 overflow-auto">
-      <!-- Marketplace View -->
       <transition name="fade" mode="out-in">
-        <div v-if="currentView === 'marketplace' && !selectedPromptId">
-          <PromptMarketplace 
-            :selectedPromptId="selectedPromptId"
-            @select-prompt="handlePromptSelect"
-          />
-        </div>
-      </transition>
-
-      <!-- Prompt Details View -->
-      <transition name="fade" mode="out-in">
-        <PromptDetails 
-          v-if="selectedPromptId" 
-          :promptId="selectedPromptId"
-          @close="closePromptDetails"
+        <!-- Marketplace View -->
+        <PromptMarketplace 
+          v-if="viewStore.isMarketplaceView"
+          :selectedPromptId="viewStore.selectedPromptId"
+          @select-prompt="viewStore.showPromptDetails"
         />
-      </transition>
-      
-      <!-- Generation View -->
-      <transition name="fade" mode="out-in">
-        <div v-if="currentView === 'generation'">
+
+        <!-- Create Prompt View -->
+        <CreatePromptView
+          v-else-if="viewStore.isCreateView"
+        />
+
+        <!-- Prompt Details View (Full Screen) -->
+        <PromptDetails 
+          v-else-if="viewStore.isDetailsView"
+          :promptId="viewStore.selectedPromptId!"
+        />
+        
+        <!-- Generation View -->
+        <div v-else-if="sidebarView === 'generation'">
           <h1 class="text-2xl font-bold mb-6">Prompt Generation</h1>
           <!-- Future prompt generation implementation will go here -->
         </div>
@@ -41,13 +40,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { usePromptEngineeringViewStore } from '~/stores/promptEngineeringViewStore';
+import { storeToRefs } from 'pinia';
+
 import PromptMarketplace from '~/components/promptEngineering/PromptMarketplace.vue';
 import PromptDetails from '~/components/promptEngineering/PromptDetails.vue';
 import PromptSidebar from '~/components/promptEngineering/PromptSidebar.vue';
+import CreatePromptView from '~/components/promptEngineering/CreatePromptView.vue';
 
-const currentView = ref('marketplace');
-const selectedPromptId = ref<string | null>(null);
+const viewStore = usePromptEngineeringViewStore();
+const { currentView, selectedPromptId } = storeToRefs(viewStore);
+
+// This is for the sidebar's active state, which is a bit different from the main content view
+const sidebarView = ref('marketplace');
 
 const menuItems = [
   { id: 'marketplace', label: 'Prompts Marketplace' },
@@ -55,20 +61,14 @@ const menuItems = [
 ];
 
 function navigateTo(view: string) {
-  // If we're viewing a prompt detail, close it first
-  if (selectedPromptId.value) {
-    selectedPromptId.value = null;
+  sidebarView.value = view;
+  if (view === 'marketplace') {
+    // This will reset the view to marketplace and clear any selections
+    viewStore.showMarketplace();
   }
-  currentView.value = view;
 }
 
-function handlePromptSelect(id: string) {
-  selectedPromptId.value = id;
-}
-
-function closePromptDetails() {
-  selectedPromptId.value = null;
-}
+// Watch for direct changes to selectedPromptId if needed, for example from URL routing in future
 </script>
 
 <style scoped>

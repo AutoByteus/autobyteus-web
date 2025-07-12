@@ -307,6 +307,12 @@ export type Model = {
   value: Scalars['String']['output'];
 };
 
+export type ModelDetail = {
+  __typename?: 'ModelDetail';
+  canonicalName: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
   addNewPromptRevision: Prompt;
@@ -510,7 +516,7 @@ export type ProviderModels = {
 
 export type ProviderWithModels = {
   __typename?: 'ProviderWithModels';
-  models: Array<Scalars['String']['output']>;
+  models: Array<ModelDetail>;
   provider: Scalars['String']['output'];
 };
 
@@ -1028,7 +1034,7 @@ export type GetLlmProviderApiKeyQuery = { __typename?: 'Query', getLlmProviderAp
 export type GetAvailableLlmProvidersWithModelsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAvailableLlmProvidersWithModelsQuery = { __typename?: 'Query', availableLlmProvidersWithModels: Array<{ __typename?: 'ProviderWithModels', provider: string, models: Array<string> }> };
+export type GetAvailableLlmProvidersWithModelsQuery = { __typename?: 'Query', availableLlmProvidersWithModels: Array<{ __typename?: 'ProviderWithModels', provider: string, models: Array<{ __typename?: 'ModelDetail', name: string, canonicalName: string }> }> };
 
 export type GetMcpServersQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -2090,7 +2096,10 @@ export const GetAvailableLlmProvidersWithModelsDocument = gql`
     query GetAvailableLLMProvidersWithModels {
   availableLlmProvidersWithModels {
     provider
-    models
+    models {
+      name
+      canonicalName
+    }
   }
 }
     `;
