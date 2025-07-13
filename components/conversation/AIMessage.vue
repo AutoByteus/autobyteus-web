@@ -17,11 +17,18 @@
           v-else-if="segment.type === 'think'"
           :content="segment.content"
         />
-        <ToolCallSegment
-          v-else-if="segment.type === 'tool_call'"
-          :segment="segment"
-          :conversation-id="conversationId"
-        />
+        <template v-else-if="segment.type === 'tool_call'">
+          <FileWriterSegment
+            v-if="segment.toolName === 'FileWriter'"
+            :segment="segment"
+            :conversation-id="conversationId"
+          />
+          <ToolCallSegment
+            v-else
+            :segment="segment"
+            :conversation-id="conversationId"
+          />
+        </template>
       </template>
     </div>
   </div>
@@ -33,6 +40,7 @@ import TextSegment from '~/components/conversation/segments/TextSegment.vue';
 import FileContentSegment from '~/components/conversation/segments/FileContentSegment.vue';
 import ThinkSegment from '~/components/conversation/segments/ThinkSegment.vue';
 import ToolCallSegment from '~/components/conversation/segments/ToolCallSegment.vue';
+import FileWriterSegment from '~/components/conversation/segments/FileWriterSegment.vue';
 
 const props = defineProps<{  message: AIMessage;
   conversationId: string;

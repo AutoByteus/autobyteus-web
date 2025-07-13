@@ -98,22 +98,19 @@ export const useAgentSessionStore = defineStore('agentSession', {
       this.saveSessions();
     },
 
-    async restoreSession(sessionId: string): Promise<boolean> {
-      // This action now requires workspaceStore to be passed or imported inside the function
-      // to avoid circular dependency at the module level.
+    // RENAMED for clarity
+    async resumeByCreatingWorkspace(sessionId: string): Promise<boolean> {
       const { useWorkspaceStore } = await import('~/stores/workspace');
       const workspaceStore = useWorkspaceStore();
 
       const sessionToRestore = this.inactiveSessions[sessionId];
       if (!sessionToRestore) {
-        console.error(`Session with ID ${sessionId} not found in inactive sessions for restoration.`);
+        console.error(`Session with ID ${sessionId} not found for restoration.`);
         return false;
       }
       
-      console.log('Attempting to restore session from inactive:', JSON.parse(JSON.stringify(sessionToRestore)));
-
       if (!sessionToRestore.workspaceTypeName || !sessionToRestore.workspaceConfig) {
-        alert(`Cannot restore session "${sessionToRestore.name}". This session has invalid data. Please delete it and create a new one.`);
+        alert(`Cannot restore session "${sessionToRestore.name}". This session has invalid data.`);
         return false;
       }
       
@@ -122,22 +119,61 @@ export const useAgentSessionStore = defineStore('agentSession', {
         const newWorkspace = workspaceStore.workspaces[newWorkspaceId];
 
         if (newWorkspace) {
-          // Update session details
           sessionToRestore.workspaceId = newWorkspace.workspaceId;
           sessionToRestore.name = `${sessionToRestore.agentDefinition.name} @ ${newWorkspace.name}`;
           
-          // Move from inactive to active
           this.activeSessions[sessionId] = sessionToRestore;
           delete this.inactiveSessions[sessionId];
           
           this.saveSessions();
           this.setActiveSession(sessionId);
-          console.log(`Session ${sessionId} restored and moved to active sessions.`);
           return true;
         }
         return false;
       } catch (error) {
-        console.error(`Failed to restore session ${sessionId} due to workspace creation error:`, error);
+        console.error(`Failed to resume session ${sessionId} by creating workspace:`, error);
+        return false;
+      }
+    },
+
+    // RENAMED for clarity and consistency
+    async resumeByAttachingToWorkspace(sessionId: string, targetWorkspaceId: string): Promise<boolean> {
+      const { useWorkspaceStore } = await import('~/stores/workspace');
+      const workspaceStore = useWorkspaceStore();
+      
+      const sessionToAttach = this.inactiveSessions[sessionId];
+      if (!sessionToAttach) {
+        console.error(`Session with ID ${sessionId} not found for attachment.`);
+        return false;
+      }
+
+      const targetWorkspace = workspaceStore.workspaces[targetWorkspaceId];
+      if (!targetWorkspace) {
+        console.error(`Target workspace with ID ${targetWorkspaceId} not found.`);
+        return false;
+      }
+
+      sessionToAttach.workspaceId = targetWorkspace.workspaceId;
+      sessionToAttach.name = `${sessionToAttach.agentDefinition.name} @ ${targetWorkspace.name}`;
+      sessionToAttach.workspaceTypeName = targetWorkspace.workspaceTypeName;
+      sessionToAttach.workspaceConfig = targetWorkspace.workspaceConfig;
+
+      this.activeSessions[sessionId] = sessionToAttach;
+      delete this.inactiveSessions[sessionId];
+      
+      this.saveSessions();
+      this.setActiveSession(sessionId);
+      return true;
+    },
+
+    // NEW: Orchestrator function to improve separation of concerns
+    async resumeInactiveSession(sessionId: string, options: { choice: 'recreate' | 'attach', workspaceId?: string }): Promise<boolean> {
+      if (options.choice === 'recreate') {
+        return await this.resumeByCreatingWorkspace(sessionId);
+      } else if (options.choice === 'attach' && options.workspaceId) {
+        return await this.resumeByAttachingToWorkspace(sessionId, options.workspaceId);
+      } else {
+        console.error("Invalid options provided to resumeInactiveSession", options);
         return false;
       }
     },

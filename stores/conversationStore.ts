@@ -278,6 +278,7 @@ export const useConversationStore = defineStore('conversation', {
       
       let llmModelName: string | null = null;
       let agentDefinitionId: string | null = null;
+      let workspaceId: string | null = null;
 
       if (isNewConversation) {
         llmModelName = sessionState.conversationModelSelection.get(conversationId) || null;
@@ -286,6 +287,7 @@ export const useConversationStore = defineStore('conversation', {
             throw new Error("Please select a model for the first message.");
         }
         agentDefinitionId = activeSession.agentDefinition.id;
+        workspaceId = activeSession.workspaceId; // Get workspaceId for new conversations
         currentConversation.llmModelName = llmModelName; // Set model name on conversation
         currentConversation.useXmlToolFormat = useXmlToolFormat; // Set useXml on conversation
       }
@@ -298,13 +300,14 @@ export const useConversationStore = defineStore('conversation', {
           input: {
             userInput: {
               content: currentRequirementText,
-              contextFiles: contextPaths.map(cf => ({ path: cf.path, type: cf.type as ContextFileType })),
+              contextFiles: contextPaths.map(cf => ({ path: cf.path, type: cf.type.toUpperCase() as ContextFileType })),
             },
             agentId: conversationIdForRequest,
             agentDefinitionId,
             llmModelName,
             autoExecuteTools, 
             useXmlToolFormat,
+            workspaceId,
           }
         });
 

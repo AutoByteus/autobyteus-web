@@ -81,17 +81,8 @@
     </div>
 
     <!-- Full content when expanded -->
-    <div v-else>
-      <MarkdownRenderer v-if="isMarkdownFile" :content="fileSegment.originalContent" />
-      <pre
-        v-else
-        ref="codeContainer"
-        :class="'language-' + fileSegment.language + ' w-full overflow-x-auto'"
-      ><code
-        v-html="highlightedCode"
-        :class="'language-' + fileSegment.language"
-        data-highlighted="true"
-      ></code></pre>
+    <div v-else class="bg-white rounded-b-md">
+       <FileDisplay :path="fileSegment.path" :content="fileSegment.originalContent" />
     </div>
 
     <!-- error -->
@@ -102,11 +93,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick, watchEffect } from 'vue';
+import { computed, ref, watchEffect } from 'vue';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { useWorkspaceStore } from '~/stores/workspace';
-import MarkdownRenderer from '~/components/conversation/segments/renderer/MarkdownRenderer.vue';
-import { highlightFileSegment } from '~/utils/aiResponseParser/segmentHighlighter';
+import FileDisplay from '~/components/conversation/segments/renderer/FileDisplay.vue';
 import type { FileSegment } from '~/utils/aiResponseParser/types';
 
 /* -------------------------------------------------------------------------- */
@@ -125,11 +115,8 @@ const workspaceStore    = useWorkspaceStore();
 /* State                                                                      */
 /* -------------------------------------------------------------------------- */
 
-const codeContainer       = ref<HTMLElement | null>(null);
-const highlightedCode     = ref('');
-const isHighlightPending  = ref(false);
 const isExpanded          = ref(false);
-const applyCount          = ref(0);               // <— NEW: keeps track of how many times user applied
+const applyCount          = ref(0); // <— keeps track of how many times user applied
 
 /* -------------------------------------------------------------------------- */
 /* Derived State                                                              */
@@ -160,8 +147,6 @@ const error = computed(() =>
   )
 );
 
-const isMarkdownFile = computed(() => props.fileSegment.path.endsWith('.md'));
-
 /* -------------------------------------------------------------------------- */
 /* Initialise applyCount if this file had already been applied previously     */
 /* -------------------------------------------------------------------------- */
@@ -182,55 +167,7 @@ watchEffect(() => {
 
 function toggleExpand() {
   isExpanded.value = !isExpanded.value;
-  if (isExpanded.value && isHighlightPending.value) updateHighlightedCode();
 }
-
-/* -------------------------------------------------------------------------- */
-/* Syntax-highlight once visible & debounced                                  */
-/* -------------------------------------------------------------------------- */
-
-function updateHighlightedCode() {
-  try {
-    highlightedCode.value = highlightFileSegment(props.fileSegment).highlightedContent || '';
-  } catch (err) {
-    console.error('Failed to highlight:', err);
-    highlightedCode.value = props.fileSegment.originalContent;
-  } finally {
-    isHighlightPending.value = false;
-  }
-}
-
-const debouncedHighlight = (() => {
-  let t: number | null = null;
-  return () => {
-    if (t) clearTimeout(t);
-    isHighlightPending.value = true;
-    t = window.setTimeout(() => {
-      if (isExpanded.value) updateHighlightedCode();
-      t = null;
-    }, 50);
-  };
-})();
-
-watch(
-  () => props.fileSegment.originalContent,
-  () => debouncedHighlight(),
-  { immediate: true }
-);
-
-onMounted(() => {
-  if (!codeContainer.value) return;
-  const observer = new IntersectionObserver(
-    (entries) => {
-      if (entries[0].isIntersecting && isExpanded.value && isHighlightPending.value) {
-        updateHighlightedCode();
-      }
-    },
-    { rootMargin: '200px 0px' }
-  );
-  observer.observe(codeContainer.value!);
-  onBeforeUnmount(() => observer.disconnect());
-});
 
 /* -------------------------------------------------------------------------- */
 /* Apply / Reapply handler                                                    */

@@ -625,6 +625,7 @@ export type SendAgentUserInputInput = {
   llmModelName?: InputMaybe<Scalars['String']['input']>;
   useXmlToolFormat?: InputMaybe<Scalars['Boolean']['input']>;
   userInput: AgentUserInput;
+  workspaceId?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type SendAgentUserInputResult = {

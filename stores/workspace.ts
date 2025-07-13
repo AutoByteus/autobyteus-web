@@ -27,12 +27,14 @@ export interface WorkspaceType {
   };
 }
 
-// Richer WorkspaceInfo to include file explorer data
+// Richer WorkspaceInfo to include file explorer data and creation config
 interface WorkspaceInfo {
   workspaceId: string;
   name: string;
   fileExplorer: TreeNode;
   nodeIdToNode: Record<string, TreeNode>;
+  workspaceTypeName: string;
+  workspaceConfig: any;
 }
 
 // REFACTORED: WorkspaceState no longer tracks the selected ID.
@@ -78,6 +80,8 @@ export const useWorkspaceStore = defineStore('workspace', {
             name: newWorkspace.name,
             fileExplorer: treeNode,
             nodeIdToNode: nodeIdToNode,
+            workspaceTypeName: workspaceTypeName,
+            workspaceConfig: config,
           };
           return newWorkspace.workspaceId;
         } else {
@@ -92,6 +96,7 @@ export const useWorkspaceStore = defineStore('workspace', {
       }
     },
     async fetchAvailableWorkspaceTypes() {
+      if (this.availableWorkspaceTypes.length > 0) return; // Avoid refetching
       this.loading = true;
       this.error = null;
       const { onResult, onError } = useQuery<GetAvailableWorkspaceDefinitionsQuery>(GetAvailableWorkspaceDefinitions, null, { fetchPolicy: 'network-only' });
@@ -144,6 +149,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     // REMOVED: currentSelectedWorkspaceId is no longer needed.
     
     allWorkspaceIds: (state): string[] => Object.keys(state.workspaces),
+    allWorkspaces: (state): WorkspaceInfo[] => Object.values(state.workspaces),
     
     // REWRITTEN: currentWorkspaceTree now uses the new activeWorkspace getter.
     currentWorkspaceTree(): TreeNode | null {

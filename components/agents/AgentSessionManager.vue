@@ -71,7 +71,7 @@
                v-for="session in inactiveSessions" 
                :key="session.sessionId"
                class="bg-gray-50 rounded-lg border border-gray-200 p-5 flex flex-col justify-between transition-all duration-200 hover:shadow-lg hover:border-gray-300 cursor-pointer"
-               @click="resumeSession(session.sessionId)"
+               @click="promptResume(session)"
              >
               <div>
                 <h3 class="font-semibold text-base text-gray-800 truncate" :title="session.name">{{ session.name }}</h3>
@@ -90,7 +90,7 @@
                 <button @click.stop="promptDelete(session)" class="px-3 py-1.5 text-sm font-semibold text-red-700 bg-red-50 rounded-md hover:bg-red-100 transition-colors">
                   Delete
                 </button>
-                <button @click="resumeSession(session.sessionId)" class="px-3 py-1.5 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors">
+                <button @click.stop="promptResume(session)" class="px-3 py-1.5 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors">
                   Resume Session
                 </button>
               </div>
@@ -99,6 +99,14 @@
         </div>
       </div>
     </div>
+
+    <!-- Resume Session Dialog -->
+    <ResumeSessionDialog
+      :show="showResumeDialog"
+      :session="sessionToResume"
+      @confirm="handleResumeConfirm"
+      @cancel="handleResumeCancel"
+    />
 
     <!-- Agent Delete Confirmation Dialog -->
     <AgentDeleteConfirmDialog
@@ -115,6 +123,7 @@ import { computed, ref, onMounted } from 'vue';
 import { useAgentSessionStore, type AgentSession, SESSION_STORAGE_KEY } from '~/stores/agentSessionStore';
 import { useWorkspaceStore } from '~/stores/workspace';
 import AgentDeleteConfirmDialog from '~/components/agents/AgentDeleteConfirmDialog.vue';
+import ResumeSessionDialog from '~/components/agents/ResumeSessionDialog.vue';
 
 const sessionStore = useAgentSessionStore();
 const workspaceStore = useWorkspaceStore();
@@ -139,15 +148,38 @@ const isRestoring = ref(false);
 const showDeleteConfirm = ref(false);
 const sessionToDelete = ref<AgentSession | null>(null);
 
+const showResumeDialog = ref(false);
+const sessionToResume = ref<AgentSession | null>(null);
+
 const openSession = async (sessionId: string) => {
   sessionStore.setActiveSession(sessionId);
   await router.push('/workspace');
 };
 
-const resumeSession = async (sessionId: string) => {
+const promptResume = (session: AgentSession) => {
+  if (isRestoring.value) return;
+  sessionToResume.value = session;
+  showResumeDialog.value = true;
+};
+
+const handleResumeCancel = () => {
+  showResumeDialog.value = false;
+  sessionToResume.value = null;
+};
+
+const handleResumeConfirm = async (payload: { choice: 'recreate' | 'attach', workspaceId?: string }) => {
+  if (!sessionToResume.value) return;
+
   isRestoring.value = true;
+  showResumeDialog.value = false;
+  
+  const sessionId = sessionToResume.value.sessionId;
+
   try {
-    const success = await sessionStore.restoreSession(sessionId);
+    // The component now calls the single orchestrator function, passing the dialog's payload directly.
+    // The business logic is now encapsulated in the store.
+    const success = await sessionStore.resumeInactiveSession(sessionId, payload);
+    
     if (success) {
       await router.push('/workspace');
     } else {
@@ -158,6 +190,7 @@ const resumeSession = async (sessionId: string) => {
     alert('An unexpected error occurred. Please try again.');
   } finally {
     isRestoring.value = false;
+    sessionToResume.value = null;
   }
 };
 
