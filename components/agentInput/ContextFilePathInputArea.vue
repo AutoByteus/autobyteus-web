@@ -47,7 +47,7 @@
         class="bg-gray-100 p-2 rounded transition-colors duration-300 flex items-center justify-between"
       >
         <div class="flex items-center space-x-2 flex-grow min-w-0">
-          <i :class="['fas', filePath.type === 'image' ? 'fa-image' : 'fa-file', 'text-gray-500 w-4 flex-shrink-0']"></i>
+          <i :class="['fas', filePath.type === 'Image' ? 'fa-image' : 'fa-file', 'text-gray-500 w-4 flex-shrink-0']"></i>
           <span class="text-sm text-gray-600 truncate">
             {{ filePath.path }}
           </span>
@@ -87,6 +87,7 @@ import { ref, computed, watch } from 'vue';
 import { useConversationStore } from '~/stores/conversationStore';
 import { getFilePathsFromFolder, determineFileType } from '~/utils/fileExplorer/fileUtils';
 import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
+import type { ContextFileType } from '~/generated/graphql';
 
 const conversationStore = useConversationStore();
 
@@ -106,7 +107,8 @@ const removeContextFilePath = (index: number) => {
   conversationStore.removeContextFilePath(index);
 };
 
-const addFileAndExpand = (filePath: string, fileType: 'text' | 'image') => {
+const addFileAndExpand = (filePath: string, fileType: 'Text' | 'Image') => {
+  // FIX: Updated fileType parameter to be PascalCase for consistency.
   conversationStore.addContextFilePath({ path: filePath, type: fileType });
   if (!isContextListExpanded.value) {
     isContextListExpanded.value = true;
@@ -134,7 +136,8 @@ const onFileDrop = async (event: DragEvent) => {
     filesWereAdded = true;
     for (const file of event.dataTransfer.files) {
       const tempPath = URL.createObjectURL(file);
-      const fileType = file.type.startsWith('image/') ? 'image' : 'text';
+      // FIX: Changed file type to PascalCase ('Image', 'Text') to match ContextFilePath interface.
+      const fileType = file.type.startsWith('image/') ? 'Image' : 'Text';
       conversationStore.addContextFilePath({ path: tempPath, type: fileType });
       uploadingFiles.value.push(tempPath);
 
@@ -174,7 +177,8 @@ const onPaste = async (event: ClipboardEvent) => {
         const blob = item.getAsFile();
         if (blob) {
           const tempPath = URL.createObjectURL(blob);
-          conversationStore.addContextFilePath({ path: tempPath, type: 'image' });
+          // FIX: Changed file type to PascalCase ('Image') to match ContextFilePath interface.
+          conversationStore.addContextFilePath({ path: tempPath, type: 'Image' });
           uploadingFiles.value.push(tempPath);
 
           try {
@@ -183,7 +187,8 @@ const onPaste = async (event: ClipboardEvent) => {
             if (tempIndex !== -1) {
                conversationStore.removeContextFilePath(tempIndex);
             }
-            conversationStore.addContextFilePath({ path: uploadedFilePath, type: 'image' });
+            // FIX: Changed file type to PascalCase ('Image') to match ContextFilePath interface.
+            conversationStore.addContextFilePath({ path: uploadedFilePath, type: 'Image' });
             uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath && path !== uploadedFilePath);
 
           } catch (error) {
