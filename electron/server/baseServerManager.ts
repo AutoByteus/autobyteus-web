@@ -25,7 +25,6 @@ export abstract class BaseServerManager {
   protected onErrorCallbacks: Array<(error: Error) => void> = []
   protected appDataDir: string = ''
   protected firstRun: boolean = false
-  protected healthCheckInterval: NodeJS.Timeout | null = null
   protected serverDir: string = ''
 
   constructor() {
@@ -262,7 +261,6 @@ export abstract class BaseServerManager {
     logger.info('Stopping server...')
     this.isServerRunning = false
     this.ready = false
-    this.stopHealthCheckPolling()
     try {
       logger.info('Sending SIGTERM signal to server process')
       this.serverProcess.kill('SIGTERM')
@@ -270,30 +268,6 @@ export abstract class BaseServerManager {
       logger.error('Error stopping server:', error)
     }
     this.serverProcess = null
-  }
-
-  /**
-   * Start polling the health check endpoint.
-   */
-  protected startHealthCheckPolling(): void {
-    this.stopHealthCheckPolling()
-    this.healthCheckInterval = setInterval(() => {
-      if (this.ready) {
-        this.stopHealthCheckPolling()
-        return
-      }
-      this.checkServerHealth()
-    }, 1000)
-  }
-
-  /**
-   * Stop polling the health check endpoint.
-   */
-  protected stopHealthCheckPolling(): void {
-    if (this.healthCheckInterval) {
-      clearInterval(this.healthCheckInterval)
-      this.healthCheckInterval = null
-    }
   }
 
   /**

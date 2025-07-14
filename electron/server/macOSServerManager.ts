@@ -85,7 +85,6 @@ export class MacOSServerManager extends BaseServerManager {
     
     logger.info(`Server process spawned with PID: ${this.serverProcess.pid}`)
     this.setupProcessHandlers()
-    this.startHealthCheckPolling()
   }
 
   /**

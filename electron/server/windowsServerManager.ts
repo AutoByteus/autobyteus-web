@@ -64,7 +64,6 @@ export class WindowsServerManager extends BaseServerManager {
     logger.info('Stopping server...')
     this.isServerRunning = false
     this.ready = false
-    this.stopHealthCheckPolling()
 
     try {
       if (this.serverProcess.pid !== undefined) {
