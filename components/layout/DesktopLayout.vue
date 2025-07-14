@@ -11,29 +11,6 @@
       </div>
     </div>
 
-    <!-- Session Panel Toggle Button -->
-    <button
-      @click="toggleSessionPanel"
-      class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 p-1 bg-gray-700 rounded-full text-gray-300 hover:text-white hover:bg-gray-600 transition-all duration-300 z-20"
-      :style="{ left: '-2px' }"
-      :title="isSessionPanelOpen ? 'Hide Session Panel' : 'Show Session Panel'"
-    >
-      <svg 
-        class="w-3 h-3 transition-transform duration-200" 
-        :class="{ 'rotate-180': isSessionPanelOpen }"
-        fill="none" 
-        stroke="currentColor" 
-        viewBox="0 0 24 24"
-      >
-        <path 
-          stroke-linecap="round" 
-          stroke-linejoin="round" 
-          stroke-width="2" 
-          d="M9 5l7 7-7 7"
-        />
-      </svg>
-    </button>
-
     <!-- File Explorer Container - Conditionally rendered -->
     <template v-if="activeSessionHasWorkspace">
       <div :style="{ width: fileExplorerWidth + 'px' }" class="bg-white p-0 shadow flex flex-col min-h-0 relative">

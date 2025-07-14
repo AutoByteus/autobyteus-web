@@ -16,6 +16,28 @@
       </span>
     </NuxtLink>
 
+    <!-- Sidebar Toggle Button for Agent Session Panel -->
+    <button 
+      v-if="route.path === '/workspace'"
+      @click="toggleSessionPanel"
+      class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 p-1 bg-gray-700 rounded-full text-gray-300 hover:text-white hover:bg-gray-600 transition-all duration-200"
+    >
+      <svg 
+        class="w-3 h-3 transition-transform duration-200" 
+        :class="{ 'rotate-180': isSessionPanelOpen }"
+        fill="none" 
+        stroke="currentColor" 
+        viewBox="0 0 24 24"
+      >
+        <path 
+          stroke-linecap="round" 
+          stroke-linejoin="round" 
+          stroke-width="2" 
+          d="M9 5l7 7-7 7"
+        />
+      </svg>
+    </button>
+
     <!-- Main Navigation -->
     <nav class="flex-1 px-2 mt-4">
       <ul class="space-y-2">
@@ -109,6 +131,17 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from 'pinia';
+import { useRoute } from 'vue-router';
+import { useAgentSessionPanelOverlayStore } from '~/stores/agentSessionPanelOverlayStore';
+
+const route = useRoute();
+const agentSessionPanelOverlayStore = useAgentSessionPanelOverlayStore();
+const { isOpen: isSessionPanelOpen } = storeToRefs(agentSessionPanelOverlayStore);
+
+const toggleSessionPanel = () => {
+  agentSessionPanelOverlayStore.toggle();
+};
 </script>
 
 <style scoped>
