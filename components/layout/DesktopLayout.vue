@@ -1,17 +1,38 @@
 <template>
   <div class="hidden md:flex flex-1 relative space-x-0 min-h-0">
-    <!-- Agent Session Panel Overlay -->
+    <!-- Agent Session Panel -->
     <div 
       v-show="isSessionPanelOpen"
-      class="absolute left-0 top-0 h-full bg-white border border-gray-200 shadow-xl flex flex-col overflow-hidden transition-all duration-200 min-w-[300px] max-w-[500px] z-10"
-      :class="[
-        isSessionPanelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-      ]"
+      :style="{ width: sessionPanelWidth + 'px' }"
+      class="bg-white border-r border-gray-200 shadow-xl flex flex-col overflow-hidden transition-all duration-300"
     >
       <div class="flex-1 overflow-auto p-0">
         <AgentSessionPanel />
       </div>
     </div>
+
+    <!-- Session Panel Toggle Button -->
+    <button
+      @click="toggleSessionPanel"
+      class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 p-1 bg-gray-700 rounded-full text-gray-300 hover:text-white hover:bg-gray-600 transition-all duration-300 z-20"
+      :style="{ left: '-2px' }"
+      :title="isSessionPanelOpen ? 'Hide Session Panel' : 'Show Session Panel'"
+    >
+      <svg 
+        class="w-3 h-3 transition-transform duration-200" 
+        :class="{ 'rotate-180': isSessionPanelOpen }"
+        fill="none" 
+        stroke="currentColor" 
+        viewBox="0 0 24 24"
+      >
+        <path 
+          stroke-linecap="round" 
+          stroke-linejoin="round" 
+          stroke-width="2" 
+          d="M9 5l7 7-7 7"
+        />
+      </svg>
+    </button>
 
     <!-- File Explorer Container - Conditionally rendered -->
     <template v-if="activeSessionHasWorkspace">
@@ -99,7 +120,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
@@ -113,12 +134,16 @@ import AgentSessionView from '~/components/agentSessions/AgentSessionView.vue'
 import RightSideTabs from './RightSideTabs.vue'
 import AgentSessionPanel from '~/components/agentSessions/AgentSessionPanel.vue'
 
-const agentSessionPanelOverlayStore = useAgentSessionPanelOverlayStore()
 const fileContentDisplayModeStore = useFileContentDisplayModeStore()
 const agentSessionStore = useAgentSessionStore()
+const agentSessionPanelOverlayStore = useAgentSessionPanelOverlayStore()
+
+// Agent Session Panel State
+const { isOpen: isSessionPanelOpen } = storeToRefs(agentSessionPanelOverlayStore)
+const { toggle: toggleSessionPanel } = agentSessionPanelOverlayStore
+const sessionPanelWidth = ref(300)
 
 const { isFullscreenMode, isMinimizedMode } = storeToRefs(fileContentDisplayModeStore)
-const { isOpen: isSessionPanelOpen } = storeToRefs(agentSessionPanelOverlayStore)
 const { fileExplorerWidth, initDragFileToContent } = usePanelResize()
 const { isRightPanelVisible, rightPanelWidth, toggleRightPanel, initDragRightPanel } = useRightPanel()
 
@@ -143,9 +168,5 @@ const activeSessionHasWorkspace = computed(() => !!agentSessionStore.activeSessi
 
 .transition-all {
   transition-property: all;
-}
-/* Ensure Agent Session Panel Overlay content padding is also p-0 if its container is p-0 */
-.absolute.left-0.top-0 .p-0 { /* Targeting the inner div if its parent is p-0 now */
-  padding: 0rem !important; /* explicit p-0 for child if needed */
 }
 </style>
