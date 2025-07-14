@@ -14,17 +14,19 @@ export function getFilePathsFromFolder(node: TreeNode): string[] {
   return filePaths
 }
 
-export async function determineFileType(filePath: string): Promise<'text' | 'image'> {
+export async function determineFileType(filePath: string): Promise<'Text' | 'Image'> {
   const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
   const lowercasePath = filePath.toLowerCase()
   
   for (const ext of imageExtensions) {
     if (lowercasePath.endsWith(ext)) {
-      return 'image'
+      // FIX: Return PascalCase 'Image' to align with ContextFilePath interface and GraphQL enum.
+      return 'Image'
     }
   }
   
-  return 'text'
+  // FIX: Return PascalCase 'Text' to align with ContextFilePath interface and GraphQL enum.
+  return 'Text'
 }
 
 export function findNodeById(root: TreeNode, id: string): TreeNode | null {
