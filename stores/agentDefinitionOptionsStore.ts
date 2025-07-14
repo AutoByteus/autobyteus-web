@@ -65,6 +65,10 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
     });
   }
 
+  function invalidateCache() {
+    fetched.value = false;
+  }
+
   return {
     // State
     toolNames,
@@ -78,5 +82,6 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
     fetched,
     // Actions
     fetchAllAvailableOptions,
+    invalidateCache,
   };
 });

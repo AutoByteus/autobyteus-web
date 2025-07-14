@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { useQuery, useMutation } from '@vue/apollo-composable';
 import { GET_PROMPTS, GET_PROMPT_BY_ID } from '~/graphql/queries/prompt_queries';
 import { CREATE_PROMPT, UPDATE_PROMPT, ADD_NEW_PROMPT_REVISION, SYNC_PROMPTS, DELETE_PROMPT } from '~/graphql/mutations/prompt_mutations';
+import { useAgentDefinitionOptionsStore } from '~/stores/agentDefinitionOptionsStore';
 
 interface Prompt {
   id: string;
@@ -135,6 +136,7 @@ export const usePromptStore = defineStore('prompt', {
 
         if (response?.data?.createPrompt) {
           await this.fetchActivePrompts();
+          useAgentDefinitionOptionsStore().invalidateCache();
           return response.data.createPrompt;
         }
         throw new Error('Failed to create prompt: No data returned');
@@ -159,6 +161,7 @@ export const usePromptStore = defineStore('prompt', {
 
         if (response?.data?.updatePrompt) {
           await this.fetchActivePrompts();
+          useAgentDefinitionOptionsStore().invalidateCache();
           return response.data.updatePrompt;
         }
         throw new Error('Failed to update prompt: No data returned');
@@ -204,6 +207,7 @@ export const usePromptStore = defineStore('prompt', {
           // If sync was successful, refresh the prompts list
           if (this.syncResult.success) {
             await this.fetchActivePrompts();
+            useAgentDefinitionOptionsStore().invalidateCache();
           }
           
           return this.syncResult;
@@ -234,6 +238,7 @@ export const usePromptStore = defineStore('prompt', {
           // If deletion was successful, refresh the prompts list
           if (this.deleteResult.success) {
             await this.fetchActivePrompts();
+            useAgentDefinitionOptionsStore().invalidateCache();
           }
           
           return this.deleteResult;
@@ -270,7 +275,7 @@ export const usePromptStore = defineStore('prompt', {
     getError: (state): string => state.error,
     getSelectedPrompt: (state): Prompt | null => state.selectedPrompt,
     isSyncing: (state): boolean => state.syncing,
-    getSyncResult: (state): SyncResult | null => state.syncResult,
+    getSyncResult: (state): SyncResult | null => state.getSyncResult,
     getDeleteResult: (state): DeleteResult | null => state.deleteResult,
   },
 });
