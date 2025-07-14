@@ -45,6 +45,22 @@
             <p class="text-gray-600 whitespace-pre-wrap">{{ agentDef.description }}</p>
           </div>
 
+          <!-- System Prompt -->
+          <div class="border-t border-gray-200 pt-6 mt-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-2">System Prompt</h2>
+            <div v-if="agentDef.systemPromptCategory && agentDef.systemPromptName" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <h3 class="text-sm font-medium text-gray-500">Category</h3>
+                <p class="text-base text-gray-800 font-mono bg-gray-50 px-3 py-1.5 rounded-md mt-1">{{ agentDef.systemPromptCategory }}</p>
+              </div>
+              <div>
+                <h3 class="text-sm font-medium text-gray-500">Name</h3>
+                <p class="text-base text-gray-800 font-mono bg-gray-50 px-3 py-1.5 rounded-md mt-1">{{ agentDef.systemPromptName }}</p>
+              </div>
+            </div>
+            <p v-else class="text-sm text-gray-500 italic">No system prompt configured.</p>
+          </div>
+
           <!-- Component Lists -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
             <div v-for="list in componentLists" :key="list.title">

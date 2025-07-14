@@ -10,16 +10,18 @@ export interface AgentDefinition {
   name: string;
   role: string;
   description: string;
-  tool_names: string[];
-  input_processor_names: string[];
-  llm_response_processor_names: string[];
-  system_prompt_processor_names: string[];
-  phase_hook_names: string[];
+  toolNames: string[];
+  inputProcessorNames: string[];
+  llmResponseProcessorNames: string[];
+  systemPromptProcessorNames: string[];
+  phaseHookNames: string[];
   prompts: {
     id: string;
     name: string;
     category: string;
   }[];
+  systemPromptCategory?: string;
+  systemPromptName?: string;
 }
 
 // Interfaces for mutation inputs
@@ -27,11 +29,13 @@ export interface CreateAgentDefinitionInput {
   name: string;
   role: string;
   description: string;
-  tool_names?: string[];
-  input_processor_names?: string[];
-  llm_response_processor_names?: string[];
-  system_prompt_processor_names?: string[];
-  phase_hook_names?: string[];
+  systemPromptCategory: string;
+  systemPromptName: string;
+  toolNames?: string[];
+  inputProcessorNames?: string[];
+  llmResponseProcessorNames?: string[];
+  systemPromptProcessorNames?: string[];
+  phaseHookNames?: string[];
 }
 
 export interface UpdateAgentDefinitionInput {
@@ -39,11 +43,13 @@ export interface UpdateAgentDefinitionInput {
   name?: string;
   role?: string;
   description?: string;
-  tool_names?: string[];
-  input_processor_names?: string[];
-  llm_response_processor_names?: string[];
-  system_prompt_processor_names?: string[];
-  phase_hook_names?: string[];
+  systemPromptCategory?: string;
+  systemPromptName?: string;
+  toolNames?: string[];
+  inputProcessorNames?: string[];
+  llmResponseProcessorNames?: string[];
+  systemPromptProcessorNames?: string[];
+  phaseHookNames?: string[];
 }
 
 interface AgentDefinitionState {

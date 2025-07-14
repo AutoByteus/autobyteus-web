@@ -209,8 +209,8 @@ watch(initialData, (newData) => {
     formData.name = newData.name || '';
     formData.role = newData.role || '';
     formData.description = newData.description || '';
-    formData.system_prompt_category = newData.system_prompt_category || '';
-    formData.system_prompt_name = newData.system_prompt_name || '';
+    formData.system_prompt_category = newData.systemPromptCategory || '';
+    formData.system_prompt_name = newData.systemPromptName || '';
     componentFields.value.forEach(field => {
       formData[field.name] = newData[field.camelCase] || newData[field.name] || [];
     });
