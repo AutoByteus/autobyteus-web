@@ -133,9 +133,21 @@ const optionsStore = useAgentDefinitionOptionsStore();
 const toolStore = useToolManagementStore();
 
 // Fetch required data on mount
-onMounted(() => {
-  if (toolStore.getLocalTools.length === 0) toolStore.fetchLocalTools();
-  if (toolStore.getMcpServers.length === 0) toolStore.fetchMcpServers();
+onMounted(async () => {
+  // Fetch local tools if they aren't in the store yet. This can run in parallel.
+  if (toolStore.getLocalTools.length === 0) {
+    toolStore.fetchLocalTools();
+  }
+
+  // Fetch the list of MCP servers if it's not in the store.
+  // We must wait for this to complete before fetching tools for each server.
+  if (toolStore.getMcpServers.length === 0) {
+    await toolStore.fetchMcpServers();
+  }
+
+  // Now that we're sure the server list is available,
+  // iterate over it and fetch tools for any server that doesn't have them yet.
+  // These sub-fetches can run in parallel without blocking the UI.
   toolStore.getMcpServers.forEach(server => {
     if (toolStore.getToolsForServer(server.serverId).length === 0) {
       toolStore.fetchToolsForServer(server.serverId);
