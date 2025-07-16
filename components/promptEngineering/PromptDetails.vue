@@ -134,9 +134,10 @@
           <h2 class="text-lg font-semibold text-gray-900 mb-3">Prompt Content</h2>
           <textarea
             v-if="isEditing"
+            ref="promptContentTextarea"
             v-model="formData.promptContent"
-            class="mt-1 block w-full flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono"
-            style="min-height: 300px;"
+            class="mt-1 block w-full flex-grow p-4 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono resize-none overflow-y-hidden min-h-[200px]"
+            @input="adjustTextareaHeight"
           ></textarea>
           <pre
             v-else
@@ -159,7 +160,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed, reactive } from 'vue';
+import { ref, onMounted, watch, computed, reactive, nextTick } from 'vue';
 import { usePromptStore } from '~/stores/promptStore';
 import { usePromptEngineeringViewStore } from '~/stores/promptEngineeringViewStore';
 import ModelBadge from '~/components/promptEngineering/ModelBadge.vue';
@@ -177,12 +178,21 @@ const error = ref('');
 const relatedPrompts = ref<any[]>([]);
 const isEditing = ref(false);
 const isSaving = ref(false);
+const promptContentTextarea = ref<HTMLTextAreaElement | null>(null);
 
 const formData = reactive({
   description: '',
   promptContent: '',
   suitableForModels: [] as string[],
 });
+
+function adjustTextareaHeight() {
+  const textarea = promptContentTextarea.value;
+  if (textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }
+}
 
 // Edit mode functions
 function startEditing() {
@@ -191,6 +201,9 @@ function startEditing() {
   formData.promptContent = prompt.value.promptContent || '';
   formData.suitableForModels = modelList.value;
   isEditing.value = true;
+  nextTick(() => {
+    adjustTextareaHeight();
+  });
 }
 
 function cancelEditing() {
