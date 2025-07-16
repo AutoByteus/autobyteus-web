@@ -65,18 +65,32 @@
             <!-- Conditional Details -->
             <div class="space-y-4 pt-4 border-t border-gray-200">
                 <!-- Details for 'existing' mode -->
-                <div v-if="configMode === 'existing'" class="space-y-2">
-                    <label for="existing-workspace-select" class="block text-sm font-medium text-gray-700">Select Workspace <span class="text-red-500">*</span></label>
-                    <select
-                        id="existing-workspace-select"
-                        v-model="selectedExistingWorkspaceId"
-                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                <div v-if="configMode === 'existing'" class="space-y-4">
+                  <label class="block text-sm font-medium text-gray-700">Select Workspace <span class="text-red-500">*</span></label>
+                  <div class="space-y-3 max-h-60 overflow-y-auto pr-2">
+                    <label
+                      v-for="ws in existingWorkspaces"
+                      :key="ws.workspaceId"
+                      :class="[
+                        'p-4 border rounded-lg cursor-pointer transition-all duration-150 flex items-start space-x-4',
+                        selectedExistingWorkspaceId === ws.workspaceId
+                          ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500'
+                          : 'border-gray-200 bg-white hover:border-indigo-400 hover:shadow-sm'
+                      ]"
                     >
-                        <option value="" disabled>Please select a workspace</option>
-                        <option v-for="ws in existingWorkspaces" :key="ws.workspaceId" :value="ws.workspaceId">
-                          {{ ws.name }} (ID: {{ ws.workspaceId }})
-                        </option>
-                    </select>
+                      <input 
+                        type="radio"
+                        :value="ws.workspaceId"
+                        v-model="selectedExistingWorkspaceId"
+                        class="form-radio h-5 w-5 text-indigo-600 border-gray-300 focus:ring-indigo-500 mt-0.5"
+                      />
+                      <div class="flex-1">
+                        <p class="font-semibold text-gray-800">{{ ws.name }}</p>
+                        <p class="text-sm text-gray-500 mt-1">Type: <span class="font-mono">{{ ws.workspaceTypeName }}</span></p>
+                        <p class="text-xs text-gray-500 mt-1">ID: <span class="font-mono">{{ ws.workspaceId }}</span></p>
+                      </div>
+                    </label>
+                  </div>
                 </div>
 
                 <!-- Details for 'new' mode -->
