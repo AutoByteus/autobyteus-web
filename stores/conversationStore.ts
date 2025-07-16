@@ -32,6 +32,7 @@ interface SessionConversationState {
   // NEW: Configurable agent settings
   conversationAutoExecuteTools: Map<string, boolean>;
   conversationUseXmlToolFormat: Map<string, boolean>;
+  conversationParseToolCalls: Map<string, boolean>; // ADDED
   subscriptionUnsubscribeMap: Map<string, () => void>; // ADDED
 }
 
@@ -51,6 +52,7 @@ const createDefaultSessionState = (): SessionConversationState => ({
   // NEW: Initialize maps for agent settings
   conversationAutoExecuteTools: new Map(),
   conversationUseXmlToolFormat: new Map(),
+  conversationParseToolCalls: new Map(), // ADDED
   subscriptionUnsubscribeMap: new Map(), // ADDED
 });
 
@@ -117,6 +119,13 @@ export const useConversationStore = defineStore('conversation', {
       // Use nullish coalescing to return false if the key doesn't exist for the conversation
       return this._currentSessionState.conversationUseXmlToolFormat.get(this.selectedConversationId) ?? false;
     },
+
+    // ADDED: Getter for parsing toggle
+    currentParseToolCalls(): boolean {
+      if (!this.selectedConversationId || !this._currentSessionState) return true;
+      // Default to true if not set, as per requirements
+      return this._currentSessionState.conversationParseToolCalls.get(this.selectedConversationId) ?? true;
+    },
   },
 
   actions: {
@@ -170,6 +179,7 @@ export const useConversationStore = defineStore('conversation', {
       // Set default agent settings for new conversations
       sessionState.conversationAutoExecuteTools.set(tempId, false);
       sessionState.conversationUseXmlToolFormat.set(tempId, true); // UPDATED: Default to true as per new requirement
+      sessionState.conversationParseToolCalls.set(tempId, true); // ADDED
       sessionState.selectedConversationId = tempId;
     },
 
@@ -201,6 +211,14 @@ export const useConversationStore = defineStore('conversation', {
         sessionState.conversationUseXmlToolFormat.set(sessionState.selectedConversationId, useXml);
       }
     },
+
+    // ADDED: Action to update parsing toggle
+    updateParseToolCalls(parse: boolean) {
+      const sessionState = this._getOrCreateCurrentSessionState();
+      if (sessionState.selectedConversationId) {
+        sessionState.conversationParseToolCalls.set(sessionState.selectedConversationId, parse);
+      }
+    },
     
     async closeConversation(conversationIdToClose: string) {
       const sessionState = this._getOrCreateCurrentSessionState();
@@ -222,6 +240,7 @@ export const useConversationStore = defineStore('conversation', {
       sessionState.isSendingMap.delete(conversationIdToClose);
       sessionState.conversationAutoExecuteTools.delete(conversationIdToClose);
       sessionState.conversationUseXmlToolFormat.delete(conversationIdToClose);
+      sessionState.conversationParseToolCalls.delete(conversationIdToClose); // ADDED
 
       if (sessionState.selectedConversationId === conversationIdToClose) {
         const openConversationsArray = Array.from(sessionState.activeConversations.values());
@@ -275,6 +294,7 @@ export const useConversationStore = defineStore('conversation', {
       const contextPaths = sessionState.conversationContextPaths.get(conversationId) || [];
       const autoExecuteTools = sessionState.conversationAutoExecuteTools.get(conversationId) ?? false;
       const useXmlToolFormat = sessionState.conversationUseXmlToolFormat.get(conversationId) ?? false;
+      const parseToolCalls = sessionState.conversationParseToolCalls.get(conversationId) ?? true; // ADDED
       
       let llmModelName: string | null = null;
       let agentDefinitionId: string | null = null;
@@ -290,6 +310,7 @@ export const useConversationStore = defineStore('conversation', {
         workspaceId = activeSession.workspaceId; // Get workspaceId for new conversations
         currentConversation.llmModelName = llmModelName; // Set model name on conversation
         currentConversation.useXmlToolFormat = useXmlToolFormat; // Set useXml on conversation
+        currentConversation.parseToolCalls = parseToolCalls; // ADDED
       }
 
       const { mutate: sendAgentUserInputMutation } = useMutation<SendAgentUserInputMutation, SendAgentUserInputMutationVariables>(SendAgentUserInput);
@@ -339,6 +360,7 @@ export const useConversationStore = defineStore('conversation', {
             sessionState.isSubscribedMap.set(permanentAgentId, sessionState.isSubscribedMap.get(conversationId) || false);
             sessionState.conversationAutoExecuteTools.set(permanentAgentId, sessionState.conversationAutoExecuteTools.get(conversationId) ?? false);
             sessionState.conversationUseXmlToolFormat.set(permanentAgentId, sessionState.conversationUseXmlToolFormat.get(conversationId) ?? false);
+            sessionState.conversationParseToolCalls.set(permanentAgentId, sessionState.conversationParseToolCalls.get(conversationId) ?? true); // ADDED
 
             sessionState.conversationRequirements.delete(conversationId);
             sessionState.conversationContextPaths.delete(conversationId); 
@@ -347,6 +369,7 @@ export const useConversationStore = defineStore('conversation', {
             sessionState.isSubscribedMap.delete(conversationId);
             sessionState.conversationAutoExecuteTools.delete(conversationId);
             sessionState.conversationUseXmlToolFormat.delete(conversationId);
+            sessionState.conversationParseToolCalls.delete(conversationId); // ADDED
             
             if (sessionState.selectedConversationId === conversationId) {
               sessionState.selectedConversationId = permanentAgentId;
@@ -507,8 +530,9 @@ export const useConversationStore = defineStore('conversation', {
         if (messageCopy.type === 'ai') {
           const provider = llmProviderStore.getProviderForModel(historicalConversationData.llmModelName || '');
           const useXml = historicalConversationData.useXmlToolFormat ?? false;
+          const parseToolCalls = historicalConversationData.parseToolCalls ?? true; // ADDED
           const segments: AIResponseSegment[] = [];
-          const parser = new IncrementalAIResponseParser(segments, provider ?? undefined, useXml);
+          const parser = new IncrementalAIResponseParser(segments, provider ?? undefined, useXml, parseToolCalls);
           messageCopy.text && parser.processChunks([messageCopy.text]);
           messageCopy.segments = segments;
           messageCopy.parserInstance = parser;
@@ -534,6 +558,7 @@ export const useConversationStore = defineStore('conversation', {
       sessionState.isSubscribedMap.set(tempId, false);
       sessionState.conversationAutoExecuteTools.set(tempId, false);
       sessionState.conversationUseXmlToolFormat.set(tempId, (historicalConversationData as any).useXmlToolFormat ?? true);
+      sessionState.conversationParseToolCalls.set(tempId, (historicalConversationData as any).parseToolCalls ?? true); // ADDED
       sessionState.selectedConversationId = tempId;
     },
     

@@ -3,7 +3,7 @@ import type { AIResponseSegment, AIResponseTextSegment, FileSegment, ThinkSegmen
 import { getLanguage } from '../languageDetector';
 import type { State } from './State';
 import { generateInvocationId } from '~/utils/toolUtils';
-import type { ToolParsingStrategy } from '../streaming_strategies/base';
+import type { ToolParsingStrategy } from '../tool_parsing_strategies/base';
 import type { ToolInvocation } from '~/types/tool-invocation';
 
 type CurrentSegment = FileSegment | AIResponseTextSegment | ThinkSegment | ToolCallSegment | null;
@@ -19,13 +19,15 @@ export class ParserContext {
   
   public readonly strategy: ToolParsingStrategy;
   public readonly useXml: boolean;
+  public readonly parseToolCalls: boolean;
 
   private _currentState: State | null = null;
 
-  constructor(segments: AIResponseSegment[], strategy: ToolParsingStrategy, useXml: boolean) {
+  constructor(segments: AIResponseSegment[], strategy: ToolParsingStrategy, useXml: boolean, parseToolCalls: boolean) {
     this.segments = segments;
     this.strategy = strategy;
     this.useXml = useXml;
+    this.parseToolCalls = parseToolCalls;
   }
 
   set currentState(state: State) {
@@ -137,42 +139,48 @@ export class ParserContext {
   }
 
   finalizeJsonSegment(invocations: ToolInvocation[]): void {
-      const parsingSegment = this.segments.find(
+      const parsingSegmentIndex = this.segments.findIndex(
         s => s.type === 'tool_call' && s.status === 'parsing'
-      ) as ToolCallSegment | undefined;
+      );
 
-      if (!parsingSegment) {
+      if (parsingSegmentIndex === -1) {
           console.warn("Could not find parsing segment to finalize.");
           return;
       }
-      
-      if (invocations.length > 0) {
-          const firstInvocation = invocations[0];
-          parsingSegment.toolName = firstInvocation.name;
-          parsingSegment.arguments = firstInvocation.arguments;
-          parsingSegment.invocationId = generateInvocationId(firstInvocation.name, firstInvocation.arguments);
-          parsingSegment.status = 'parsed';
 
-          for (let i = 1; i < invocations.length; i++) {
-              const subsequentInvocation = invocations[i];
+      const parsingSegment = this.segments[parsingSegmentIndex] as ToolCallSegment;
+      this.segments.splice(parsingSegmentIndex, 1);
+
+      if (invocations.length > 0) {
+          for (let i = 0; i < invocations.length; i++) {
+              const invocation = invocations[i];
               const toolCallSegment: ToolCallSegment = {
                   type: 'tool_call',
-                  invocationId: generateInvocationId(subsequentInvocation.name, subsequentInvocation.arguments),
-                  toolName: subsequentInvocation.name,
-                  arguments: subsequentInvocation.arguments,
+                  invocationId: generateInvocationId(invocation.name, invocation.arguments),
+                  toolName: invocation.name,
+                  arguments: invocation.arguments,
                   status: 'parsed',
                   logs: [],
                   result: null,
                   error: null,
               };
-              this.segments.push(toolCallSegment);
+              this.segments.splice(parsingSegmentIndex + i, 0, toolCallSegment);
           }
       } else {
-          const parsingSegmentIndex = this.segments.indexOf(parsingSegment);
-          if (parsingSegmentIndex > -1) {
-              this.segments.splice(parsingSegmentIndex, 1);
+          const rawContent = parsingSegment.rawJsonContent || '';
+          if (rawContent) {
+              console.warn("Could not parse JSON tool call from stream. Reverting to text.", rawContent);
+              
+              // To correctly merge with a preceding text segment, we need to find the correct insertion point.
+              // Since the 'parsing' segment was removed, we check the segment that is now at `parsingSegmentIndex - 1`.
+              const prevSegment = parsingSegmentIndex > 0 ? this.segments[parsingSegmentIndex - 1] : null;
+              if (prevSegment && prevSegment.type === 'text') {
+                  prevSegment.content += rawContent;
+              } else {
+                  const newTextSegment: AIResponseTextSegment = { type: 'text', content: rawContent };
+                  this.segments.splice(parsingSegmentIndex, 0, newTextSegment);
+              }
           }
-          console.warn("Could not parse JSON tool call from stream.", parsingSegment.rawJsonContent);
       }
       
       this.currentSegment = null;

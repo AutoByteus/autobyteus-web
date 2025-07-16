@@ -1,23 +1,23 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { XmlTagParsingState } from '../XmlTagParsingState';
+import { FileOpeningTagParsingState } from '../FileOpeningTagParsingState';
 import { TextState } from '../TextState';
 import { FileContentReadingState } from '../FileContentReadingState';
 import { ParserContext } from '../ParserContext';
 import { ParserStateType } from '../State';
 import type { AIResponseSegment } from '../../types';
-import { DefaultJsonStreamingStrategy } from '../../streaming_strategies/default_json_strategy';
+import { DefaultJsonToolParsingStrategy } from '../../tool_parsing_strategies/defaultJsonToolParsingStrategy';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateInvocationId: () => 'mock_id'
 }));
 
-describe('XmlTagParsingState', () => {
+describe('FileOpeningTagParsingState', () => {
   let segments: AIResponseSegment[];
   let context: ParserContext;
 
   beforeEach(() => {
     segments = [];
-    context = new ParserContext(segments, new DefaultJsonStreamingStrategy(), false);
+    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false);
   });
   
   it('should parse an opening <file...> tag and transition to FileContentReadingState', () => {
@@ -30,10 +30,10 @@ describe('XmlTagParsingState', () => {
 
     // Let the machine continue from its current state
     expect(context.currentState.stateType).toBe(ParserStateType.XML_TAG_INITIALIZATION_STATE);
-    context.currentState.run(); // XmlTagInitializationState finds '<file', transitions to XmlTagParsingState
+    context.currentState.run(); // XmlTagInitializationState finds '<file', transitions to FileOpeningTagParsingState
     
-    expect(context.currentState.stateType).toBe(ParserStateType.XML_TAG_PARSING_STATE);
-    context.currentState.run(); // XmlTagParsingState finds '>', transitions to FileContentReadingState
+    expect(context.currentState.stateType).toBe(ParserStateType.FILE_OPENING_TAG_PARSING_STATE);
+    context.currentState.run(); // FileOpeningTagParsingState finds '>', transitions to FileContentReadingState
     
     expect(segments.length).toBe(1);
     expect(segments[0].type).toBe('file');
@@ -51,10 +51,10 @@ describe('XmlTagParsingState', () => {
 
     // Let the machine continue
     expect(context.currentState.stateType).toBe(ParserStateType.XML_TAG_INITIALIZATION_STATE);
-    context.currentState.run(); // XmlTagInitializationState finds '<file', transitions to XmlTagParsingState
+    context.currentState.run(); // XmlTagInitializationState finds '<file', transitions to FileOpeningTagParsingState
 
-    expect(context.currentState.stateType).toBe(ParserStateType.XML_TAG_PARSING_STATE);
-    context.currentState.run(); // XmlTagParsingState sees '>', finds no path, transitions to TextState
+    expect(context.currentState.stateType).toBe(ParserStateType.FILE_OPENING_TAG_PARSING_STATE);
+    context.currentState.run(); // FileOpeningTagParsingState sees '>', finds no path, transitions to TextState
 
     expect(segments[0]).toEqual({ type: 'text', content: '<file>' });
     expect(context.currentState.stateType).toBe(ParserStateType.TEXT_STATE);

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { OpenAiStreamingStrategy } from '../openai_strategy';
+import { OpenAiToolParsingStrategy } from '../openAiToolParsingStrategy';
 import { ParserContext } from '../../stateMachine/ParserContext';
 import { LLMProvider } from '~/types/llm';
 import type { AIResponseSegment, ToolCallSegment } from '../../types';
@@ -11,14 +11,14 @@ vi.mock('~/utils/toolUtils', () => ({
   }
 }));
 
-describe('OpenAiStreamingStrategy', () => {
+describe('OpenAiToolParsingStrategy', () => {
     let context: ParserContext;
     let segments: AIResponseSegment[];
-    let strategy: OpenAiStreamingStrategy;
+    let strategy: OpenAiToolParsingStrategy;
 
     beforeEach(() => {
         segments = [];
-        strategy = new OpenAiStreamingStrategy();
+        strategy = new OpenAiToolParsingStrategy();
         context = new ParserContext(segments, strategy, false);
     });
 

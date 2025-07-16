@@ -17,6 +17,7 @@ function findOrCreateAIMessage(conversation: Conversation): AIMessage {
     const llmProviderStore = useLLMProviderConfigStore();
     const provider = llmProviderStore.getProviderForModel(conversation.llmModelName || '');
     const useXml = conversation.useXmlToolFormat ?? false;
+    const parseToolCalls = conversation.parseToolCalls ?? true; // ADDED: Get setting from conversation
     const newAiMessage: AIMessage = {
       type: 'ai',
       text: '',
@@ -24,9 +25,10 @@ function findOrCreateAIMessage(conversation: Conversation): AIMessage {
       chunks: [],
       isComplete: false,
       segments: [],
-      parserInstance: new IncrementalAIResponseParser([], provider ?? undefined, useXml),
+      // Pass the new flag to the parser
+      parserInstance: new IncrementalAIResponseParser([], provider ?? undefined, useXml, parseToolCalls),
     };
-    newAiMessage.parserInstance = new IncrementalAIResponseParser(newAiMessage.segments, provider ?? undefined, useXml);
+    newAiMessage.parserInstance = new IncrementalAIResponseParser(newAiMessage.segments, provider ?? undefined, useXml, parseToolCalls);
     conversation.messages.push(newAiMessage);
     lastMessage = newAiMessage;
   }
@@ -71,6 +73,9 @@ export function handleAssistantChunk(eventData: GraphQLAssistantChunkData, conve
   // 3. Handle finalization if the chunk is marked as complete.
   if (eventData.isComplete) {
     aiMessage.isComplete = true;
+    
+    // Finalize the parser to handle any incomplete segments at the end of the stream.
+    aiMessage.parserInstance.finalize();
 
     // A completing chunk might also have the final token usage.
     if (eventData.usage) {
@@ -99,6 +104,12 @@ export function handleAssistantCompleteResponse(eventData: GraphQLAssistantCompl
   if (!lastMessage || lastMessage.type !== 'ai') {
     console.warn('Received AssistantCompleteResponseData without a preceding AI message. Ignoring.');
     return;
+  }
+
+  // Finalize the parser if it hasn't been done already. This can happen if the
+  // 'complete' event arrives separately from the last content chunk.
+  if (!lastMessage.isComplete) {
+    lastMessage.parserInstance.finalize();
   }
 
   // Mark the message as complete.

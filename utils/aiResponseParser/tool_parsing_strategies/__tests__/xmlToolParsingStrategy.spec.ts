@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { XmlStreamingStrategy } from '../xml_strategy';
+import { XmlToolParsingStrategy } from '../xmlToolParsingStrategy';
 import { ParserContext } from '../../stateMachine/ParserContext';
 import { LLMProvider } from '~/types/llm';
 import type { AIResponseSegment, ToolCallSegment } from '../../types';
@@ -13,14 +13,14 @@ vi.mock('~/utils/toolUtils', () => ({
   }
 }));
 
-describe('XmlStreamingStrategy', () => {
+describe('XmlToolParsingStrategy', () => {
     let context: ParserContext;
     let segments: AIResponseSegment[];
-    let strategy: XmlStreamingStrategy;
+    let strategy: XmlToolParsingStrategy;
 
     beforeEach(() => {
         segments = [];
-        strategy = new XmlStreamingStrategy();
+        strategy = new XmlToolParsingStrategy();
         context = new ParserContext(segments, strategy, true);
     });
 

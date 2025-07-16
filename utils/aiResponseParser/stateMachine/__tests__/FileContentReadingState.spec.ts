@@ -3,7 +3,7 @@ import { FileContentReadingState } from '../FileContentReadingState';
 import { ParserContext } from '../ParserContext';
 import { FileClosingTagScanState } from '../FileClosingTagScanState';
 import type { AIResponseSegment } from '../../types';
-import { DefaultJsonStreamingStrategy } from '../../streaming_strategies/default_json_strategy';
+import { DefaultJsonToolParsingStrategy } from '../../tool_parsing_strategies/defaultJsonToolParsingStrategy';
 
 describe('FileContentReadingState', () => {
   let segments: AIResponseSegment[];
@@ -11,7 +11,7 @@ describe('FileContentReadingState', () => {
 
   beforeEach(() => {
     segments = [];
-    context = new ParserContext(segments, new DefaultJsonStreamingStrategy(), false);
+    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false);
     context.startFileSegment('src/app.js');
     context.currentState = new FileContentReadingState(context);
   });

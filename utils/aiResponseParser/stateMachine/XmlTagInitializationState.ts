@@ -1,9 +1,9 @@
 import { BaseState, ParserStateType } from './State';
-import { XmlTagParsingState } from './XmlTagParsingState';
+import { FileOpeningTagParsingState } from './FileOpeningTagParsingState';
 import { ToolParsingState } from './ToolParsingState';
 import { TextState } from './TextState';
 import { ParserContext } from './ParserContext';
-import { XmlStreamingStrategy } from '../streaming_strategies/xml_strategy';
+import { XmlToolParsingStrategy } from '../tool_parsing_strategies/xmlToolParsingStrategy';
 
 export class XmlTagInitializationState extends BaseState {
   stateType = ParserStateType.XML_TAG_INITIALIZATION_STATE;
@@ -27,18 +27,26 @@ export class XmlTagInitializationState extends BaseState {
       const { tagBuffer, strategy } = this.context;
       
       const couldBeFile = this.possibleFile.startsWith(tagBuffer);
-      const couldBeTool = (strategy instanceof XmlStreamingStrategy) && this.possibleTool.startsWith(tagBuffer);
+      const couldBeTool = (strategy instanceof XmlToolParsingStrategy) && this.possibleTool.startsWith(tagBuffer);
 
       if (tagBuffer === '<file') {
-        this.context.transitionTo(new XmlTagParsingState(this.context));
+        this.context.transitionTo(new FileOpeningTagParsingState(this.context));
         return;
       }
       
-      if (tagBuffer === '<tool' && strategy instanceof XmlStreamingStrategy) {
-        // We have a match. Rewind the buffer so the ToolParsingState can
-        // consume the full signature from the start.
-        this.context.pos -= tagBuffer.length;
-        this.context.transitionTo(new ToolParsingState(this.context, tagBuffer));
+      if (tagBuffer === '<tool' && strategy instanceof XmlToolParsingStrategy) {
+        // CORRECTED: Check the parseToolCalls flag HERE.
+        if (this.context.parseToolCalls) {
+          // We have a match. Rewind the buffer so the ToolParsingState can
+          // consume the full signature from the start.
+          this.context.pos -= tagBuffer.length;
+          this.context.transitionTo(new ToolParsingState(this.context, tagBuffer));
+        } else {
+          // Parsing is disabled, so treat this as text and revert.
+          this.context.appendTextSegment(tagBuffer);
+          this.context.tagBuffer = '';
+          this.context.transitionTo(new TextState(this.context));
+        }
         return;
       }
 
@@ -50,5 +58,13 @@ export class XmlTagInitializationState extends BaseState {
         return;
       }
     }
+  }
+
+  finalize(): void {
+      if (this.context.tagBuffer) {
+          this.context.appendTextSegment(this.context.tagBuffer);
+          this.context.tagBuffer = '';
+      }
+      this.context.transitionTo(new TextState(this.context));
   }
 }

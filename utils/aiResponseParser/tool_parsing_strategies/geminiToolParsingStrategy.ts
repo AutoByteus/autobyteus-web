@@ -3,12 +3,11 @@ import type { ParserContext } from '../stateMachine/ParserContext';
 import type { ToolInvocation } from '~/types/tool-invocation';
 
 /**
- * Corresponds to the backend `DefaultJsonToolUsageParser`.
- * Handles a specific JSON format: an object with a 'tool' key,
- * which contains 'function' and 'parameters'.
+ * Corresponds to the simplified backend `GeminiJsonToolUsageParser`.
+ * Handles a single JSON object with "name" and "args".
  */
-export class DefaultJsonStreamingStrategy implements ToolParsingStrategy {
-    readonly signature = '{"tool":';
+export class GeminiToolParsingStrategy implements ToolParsingStrategy {
+    readonly signature = '{"name":';
     private braceCount = 0;
     private inString = false;
     private isEscaped = false;
@@ -17,13 +16,37 @@ export class DefaultJsonStreamingStrategy implements ToolParsingStrategy {
 
     checkSignature(buffer: string): SignatureMatch {
         const noSpaceBuffer = buffer.replace(/\s/g, '');
-        if (this.signature.startsWith(noSpaceBuffer)) {
-            return noSpaceBuffer.length >= this.signature.length ? 'match' : 'partial';
+        
+        // A valid tool call MUST be a JSON object starting with '{'.
+        if (!noSpaceBuffer.startsWith('{')) {
+            return 'no_match';
         }
+
+        // To be a potential match, the buffer must be a prefix of our signature,
+        // OR our signature must be a prefix of the buffer.
+        // If neither is true, the buffer has already deviated.
+        if (this.signature.startsWith(noSpaceBuffer)) {
+            // The buffer is a valid prefix of the signature.
+            return noSpaceBuffer.length === this.signature.length ? 'match' : 'partial';
+        }
+
+        if (noSpaceBuffer.startsWith(this.signature)) {
+            // The signature is a prefix of the buffer, which means it's a match.
+            return 'match';
+        }
+        
+        // Example: buffer is `{"args":...}`. It starts with `{` but `this.signature`
+        // does not start with it, and it does not start with `this.signature`.
+        // This means it has deviated from the expected format.
         return 'no_match';
     }
 
     startSegment(context: ParserContext, signatureBuffer: string): void {
+        // Reset state for a new parsing session
+        this.isDone = false;
+        this.inString = false;
+        this.isEscaped = false;
+
         context.startJsonToolCallSegment();
         this.rawJsonBuffer = signatureBuffer;
         context.appendToCurrentToolRawJson(signatureBuffer);
@@ -47,10 +70,11 @@ export class DefaultJsonStreamingStrategy implements ToolParsingStrategy {
                 this.inString = true;
                 this.isEscaped = false;
             }
-            else if (char === '{' || char === '[') this.braceCount++;
-            else if (char === '}' || char === ']') this.braceCount--;
+            else if (char === '{') this.braceCount++;
+            else if (char === '}') this.braceCount--;
         }
 
+        // The JSON is complete when we've returned to a zero brace count.
         if (!this.inString && this.braceCount === 0 && this.rawJsonBuffer.trim().length > 1) {
             const trimmed = this.rawJsonBuffer.trim();
              if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
@@ -73,26 +97,24 @@ export class DefaultJsonStreamingStrategy implements ToolParsingStrategy {
         try {
             data = JSON.parse(this.rawJsonBuffer);
         } catch (e) {
-            console.debug(`DefaultJsonStreamingStrategy: Could not parse final buffer as JSON.`, e);
+            console.debug(`GeminiToolParsingStrategy: Could not parse final buffer as JSON.`, e);
             return [];
         }
 
-        const toolData = data?.tool;
-        if (typeof toolData !== 'object' || toolData === null) {
+        if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+            return [];
+        }
+            
+        const toolName = data.name;
+        if (typeof toolName !== 'string' || !toolName) {
             return [];
         }
 
-        const toolName = toolData.function;
-        if (typeof toolName !== 'string') {
+        const args = data.args;
+        if (typeof args !== 'object' || args === null || Array.isArray(args)) {
             return [];
         }
         
-        const args = toolData.parameters;
-        if (typeof args !== 'object' || args === null) {
-             console.warn(`DefaultJsonStreamingStrategy: Could not find valid 'parameters' object for tool '${toolName}'.`);
-            return [];
-        }
-
         return [{ name: toolName, arguments: args }];
     }
 }

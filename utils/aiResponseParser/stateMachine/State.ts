@@ -4,7 +4,7 @@ export enum ParserStateType {
   TEXT_STATE = 'TEXT_STATE',
   XML_TAG_INITIALIZATION_STATE = 'XML_TAG_INITIALIZATION_STATE',
   JSON_INITIALIZATION_STATE = 'JSON_INITIALIZATION_STATE',
-  XML_TAG_PARSING_STATE = 'XML_TAG_PARSING_STATE',
+  FILE_OPENING_TAG_PARSING_STATE = 'FILE_OPENING_TAG_PARSING_STATE',
   TOOL_PARSING_STATE = 'TOOL_PARSING_STATE', // Generic tool parsing state
   FILE_CONTENT_READING_STATE = 'FILE_CONTENT_READING_STATE',
   FILE_CLOSING_TAG_SCAN_STATE = 'FILE_CLOSING_TAG_SCAN_STATE',
@@ -13,6 +13,7 @@ export enum ParserStateType {
 export interface State {
   readonly stateType: ParserStateType;
   run(): void;
+  finalize(): void;
 }
 
 export abstract class BaseState implements State {
@@ -24,4 +25,12 @@ export abstract class BaseState implements State {
   }
 
   abstract run(): void;
+
+  /**
+   * Finalizes the state. Default implementation does nothing.
+   * States that buffer data should override this to process any remaining data.
+   */
+  finalize(): void {
+    // Default implementation does nothing.
+  }
 }

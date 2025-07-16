@@ -1,5 +1,6 @@
 import type { ToolParsingStrategy, SignatureMatch } from './base';
 import type { ParserContext } from '../stateMachine/ParserContext';
+import { generateInvocationId } from '~/utils/toolUtils';
 
 const entityMap: { [key: string]: string } = {
   '&amp;': '&',
@@ -16,15 +17,18 @@ function decodeEntity(entity: string): string {
 
 const knownEntityNames = ['amp', 'lt', 'gt', 'quot', 'apos', '#'];
 
-export class XmlStreamingStrategy implements ToolParsingStrategy {
+export class XmlToolParsingStrategy implements ToolParsingStrategy {
     readonly signature = '<tool';
     private toolName: string = '';
-    private buffer: string = '';
     
-    private internalState: 'in_tool_tag' | 'in_arguments' | 'in_arg_value' | 'scanning_arg_close_tag' | 'scanning_arg_entity' = 'in_tool_tag';
+    private internalState: 'parsing_opening_tag' | 'in_arguments' | 'in_arg_value' | 'scanning_arg_close_tag' | 'scanning_arg_entity' | 'invalid' = 'parsing_opening_tag';
     private currentArgName: string = '';
     private isDone: boolean = false;
     
+    // Buffer for the entire tool call attempt
+    private rawBuffer: string = ''; 
+    private openingTagBuffer: string = '';
+
     private readonly argClosingTag = '</arg>';
     private potentialCloseTagBuffer = '';
     private entityBuffer: string = '';
@@ -37,11 +41,36 @@ export class XmlStreamingStrategy implements ToolParsingStrategy {
     }
 
     startSegment(context: ParserContext, signatureBuffer: string): void {
-        context.startXmlToolCallSegment(''); // toolName is not known yet
-        this.buffer = signatureBuffer;
+        // Reset all state for a new tool call.
+        this.toolName = '';
+        this.internalState = 'parsing_opening_tag';
+        this.currentArgName = '';
+        this.isDone = false;
+        this.potentialCloseTagBuffer = '';
+        this.entityBuffer = '';
+        
+        // Initialize buffers for the current parsing attempt.
+        this.rawBuffer = signatureBuffer; 
+        this.openingTagBuffer = signatureBuffer;
+        
+        context.startXmlToolCallSegment(''); // Create a temporary segment
     }
 
     processChar(char: string, context: ParserContext): void {
+        this.rawBuffer += char;
+
+        if (this.internalState === 'invalid') {
+            return;
+        }
+
+        if (this.internalState === 'parsing_opening_tag') {
+            this.openingTagBuffer += char;
+            if (char === '>') {
+                this.validateOpeningTag(context);
+            }
+            return;
+        }
+
         // State for reading argument content
         if (this.internalState === 'in_arg_value') {
             if (char === '<') {
@@ -96,48 +125,62 @@ export class XmlStreamingStrategy implements ToolParsingStrategy {
             }
             return;
         }
-
+        
         // This part handles the main XML structure tags
-        if (this.buffer.startsWith('<')) {
-            this.buffer += char;
-            if (char === '>') {
-                this.handleTag(context);
-                this.buffer = ''; 
+        const lowerCaseRawBuffer = this.rawBuffer.toLowerCase();
+
+        if (this.internalState === 'in_arguments') {
+            // FIX: The regex now requires a closing '>' on the <arg> tag.
+            const argMatch = this.rawBuffer.match(/<arg\s+name="([^"]+)">/);
+            if (argMatch) {
+                this.currentArgName = argMatch[1];
+                context.appendToCurrentToolArgument(this.currentArgName, '');
+                this.internalState = 'in_arg_value';
+                this.rawBuffer = ''; // Clear buffer after processing tag
+            } else if (lowerCaseRawBuffer.endsWith('</tool>')) {
+                this.isDone = true;
+            } else if (char === '<') {
+                this.rawBuffer = '<'; // Start buffering for next tag
             }
-        } else if (char === '<') {
-            this.buffer = '<';
         }
     }
 
-    private handleTag(context: ParserContext): void {
-        const tag = this.buffer;
-        const lowerCaseTag = tag.toLowerCase();
-
-        if (this.internalState === 'in_tool_tag') {
-            const nameMatch = tag.match(/name="([^"]+)"/);
-            if (nameMatch && context.currentSegment?.type === 'tool_call') {
-                this.toolName = nameMatch[1];
+    private validateOpeningTag(context: ParserContext): void {
+        const nameMatch = this.openingTagBuffer.match(/name\s*=\s*["']([^"']+)["']/);
+        if (nameMatch && nameMatch[1]) {
+            this.toolName = nameMatch[1];
+            if (context.currentSegment?.type === 'tool_call') {
                 context.currentSegment.toolName = this.toolName;
             }
-            if (tag.endsWith('>')) {
-               this.internalState = 'in_arguments';
-            }
-        } else if (this.internalState === 'in_arguments') {
-            if (lowerCaseTag.startsWith('<arg')) {
-                const nameMatch = tag.match(/name="([^"]+)"/);
-                if (nameMatch) {
-                    this.currentArgName = nameMatch[1];
-                    context.appendToCurrentToolArgument(this.currentArgName, '');
-                    this.internalState = 'in_arg_value';
-                }
-            } else if (lowerCaseTag === '</tool>') {
-                this.isDone = true;
-            }
+            this.internalState = 'in_arguments';
+            this.rawBuffer = ''; // Reset buffer to look for next tags
+        } else {
+            // Invalid opening tag
+            this.internalState = 'invalid';
+            this.isDone = true;
         }
     }
     
     finalize(context: ParserContext): void {
-        context.endCurrentToolSegment();
+        const parsingSegment = context.segments.find(
+            s => s.type === 'tool_call' && s.status === 'parsing'
+        );
+
+        if (!parsingSegment) return;
+
+        const parsingSegmentIndex = context.segments.indexOf(parsingSegment);
+        context.segments.splice(parsingSegmentIndex, 1);
+
+        if (this.internalState !== 'invalid' && this.isDone) {
+             // Successfully parsed a valid tool call.
+            parsingSegment.toolName = this.toolName;
+            parsingSegment.status = 'parsed';
+            parsingSegment.invocationId = generateInvocationId(this.toolName, parsingSegment.arguments);
+            context.segments.splice(parsingSegmentIndex, 0, parsingSegment);
+        } else {
+            // Incomplete or invalid tool call, revert to text.
+            context.appendTextSegment(this.rawBuffer);
+        }
     }
 
     isComplete(): boolean {

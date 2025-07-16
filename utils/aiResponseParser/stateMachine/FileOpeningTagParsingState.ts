@@ -3,8 +3,8 @@ import { TextState } from './TextState';
 import { FileContentReadingState } from './FileContentReadingState';
 import { ParserContext } from './ParserContext';
 
-export class XmlTagParsingState extends BaseState {
-  stateType = ParserStateType.XML_TAG_PARSING_STATE;
+export class FileOpeningTagParsingState extends BaseState {
+  stateType = ParserStateType.FILE_OPENING_TAG_PARSING_STATE;
 
   constructor(context: ParserContext) {
     super(context);
@@ -36,6 +36,14 @@ export class XmlTagParsingState extends BaseState {
         }
       }
     }
+  }
+
+  finalize(): void {
+      if (this.context.tagBuffer) {
+          this.context.appendTextSegment(this.context.tagBuffer);
+          this.context.tagBuffer = '';
+      }
+      this.context.transitionTo(new TextState(this.context));
   }
 
   private handleStandardTag(buffer: string, nextState: BaseState, onFound: (tag: string) => boolean): boolean {

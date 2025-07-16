@@ -24,6 +24,7 @@
           v-model="selectedModel"
           v-model:autoExecuteTools="autoExecuteTools"
           v-model:useXmlToolFormat="useXmlToolFormat"
+          v-model:parseToolCalls="parseToolCalls"
           :options="groupedModelOptions"
           :loading="isLoadingModels"
           :disabled="isLoadingModels"
@@ -108,6 +109,11 @@ const autoExecuteTools = computed({
 const useXmlToolFormat = computed({
   get: () => conversationStore.currentUseXmlToolFormat,
   set: (value: boolean) => conversationStore.updateUseXmlToolFormat(value)
+});
+
+const parseToolCalls = computed({
+  get: () => conversationStore.currentParseToolCalls,
+  set: (value: boolean) => conversationStore.updateParseToolCalls(value)
 });
 
 const groupedModelOptions = computed(() => {

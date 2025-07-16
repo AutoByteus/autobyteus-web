@@ -17,12 +17,6 @@ export class JsonInitializationState extends BaseState {
   }
 
   run(): void {
-    // Master Rule Check: If XML is being used, JSON tools are not possible.
-    if (this.context.useXml) {
-      this.context.appendTextSegment(this.signatureBuffer);
-      this.context.transitionTo(new TextState(this.context));
-      return;
-    }
 
     while (this.context.hasMoreChars()) {
       const char = this.context.peekChar()!;
@@ -32,11 +26,18 @@ export class JsonInitializationState extends BaseState {
       const match = this.context.strategy.checkSignature(this.signatureBuffer);
 
       if (match === 'match') {
-        // We found a match. The signature buffer now contains the full signature.
-        // We must rewind the position so the ToolParsingState can start fresh
-        // from the beginning of the signature.
-        this.context.pos -= this.signatureBuffer.length;
-        this.context.transitionTo(new ToolParsingState(this.context, this.signatureBuffer));
+        // CORRECTED: Check the parseToolCalls flag HERE.
+        if (this.context.parseToolCalls) {
+          // We found a match. The signature buffer now contains the full signature.
+          // We must rewind the position so the ToolParsingState can start fresh
+          // from the beginning of the signature.
+          this.context.pos -= this.signatureBuffer.length;
+          this.context.transitionTo(new ToolParsingState(this.context, this.signatureBuffer));
+        } else {
+          // Parsing is disabled, so treat this as text and revert.
+          this.context.appendTextSegment(this.signatureBuffer);
+          this.context.transitionTo(new TextState(this.context));
+        }
         return;
       }
       
@@ -49,5 +50,13 @@ export class JsonInitializationState extends BaseState {
 
       // if 'partial', we continue the loop to get more characters.
     }
+  }
+
+  override finalize(): void {
+      if (this.signatureBuffer) {
+          this.context.appendTextSegment(this.signatureBuffer);
+          this.signatureBuffer = '';
+      }
+      this.context.transitionTo(new TextState(this.context));
   }
 }

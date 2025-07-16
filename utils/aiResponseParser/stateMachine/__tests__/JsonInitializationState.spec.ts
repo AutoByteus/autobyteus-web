@@ -5,7 +5,7 @@ import { ToolParsingState } from '../ToolParsingState';
 import { ParserContext } from '../ParserContext';
 import { ParserStateType } from '../State';
 import type { AIResponseSegment } from '../../types';
-import { OpenAiStreamingStrategy } from '../../streaming_strategies/openai_strategy';
+import { OpenAiToolParsingStrategy } from '../../tool_parsing_strategies/openAiToolParsingStrategy';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateInvocationId: () => 'mock_id'
@@ -14,16 +14,16 @@ vi.mock('~/utils/toolUtils', () => ({
 describe('JsonInitializationState', () => {
   let segments: AIResponseSegment[];
   let context: ParserContext;
-  let strategy: OpenAiStreamingStrategy;
+  let strategy: OpenAiToolParsingStrategy;
 
   beforeEach(() => {
     segments = [];
-    strategy = new OpenAiStreamingStrategy();
+    strategy = new OpenAiToolParsingStrategy();
     // In tests, we'll explicitly set useXml as needed.
   });
 
-  it('should transition to ToolParsingState on a matching signature', () => {
-    context = new ParserContext(segments, strategy, false);
+  it('should transition to ToolParsingState on a matching signature when parsing is enabled', () => {
+    context = new ParserContext(segments, strategy, false, true); // parsing enabled
     context.buffer = '{"tool_calls": [{}]}';
     context.pos = 0;
     context.currentState = new JsonInitializationState(context);
@@ -32,7 +32,7 @@ describe('JsonInitializationState', () => {
   });
 
   it('should transition back to TextState if signature does not match', () => {
-    context = new ParserContext(segments, strategy, false);
+    context = new ParserContext(segments, strategy, false, true);
     context.buffer = '{"not_a_tool": "value"}';
     context.pos = 0;
     context.currentState = new JsonInitializationState(context);
@@ -44,8 +44,8 @@ describe('JsonInitializationState', () => {
     expect(segments).toEqual([{ type: 'text', content: '{"not_a_tool": "value"}' }]);
   });
 
-  it('should revert to TextState if useXml is true', () => {
-    context = new ParserContext(segments, strategy, true);
+  it('should revert to TextState if a tool signature matches but parsing is disabled', () => {
+    context = new ParserContext(segments, strategy, false, false); // parsing disabled
     context.buffer = '{"tool_calls": [{}]}'; // a valid JSON tool signature
     context.pos = 0;
     context.currentState = new JsonInitializationState(context);
@@ -57,7 +57,7 @@ describe('JsonInitializationState', () => {
   });
 
   it('should wait for more characters for a partial match', () => {
-    context = new ParserContext(segments, strategy, false);
+    context = new ParserContext(segments, strategy, false, true);
     context.buffer = '{"tool_c';
     context.pos = 0;
     context.currentState = new JsonInitializationState(context);

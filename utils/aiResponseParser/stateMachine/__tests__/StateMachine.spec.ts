@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { StateMachine } from '../StateMachine';
 import type { AIResponseSegment } from '../../types';
-import { XmlStreamingStrategy } from '../../streaming_strategies/xml_strategy';
-import { OpenAiStreamingStrategy } from '../../streaming_strategies/openai_strategy';
+import { XmlToolParsingStrategy } from '../../tool_parsing_strategies/xmlToolParsingStrategy';
+import { OpenAiToolParsingStrategy } from '../../tool_parsing_strategies/openAiToolParsingStrategy';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateInvocationId: (toolName: string, args: Record<string, any>): string => {
@@ -12,9 +12,9 @@ vi.mock('~/utils/toolUtils', () => ({
 }));
 
 describe('StateMachine with a pre-selected Strategy', () => {
-  it('should parse a mix of text and XML tags when given XmlStreamingStrategy', () => {
+  it('should parse a mix of text and XML tags when given XmlToolParsingStrategy', () => {
     const segments: AIResponseSegment[] = [];
-    const xmlStrategy = new XmlStreamingStrategy();
+    const xmlStrategy = new XmlToolParsingStrategy();
     const machine = new StateMachine(segments, xmlStrategy, true); // useXml = true
 
     machine.appendChunks([
@@ -35,9 +35,9 @@ describe('StateMachine with a pre-selected Strategy', () => {
     ]);
   });
 
-  it('should parse a mix of text and JSON when given OpenAiStreamingStrategy', () => {
+  it('should parse a mix of text and JSON when given OpenAiToolParsingStrategy', () => {
     const segments: AIResponseSegment[] = [];
-    const openAiStrategy = new OpenAiStreamingStrategy();
+    const openAiStrategy = new OpenAiToolParsingStrategy();
     const machine = new StateMachine(segments, openAiStrategy, false); // useXml = false
 
     machine.appendChunks(['Hello {"tool_calls":[{"function":{"name":"test","arguments":"{}"}}]} and done.']);
@@ -57,7 +57,7 @@ describe('StateMachine with a pre-selected Strategy', () => {
   it('should treat an unknown tag as text', () => {
     const segments: AIResponseSegment[] = [];
     // Give it a JSON strategy, so it won't recognize XML tags other than <tool>
-    const machine = new StateMachine(segments, new OpenAiStreamingStrategy(), false);
+    const machine = new StateMachine(segments, new OpenAiToolParsingStrategy(), false);
 
     machine.appendChunks(['Some <unknown>tag</unknown> text']);
     machine.run();

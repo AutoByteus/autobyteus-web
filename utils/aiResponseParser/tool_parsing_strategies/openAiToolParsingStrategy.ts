@@ -7,7 +7,7 @@ import { jsonrepair } from 'jsonrepair';
  * Corresponds to the backend `OpenAiJsonToolUsageParser`.
  * This is a flexible, catch-all parser for multiple JSON formats.
  */
-export class OpenAiStreamingStrategy implements ToolParsingStrategy {
+export class OpenAiToolParsingStrategy implements ToolParsingStrategy {
     readonly signature = '{'; // A nominal signature.
     private braceCount = 0;
     private inString = false;
@@ -42,6 +42,11 @@ export class OpenAiStreamingStrategy implements ToolParsingStrategy {
     }
 
     startSegment(context: ParserContext, signatureBuffer: string): void {
+        // Reset state for a new parsing session
+        this.isDone = false;
+        this.inString = false;
+        this.isEscaped = false;
+
         context.startJsonToolCallSegment();
         this.rawJsonBuffer = signatureBuffer;
         if (context.currentSegment?.type === 'tool_call') {
@@ -95,7 +100,7 @@ export class OpenAiStreamingStrategy implements ToolParsingStrategy {
             const repairedJson = jsonrepair(this.rawJsonBuffer);
             data = JSON.parse(repairedJson);
         } catch (e) {
-            console.debug(`OpenAI Strategy: Could not parse final buffer as JSON.`, this.rawJsonBuffer, e);
+            console.debug(`OpenAiToolParsingStrategy: Could not parse final buffer as JSON.`, this.rawJsonBuffer, e);
             return [];
         }
 
@@ -138,11 +143,15 @@ export class OpenAiStreamingStrategy implements ToolParsingStrategy {
                 try {
                     args = JSON.parse(argsRaw);
                 } catch {
-                    console.warn(`OpenAI Strategy: Failed to parse arguments string for tool '${toolName}'.`);
+                    console.warn(`OpenAiToolParsingStrategy: Failed to parse arguments string for tool '${toolName}'.`);
                     continue;
                 }
             } else if (typeof argsRaw === 'object' && argsRaw !== null) {
                 args = argsRaw;
+            } else if (argsRaw !== undefined && argsRaw !== null) {
+                // If argsRaw exists but is not a string or object (e.g., number, boolean), it's invalid.
+                console.warn(`OpenAiToolParsingStrategy: Invalid arguments type for tool '${toolName}'. Expected string or object, got ${typeof argsRaw}.`);
+                continue;
             }
 
             invocations.push({ name: toolName, arguments: args });

@@ -4,7 +4,7 @@ import { FileContentReadingState } from '../FileContentReadingState';
 import { TextState } from '../TextState';
 import { ParserContext } from '../ParserContext';
 import type { AIResponseSegment } from '../../types';
-import { DefaultJsonStreamingStrategy } from '../../streaming_strategies/default_json_strategy';
+import { DefaultJsonToolParsingStrategy } from '../../tool_parsing_strategies/defaultJsonToolParsingStrategy';
 
 describe('FileClosingTagScanState', () => {
   let segments: AIResponseSegment[];
@@ -12,7 +12,7 @@ describe('FileClosingTagScanState', () => {
 
   beforeEach(() => {
     segments = [];
-    context = new ParserContext(segments, new DefaultJsonStreamingStrategy(), false);
+    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false);
     context.startFileSegment('src/components/App.vue');
     context.currentState = new FileClosingTagScanState(context);
   });

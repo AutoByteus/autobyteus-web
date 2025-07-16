@@ -36,4 +36,14 @@ export class FileClosingTagScanState extends BaseState {
       }
     }
   }
+
+  override finalize(): void {
+      if (this.context.fileClosingBuffer) {
+          for (const c of this.context.fileClosingBuffer) {
+            this.context.appendToFileSegment(c);
+          }
+          this.context.fileClosingBuffer = '';
+      }
+      this.context.transitionTo(new FileContentReadingState(this.context));
+  }
 }

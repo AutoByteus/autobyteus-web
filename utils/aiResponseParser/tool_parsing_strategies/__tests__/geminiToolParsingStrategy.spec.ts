@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { GeminiStreamingStrategy } from '../gemini_strategy';
+import { GeminiToolParsingStrategy } from '../geminiToolParsingStrategy';
 import { ParserContext } from '../../stateMachine/ParserContext';
-import { LLMProvider } from '~/types/llm';
 import type { AIResponseSegment, ToolCallSegment } from '../../types';
 
 vi.mock('~/utils/toolUtils', () => ({
@@ -11,15 +10,15 @@ vi.mock('~/utils/toolUtils', () => ({
   }
 }));
 
-describe('GeminiStreamingStrategy (Simplified)', () => {
+describe('GeminiToolParsingStrategy (Simplified)', () => {
     let context: ParserContext;
     let segments: AIResponseSegment[];
-    let strategy: GeminiStreamingStrategy;
+    let strategy: GeminiToolParsingStrategy;
 
     beforeEach(() => {
         segments = [];
-        strategy = new GeminiStreamingStrategy();
-        context = new ParserContext(segments, strategy, false);
+        strategy = new GeminiToolParsingStrategy();
+        context = new ParserContext(segments, strategy, false, true);
     });
 
     // --- Signature Checks ---
@@ -99,27 +98,64 @@ describe('GeminiStreamingStrategy (Simplified)', () => {
     });
 
     // --- Edge Cases ---
-    it('should handle an empty args object', () => {
-        const signatureBuffer = '{"name":';
-        strategy.startSegment(context, signatureBuffer);
+    describe('Edge Cases', () => {
+        it('should handle an empty args object', () => {
+            const signatureBuffer = '{"name":';
+            strategy.startSegment(context, signatureBuffer);
 
-        const contentStream = `"tool1", "args":{}}`;
-        for (const char of contentStream) {
-            strategy.processChar(char, context);
-        }
-        strategy.finalize(context);
-        const segment1 = segments[0] as ToolCallSegment;
-        expect(segment1.toolName).toBe('tool1');
-        expect(segment1.arguments).toEqual({});
-        expect(segment1.status).toBe('parsed');
-    });
+            const contentStream = `"tool1", "args":{}}`;
+            for (const char of contentStream) {
+                strategy.processChar(char, context);
+            }
+            strategy.finalize(context);
+            const segment1 = segments[0] as ToolCallSegment;
+            expect(segment1.toolName).toBe('tool1');
+            expect(segment1.arguments).toEqual({});
+            expect(segment1.status).toBe('parsed');
+        });
 
-    it('should ignore a JSON array of tool calls', () => {
-        // This is a sanity check. The TextState and JsonInitializationState should prevent
-        // this strategy from even being entered for a `[` character. But if it somehow
-        // were, it should fail gracefully.
-        const stream = `[{"name": "tool1", "args":{}}]`;
-        const match = strategy.checkSignature(stream);
-        expect(match).toBe('no_match');
+        it('should return no invocations for an incomplete stream', () => {
+            const signatureBuffer = '{"name": "tool1", "args": {';
+            strategy.startSegment(context, signatureBuffer);
+            strategy.finalize(context);
+            expect(segments.length).toBe(0);
+        });
+
+        it('should return no invocations if "name" is missing', () => {
+            const stream = '{"args": {}}';
+            strategy.startSegment(context, stream);
+            strategy.finalize(context);
+            expect(segments.length).toBe(0);
+        });
+
+        it('should return no invocations if "name" is not a string', () => {
+            const stream = '{"name": 123, "args": {}}';
+            strategy.startSegment(context, stream);
+            strategy.finalize(context);
+            expect(segments.length).toBe(0);
+        });
+
+        it('should return no invocations if "args" is not an object', () => {
+            const stream = '{"name": "test", "args": "invalid"}';
+            strategy.startSegment(context, stream);
+            strategy.finalize(context);
+            expect(segments.length).toBe(0);
+        });
+
+        it('should return no invocations if "args" is an array', () => {
+            const stream = '{"name": "test", "args": []}';
+            strategy.startSegment(context, stream);
+            strategy.finalize(context);
+            expect(segments.length).toBe(0);
+        });
+
+        it('should ignore a JSON array of tool calls', () => {
+            // This is a sanity check. The TextState and JsonInitializationState should prevent
+            // this strategy from even being entered for a `[` character. But if it somehow
+            // were, it should fail gracefully.
+            const stream = `[{"name": "tool1", "args":{}}]`;
+            const match = strategy.checkSignature(stream);
+            expect(match).toBe('no_match');
+        });
     });
 });

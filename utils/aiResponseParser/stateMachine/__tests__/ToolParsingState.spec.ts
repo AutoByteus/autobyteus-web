@@ -3,7 +3,7 @@ import { ToolParsingState } from '../ToolParsingState';
 import { TextState } from '../TextState';
 import { ParserContext } from '../ParserContext';
 import type { AIResponseSegment } from '../../types';
-import type { ToolParsingStrategy, SignatureMatch } from '../../streaming_strategies/base';
+import type { ToolParsingStrategy, SignatureMatch } from '../../tool_parsing_strategies/base';
 
 // Mock the tool utils to prevent the sha256 error and make tests predictable.
 vi.mock('~/utils/toolUtils', () => ({

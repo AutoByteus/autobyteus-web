@@ -1,7 +1,7 @@
 import { BaseState, ParserStateType } from './State';
 import { TextState } from './TextState';
 import type { ParserContext } from './ParserContext';
-import type { ToolParsingStrategy } from '../streaming_strategies/base';
+import type { ToolParsingStrategy } from '../tool_parsing_strategies/base';
 
 export class ToolParsingState extends BaseState {
     stateType = ParserStateType.TOOL_PARSING_STATE;
@@ -38,5 +38,13 @@ export class ToolParsingState extends BaseState {
                 return;
             }
         }
+    }
+
+    finalize(): void {
+        // If the stream ends while we are in this state, we must finalize the strategy.
+        // The strategy's finalize method is responsible for deciding whether to complete
+        // the tool call or revert it to text.
+        this.strategy.finalize(this.context);
+        this.context.transitionTo(new TextState(this.context));
     }
 }

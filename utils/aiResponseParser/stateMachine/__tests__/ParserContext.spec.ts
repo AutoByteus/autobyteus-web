@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ParserContext } from '../ParserContext';
 import type { AIResponseSegment, ToolCallSegment } from '../../types';
-import { DefaultJsonStreamingStrategy } from '../../streaming_strategies/default_json_strategy';
+import { DefaultJsonToolParsingStrategy } from '../../tool_parsing_strategies/defaultJsonToolParsingStrategy';
 import type { ToolInvocation } from '~/types/tool-invocation';
 
 // Mock tool utils for predictable invocation IDs in this specific test file
@@ -15,7 +15,7 @@ vi.mock('~/utils/toolUtils', () => ({
 describe('ParserContext', () => {
   let segments: AIResponseSegment[];
   let context: ParserContext;
-  const mockStrategy = new DefaultJsonStreamingStrategy();
+  const mockStrategy = new DefaultJsonToolParsingStrategy();
 
   beforeEach(() => {
     segments = [];

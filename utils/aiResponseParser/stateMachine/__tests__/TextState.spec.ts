@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { TextState } from '../TextState';
 import { ParserContext } from '../ParserContext';
 import type { AIResponseSegment } from '../../types';
-import { DefaultJsonStreamingStrategy } from '../../streaming_strategies/default_json_strategy';
+import { DefaultJsonToolParsingStrategy } from '../../tool_parsing_strategies/defaultJsonToolParsingStrategy';
 import { XmlTagInitializationState } from '../XmlTagInitializationState';
 import { JsonInitializationState } from '../JsonInitializationState';
 
@@ -12,7 +12,7 @@ describe('TextState', () => {
 
   beforeEach(() => {
     segments = [];
-    context = new ParserContext(segments, new DefaultJsonStreamingStrategy(), false);
+    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false, true);
     context.currentState = new TextState(context);
   });
 
@@ -44,6 +44,20 @@ describe('TextState', () => {
       { type: 'text', content: 'Some text ' }
     ]);
     expect(context.currentState).toBeInstanceOf(JsonInitializationState);
+  });
+
+  it('should always transition when `<` is encountered, even if parseToolCalls is false', () => {
+    // This is the corrected behavior. TextState doesn't care about the flag.
+    const disabledContext = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false, false);
+    disabledContext.currentState = new TextState(disabledContext);
+    disabledContext.buffer = 'Hello <file path="test.txt">';
+    disabledContext.pos = 0;
+    disabledContext.currentState.run();
+  
+    expect(segments).toEqual([
+      { type: 'text', content: 'Hello ' }
+    ]);
+    expect(disabledContext.currentState).toBeInstanceOf(XmlTagInitializationState);
   });
 
   it('should handle empty buffer without errors', () => {
