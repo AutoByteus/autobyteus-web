@@ -23,7 +23,6 @@
         <select v-model="form.transportType" id="transportType"
                 class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md">
           <option>STDIO</option>
-          <option>SSE</option>
           <option>STREAMABLE_HTTP</option>
         </select>
       </div>
@@ -92,15 +91,15 @@
         </div>
       </div>
 
-      <!-- SSE / HTTP Config -->
-      <div v-if="form.transportType === 'SSE' || form.transportType === 'STREAMABLE_HTTP'" class="space-y-4 p-4 border rounded-md bg-gray-50">
+      <!-- HTTP Config -->
+      <div v-if="form.transportType === 'STREAMABLE_HTTP'" class="space-y-4 p-4 border rounded-md bg-gray-50">
         <div>
           <label for="http_url" class="block text-base font-medium text-gray-700">URL</label>
-          <input type="text" v-model="configForHttp.url" id="http_url" class="mt-1 block w-full shadow-sm text-base border-gray-300 rounded-md p-2">
+          <input type="text" v-model="form.streamableHttpConfig.url" id="http_url" class="mt-1 block w-full shadow-sm text-base border-gray-300 rounded-md p-2">
         </div>
         <div>
           <label for="http_token" class="block text-base font-medium text-gray-700">Token (Optional)</label>
-          <input type="password" v-model="configForHttp.token" id="http_token" class="mt-1 block w-full shadow-sm text-base border-gray-300 rounded-md p-2">
+          <input type="password" v-model="form.streamableHttpConfig.token" id="http_token" class="mt-1 block w-full shadow-sm text-base border-gray-300 rounded-md p-2">
         </div>
       </div>
 
@@ -154,7 +153,7 @@ const isEditMode = computed(() => !!props.server);
 
 const createFreshForm = () => ({
   serverId: '',
-  transportType: 'STDIO' as 'STDIO' | 'SSE' | 'STREAMABLE_HTTP',
+  transportType: 'STDIO' as 'STDIO' | 'STREAMABLE_HTTP',
   toolNamePrefix: '',
   enabled: true,
   stdioConfig: {
@@ -162,11 +161,6 @@ const createFreshForm = () => ({
     args: [] as string[],
     env: {} as Record<string, any>,
     cwd: '',
-  },
-  sseConfig: {
-    url: '',
-    token: '',
-    headers: {},
   },
   streamableHttpConfig: {
     url: '',
@@ -240,9 +234,6 @@ watch(() => props.server, (newVal) => {
         }));
       }
 
-    } else if (newVal.__typename === 'SseMcpServerConfig') {
-      form.sseConfig.url = newVal.url || '';
-      form.sseConfig.token = newVal.token || '';
     } else if (newVal.__typename === 'StreamableHttpMcpServerConfig') {
       form.streamableHttpConfig.url = newVal.url || '';
       form.streamableHttpConfig.token = newVal.token || '';
@@ -254,10 +245,6 @@ onUnmounted(() => {
     store.clearPreviewResult();
 });
 
-const configForHttp = computed(() => {
-  return form.transportType === 'SSE' ? form.sseConfig : form.streamableHttpConfig;
-});
-
 const buildInput = () => {
     const input: any = {
         serverId: form.serverId,
@@ -265,18 +252,12 @@ const buildInput = () => {
         toolNamePrefix: form.toolNamePrefix || null,
         enabled: form.enabled,
         stdioConfig: null,
-        sseConfig: null,
         streamableHttpConfig: null,
     };
     if (form.transportType === 'STDIO') {
         input.stdioConfig = { 
           ...form.stdioConfig,
           cwd: form.stdioConfig.cwd || null,
-        };
-    } else if (form.transportType === 'SSE') {
-        input.sseConfig = { 
-          ...form.sseConfig,
-          token: form.sseConfig.token || null,
         };
     } else if (form.transportType === 'STREAMABLE_HTTP') {
         input.streamableHttpConfig = {

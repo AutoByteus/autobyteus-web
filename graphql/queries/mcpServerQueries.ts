@@ -14,15 +14,6 @@ export const GET_MCP_SERVERS = gql`
         env
         cwd
       }
-      ... on SseMcpServerConfig {
-        serverId
-        transportType
-        enabled
-        toolNamePrefix
-        url
-        token
-        headers
-      }
       ... on StreamableHttpMcpServerConfig {
         serverId
         transportType

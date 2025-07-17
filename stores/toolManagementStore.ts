@@ -25,9 +25,9 @@ export interface Tool {
 }
 
 export interface McpServer {
-  __typename: 'StdioMcpServerConfig' | 'SseMcpServerConfig' | 'StreamableHttpMcpServerConfig';
+  __typename: 'StdioMcpServerConfig' | 'StreamableHttpMcpServerConfig';
   serverId: string;
-  transportType: 'STDIO' | 'SSE' | 'STREAMABLE_HTTP';
+  transportType: 'STDIO' | 'STREAMABLE_HTTP';
   enabled: boolean;
   toolNamePrefix: string;
   // Stdio
@@ -35,7 +35,7 @@ export interface McpServer {
   args?: string[];
   env?: Record<string, string>;
   cwd?: string;
-  // SSE / HTTP
+  // HTTP
   url?: string;
   token?: string;
   headers?: Record<string, string>;

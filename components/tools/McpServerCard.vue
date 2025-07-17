@@ -45,8 +45,8 @@
           </div>
         </template>
         
-        <!-- HTTP/SSE Details -->
-        <template v-if="server.__typename === 'SseMcpServerConfig' || server.__typename === 'StreamableHttpMcpServerConfig'">
+        <!-- HTTP Details -->
+        <template v-if="server.__typename === 'StreamableHttpMcpServerConfig'">
            <div class="flex items-start text-sm">
             <span class="i-heroicons-globe-alt-20-solid w-4 h-4 text-gray-400 mr-2 flex-shrink-0 mt-0.5"></span>
             <span class="text-gray-500 mr-2">URL:</span>
