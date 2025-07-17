@@ -18,12 +18,12 @@ export class ServerStatusManager extends EventEmitter {
     this.manager = serverManager
     
     // Set up event handlers for server status changes
-    this.manager.onReady(() => {
+    this.manager.on('ready', () => {
       logger.info('ServerStatusManager: Server is ready')
       this.emitStatusChange(ServerStatus.RUNNING)
     })
     
-    this.manager.onError((error) => {
+    this.manager.on('error', (error: Error) => {
       logger.error('ServerStatusManager: Server error:', error)
       this.emitStatusChange(ServerStatus.ERROR, error.message)
     })
@@ -44,56 +44,41 @@ export class ServerStatusManager extends EventEmitter {
       logger.info('ServerStatusManager: Starting internal server')
       this.emitStatusChange(ServerStatus.STARTING)
       await this.manager.startServer()
-      this.emitStatusChange(ServerStatus.RUNNING)
+      // 'ready' event from manager will trigger RUNNING status change
     } catch (error) {
       logger.error('ServerStatusManager: Server initialization failed:', error)
-      this.emitStatusChange(ServerStatus.ERROR, error instanceof Error ? error.message : String(error))
+      // 'error' event from manager will trigger ERROR status change
     } finally {
       this.isInitializing = false
     }
   }
   
   /**
-   * Restart the internal server with a stable restart flow.
+   * Restart the internal server with a clean and simple flow.
    */
   async restartServer(): Promise<any> {
     logger.info('ServerStatusManager: Restarting server')
     
-    // Begin by setting status to STOPPING
-    this.emitStatusChange(ServerStatus.STOPPING)
+    // Immediately tell the frontend we are restarting.
+    this.emitStatusChange(ServerStatus.RESTARTING)
     
-    if (this.manager.isRunning()) {
-      this.manager.stopServer()
-    }
-    
-    // Wait until the server is completely stopped
-    await new Promise<void>((resolve) => {
-      const checkStopped = async () => {
-        const health = await this.checkServerHealth()
-        if (health.status !== 'ok') {
-          resolve()
-        } else {
-          setTimeout(checkStopped, 1000)
-        }
-      }
-      checkStopped()
-    })
-    
-    // Emit stopped status
-    this.emitStatusChange(ServerStatus.STOPPED)
-    
-    // Now initiate startup by emitting starting state and starting server
-    this.emitStatusChange(ServerStatus.STARTING)
     try {
+      // Stop the server and wait for it to finish.
+      await this.manager.stopServer()
+      
+      // Now start it again. The 'ready'/'error' event listeners in the constructor
+      // will automatically emit RUNNING or ERROR when it's done.
       await this.manager.startServer()
-      // When the server is ready, onReady callback will emit RUNNING
+      
+      // Return the current status, which should now be RUNNING.
       return this.getStatus()
     } catch (error) {
       logger.error('ServerStatusManager: Restart failed:', error)
-      this.emitStatusChange(ServerStatus.ERROR, error instanceof Error ? error.message : String(error))
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      this.emitStatusChange(ServerStatus.ERROR, errorMessage)
       return {
         status: ServerStatus.ERROR,
-        message: error instanceof Error ? error.message : String(error)
+        message: errorMessage
       }
     }
   }
@@ -105,9 +90,11 @@ export class ServerStatusManager extends EventEmitter {
     try {
       logger.info('ServerStatusManager: Checking server health')
       if (!this.manager.isRunning()) {
+        // If not running, the status will be handled by the 'error' or 'starting' state
+        // This check is mainly for when it's supposed to be running.
         return {
           status: 'starting',
-          message: 'Server is not running'
+          message: 'Server is not running or still starting'
         }
       }
       
@@ -132,6 +119,8 @@ export class ServerStatusManager extends EventEmitter {
       logger.error('ServerStatusManager: Health check failed:', error)
       const errorMessage = error instanceof Error ? error.message : String(error)
       this.healthCheckStatus = `Error: ${errorMessage}`
+      // Don't emit an error status from a health check if the server is already considered running
+      // Let the main error handlers deal with a crashed server.
       return {
         status: 'error',
         message: errorMessage
@@ -145,9 +134,13 @@ export class ServerStatusManager extends EventEmitter {
   getStatus(): any {
     const isRunning = this.manager.isRunning()
     const urls = this.manager.getServerUrls()
+    let currentStatus = ServerStatus.STARTING;
+    if(this.manager.isRunning()) {
+      currentStatus = ServerStatus.RUNNING
+    }
     
     return {
-      status: isRunning ? ServerStatus.RUNNING : ServerStatus.STARTING,
+      status: currentStatus,
       urls,
       healthCheckStatus: this.healthCheckStatus
     }

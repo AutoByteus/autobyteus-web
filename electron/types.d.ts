@@ -9,5 +9,8 @@ interface Window {
     checkServerHealth: () => Promise<any>;
     getLogFilePath: () => Promise<string>;
     openLogFile: (filePath: string) => Promise<{ success: boolean; error?: string }>;
+    readLogFile: (filePath: string) => Promise<{ success: boolean; error?: string, content?: string }>;
+    onAppQuitting: (callback: () => void) => void;
+    startShutdown: () => void;
   };
 }

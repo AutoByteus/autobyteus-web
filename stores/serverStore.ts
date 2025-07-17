@@ -140,6 +140,16 @@ export const useServerStore = defineStore('server', {
         console.warn('serverStore: electronAPI.onServerStatus not available')
       }
       
+      // Listen for the app quitting event
+      if (window.electronAPI?.onAppQuitting) {
+        window.electronAPI.onAppQuitting(() => {
+          console.log('serverStore: App is quitting, updating status.')
+          this.status = ServerStatus.SHUTTING_DOWN
+          // Tell the main process that the UI has been updated and it can proceed.
+          window.electronAPI?.startShutdown()
+        })
+      }
+      
       const healthCheckInterval = setInterval(() => {
         if (this.status === ServerStatus.RUNNING) {
           clearInterval(healthCheckInterval)
@@ -239,25 +249,23 @@ export const useServerStore = defineStore('server', {
      * (Delegates to electronAPI.restartServer.)
      */
     async restartServer(): Promise<void> {
-      if (!window.electronAPI?.restartServer) {
+      if (!this.isElectron || !window.electronAPI?.restartServer) {
         console.warn('serverStore: electronAPI.restartServer not available')
         return
       }
       
-      this.isInitialStartup = true
+      console.log('serverStore: Initiating server restart.')
+      this.status = ServerStatus.RESTARTING; // Optimistically update UI
       this.errorMessage = ''
       
       try {
-        const result = await window.electronAPI.restartServer()
-        this.updateServerStatus(result)
-        setTimeout(() => {
-          this.isInitialStartup = false
-        }, 30000)
+        // The backend will now handle the full restart process.
+        // The onServerStatus listener will catch the final RUNNING or ERROR state.
+        await window.electronAPI.restartServer()
       } catch (error) {
-        console.error('serverStore: Failed to restart application services:', error)
+        console.error('serverStore: Failed to trigger application services restart:', error)
         this.status = ServerStatus.ERROR
         this.errorMessage = 'Failed to restart the application'
-        this.isInitialStartup = false
       }
     },
     

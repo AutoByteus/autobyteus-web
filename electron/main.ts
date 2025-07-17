@@ -10,6 +10,7 @@ import { ServerStatusManager } from './server/serverStatusManager'
 const serverStatusManager = new ServerStatusManager(serverManager);
 
 let mainWindow: BrowserWindow | null
+let isQuitting = false; // Flag to prevent multiple shutdown attempts
 
 /**
  * Create the main application window.
@@ -32,6 +33,20 @@ function createWindow() {
         contextIsolation: true,
       },
       show: true,
+    })
+
+    // Intercept the close event
+    mainWindow.on('close', (event) => {
+      logger.info(`'close' event triggered. isQuitting: ${isQuitting}`)
+      if (!isQuitting) {
+        // Prevent the window from closing immediately
+        event.preventDefault()
+        isQuitting = true
+        // Notify the renderer to show the shutdown screen
+        logger.info('Sending app-quitting event to renderer.')
+        mainWindow?.webContents.send('app-quitting')
+      }
+      // If isQuitting is true, the app.quit() was called, so let it proceed.
     })
 
     const startURL = isDev
@@ -128,6 +143,12 @@ ipcMain.on('ping', (event, args) => {
   event.reply('pong', 'Pong from main process!')
 })
 
+// Listen for the signal from the renderer to start the actual shutdown
+ipcMain.on('start-shutdown', () => {
+  logger.info('Received start-shutdown signal from renderer. Quitting app.')
+  app.quit()
+})
+
 ipcMain.handle('get-server-status', () => {
   return serverStatusManager.getStatus()
 })
@@ -204,17 +225,31 @@ app.whenReady()
     logger.error('Failed to initialize app:', err)
   })
 
-// Modified to stop the server when the client is closed
+// Quit when all windows are closed.
 app.on('window-all-closed', () => {
-  logger.info('All windows closed. Stopping server and quitting app.')
-  serverManager.stopServer()
-  logger.close()
-  app.quit()
+  // On macOS it is common for applications and their menu bar
+  // to stay active until the user quits explicitly with Cmd + Q.
+  // The 'will-quit' event will handle server shutdown.
+  if (process.platform !== 'darwin') {
+    app.quit()
+  }
 })
 
-app.on('will-quit', () => {
-  logger.close()
-})
+// Use 'will-quit' to robustly shut down the server.
+// This event is fired when the app is about to close.
+app.on('will-quit', async (event) => {
+  logger.info('App is about to quit. Shutting down server...');
+  try {
+    // Await the server shutdown to ensure it completes before the app exits.
+    await serverManager.stopServer();
+    logger.info('Server has been shut down successfully.');
+  } catch (error) {
+    logger.error('Error during server shutdown:', error);
+  } finally {
+    // Close the logger after all operations are done.
+    logger.close();
+  }
+});
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {

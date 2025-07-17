@@ -4,6 +4,7 @@ import * as fs from 'fs'
 import * as net from 'net'
 import { app } from 'electron'
 import axios from 'axios'
+import { EventEmitter } from 'events'
 import { logger } from '../logger'
 
 // Fixed server port
@@ -12,8 +13,9 @@ export const FIXED_SERVER_PORT = 29695
 /**
  * Base server manager with platform-agnostic functionality.
  * Simplified to always use an internal server.
+ * Now extends EventEmitter for robust event handling.
  */
-export abstract class BaseServerManager {
+export abstract class BaseServerManager extends EventEmitter {
   protected serverProcess: ChildProcess | null = null
   protected isServerRunning: boolean = false
   protected serverPort: number = FIXED_SERVER_PORT
@@ -21,13 +23,12 @@ export abstract class BaseServerManager {
   protected ready: boolean = false
   protected serverStartTime: number = 0
   protected maxStartupTime: number = 100000 // 100 seconds timeout
-  protected onReadyCallbacks: Array<() => void> = []
-  protected onErrorCallbacks: Array<(error: Error) => void> = []
   protected appDataDir: string = ''
   protected firstRun: boolean = false
   protected serverDir: string = ''
 
   constructor() {
+    super()
     // Initialize the app data directory
     this.initAppDataDir()
   }
@@ -240,7 +241,7 @@ export abstract class BaseServerManager {
       await this.waitForServerReady()
     } catch (error) {
       logger.error('Failed to start server:', error)
-      this.notifyError(error instanceof Error ? error : new Error(`${error}`))
+      this.emit('error', error instanceof Error ? error : new Error(`${error}`))
       throw error
     }
   }
@@ -251,23 +252,37 @@ export abstract class BaseServerManager {
   protected abstract launchServerProcess(): Promise<void>;
 
   /**
-   * Stop the backend server.
+   * Stop the backend server asynchronously.
    */
-  public stopServer(): void {
+  public stopServer(): Promise<void> {
     if (!this.serverProcess) {
-      logger.info('Server is not running')
-      return
+      logger.info('Server is not running');
+      return Promise.resolve();
     }
-    logger.info('Stopping server...')
-    this.isServerRunning = false
-    this.ready = false
-    try {
-      logger.info('Sending SIGTERM signal to server process')
-      this.serverProcess.kill('SIGTERM')
-    } catch (error) {
-      logger.error('Error stopping server:', error)
-    }
-    this.serverProcess = null
+    
+    const proc = this.serverProcess;
+
+    return new Promise((resolve) => {
+        // The 'close' event handler in setupProcessHandlers will perform state cleanup.
+        // We just need to wait for it.
+        proc.once('close', () => {
+            resolve();
+        });
+
+        logger.info('Stopping server...');
+        try {
+            logger.info('Sending SIGTERM signal to server process');
+            proc.kill('SIGTERM');
+        } catch (error) {
+            logger.error('Error sending SIGTERM to server:', error);
+            // If kill fails, assume process is gone and cleanup state manually.
+            this.isServerRunning = false;
+            this.ready = false;
+            this.serverProcess = null;
+            this.emit('stopped');
+            resolve();
+        }
+    });
   }
 
   /**
@@ -280,31 +295,15 @@ export abstract class BaseServerManager {
       })
       if (response.status === 200 && response.data.status === 'ok') {
         logger.info('Server health check successful, server is ready')
-        this.isServerRunning = true
-        this.ready = true
-        this.notifyReady()
+        if (!this.ready) {
+          this.isServerRunning = true
+          this.ready = true
+          this.emit('ready')
+        }
       }
     } catch (error) {
       // Ignore errors during health check polling.
     }
-  }
-
-  /**
-   * Register a callback to be called when the server is ready.
-   */
-  public onReady(callback: () => void): void {
-    if (this.ready) {
-      callback()
-    } else {
-      this.onReadyCallbacks.push(callback)
-    }
-  }
-
-  /**
-   * Register a callback to be called when the server encounters an error.
-   */
-  public onError(callback: (error: Error) => void): void {
-    this.onErrorCallbacks.push(callback)
   }
 
   /**
@@ -367,20 +366,20 @@ export abstract class BaseServerManager {
     this.serverProcess.stdout?.on('data', (data) => {
       const output = data.toString()
       logger.info(`Server stdout: ${output}`)
-      if (this.checkForReadyMessage(output)) {
+      if (!this.ready && this.checkForReadyMessage(output)) {
         this.isServerRunning = true
         this.ready = true
-        this.notifyReady()
+        this.emit('ready')
       }
     })
 
     this.serverProcess.stderr?.on('data', (data) => {
       const output = data.toString()
       logger.error(`Server stderr: ${output}`)
-      if (this.checkForReadyMessage(output)) {
+      if (!this.ready && this.checkForReadyMessage(output)) {
         this.isServerRunning = true
         this.ready = true
-        this.notifyReady()
+        this.emit('ready')
       }
     })
 
@@ -388,7 +387,7 @@ export abstract class BaseServerManager {
       logger.error('Server process error:', error)
       this.isServerRunning = false
       this.ready = false
-      this.notifyError(error)
+      this.emit('error', error)
     })
 
     this.serverProcess.on('close', (code) => {
@@ -396,8 +395,9 @@ export abstract class BaseServerManager {
       this.isServerRunning = false
       this.ready = false
       this.serverProcess = null
+      this.emit('stopped');
       if (code !== 0 && code !== null) {
-        this.notifyError(new Error(`Server process exited with code ${code}`))
+        this.emit('error', new Error(`Server process exited with code ${code}`))
       }
     })
   }
@@ -419,41 +419,34 @@ export abstract class BaseServerManager {
    * Wait for the server to be ready or timeout.
    */
   protected async waitForServerReady(): Promise<void> {
+    if (this.ready) {
+      return Promise.resolve();
+    }
     return new Promise<void>((resolve, reject) => {
-      if (this.ready) {
-        resolve()
-        return
-      }
-      const timeoutId = setTimeout(() => {
-        if (!this.ready) {
-          const error = new Error(`Server failed to start within ${this.maxStartupTime / 1000} seconds`)
-          this.notifyError(error)
-          reject(error)
-        }
-      }, this.maxStartupTime)
-      this.onReady(() => {
-        clearTimeout(timeoutId)
-        resolve()
-      })
-      this.onError((error) => {
-        clearTimeout(timeoutId)
-        reject(error)
-      })
-    })
-  }
+        let timeoutId: NodeJS.Timeout;
 
-  /**
-   * Notify all registered callbacks that the server is ready.
-   */
-  protected notifyReady(): void {
-    this.onReadyCallbacks.forEach(callback => callback())
-    this.onReadyCallbacks = []
-  }
+        const onReadyListener = () => {
+            clearTimeout(timeoutId);
+            this.removeListener('error', onErrorListener);
+            resolve();
+        };
 
-  /**
-   * Notify all registered callbacks that an error occurred.
-   */
-  protected notifyError(error: Error): void {
-    this.onErrorCallbacks.forEach(callback => callback(error))
+        const onErrorListener = (error: Error) => {
+            clearTimeout(timeoutId);
+            this.removeListener('ready', onReadyListener);
+            reject(error);
+        };
+
+        this.once('ready', onReadyListener);
+        this.once('error', onErrorListener);
+
+        timeoutId = setTimeout(() => {
+            this.removeListener('ready', onReadyListener);
+            this.removeListener('error', onErrorListener);
+            const error = new Error(`Server failed to start within ${this.maxStartupTime / 1000} seconds`);
+            this.emit('error', error);
+            reject(error);
+        }, this.maxStartupTime);
+    });
   }
 }

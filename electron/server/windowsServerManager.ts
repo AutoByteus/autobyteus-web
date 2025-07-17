@@ -53,28 +53,47 @@ export class WindowsServerManager extends BaseServerManager {
   }
 
   /**
-   * Stop the backend server.
+   * Stop the backend server on Windows using taskkill.
    */
-  public stopServer(): void {
+  public stopServer(): Promise<void> {
     if (!this.serverProcess) {
-      logger.info('Server is not running')
-      return
+      logger.info('Server is not running');
+      return Promise.resolve();
     }
 
-    logger.info('Stopping server...')
-    this.isServerRunning = false
-    this.ready = false
+    logger.info('Stopping server on Windows...');
 
-    try {
-      if (this.serverProcess.pid !== undefined) {
-        logger.info(`Executing: taskkill /pid ${this.serverProcess.pid} /f /t`)
-        spawn('taskkill', ['/pid', this.serverProcess.pid.toString(), '/f', '/t'])
-      }
-    } catch (error) {
-      logger.error('Error stopping server:', error)
-    }
+    return new Promise((resolve) => {
+        const pid = this.serverProcess?.pid;
+        this.serverProcess = null; // Detach original process object
 
-    this.serverProcess = null
+        if (pid) {
+            const killProcess = spawn('taskkill', ['/pid', pid.toString(), '/f', '/t']);
+            
+            const cleanup = () => {
+                this.isServerRunning = false;
+                this.ready = false;
+                this.emit('stopped');
+                resolve();
+            }
+
+            killProcess.on('close', () => {
+                logger.info(`taskkill for PID ${pid} completed.`);
+                cleanup();
+            });
+
+            killProcess.on('error', (err) => {
+                logger.error(`taskkill failed for PID ${pid}:`, err);
+                cleanup(); // Resolve even on error to not hang
+            });
+        } else {
+            logger.warn('Server process exists but has no PID. Cannot kill.');
+            this.isServerRunning = false;
+            this.ready = false;
+            this.emit('stopped');
+            resolve();
+        }
+    });
   }
 
   /**

@@ -25,5 +25,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openLogFile: (filePath: string) => ipcRenderer.invoke('open-log-file', filePath),
   
   // New method to read log file content
-  readLogFile: (filePath: string) => ipcRenderer.invoke('read-log-file', filePath)
+  readLogFile: (filePath: string) => ipcRenderer.invoke('read-log-file', filePath),
+
+  // Shutdown communication
+  onAppQuitting: (callback: () => void) => ipcRenderer.on('app-quitting', callback),
+  startShutdown: () => ipcRenderer.send('start-shutdown')
 })

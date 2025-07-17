@@ -1,5 +1,5 @@
 <template>
-  <div class="server-loading-container" v-if="serverStore.status !== 'running'">
+  <div class="server-loading-container" v-if="serverStore.status === 'starting' || serverStore.status === 'error' || serverStore.status === 'restarting'">
     <div class="server-loading-content">
       <div v-if="serverStore.status === 'starting'" class="loading-state">
         <div class="spinner"></div>
@@ -85,6 +85,12 @@
           </button>
         </div>
       </div>
+
+      <div v-else-if="serverStore.status === 'restarting'" class="restarting-state">
+        <div class="spinner"></div>
+        <h2 class="text-xl font-semibold mt-4">Restarting Server...</h2>
+        <p class="text-gray-600 mt-2">Please wait, this may take a moment.</p>
+      </div>
     </div>
   </div>
 </template>
@@ -97,9 +103,6 @@ import { useRouter } from 'vue-router'
 // Use the server store
 const serverStore = useServerStore()
 const router = useRouter()
-
-// Show this component only when the server is not running
-const showComponent = computed(() => serverStore.status !== 'running')
 
 // Toggle for showing technical details
 const showDetails = ref(false)

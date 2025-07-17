@@ -1,7 +1,11 @@
 <template>
   <div id="app">
-    <!-- Only display the server loading overlay in Electron environment -->
-    <ServerLoading v-if="serverStore.isElectron" />
+    <!-- Conditionally display server status overlays in Electron environment -->
+    <template v-if="serverStore.isElectron">
+      <ServerLoading />
+      <ServerShutdown />
+    </template>
+    
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
@@ -10,6 +14,9 @@
 
 <script setup lang="ts">
 import { useServerStore } from '~/stores/serverStore'
+import ServerLoading from '~/components/server/ServerLoading.vue'
+import ServerShutdown from '~/components/server/ServerShutdown.vue'
+
 const serverStore = useServerStore()
 </script>
 
