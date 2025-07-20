@@ -3,9 +3,10 @@ import { OpenAiToolParsingStrategy } from '../openAiToolParsingStrategy';
 import { ParserContext } from '../../stateMachine/ParserContext';
 import { LLMProvider } from '~/types/llm';
 import type { AIResponseSegment, ToolCallSegment } from '../../types';
+import { AgentInstanceContext } from '~/types/agentInstanceContext';
 
 vi.mock('~/utils/toolUtils', () => ({
-  generateInvocationId: (toolName: string, args: Record<string, any>): string => {
+  generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
     const argString = JSON.stringify(Object.keys(args).sort().reduce((acc, key) => ({...acc, [key]: args[key]}), {}));
     return `call_mock_${toolName}_${argString}`;
   }
@@ -15,11 +16,14 @@ describe('OpenAiToolParsingStrategy', () => {
     let context: ParserContext;
     let segments: AIResponseSegment[];
     let strategy: OpenAiToolParsingStrategy;
+    let agentContext: AgentInstanceContext;
 
     beforeEach(() => {
         segments = [];
         strategy = new OpenAiToolParsingStrategy();
-        context = new ParserContext(segments, strategy, false);
+        agentContext = new AgentInstanceContext('test-conv-id');
+        // FIXED: Updated ParserContext constructor call
+        context = new ParserContext(segments, strategy, false, true, agentContext);
     });
 
     it('checkSignature should return "match" for a "tool_calls" signature', () => {

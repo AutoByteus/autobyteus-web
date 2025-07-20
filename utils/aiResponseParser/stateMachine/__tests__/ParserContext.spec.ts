@@ -3,23 +3,31 @@ import { ParserContext } from '../ParserContext';
 import type { AIResponseSegment, ToolCallSegment } from '../../types';
 import { DefaultJsonToolParsingStrategy } from '../../tool_parsing_strategies/defaultJsonToolParsingStrategy';
 import type { ToolInvocation } from '~/types/tool-invocation';
+import { AgentInstanceContext } from '~/types/agentInstanceContext';
 
-// Mock tool utils for predictable invocation IDs in this specific test file
+// Mock the base ID generator to make tests predictable
 vi.mock('~/utils/toolUtils', () => ({
-  generateInvocationId: (toolName: string, args: Record<string, any>): string => {
-    const argString = JSON.stringify(args);
-    return `call_${toolName}_${argString}`;
+  generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
+    // FIX: Sort keys before stringifying to ensure deterministic IDs
+    const sortedArgs = Object.keys(args).sort().reduce((acc, key) => {
+      acc[key] = args[key];
+      return acc;
+    }, {} as Record<string, any>);
+    const argString = JSON.stringify(sortedArgs);
+    return `call_base_${toolName}_${argString}`;
   }
 }));
 
 describe('ParserContext', () => {
   let segments: AIResponseSegment[];
   let context: ParserContext;
+  let agentInstanceContext: AgentInstanceContext;
   const mockStrategy = new DefaultJsonToolParsingStrategy();
 
   beforeEach(() => {
     segments = [];
-    context = new ParserContext(segments, mockStrategy, false);
+    agentInstanceContext = new AgentInstanceContext('test-conv-id');
+    context = new ParserContext(segments, mockStrategy, false, true, agentInstanceContext);
   });
 
   describe('Text Segments', () => {
@@ -61,12 +69,14 @@ describe('ParserContext', () => {
   });
 
   describe('XML Tool Segments', () => {
-    it('should manage the lifecycle of an XML tool call segment', () => {
-      context.startToolCallSegment('test_tool');
+    it('should manage the lifecycle of an XML tool call segment with unique IDs', () => {
+      context.startXmlToolCallSegment('test_tool');
       let toolSegment = segments[0] as ToolCallSegment;
       expect(toolSegment.type).toBe('tool_call');
       expect(toolSegment.toolName).toBe('test_tool');
       expect(toolSegment.status).toBe('parsing');
+      // Initial ID is based on empty args
+      expect(toolSegment.invocationId).toBe('call_base_test_tool_{}_0');
 
       context.updateCurrentToolArguments({ param: 'value' });
       toolSegment = segments[0] as ToolCallSegment;
@@ -75,12 +85,13 @@ describe('ParserContext', () => {
       context.endCurrentToolSegment();
       toolSegment = segments[0] as ToolCallSegment;
       expect(toolSegment.status).toBe('parsed');
-      expect(toolSegment.invocationId).toBe('call_test_tool_{"param":"value"}');
+      // ID is regenerated with final args
+      expect(toolSegment.invocationId).toBe('call_base_test_tool_{"param":"value"}_1');
     });
   });
 
   describe('JSON Tool Segments', () => {
-    it('should finalize a JSON segment with one invocation', () => {
+    it('should finalize a JSON segment with one unique invocation', () => {
       context.startJsonToolCallSegment();
       expect(segments[0].status).toBe('parsing');
 
@@ -94,10 +105,10 @@ describe('ParserContext', () => {
       expect(toolSegment.status).toBe('parsed');
       expect(toolSegment.toolName).toBe('json_tool');
       expect(toolSegment.arguments).toEqual({ id: 1 });
-      expect(toolSegment.invocationId).toBe('call_json_tool_{"id":1}');
+      expect(toolSegment.invocationId).toBe('call_base_json_tool_{"id":1}_0');
     });
 
-    it('should finalize a JSON segment with multiple invocations', () => {
+    it('should finalize a JSON segment with multiple unique invocations', () => {
       context.startJsonToolCallSegment();
       const invocations: ToolInvocation[] = [
         { name: 'tool1', arguments: { a: 1 } },
@@ -111,11 +122,11 @@ describe('ParserContext', () => {
 
       expect(firstSegment.toolName).toBe('tool1');
       expect(firstSegment.status).toBe('parsed');
-      expect(firstSegment.invocationId).toBe('call_tool1_{"a":1}');
+      expect(firstSegment.invocationId).toBe('call_base_tool1_{"a":1}_0');
 
       expect(secondSegment.toolName).toBe('tool2');
       expect(secondSegment.status).toBe('parsed');
-      expect(secondSegment.invocationId).toBe('call_tool2_{"b":2}');
+      expect(secondSegment.invocationId).toBe('call_base_tool2_{"b":2}_0');
     });
 
     it('should remove the parsing segment if finalization yields no invocations', () => {

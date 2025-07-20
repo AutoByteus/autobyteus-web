@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DefaultJsonToolParsingStrategy } from '../defaultJsonToolParsingStrategy';
 import { ParserContext } from '../../stateMachine/ParserContext';
-import type { AIResponseSegment, ToolCallSegment } from '../../types';
+import type { AIResponseSegment, ToolCallSegment, AIResponseTextSegment } from '../../types';
+import { AgentInstanceContext } from '~/types/agentInstanceContext';
 
 vi.mock('~/utils/toolUtils', () => ({
-  generateInvocationId: (toolName: string, args: Record<string, any>): string => {
+  generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
     const argString = JSON.stringify(Object.keys(args).sort().reduce((acc, key) => ({...acc, [key]: args[key]}), {}));
     return `call_mock_${toolName}_${argString}`;
   }
@@ -14,11 +15,13 @@ describe('DefaultJsonToolParsingStrategy', () => {
     let context: ParserContext;
     let segments: AIResponseSegment[];
     let strategy: DefaultJsonToolParsingStrategy;
+    let agentContext: AgentInstanceContext;
 
     beforeEach(() => {
         segments = [];
         strategy = new DefaultJsonToolParsingStrategy();
-        context = new ParserContext(segments, strategy, false, true);
+        agentContext = new AgentInstanceContext('test-conv-id');
+        context = new ParserContext(segments, strategy, false, true, agentContext);
     });
 
     it('should parse a single tool call from a real example, streamed in chunks', () => {
@@ -70,7 +73,7 @@ describe('DefaultJsonToolParsingStrategy', () => {
         expect(segment.toolName).toBe('sqlite_list_tables');
         expect(segment.arguments).toEqual({});
         expect(segment.status).toBe('parsed');
-        expect(segment.invocationId).toBe('call_mock_sqlite_list_tables_{}');
+        expect(segment.invocationId).toBe('call_mock_sqlite_list_tables_{}_0');
     });
 
     describe('Edge Cases', () => {
@@ -78,35 +81,50 @@ describe('DefaultJsonToolParsingStrategy', () => {
             const signatureBuffer = '{"tool": {';
             strategy.startSegment(context, signatureBuffer);
             strategy.finalize(context);
-            expect(segments.length).toBe(0); // finalizeJsonSegment should remove the temp segment
+            // FIX: Expect a text segment, not an empty array
+            expect(segments.length).toBe(1);
+            expect(segments[0].type).toBe('text');
+            expect((segments[0] as AIResponseTextSegment).content).toBe(signatureBuffer);
         });
 
         it('should return no invocations if "function" is missing', () => {
             const stream = '{"tool": {"parameters": {}}}';
             strategy.startSegment(context, stream);
             strategy.finalize(context);
-            expect(segments.length).toBe(0);
+            // FIX: Expect a text segment, not an empty array
+            expect(segments.length).toBe(1);
+            expect(segments[0].type).toBe('text');
+            expect((segments[0] as AIResponseTextSegment).content).toBe(stream);
         });
 
         it('should return no invocations if "function" is not a string', () => {
             const stream = '{"tool": {"function": 123, "parameters": {}}}';
             strategy.startSegment(context, stream);
             strategy.finalize(context);
-            expect(segments.length).toBe(0);
+            // FIX: Expect a text segment, not an empty array
+            expect(segments.length).toBe(1);
+            expect(segments[0].type).toBe('text');
+            expect((segments[0] as AIResponseTextSegment).content).toBe(stream);
         });
 
         it('should return no invocations if "parameters" is not an object', () => {
             const stream = '{"tool": {"function": "test", "parameters": "not-an-object"}}';
             strategy.startSegment(context, stream);
             strategy.finalize(context);
-            expect(segments.length).toBe(0);
+            // FIX: Expect a text segment, not an empty array
+            expect(segments.length).toBe(1);
+            expect(segments[0].type).toBe('text');
+            expect((segments[0] as AIResponseTextSegment).content).toBe(stream);
         });
 
         it('should return no invocations if "tool" is not an object', () => {
             const stream = '{"tool": "invalid"}';
             strategy.startSegment(context, stream);
             strategy.finalize(context);
-            expect(segments.length).toBe(0);
+            // FIX: Expect a text segment, not an empty array
+            expect(segments.length).toBe(1);
+            expect(segments[0].type).toBe('text');
+            expect((segments[0] as AIResponseTextSegment).content).toBe(stream);
         });
     });
 });

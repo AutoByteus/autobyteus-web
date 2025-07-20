@@ -4,6 +4,9 @@ import { GET_CONVERSATION_HISTORY } from '~/graphql/queries/conversation_queries
 import type { GetConversationHistoryQuery, GetConversationHistoryQueryVariables } from '~/generated/graphql';
 import type { Conversation, UserMessage, AIMessage } from '~/types/conversation';
 import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
+import { AgentInstanceContext } from '~/types/agentInstanceContext';
+import { createParserContext } from '~/utils/aiResponseParser/parserContextFactory';
+import type { AIResponseSegment } from '~/utils/aiResponseParser/types';
 
 interface ConversationHistoryState {
   agentDefinitionId: string | null;
@@ -93,8 +96,9 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.error = null;
     },
     mapToConversation(agentConversation: GetConversationHistoryQuery['getConversationHistory']['conversations'][number]): Conversation {
-      // The concept of a workflow and steps has been removed.
-      // The `stepId` has been removed from the Conversation type.
+      // REFACTORED: This function now performs a "lightweight" mapping.
+      // It no longer parses the AI message content into segments. That heavy lifting
+      // is now deferred to the conversationStore when a user chooses to continue a conversation.
       return {
         id: agentConversation.agentId, // This is the historical conversation ID
         messages: agentConversation.messages.map(msg => {
@@ -113,18 +117,14 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
             return userMessage;
           } else {
             const aiText = msg.message || '';
-            const segments: [] = []; // Type casting issue here, should be AIResponseSegment[]
-            const parser = new IncrementalAIResponseParser(segments as any); // Add 'as any' to bypass temp type issue if AIResponseSegment is complex
-            parser.processChunks([aiText]);
-
             const aiMessage: AIMessage = {
               type: 'ai',
               text: aiText,
               timestamp: new Date(msg.timestamp),
-              chunks: [aiText],
-              segments: segments as any, // Add 'as any'
+              chunks: [aiText], // Store the full text as a single chunk
+              segments: [], // Segments will be populated on-demand by conversationStore
               isComplete: true,
-              parserInstance: parser,
+              parserInstance: null, // No parser instance needed at this stage
               completionTokens: msg.tokenCount || undefined,
               completionCost: msg.cost || undefined
             };
@@ -133,10 +133,9 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
         }),
         createdAt: agentConversation.createdAt,
         updatedAt: agentConversation.createdAt, // Should be agentConversation.updatedAt if available, using createdAt as fallback
-        // Pass along additional properties for when continuing a conversation.
-        // This assumes the Conversation type supports these optional fields.
         llmModelName: agentConversation.llmModel || undefined,
         useXmlToolFormat: agentConversation.useXmlToolFormat,
+        parseToolCalls: true, // Assuming true for historical conversations
         agentDefinitionId: agentConversation.agentDefinitionId,
       };
     }

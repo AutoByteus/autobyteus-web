@@ -4,20 +4,23 @@ import { ParserContext } from '../ParserContext';
 import { FileClosingTagScanState } from '../FileClosingTagScanState';
 import type { AIResponseSegment } from '../../types';
 import { DefaultJsonToolParsingStrategy } from '../../tool_parsing_strategies/defaultJsonToolParsingStrategy';
+import { AgentInstanceContext } from '~/types/agentInstanceContext';
 
 describe('FileContentReadingState', () => {
   let segments: AIResponseSegment[];
   let context: ParserContext;
+  let agentContext: AgentInstanceContext;
 
   beforeEach(() => {
     segments = [];
-    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false);
+    agentContext = new AgentInstanceContext('test-conv-id');
+    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false, true, agentContext);
     context.startFileSegment('src/app.js');
     context.currentState = new FileContentReadingState(context);
   });
 
   it('should append characters to file segment content until `<` encountered', () => {
-    context.buffer = 'console.log("Hello");<';
+    context.buffer = '\nconsole.log("Hello");<'; // Add newline to test the fix
     context.pos = 0;
     context.currentState.run();
 

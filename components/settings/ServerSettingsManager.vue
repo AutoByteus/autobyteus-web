@@ -12,43 +12,41 @@
       </div>
 
       <div v-else class="space-y-6">
-        <!-- Settings Table with integrated new setting row -->
+        <!-- Responsive Settings List with scrolling container -->
         <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
-            <thead class="bg-blue-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">
-                  Setting
-                </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">
-                  Value
-                </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">
-                  Description
-                </th>
-                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-blue-700 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+          <div class="border border-gray-200 rounded-lg min-w-[64rem]">
+            <!-- Desktop Headers -->
+            <div class="hidden lg:table-header-group bg-blue-50">
+              <div class="lg:table-row">
+                <div class="lg:table-cell px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider w-4/12">Setting</div>
+                <div class="lg:table-cell px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider w-3/12">Value</div>
+                <div class="lg:table-cell px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider w-4/12">Description</div>
+                <div class="lg:table-cell px-6 py-3 text-right text-xs font-medium text-blue-700 uppercase tracking-wider w-1/12">Actions</div>
+              </div>
+            </div>
+            
+            <!-- Settings List Body -->
+            <div class="lg:table-row-group">
               <!-- Existing Settings -->
-              <tr v-for="setting in store.settings" :key="setting.key" class="hover:bg-gray-50 transition-colors duration-150">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {{ setting.key }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+              <div v-for="setting in store.settings" :key="setting.key" class="p-4 border-b border-gray-200 lg:table-row last:border-b-0 hover:bg-gray-50 transition-colors duration-150">
+                <div class="lg:table-cell lg:px-6 lg:py-4 lg:align-middle">
+                  <label class="text-xs font-semibold text-gray-500 uppercase lg:hidden">Setting</label>
+                  <div class="text-sm font-medium text-gray-900 truncate" :title="setting.key">{{ setting.key }}</div>
+                </div>
+                <div class="mt-2 lg:mt-0 lg:table-cell lg:px-6 lg:py-4 lg:align-middle">
+                  <label class="text-xs font-semibold text-gray-500 uppercase lg:hidden">Value</label>
                   <input
                     v-model="editedSettings[setting.key]"
                     type="text"
-                    class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition-colors duration-150"
-                    :placeholder="`Enter ${setting.key}`"
+                    class="w-full mt-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition-colors duration-150 text-gray-900 placeholder-gray-500"
+                    placeholder="Enter value"
                   >
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{ setting.description }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                </div>
+                <div class="mt-2 lg:mt-0 lg:table-cell lg:px-6 lg:py-4 lg:align-middle">
+                  <label class="text-xs font-semibold text-gray-500 uppercase lg:hidden">Description</label>
+                  <div class="text-sm text-gray-700 whitespace-normal mt-1">{{ setting.description }}</div>
+                </div>
+                <div class="mt-4 text-right lg:mt-0 lg:table-cell lg:px-6 lg:py-4 lg:align-middle">
                   <button
                     @click="saveIndividualSetting(setting.key)"
                     :disabled="!isSettingChanged(setting.key) || store.isUpdating"
@@ -57,31 +55,34 @@
                     <span v-if="isUpdating[setting.key]" class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1 inline-block"></span>
                     Save
                   </button>
-                </td>
-              </tr>
+                </div>
+              </div>
               
               <!-- New Setting Row -->
-              <tr class="bg-gray-50 hover:bg-gray-100 transition-colors duration-150">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+              <div class="p-4 bg-gray-50 lg:table-row hover:bg-gray-100 transition-colors duration-150">
+                <div class="lg:table-cell lg:px-6 lg:py-4 lg:align-middle">
+                  <label class="text-xs font-semibold text-gray-500 uppercase lg:hidden">New Setting Key</label>
                   <input
                     v-model="newSetting.key"
                     type="text"
                     placeholder="Enter new setting key"
-                    class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    class="w-full mt-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
                   >
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                </div>
+                <div class="mt-2 lg:mt-0 lg:table-cell lg:px-6 lg:py-4 lg:align-middle">
+                   <label class="text-xs font-semibold text-gray-500 uppercase lg:hidden">Value</label>
                   <input
                     v-model="newSetting.value"
                     type="text"
                     placeholder="Enter value"
-                    class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    class="w-full mt-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
                   >
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 italic">
-                  Custom user-defined setting
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                </div>
+                <div class="mt-2 lg:mt-0 lg:table-cell lg:px-6 lg:py-4 lg:align-middle">
+                   <label class="text-xs font-semibold text-gray-500 uppercase lg:hidden">Description</label>
+                   <div class="text-sm text-gray-500 italic mt-1">Custom user-defined setting</div>
+                </div>
+                <div class="mt-4 text-right lg:mt-0 lg:table-cell lg:px-6 lg:py-4 lg:align-middle">
                   <button
                     @click="addNewSetting"
                     :disabled="!isNewSettingValid || isAddingNewSetting"
@@ -90,15 +91,15 @@
                     <span v-if="isAddingNewSetting" class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1 inline-block"></span>
                     Save
                   </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          
-          <!-- Error message for new setting -->
-          <div v-if="newSettingError" class="mt-2 text-sm text-red-600 pl-6">
-            {{ newSettingError }}
+                </div>
+              </div>
+            </div>
           </div>
+        </div>
+        
+        <!-- Error message for new setting -->
+        <div v-if="newSettingError" class="mt-2 text-sm text-red-600">
+          {{ newSettingError }}
         </div>
       </div>
 
@@ -211,7 +212,7 @@ const addNewSetting = async () => {
   try {
     await store.updateServerSetting(newSetting.key, newSetting.value)
     
-    // After successful addition, refresh the settings list
+    // After our successful addition, refresh the settings list
     await store.fetchServerSettings()
     
     // Update the local state

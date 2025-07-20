@@ -1,6 +1,5 @@
 import type { ToolParsingStrategy, SignatureMatch } from './base';
 import type { ParserContext } from '../stateMachine/ParserContext';
-import { generateInvocationId } from '~/utils/toolUtils';
 
 const entityMap: { [key: string]: string } = {
   '&amp;': '&',
@@ -169,16 +168,15 @@ export class XmlToolParsingStrategy implements ToolParsingStrategy {
         if (!parsingSegment) return;
 
         const parsingSegmentIndex = context.segments.indexOf(parsingSegment);
-        context.segments.splice(parsingSegmentIndex, 1);
 
         if (this.internalState !== 'invalid' && this.isDone) {
              // Successfully parsed a valid tool call.
-            parsingSegment.toolName = this.toolName;
-            parsingSegment.status = 'parsed';
-            parsingSegment.invocationId = generateInvocationId(this.toolName, parsingSegment.arguments);
-            context.segments.splice(parsingSegmentIndex, 0, parsingSegment);
+             // The segment already has its name and arguments populated.
+             // Now we delegate finalization to the context.
+             context.endCurrentToolSegment();
         } else {
-            // Incomplete or invalid tool call, revert to text.
+            // Incomplete or invalid tool call, remove the temporary segment and revert to text.
+            context.segments.splice(parsingSegmentIndex, 1);
             context.appendTextSegment(this.rawBuffer);
         }
     }

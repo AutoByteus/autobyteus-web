@@ -5,8 +5,8 @@ import type { ToolParsingStrategy } from '../tool_parsing_strategies/base';
 export class StateMachine {
   private parserContext: ParserContext;
 
-  constructor(segments: any[], strategy: ToolParsingStrategy, useXml: boolean, parseToolCalls: boolean) {
-    this.parserContext = new ParserContext(segments, strategy, useXml, parseToolCalls);
+  constructor(parserContext: ParserContext) {
+    this.parserContext = parserContext;
     this.parserContext.currentState = new TextState(this.parserContext);
   }
 

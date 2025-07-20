@@ -2,9 +2,9 @@
 import type { AIResponseSegment, AIResponseTextSegment, FileSegment, ThinkSegment, ToolCallSegment } from '../types';
 import { getLanguage } from '../languageDetector';
 import type { State } from './State';
-import { generateInvocationId } from '~/utils/toolUtils';
 import type { ToolParsingStrategy } from '../tool_parsing_strategies/base';
 import type { ToolInvocation } from '~/types/tool-invocation';
+import type { AgentInstanceContext } from '~/types/agentInstanceContext';
 
 type CurrentSegment = FileSegment | AIResponseTextSegment | ThinkSegment | ToolCallSegment | null;
 
@@ -20,14 +20,16 @@ export class ParserContext {
   public readonly strategy: ToolParsingStrategy;
   public readonly useXml: boolean;
   public readonly parseToolCalls: boolean;
+  public readonly agentInstanceContext: AgentInstanceContext;
 
   private _currentState: State | null = null;
 
-  constructor(segments: AIResponseSegment[], strategy: ToolParsingStrategy, useXml: boolean, parseToolCalls: boolean) {
+  constructor(segments: AIResponseSegment[], strategy: ToolParsingStrategy, useXml: boolean, parseToolCalls: boolean, agentInstanceContext: AgentInstanceContext) {
     this.segments = segments;
     this.strategy = strategy;
     this.useXml = useXml;
     this.parseToolCalls = parseToolCalls;
+    this.agentInstanceContext = agentInstanceContext;
   }
 
   set currentState(state: State) {
@@ -93,7 +95,8 @@ export class ParserContext {
   }
 
   startXmlToolCallSegment(toolName: string): void {
-      const invocationId = generateInvocationId(toolName, {}); // Initially empty args
+      // Generate ID immediately with empty args, will be updated later.
+      const invocationId = this.agentInstanceContext.generateUniqueInvocationId(toolName, {});
       const toolCallSegment: ToolCallSegment = {
           type: 'tool_call',
           invocationId,
@@ -111,7 +114,7 @@ export class ParserContext {
   startJsonToolCallSegment(): void {
       const toolCallSegment: ToolCallSegment = {
           type: 'tool_call',
-          invocationId: 'temp-json-id',
+          invocationId: 'temp-json-id', // Placeholder, will be replaced in finalize
           toolName: '',
           arguments: {},
           status: 'parsing',
@@ -132,7 +135,7 @@ export class ParserContext {
 
   endCurrentToolSegment(): void {
       if (this.currentSegment && this.currentSegment.type === 'tool_call') {
-          this.currentSegment.invocationId = generateInvocationId(this.currentSegment.toolName, this.currentSegment.arguments);
+          this.currentSegment.invocationId = this.agentInstanceContext.generateUniqueInvocationId(this.currentSegment.toolName, this.currentSegment.arguments);
           this.currentSegment.status = 'parsed';
       }
       this.currentSegment = null;
@@ -156,13 +159,15 @@ export class ParserContext {
               const invocation = invocations[i];
               const toolCallSegment: ToolCallSegment = {
                   type: 'tool_call',
-                  invocationId: generateInvocationId(invocation.name, invocation.arguments),
+                  invocationId: this.agentInstanceContext.generateUniqueInvocationId(invocation.name, invocation.arguments),
                   toolName: invocation.name,
                   arguments: invocation.arguments,
                   status: 'parsed',
                   logs: [],
                   result: null,
                   error: null,
+                  // FIX: Carry over the raw content to the finalized segment
+                  rawJsonContent: parsingSegment.rawJsonContent,
               };
               this.segments.splice(parsingSegmentIndex + i, 0, toolCallSegment);
           }
@@ -171,8 +176,6 @@ export class ParserContext {
           if (rawContent) {
               console.warn("Could not parse JSON tool call from stream. Reverting to text.", rawContent);
               
-              // To correctly merge with a preceding text segment, we need to find the correct insertion point.
-              // Since the 'parsing' segment was removed, we check the segment that is now at `parsingSegmentIndex - 1`.
               const prevSegment = parsingSegmentIndex > 0 ? this.segments[parsingSegmentIndex - 1] : null;
               if (prevSegment && prevSegment.type === 'text') {
                   prevSegment.content += rawContent;

@@ -4,12 +4,13 @@ import { TextState } from '../TextState';
 import { ParserContext } from '../ParserContext';
 import type { AIResponseSegment } from '../../types';
 import type { ToolParsingStrategy, SignatureMatch } from '../../tool_parsing_strategies/base';
+import { AgentInstanceContext } from '~/types/agentInstanceContext';
 
 // Mock the tool utils to prevent the sha256 error and make tests predictable.
 vi.mock('~/utils/toolUtils', () => ({
-  generateInvocationId: (toolName: string, args: Record<string, any>): string => {
+  generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
     const argString = JSON.stringify(args);
-    return `call_${toolName}_${argString}`;
+    return `call_base_${toolName}_${argString}`;
   }
 }));
 
@@ -48,23 +49,22 @@ describe('ToolParsingState', () => {
   let context: ParserContext;
   let mockStrategy: MockToolStrategy;
   let state: ToolParsingState;
+  let agentContext: AgentInstanceContext;
 
   beforeEach(() => {
     segments = [];
     mockStrategy = new MockToolStrategy();
-    context = new ParserContext(segments, mockStrategy, false);
+    agentContext = new AgentInstanceContext('test-conv-id');
+    context = new ParserContext(segments, mockStrategy, false, true, agentContext);
     vi.clearAllMocks();
   });
 
   it('should call strategy.startSegment upon construction and advance context', () => {
-    // A previous state finds the signature and passes it to the constructor.
-    // The previous state does not advance the cursor over the signature.
     context.buffer = '{';
     context.pos = 0;
     state = new ToolParsingState(context, '{');
     expect(mockStrategy.startSegmentCalled).toBe(true);
     expect(segments[0]?.type).toBe('tool_call');
-    // Constructor is responsible for advancing past the signature it consumes.
     expect(context.pos).toBe(1);
   });
 
@@ -87,7 +87,6 @@ describe('ToolParsingState', () => {
 
     state.run();
 
-    // The tool call was '{' (1 char) + 'abc;' (4 chars). Total 5 chars consumed.
     expect(context.pos).toBe(5);
     expect(context.buffer.substring(context.pos)).toBe('def');
   });

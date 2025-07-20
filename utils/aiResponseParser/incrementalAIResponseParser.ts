@@ -1,14 +1,14 @@
 import type { AIResponseSegment } from './types';
 import { StateMachine } from './stateMachine/StateMachine';
-import { LLMProvider } from '~/types/llm';
-import { getToolParsingStrategy } from './strategyProvider';
+import type { ParserContext } from './stateMachine/ParserContext';
 
 export class IncrementalAIResponseParser {
   private stateMachine: StateMachine;
+  private context: ParserContext;
 
-  constructor(segments: AIResponseSegment[], provider: LLMProvider, useXml: boolean, parseToolCalls: boolean) {
-    const strategy = getToolParsingStrategy(provider, useXml);
-    this.stateMachine = new StateMachine(segments, strategy, useXml, parseToolCalls);
+  constructor(parserContext: ParserContext) {
+    this.context = parserContext;
+    this.stateMachine = new StateMachine(this.context);
   }
 
   processChunks(chunks: string[]): AIResponseSegment[] {

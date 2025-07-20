@@ -5,14 +5,17 @@ import type { AIResponseSegment } from '../../types';
 import { DefaultJsonToolParsingStrategy } from '../../tool_parsing_strategies/defaultJsonToolParsingStrategy';
 import { XmlTagInitializationState } from '../XmlTagInitializationState';
 import { JsonInitializationState } from '../JsonInitializationState';
+import { AgentInstanceContext } from '~/types/agentInstanceContext';
 
 describe('TextState', () => {
   let segments: AIResponseSegment[];
   let context: ParserContext;
+  let agentContext: AgentInstanceContext;
 
   beforeEach(() => {
     segments = [];
-    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false, true);
+    agentContext = new AgentInstanceContext('test-conv-id');
+    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false, true, agentContext);
     context.currentState = new TextState(context);
   });
 
@@ -48,7 +51,7 @@ describe('TextState', () => {
 
   it('should always transition when `<` is encountered, even if parseToolCalls is false', () => {
     // This is the corrected behavior. TextState doesn't care about the flag.
-    const disabledContext = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false, false);
+    const disabledContext = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false, false, agentContext);
     disabledContext.currentState = new TextState(disabledContext);
     disabledContext.buffer = 'Hello <file path="test.txt">';
     disabledContext.pos = 0;

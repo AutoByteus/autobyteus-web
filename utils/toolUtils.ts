@@ -23,13 +23,13 @@ function deepSortObject(obj: any): any {
 
 
 /**
- * Generates a deterministic invocation ID for a tool call.
- * This logic MUST exactly match the backend's implementation in `autobyteus/agent/tool_invocation.py`.
+ * Generates a deterministic base invocation ID for a tool call.
+ * This logic MUST exactly match the backend's implementation for the base ID.
  * @param toolName The name of the tool.
  * @param args The arguments for the tool.
  * @returns A string in the format 'call_<sha256_hash>'.
  */
-export function generateInvocationId(toolName: string, args: Record<string, any>): string {
+export function generateBaseInvocationId(toolName: string, args: Record<string, any>): string {
   // 1. Create a canonical string from arguments by sorting keys (deeply) and using compact JSON.
   // The backend uses `json.dumps(separators=(',', ':'), sort_keys=True)`.
   // A deep sort is required to match Python's behavior for nested objects.

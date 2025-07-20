@@ -3,9 +3,11 @@ import { StateMachine } from '../StateMachine';
 import type { AIResponseSegment } from '../../types';
 import { XmlToolParsingStrategy } from '../../tool_parsing_strategies/xmlToolParsingStrategy';
 import { OpenAiToolParsingStrategy } from '../../tool_parsing_strategies/openAiToolParsingStrategy';
+import { ParserContext } from '../ParserContext';
+import { AgentInstanceContext } from '~/types/agentInstanceContext';
 
 vi.mock('~/utils/toolUtils', () => ({
-  generateInvocationId: (toolName: string, args: Record<string, any>): string => {
+  generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
     const argString = JSON.stringify(Object.keys(args).sort().reduce((acc, key) => ({...acc, [key]: args[key]}), {}));
     return `call_mock_${toolName}_${argString}`;
   }
@@ -14,8 +16,10 @@ vi.mock('~/utils/toolUtils', () => ({
 describe('StateMachine with a pre-selected Strategy', () => {
   it('should parse a mix of text and XML tags when given XmlToolParsingStrategy', () => {
     const segments: AIResponseSegment[] = [];
+    const agentContext = new AgentInstanceContext('test-conv-id');
     const xmlStrategy = new XmlToolParsingStrategy();
-    const machine = new StateMachine(segments, xmlStrategy, true); // useXml = true
+    const parserContext = new ParserContext(segments, xmlStrategy, true, true, agentContext);
+    const machine = new StateMachine(parserContext);
 
     machine.appendChunks([
       'Intro text ',
@@ -37,8 +41,10 @@ describe('StateMachine with a pre-selected Strategy', () => {
 
   it('should parse a mix of text and JSON when given OpenAiToolParsingStrategy', () => {
     const segments: AIResponseSegment[] = [];
+    const agentContext = new AgentInstanceContext('test-conv-id');
     const openAiStrategy = new OpenAiToolParsingStrategy();
-    const machine = new StateMachine(segments, openAiStrategy, false); // useXml = false
+    const parserContext = new ParserContext(segments, openAiStrategy, false, true, agentContext);
+    const machine = new StateMachine(parserContext);
 
     machine.appendChunks(['Hello {"tool_calls":[{"function":{"name":"test","arguments":"{}"}}]} and done.']);
     machine.run();
@@ -56,8 +62,10 @@ describe('StateMachine with a pre-selected Strategy', () => {
 
   it('should treat an unknown tag as text', () => {
     const segments: AIResponseSegment[] = [];
-    // Give it a JSON strategy, so it won't recognize XML tags other than <tool>
-    const machine = new StateMachine(segments, new OpenAiToolParsingStrategy(), false);
+    const agentContext = new AgentInstanceContext('test-conv-id');
+    const openAiStrategy = new OpenAiToolParsingStrategy();
+    const parserContext = new ParserContext(segments, openAiStrategy, false, true, agentContext);
+    const machine = new StateMachine(parserContext);
 
     machine.appendChunks(['Some <unknown>tag</unknown> text']);
     machine.run();

@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GeminiToolParsingStrategy } from '../geminiToolParsingStrategy';
 import { ParserContext } from '../../stateMachine/ParserContext';
-import type { AIResponseSegment, ToolCallSegment } from '../../types';
+import type { AIResponseSegment, ToolCallSegment, AIResponseTextSegment } from '../../types';
+import { AgentInstanceContext } from '~/types/agentInstanceContext';
 
 vi.mock('~/utils/toolUtils', () => ({
-  generateInvocationId: (toolName: string, args: Record<string, any>): string => {
+  generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
     const argString = JSON.stringify(Object.keys(args).sort().reduce((acc, key) => ({...acc, [key]: args[key]}), {}));
     return `call_mock_${toolName}_${argString}`;
   }
@@ -14,11 +15,13 @@ describe('GeminiToolParsingStrategy (Simplified)', () => {
     let context: ParserContext;
     let segments: AIResponseSegment[];
     let strategy: GeminiToolParsingStrategy;
+    let agentContext: AgentInstanceContext;
 
     beforeEach(() => {
         segments = [];
         strategy = new GeminiToolParsingStrategy();
-        context = new ParserContext(segments, strategy, false, true);
+        agentContext = new AgentInstanceContext('test-conv-id');
+        context = new ParserContext(segments, strategy, false, true, agentContext);
     });
 
     // --- Signature Checks ---
@@ -56,7 +59,7 @@ describe('GeminiToolParsingStrategy (Simplified)', () => {
         expect(segment.arguments).toEqual({ location: 'Tokyo' });
         expect(segment.status).toBe('parsed');
         expect(segment.rawJsonContent).toContain('Tokyo');
-        expect(segment.invocationId).toBe('call_mock_get_weather_{"location":"Tokyo"}');
+        expect(segment.invocationId).toBe('call_mock_get_weather_{"location":"Tokyo"}_0');
     });
 
     // --- Incremental Stream Test ---
@@ -118,41 +121,53 @@ describe('GeminiToolParsingStrategy (Simplified)', () => {
             const signatureBuffer = '{"name": "tool1", "args": {';
             strategy.startSegment(context, signatureBuffer);
             strategy.finalize(context);
-            expect(segments.length).toBe(0);
+            // FIX: Expect a text segment, not an empty array
+            expect(segments.length).toBe(1);
+            expect(segments[0].type).toBe('text');
+            expect((segments[0] as AIResponseTextSegment).content).toBe(signatureBuffer);
         });
 
         it('should return no invocations if "name" is missing', () => {
             const stream = '{"args": {}}';
             strategy.startSegment(context, stream);
             strategy.finalize(context);
-            expect(segments.length).toBe(0);
+            // FIX: Expect a text segment, not an empty array
+            expect(segments.length).toBe(1);
+            expect(segments[0].type).toBe('text');
+            expect((segments[0] as AIResponseTextSegment).content).toBe(stream);
         });
 
         it('should return no invocations if "name" is not a string', () => {
             const stream = '{"name": 123, "args": {}}';
             strategy.startSegment(context, stream);
             strategy.finalize(context);
-            expect(segments.length).toBe(0);
+            // FIX: Expect a text segment, not an empty array
+            expect(segments.length).toBe(1);
+            expect(segments[0].type).toBe('text');
+            expect((segments[0] as AIResponseTextSegment).content).toBe(stream);
         });
 
         it('should return no invocations if "args" is not an object', () => {
             const stream = '{"name": "test", "args": "invalid"}';
             strategy.startSegment(context, stream);
             strategy.finalize(context);
-            expect(segments.length).toBe(0);
+            // FIX: Expect a text segment, not an empty array
+            expect(segments.length).toBe(1);
+            expect(segments[0].type).toBe('text');
+            expect((segments[0] as AIResponseTextSegment).content).toBe(stream);
         });
 
         it('should return no invocations if "args" is an array', () => {
             const stream = '{"name": "test", "args": []}';
             strategy.startSegment(context, stream);
             strategy.finalize(context);
-            expect(segments.length).toBe(0);
+            // FIX: Expect a text segment, not an empty array
+            expect(segments.length).toBe(1);
+            expect(segments[0].type).toBe('text');
+            expect((segments[0] as AIResponseTextSegment).content).toBe(stream);
         });
 
         it('should ignore a JSON array of tool calls', () => {
-            // This is a sanity check. The TextState and JsonInitializationState should prevent
-            // this strategy from even being entered for a `[` character. But if it somehow
-            // were, it should fail gracefully.
             const stream = `[{"name": "tool1", "args":{}}]`;
             const match = strategy.checkSignature(stream);
             expect(match).toBe('no_match');

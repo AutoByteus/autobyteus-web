@@ -5,14 +5,17 @@ import { TextState } from '../TextState';
 import { ParserContext } from '../ParserContext';
 import type { AIResponseSegment } from '../../types';
 import { DefaultJsonToolParsingStrategy } from '../../tool_parsing_strategies/defaultJsonToolParsingStrategy';
+import { AgentInstanceContext } from '~/types/agentInstanceContext';
 
 describe('FileClosingTagScanState', () => {
   let segments: AIResponseSegment[];
   let context: ParserContext;
+  let agentContext: AgentInstanceContext;
 
   beforeEach(() => {
     segments = [];
-    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false);
+    agentContext = new AgentInstanceContext('test-conv-id');
+    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false, true, agentContext);
     context.startFileSegment('src/components/App.vue');
     context.currentState = new FileClosingTagScanState(context);
   });

@@ -3,12 +3,17 @@ import { XmlToolParsingStrategy } from '../xmlToolParsingStrategy';
 import { ParserContext } from '../../stateMachine/ParserContext';
 import { LLMProvider } from '~/types/llm';
 import type { AIResponseSegment, ToolCallSegment } from '../../types';
+import { AgentInstanceContext } from '~/types/agentInstanceContext';
 
 // Mock the invocation ID generator for predictable test results
 vi.mock('~/utils/toolUtils', () => ({
-  generateInvocationId: (toolName: string, args: Record<string, any>): string => {
-    // A simple mock for deterministic IDs in tests
-    const argString = JSON.stringify(Object.keys(args).sort().reduce((acc, key) => ({...acc, [key]: args[key]}), {}));
+  generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
+    // FIX: Sort keys before stringifying to ensure deterministic IDs
+    const sortedArgs = Object.keys(args).sort().reduce((acc, key) => {
+      acc[key] = args[key];
+      return acc;
+    }, {} as Record<string, any>);
+    const argString = JSON.stringify(sortedArgs);
     return `call_mock_${toolName}_${argString}`;
   }
 }));
@@ -17,11 +22,13 @@ describe('XmlToolParsingStrategy', () => {
     let context: ParserContext;
     let segments: AIResponseSegment[];
     let strategy: XmlToolParsingStrategy;
+    let agentContext: AgentInstanceContext;
 
     beforeEach(() => {
         segments = [];
         strategy = new XmlToolParsingStrategy();
-        context = new ParserContext(segments, strategy, true);
+        agentContext = new AgentInstanceContext('test-conv-id');
+        context = new ParserContext(segments, strategy, true, true, agentContext);
     });
 
     // --- Signature Checks ---
@@ -61,7 +68,7 @@ describe('XmlToolParsingStrategy', () => {
             content: 'Hello World'
         });
         expect(segment.status).toBe('parsed');
-        expect(segment.invocationId).toBe('call_mock_write_file_{"content":"Hello World","path":"/test.txt"}');
+        expect(segment.invocationId).toBe('call_mock_write_file_{"content":"Hello World","path":"/test.txt"}_0');
     });
 
     // --- Incremental Stream Test ---
@@ -126,7 +133,7 @@ describe('XmlToolParsingStrategy', () => {
         expect(segment.toolName).toBe('sqlite_list_tables');
         expect(segment.arguments).toEqual({});
         expect(segment.status).toBe('parsed');
-        expect(segment.invocationId).toBe('call_mock_sqlite_list_tables_{}');
+        expect(segment.invocationId).toBe('call_mock_sqlite_list_tables_{}_0');
     });
 
     it('should stream argument values character by character', () => {

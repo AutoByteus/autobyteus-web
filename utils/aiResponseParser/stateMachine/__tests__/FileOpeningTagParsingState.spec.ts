@@ -6,18 +6,21 @@ import { ParserContext } from '../ParserContext';
 import { ParserStateType } from '../State';
 import type { AIResponseSegment } from '../../types';
 import { DefaultJsonToolParsingStrategy } from '../../tool_parsing_strategies/defaultJsonToolParsingStrategy';
+import { AgentInstanceContext } from '~/types/agentInstanceContext';
 
 vi.mock('~/utils/toolUtils', () => ({
-  generateInvocationId: () => 'mock_id'
+  generateBaseInvocationId: () => 'mock_id'
 }));
 
 describe('FileOpeningTagParsingState', () => {
   let segments: AIResponseSegment[];
   let context: ParserContext;
+  let agentContext: AgentInstanceContext;
 
   beforeEach(() => {
     segments = [];
-    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false);
+    agentContext = new AgentInstanceContext('test-conv-id');
+    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false, true, agentContext);
   });
   
   it('should parse an opening <file...> tag and transition to FileContentReadingState', () => {

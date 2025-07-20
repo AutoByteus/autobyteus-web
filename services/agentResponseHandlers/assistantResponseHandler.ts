@@ -1,8 +1,9 @@
 import type { GraphQLAssistantChunkData, GraphQLAssistantCompleteResponseData } from '~/generated/graphql';
 import type { Conversation, AIMessage, UserMessage } from '~/types/conversation';
-import type { ThinkSegment } from '~/utils/aiResponseParser/types';
+import type { ThinkSegment, AIResponseSegment } from '~/utils/aiResponseParser/types';
 import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
-import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
+import { useConversationStore } from '~/stores/conversationStore';
+import { createParserContext } from '~/utils/aiResponseParser/parserContextFactory';
 
 /**
  * Finds the last AI message in the conversation or creates a new one if needed.
@@ -14,21 +15,30 @@ function findOrCreateAIMessage(conversation: Conversation): AIMessage {
   let lastMessage = conversation.messages[conversation.messages.length - 1] as AIMessage | undefined;
 
   if (!lastMessage || lastMessage.type !== 'ai' || lastMessage.isComplete) {
-    const llmProviderStore = useLLMProviderConfigStore();
-    const provider = llmProviderStore.getProviderForModel(conversation.llmModelName || '');
-    const useXml = conversation.useXmlToolFormat ?? false;
-    const parseToolCalls = conversation.parseToolCalls ?? true; // ADDED: Get setting from conversation
+    const conversationStore = useConversationStore();
+    const agentInstanceContext = conversationStore.getInstanceContextForConversation(conversation.id);
+
+    if (!agentInstanceContext) {
+      // This is a critical failure. The context should always exist for an active conversation.
+      // Throw an error to make it visible, as parsing cannot proceed correctly without it.
+      throw new Error(`Critical: AgentInstanceContext not found for conversation ${conversation.id}`);
+    }
+    
+    const segments: AIResponseSegment[] = [];
+    // REFACTORED: Use the factory to simplify ParserContext creation.
+    const parserContext = createParserContext(conversation, segments, agentInstanceContext);
+    const parser = new IncrementalAIResponseParser(parserContext);
+
     const newAiMessage: AIMessage = {
       type: 'ai',
       text: '',
       timestamp: new Date(),
       chunks: [],
       isComplete: false,
-      segments: [],
-      // Pass the new flag to the parser
-      parserInstance: new IncrementalAIResponseParser([], provider ?? undefined, useXml, parseToolCalls),
+      segments: segments, // The parser context will mutate this array
+      parserInstance: parser,
     };
-    newAiMessage.parserInstance = new IncrementalAIResponseParser(newAiMessage.segments, provider ?? undefined, useXml, parseToolCalls);
+
     conversation.messages.push(newAiMessage);
     lastMessage = newAiMessage;
   }
