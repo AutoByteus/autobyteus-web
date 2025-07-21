@@ -84,12 +84,41 @@
             {{ showDetails ? 'Hide technical details' : 'Show technical details' }}
           </button>
         </div>
+        
+        <!-- Advanced Recovery Options -->
+        <div class="mt-4">
+          <button @click="showRecoveryOptions = !showRecoveryOptions" class="text-sm text-gray-600 hover:text-gray-800">
+            {{ showRecoveryOptions ? 'Hide' : 'Show' }} Advanced Recovery Options
+          </button>
+
+          <div v-if="showRecoveryOptions" class="recovery-options mt-4 p-4 border border-yellow-300 bg-yellow-50 rounded-lg text-left">
+            <h4 class="font-bold text-yellow-800">Warning</h4>
+            <p class="text-sm text-yellow-700 mt-1">
+              These actions can lead to data loss. Proceed with caution.
+            </p>
+            <div class="mt-4 flex flex-col gap-2">
+              <button 
+                @click="handleClearCache"
+                class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 focus:outline-none"
+              >
+                Clear Cache and Restart
+              </button>
+              <button 
+                @click="handleResetData"
+                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none"
+              >
+                Reset All Server Data and Restart
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div v-else-if="serverStore.status === 'restarting'" class="restarting-state">
         <div class="spinner"></div>
         <h2 class="text-xl font-semibold mt-4">Restarting Server...</h2>
         <p class="text-gray-600 mt-2">Please wait, this may take a moment.</p>
+        <p v-if="serverStore.errorMessage" class="text-gray-600 mt-2 font-semibold">{{ serverStore.errorMessage }}</p>
       </div>
     </div>
   </div>
@@ -110,8 +139,37 @@ const toggleDetails = () => {
   showDetails.value = !showDetails.value
 }
 
+// Toggle for recovery options
+const showRecoveryOptions = ref(false)
+
 // Log file path
 const logFilePath = ref('')
+
+// Recovery handlers
+const handleClearCache = () => {
+  const confirmed = window.confirm(
+    'Are you sure you want to clear the application cache?\n\n' +
+    'This will remove temporary server files but should not affect your data. ' +
+    'This can help resolve issues from corrupted cache files.'
+  );
+  if (confirmed) {
+    serverStore.clearCacheAndRestart();
+  }
+};
+
+const handleResetData = () => {
+  const confirmed = window.confirm(
+    '⚠️ DANGER: PERMANENT DATA LOSS ⚠️\n\n' +
+    'Are you absolutely sure you want to reset all server data?\n\n' +
+    'This will permanently delete the entire `server-data` directory, including:\n' +
+    '- The database (all sessions, workspaces, etc.)\n' +
+    '- Your settings and API keys\n\n' +
+    'This action cannot be undone.'
+  );
+  if (confirmed) {
+    serverStore.resetServerDataAndRestart();
+  }
+};
 
 watch(() => serverStore.status, (newStatus, oldStatus) => {
   console.log(`ServerLoading: Status changed from ${oldStatus} to ${newStatus}`)

@@ -43,7 +43,7 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
       return state.providersWithModels.filter(p => p.models && p.models.length > 0);
     },
     /**
-     * Corrected Getter: Provides a sorted list of unique canonical model names.
+     * Getter for a sorted list of unique canonical model names, with "default" as the first option.
      */
     canonicalModels(state): string[] {
       const canonicalSet = new Set<string>();
@@ -54,7 +54,10 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
           }
         });
       });
-      return Array.from(canonicalSet).sort();
+      const models = Array.from(canonicalSet).sort();
+      // Add 'default' as a special option at the top of the list.
+      models.unshift('default');
+      return models;
     },
   },
   actions: {

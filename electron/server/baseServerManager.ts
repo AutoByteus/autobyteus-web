@@ -358,6 +358,13 @@ export abstract class BaseServerManager extends EventEmitter {
   public abstract getCacheDir(): string;
 
   /**
+   * Get the application's data directory path.
+   */
+  public getAppDataDir(): string {
+    return this.appDataDir;
+  }
+
+  /**
    * Set up event handlers for the server process.
    */
   protected setupProcessHandlers(): void {

@@ -360,6 +360,7 @@ import { onMounted, computed, ref, watch, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { usePromptStore } from '~/stores/promptStore';
 import { usePromptEngineeringViewStore } from '~/stores/promptEngineeringViewStore';
+import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import PromptCard from '~/components/promptEngineering/PromptCard.vue';
 import PromptCompare from '~/components/promptEngineering/PromptCompare.vue';
 
@@ -368,7 +369,9 @@ defineEmits<{ (e: 'select-prompt', id: string): void }>();
 
 const promptStore = usePromptStore();
 const viewStore = usePromptEngineeringViewStore();
+const llmStore = useLLMProviderConfigStore();
 const { prompts, loading, error, syncing, syncResult, deleteResult } = storeToRefs(promptStore);
+const { canonicalModels: availableModels } = storeToRefs(llmStore);
 
 // Base UI state
 const showDeleteConfirm = ref(false);
@@ -388,19 +391,6 @@ const comparisonName = ref('');
 // Timers for auto-dismissing notifications
 let syncNotificationTimer: number | null = null;
 let deleteNotificationTimer: number | null = null;
-
-// Extract all unique models from all prompts
-const availableModels = computed(() => {
-  const models = new Set<string>();
-  prompts.value.forEach(prompt => {
-    if (prompt.suitableForModels) {
-      prompt.suitableForModels.split(',').map(model => model.trim()).forEach(model => {
-        models.add(model);
-      });
-    }
-  });
-  return Array.from(models).sort();
-});
 
 // Filter prompts based on model compatibility
 const filteredPrompts = computed(() => {
@@ -449,149 +439,121 @@ const promptsByCategory = computed(() => {
   return grouped;
 });
 
-// Group prompts by name and category
+// Group prompts by name and category for the alternative view
 const promptsByNameAndCategory = computed(() => {
   const grouped: Record<string, any[]> = {};
-  
   filteredPrompts.value.forEach(prompt => {
-    const key = `${prompt.name}__${prompt.category || 'uncategorized'}`;
+    const key = `${prompt.name}::${prompt.category}`;
     if (!grouped[key]) {
       grouped[key] = [];
     }
     grouped[key].push(prompt);
   });
-  
-  // Sort each group by version (descending)
-  Object.keys(grouped).forEach(key => {
-    grouped[key].sort((a, b) => b.version - a.version);
+  // Sort prompts within each group by version descending
+  Object.values(grouped).forEach(group => {
+    group.sort((a, b) => b.version - a.version);
   });
-  
   return grouped;
 });
 
-// Comparison mode functions
-function startCompareMode(promptGroup: any[]) {
-  // Initialize comparison selection mode
+// Functions
+const syncPrompts = async () => {
+  await promptStore.syncPrompts();
+  if (syncResult.value) {
+    // Auto-dismiss after 5 seconds
+    if (syncNotificationTimer) clearTimeout(syncNotificationTimer);
+    syncNotificationTimer = window.setTimeout(() => {
+      promptStore.clearSyncResult();
+    }, 5000);
+  }
+};
+
+const clearSyncResult = () => {
+  if (syncNotificationTimer) clearTimeout(syncNotificationTimer);
+  promptStore.clearSyncResult();
+};
+
+const openDeleteConfirm = (id: string) => {
+  promptToDelete.value = id;
+  showDeleteConfirm.value = true;
+};
+
+const cancelDelete = () => {
+  promptToDelete.value = null;
+  showDeleteConfirm.value = false;
+};
+
+const confirmDelete = async () => {
+  if (promptToDelete.value) {
+    await promptStore.deletePrompt(promptToDelete.value);
+    if (deleteResult.value) {
+      // Auto-dismiss after 5 seconds
+      if (deleteNotificationTimer) clearTimeout(deleteNotificationTimer);
+      deleteNotificationTimer = window.setTimeout(() => {
+        promptStore.clearDeleteResult();
+      }, 5000);
+    }
+  }
+  cancelDelete();
+};
+
+const clearDeleteResult = () => {
+  if (deleteNotificationTimer) clearTimeout(deleteNotificationTimer);
+  promptStore.clearDeleteResult();
+};
+
+// Comparison Mode Functions
+const startCompareMode = (promptGroup: any[]) => {
   isSelectingForComparison.value = true;
+  currentComparisonGroup.value = `${promptGroup[0].name}::${promptGroup[0].category}`;
   selectedPromptsForComparison.value = [];
-  currentComparisonGroup.value = `${promptGroup[0].name}__${promptGroup[0].category || 'uncategorized'}`;
-  comparisonName.value = promptGroup[0].name;
-  comparisonCategory.value = promptGroup[0].category || 'uncategorized';
-  
-  // If there are only 2 prompts, auto-select them
-  if (promptGroup.length === 2) {
-    selectedPromptsForComparison.value = [promptGroup[0].id, promptGroup[1].id];
-    confirmComparisonSelection();
-  }
-}
+};
 
-function cancelComparisonSelection() {
+const cancelComparisonSelection = () => {
   isSelectingForComparison.value = false;
-  selectedPromptsForComparison.value = [];
   currentComparisonGroup.value = '';
-}
-
-function confirmComparisonSelection() {
-  if (selectedPromptsForComparison.value.length >= 2) {
-    comparisonMode.value = true;
-    isSelectingForComparison.value = false;
-  }
-}
-
-function exitComparisonMode() {
-  comparisonMode.value = false;
   selectedPromptsForComparison.value = [];
-}
+};
 
-function togglePromptSelection(promptId: string) {
-  const index = selectedPromptsForComparison.value.indexOf(promptId);
+const confirmComparisonSelection = () => {
+  const groupKey = currentComparisonGroup.value;
+  const [name, category] = groupKey.split('::');
+  comparisonName.value = name;
+  comparisonCategory.value = category;
+  comparisonMode.value = true;
+};
+
+const exitComparisonMode = () => {
+  comparisonMode.value = false;
+  cancelComparisonSelection();
+};
+
+const togglePromptSelection = (id: string) => {
+  const index = selectedPromptsForComparison.value.indexOf(id);
   if (index > -1) {
     selectedPromptsForComparison.value.splice(index, 1);
   } else {
-    selectedPromptsForComparison.value.push(promptId);
+    selectedPromptsForComparison.value.push(id);
   }
-}
+};
 
-// Watch for sync result changes
-watch(() => promptStore.syncResult, (newVal) => {
-  if (newVal?.success) {
-    // Auto-dismiss successful sync notifications after 2 seconds
-    clearTimeout(syncNotificationTimer as number);
-    syncNotificationTimer = window.setTimeout(() => {
-      clearSyncResult();
-    }, 2000);
+onMounted(() => {
+  if (prompts.value.length === 0) {
+    promptStore.fetchActivePrompts();
+  }
+  if (llmStore.providersWithModels.length === 0) {
+    llmStore.fetchProvidersWithModels();
   }
 });
 
-// Watch for delete result changes
-watch(() => promptStore.deleteResult, (newVal) => {
-  if (newVal?.success) {
-    // Auto-dismiss successful delete notifications after 2 seconds
-    clearTimeout(deleteNotificationTimer as number);
-    deleteNotificationTimer = window.setTimeout(() => {
-      clearDeleteResult();
-    }, 2000);
-  }
-});
-
-// Clean up timers when component is unmounted
 onBeforeUnmount(() => {
   if (syncNotificationTimer) clearTimeout(syncNotificationTimer);
   if (deleteNotificationTimer) clearTimeout(deleteNotificationTimer);
 });
-
-onMounted(async () => {
-  try {
-    await promptStore.fetchActivePrompts();
-  } catch (err) {
-    console.error('Failed to fetch prompts:', err);
-  }
-});
-
-async function syncPrompts() {
-  try {
-    await promptStore.syncPrompts();
-  } catch (err) {
-    console.error('Failed to sync prompts:', err);
-  }
-}
-
-function clearSyncResult() {
-  if (syncNotificationTimer) {
-    clearTimeout(syncNotificationTimer);
-    syncNotificationTimer = null;
-  }
-  promptStore.clearSyncResult();
-}
-
-function clearDeleteResult() {
-  if (deleteNotificationTimer) {
-    clearTimeout(deleteNotificationTimer);
-    deleteNotificationTimer = null;
-  }
-  promptStore.clearDeleteResult();
-}
-
-function openDeleteConfirm(id: string) {
-  promptToDelete.value = id;
-  showDeleteConfirm.value = true;
-}
-
-function cancelDelete() {
-  promptToDelete.value = null;
-  showDeleteConfirm.value = false;
-}
-
-async function confirmDelete() {
-  if (promptToDelete.value) {
-    try {
-      await promptStore.deletePrompt(promptToDelete.value);
-    } catch (err) {
-      console.error('Failed to delete prompt:', err);
-    }
-  }
-  
-  promptToDelete.value = null;
-  showDeleteConfirm.value = false;
-}
 </script>
+
+<style scoped>
+.prompt-marketplace {
+  padding: 2rem;
+}
+</style>

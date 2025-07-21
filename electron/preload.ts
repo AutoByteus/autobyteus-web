@@ -29,5 +29,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Shutdown communication
   onAppQuitting: (callback: () => void) => ipcRenderer.on('app-quitting', callback),
-  startShutdown: () => ipcRenderer.send('start-shutdown')
+  startShutdown: () => ipcRenderer.send('start-shutdown'),
+
+  // Advanced recovery options
+  clearAppCache: () => ipcRenderer.invoke('clear-app-cache'),
+  resetServerData: () => ipcRenderer.invoke('reset-server-data'),
 })

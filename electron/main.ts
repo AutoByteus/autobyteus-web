@@ -3,7 +3,8 @@ import * as path from 'path'
 import isDev from 'electron-is-dev'
 import { serverManager } from './server/serverManagerFactory'
 import { logger } from './logger'
-import * as fs from 'fs'
+import * as fs from 'fs/promises'
+import * as fsSync from 'fs'
 import { ServerStatusManager } from './server/serverStatusManager'
 
 // Create server status manager
@@ -80,7 +81,7 @@ function createWindow() {
       const rendererPath = path.join(__dirname, '../renderer')
       logger.info('Renderer directory:', rendererPath)
       try {
-        const files = fs.readdirSync(rendererPath)
+        const files = fsSync.readdirSync(rendererPath)
         logger.info('Files in renderer directory:', files)
       } catch (error) {
         logger.error('Error listing renderer directory:', error)
@@ -107,6 +108,30 @@ function createWindow() {
 }
 
 /**
+ * Helper function to clear contents of a directory.
+ */
+async function clearDirectoryContents(dirPath: string) {
+  logger.info(`Starting to clear contents of directory: ${dirPath}`);
+  try {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+      logger.info(`Deleting: ${fullPath}`);
+      await fs.rm(fullPath, { recursive: true, force: true });
+    }
+    logger.info(`Successfully cleared contents of directory: ${dirPath}`);
+    return { success: true };
+  } catch (error) {
+    logger.error(`Failed to clear directory ${dirPath}:`, error);
+    if (error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+      logger.warn(`Directory not found, considering it cleared: ${dirPath}`);
+      return { success: true }; // If directory doesn't exist, it's already "cleared"
+    }
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
  * Clean up the Nuitka-extracted cache folder on version upgrade.
  */
 function cleanOldCacheIfNeeded(): void {
@@ -119,19 +144,19 @@ function cleanOldCacheIfNeeded(): void {
     const currentVersion = app.getVersion()
 
     let previousVersion: string | null = null
-    if (fs.existsSync(versionFile)) {
-      previousVersion = fs.readFileSync(versionFile, 'utf8')
+    if (fsSync.existsSync(versionFile)) {
+      previousVersion = fsSync.readFileSync(versionFile, 'utf8')
     }
 
     if (previousVersion !== currentVersion) {
-      if (fs.existsSync(cacheDir)) {
+      if (fsSync.existsSync(cacheDir)) {
         logger.info(
           `Clearing old cache at ${cacheDir} (upgrading from ${previousVersion} to ${currentVersion})`
         )
-        fs.rmSync(cacheDir, { recursive: true, force: true })
+        fsSync.rmSync(cacheDir, { recursive: true, force: true })
         logger.info(`Cache cleared at ${cacheDir}`)
       }
-      fs.writeFileSync(versionFile, currentVersion, 'utf8')
+      fsSync.writeFileSync(versionFile, currentVersion, 'utf8')
     }
   } catch (error) {
     logger.error('Error during cache cleanup:', error)
@@ -165,10 +190,20 @@ ipcMain.handle('get-log-file-path', () => {
   return logger.getLogPath()
 })
 
+ipcMain.handle('clear-app-cache', async () => {
+  const cacheDir = serverManager.getCacheDir();
+  return clearDirectoryContents(cacheDir);
+});
+
+ipcMain.handle('reset-server-data', async () => {
+  const dataDir = serverManager.getAppDataDir();
+  return clearDirectoryContents(dataDir);
+});
+
 ipcMain.handle('open-log-file', async (event, filePath) => {
   try {
     logger.info(`Attempting to open log file: ${filePath}`)
-    if (!fs.existsSync(filePath)) {
+    if (!fsSync.existsSync(filePath)) {
       logger.error(`Log file does not exist: ${filePath}`)
       return { success: false, error: 'Log file does not exist' }
     }
@@ -187,11 +222,11 @@ ipcMain.handle('open-log-file', async (event, filePath) => {
 ipcMain.handle('read-log-file', async (event, filePath) => {
   try {
     logger.info(`Reading log file content: ${filePath}`)
-    if (!fs.existsSync(filePath)) {
+    if (!fsSync.existsSync(filePath)) {
       logger.error(`Log file does not exist: ${filePath}`)
       return { success: false, error: 'Log file does not exist' }
     }
-    const content = fs.readFileSync(filePath, 'utf8')
+    const content = await fs.readFile(filePath, 'utf8')
     const lines = content.split('\n')
     const lastLines = lines.slice(Math.max(0, lines.length - 500)).join('\n')
     logger.info(`Read ${lastLines.length} characters from log file`)

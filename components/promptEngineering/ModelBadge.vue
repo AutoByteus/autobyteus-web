@@ -22,6 +22,9 @@ const size = computed(() => props.size || 'medium');
 const modelColor = computed(() => {
   const model = props.model.toLowerCase();
   
+  if (model === 'default') {
+    return 'bg-gray-100 text-gray-800'; // Style for default
+  }
   if (model.includes('gpt-4')) {
     return 'bg-green-50 text-green-700'; // GPT-4 models
   } else if (model.includes('gpt')) {
@@ -35,7 +38,7 @@ const modelColor = computed(() => {
   } else if (model.includes('o4') || model.includes('o3')) {
     return 'bg-red-50 text-red-700'; // O4/O3 models
   } else {
-    return 'bg-blue-50 text-blue-700'; // Default
+    return 'bg-blue-50 text-blue-700'; // Default for others
   }
 });
 </script>

@@ -268,6 +268,54 @@ export const useServerStore = defineStore('server', {
         this.errorMessage = 'Failed to restart the application'
       }
     },
+
+    /**
+     * Advanced Recovery: Clears cache and restarts the server.
+     */
+    async clearCacheAndRestart(): Promise<void> {
+      if (!this.isElectron || !window.electronAPI?.clearAppCache) {
+        this.errorMessage = 'Cache clearing is not available in this environment.';
+        return;
+      }
+      console.log('serverStore: Clearing app cache and restarting...');
+      this.errorMessage = 'Clearing cache...'; // Give user feedback
+      try {
+        const result = await window.electronAPI.clearAppCache();
+        if (result.success) {
+          await this.restartServer();
+        } else {
+          this.status = ServerStatus.ERROR;
+          this.errorMessage = `Failed to clear cache: ${result.error}`;
+        }
+      } catch (error) {
+        this.status = ServerStatus.ERROR;
+        this.errorMessage = `An unexpected error occurred while clearing cache: ${error instanceof Error ? error.message : String(error)}`;
+      }
+    },
+
+    /**
+     * Advanced Recovery: Resets all server data and restarts.
+     */
+    async resetServerDataAndRestart(): Promise<void> {
+      if (!this.isElectron || !window.electronAPI?.resetServerData) {
+        this.errorMessage = 'Server data reset is not available in this environment.';
+        return;
+      }
+      console.log('serverStore: Resetting all server data and restarting...');
+      this.errorMessage = 'Resetting server data...'; // Give user feedback
+      try {
+        const result = await window.electronAPI.resetServerData();
+        if (result.success) {
+          await this.restartServer();
+        } else {
+          this.status = ServerStatus.ERROR;
+          this.errorMessage = `Failed to reset server data: ${result.error}`;
+        }
+      } catch (error) {
+        this.status = ServerStatus.ERROR;
+        this.errorMessage = `An unexpected error occurred while resetting server data: ${error instanceof Error ? error.message : String(error)}`;
+      }
+    },
     
     /**
      * Check server health.

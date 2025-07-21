@@ -12,5 +12,7 @@ interface Window {
     readLogFile: (filePath: string) => Promise<{ success: boolean; error?: string, content?: string }>;
     onAppQuitting: (callback: () => void) => void;
     startShutdown: () => void;
+    clearAppCache: () => Promise<{ success: boolean; error?: string }>;
+    resetServerData: () => Promise<{ success: boolean; error?: string }>;
   };
 }
