@@ -111,7 +111,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     },
     getFileContent: (state) => (filePath: string): string | null => {
       const wsState = (state as any)._currentWorkspaceFileExplorerState;
-      return wsState ? wsState.fileContents[filePath] || null : null;
+      return wsState ? wsState.fileContents[filePath] ?? null : null;
     },
     isContentLoading: (state) => (filePath: string): boolean => {
       const wsState = (state as any)._currentWorkspaceFileExplorerState;
@@ -158,7 +158,10 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       const wsState = this._getOrCreateCurrentWorkspaceState();
       if (!wsState.openFiles.includes(filePath)) {
         wsState.openFiles.push(filePath);
-        await this.fetchFileContent(filePath);
+        // FIX: Do not await fetchFileContent.
+        // This allows the UI to update to the new activeFile immediately
+        // and show a loading state while the content is being fetched.
+        this.fetchFileContent(filePath);
       }
       wsState.activeFile = filePath;
       const fileContentDisplayModeStore = useFileContentDisplayModeStore();
@@ -189,7 +192,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
 
     async fetchFileContent(filePath: string) {
       const wsState = this._getOrCreateCurrentWorkspaceState();
-      if (wsState.fileContents[filePath] !== undefined) return;
+      // Use `in` operator to check if key exists, even if value is null
+      if (filePath in wsState.fileContents) return;
 
       wsState.contentLoading[filePath] = true;
       wsState.contentError[filePath] = null;
@@ -206,9 +210,11 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         return new Promise((resolve, reject) => {
           onResult((result) => {
             if (result.data) {
-              wsState.fileContents[filePath] = result.data.fileContent;
+              // FIX: Defensively treat null content as an empty string.
+              const content = result.data.fileContent ?? '';
+              wsState.fileContents[filePath] = content;
               wsState.contentLoading[filePath] = false;
-              resolve(result.data.fileContent);
+              resolve(content);
             }
           });
 
@@ -486,7 +492,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
           });
         });
       } catch (error) {
-        wsState.searchError = error instanceof Error ? error.message : 'Failed to search files';
+        wsState.searchError = error instanceof Error ? error.message : 'An unknown error occurred';
         wsState.searchLoading = false;
         throw error;
       }

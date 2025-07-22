@@ -160,4 +160,26 @@ describe('IncrementalAIResponseParser with Strategies', () => {
       }
     ]);
   });
+
+  it('should treat an unknown XML tag like <bash> as plain text and not swallow it', () => {
+    // This test specifically verifies the fix for the "swallowed tag" bug.
+    const parser = createParser(LLMProvider.ANTHROPIC, true, true);
+
+    const chunks = [
+      'I am now executing step 4: Developing and presenting the complete solution.\n\n',
+      '<bash command="ls" description="Lists all files and directories in the current working directory." />',
+      '\n\nI have completed step 4 and am now moving to step 5.'
+    ];
+    parser.processChunks(chunks);
+    parser.finalize();
+
+    // The parser merges consecutive text, so we expect a single text segment
+    // containing the full, un-swallowed <bash> tag.
+    expect(segments).toEqual([
+      {
+        type: 'text',
+        content: 'I am now executing step 4: Developing and presenting the complete solution.\n\n<bash command="ls" description="Lists all files and directories in the current working directory." />\n\nI have completed step 4 and am now moving to step 5.'
+      }
+    ]);
+  });
 });

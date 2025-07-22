@@ -108,22 +108,40 @@ let saveSuccessTimeout: ReturnType<typeof setTimeout> | null = null
 const getFileName = (filePath: string) => filePath.split('/').pop() || filePath
 const setActiveFile = (filePath: string) => fileExplorerStore.setActiveFile(filePath)
 const closeFile = (filePath: string) => fileExplorerStore.closeFile(filePath)
-const getFileContent = (filePath: string) => fileExplorerStore.getFileContent(filePath)
 const isContentLoading = (filePath: string) => fileExplorerStore.isContentLoading(filePath)
 const getContentError = (filePath: string) => fileExplorerStore.getContentError(filePath)
 const getFileLanguage = (filePath: string) => getLanguage(filePath)
 
-watch(activeFile, (newVal) => {
-  if (newVal) {
-    fileContent.value = null // Reset to null while loading
-    const content = getFileContent(newVal)
-    if (content !== null) {
-      fileContent.value = content
-    }
-  } else {
-    fileContent.value = null
+// Reactive reference to the active file's content from the store.
+// This will update automatically when the store's state changes.
+const storeFileContent = computed(() => {
+  if (activeFile.value) {
+    return fileExplorerStore.getFileContent(activeFile.value);
   }
-}, { immediate: true })
+  return null;
+});
+
+// This watcher is now type-safe and fixes the destructuring issue.
+// It handles both active file changes and asynchronous content loading.
+watch(
+  () => [activeFile.value, storeFileContent.value] as const,
+  (newValue, oldValue) => {
+    const [newActiveFile, newContent] = newValue;
+    // Safely access the old active file path. It will be undefined on the first run.
+    const oldActiveFile = oldValue ? oldValue[0] : undefined;
+
+    // If the active file has changed, update the local content immediately.
+    if (newActiveFile !== oldActiveFile) {
+      fileContent.value = newContent;
+    } 
+    // If the file is the same, but the content from the store has changed
+    // (e.g., loaded asynchronously), update the local content.
+    else if (newContent !== fileContent.value) {
+      fileContent.value = newContent;
+    }
+  },
+  { immediate: true }
+);
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)

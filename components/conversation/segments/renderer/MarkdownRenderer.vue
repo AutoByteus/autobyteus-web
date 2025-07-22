@@ -19,7 +19,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
-import { useMarkdownSegments, MarkdownSegment } from '~/composables/useMarkdownSegments';
+import { useMarkdownSegments, type MarkdownSegment } from '~/composables/useMarkdownSegments';
 import PlantUMLDiagram from './PlantUMLDiagram.vue'; // Adjusted path if necessary
 // highlightService might still be needed if PrismJS classes are not self-sufficient or for other elements
 import highlightService from '~/services/highlightService'; 
