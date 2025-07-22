@@ -130,13 +130,14 @@ export const useConversationStore = defineStore('conversation', {
       return this._currentSessionState.conversationParseToolCalls.get(this.selectedConversationId) ?? true;
     },
 
-    // ADDED FOR UNIQUE IDs
+    // FIXED: This getter now searches across all sessions to find the context.
     getInstanceContextForConversation: (state) => (conversationId: string): AgentInstanceContext | undefined => {
-      const agentSessionStore = useAgentSessionStore();
-      const activeSessionId = agentSessionStore.activeSessionId;
-      if (!activeSessionId) return undefined;
-      const sessionState = state.conversationsByAgentSession.get(activeSessionId);
-      return sessionState?.agentInstanceContextsMap.get(conversationId);
+      for (const sessionState of state.conversationsByAgentSession.values()) {
+        if (sessionState.agentInstanceContextsMap.has(conversationId)) {
+          return sessionState.agentInstanceContextsMap.get(conversationId);
+        }
+      }
+      return undefined;
     },
   },
 
