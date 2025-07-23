@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { useQuery, useMutation } from '@vue/apollo-composable';
-import { GET_TOOLS } from '~/graphql/queries/toolQueries';
+import { GET_TOOLS, GET_TOOLS_GROUPED_BY_CATEGORY } from '~/graphql/queries/toolQueries';
 import { GET_MCP_SERVERS, PREVIEW_MCP_SERVER_TOOLS } from '~/graphql/queries/mcpServerQueries';
 import { CONFIGURE_MCP_SERVER, DELETE_MCP_SERVER } from '~/graphql/mutations/mcpServerMutations';
 
@@ -18,10 +18,16 @@ export interface ToolParameter {
 export interface Tool {
   name: string;
   description: string;
-  category: 'LOCAL' | 'MCP';
+  origin: 'LOCAL' | 'MCP';
+  category: string;
   argumentSchema: {
     parameters: ToolParameter[];
   } | null;
+}
+
+export interface ToolCategoryGroup {
+  categoryName: string;
+  tools: Tool[];
 }
 
 export interface McpServer {
@@ -49,6 +55,7 @@ interface PreviewResult {
 
 interface ToolManagementState {
   localTools: Tool[];
+  localToolsByCategory: ToolCategoryGroup[];
   mcpServers: McpServer[];
   toolsByServerId: Record<string, Tool[]>;
   loading: boolean;
@@ -59,6 +66,7 @@ interface ToolManagementState {
 export const useToolManagementStore = defineStore('toolManagement', {
   state: (): ToolManagementState => ({
     localTools: [],
+    localToolsByCategory: [],
     mcpServers: [],
     toolsByServerId: {},
     loading: false,
@@ -68,6 +76,7 @@ export const useToolManagementStore = defineStore('toolManagement', {
 
   getters: {
     getLocalTools: (state): Tool[] => state.localTools,
+    getLocalToolsByCategory: (state): ToolCategoryGroup[] => state.localToolsByCategory,
     getMcpServers: (state): McpServer[] => state.mcpServers,
     getLoading: (state): boolean => state.loading,
     getError: (state): any => state.error,
@@ -81,15 +90,22 @@ export const useToolManagementStore = defineStore('toolManagement', {
 
   actions: {
     async fetchLocalTools() {
+      // This now delegates to the grouped fetcher to ensure data consistency
+      return this.fetchLocalToolsGroupedByCategory();
+    },
+
+    async fetchLocalToolsGroupedByCategory() {
       this.loading = true;
       this.error = null;
       try {
-        const { onResult, onError } = useQuery(GET_TOOLS, { category: 'LOCAL' }, { fetchPolicy: 'network-only' });
+        const { onResult, onError } = useQuery(GET_TOOLS_GROUPED_BY_CATEGORY, { origin: 'LOCAL' }, { fetchPolicy: 'network-only' });
         
         return new Promise<void>((resolve, reject) => {
           onResult(result => {
             if (result.data) {
-              this.localTools = result.data.tools;
+              this.localToolsByCategory = result.data.toolsGroupedByCategory;
+              // Also update the flat list for any components that might still use it.
+              this.localTools = result.data.toolsGroupedByCategory.flatMap((group: ToolCategoryGroup) => group.tools);
             }
             this.loading = false;
             resolve();
@@ -97,7 +113,7 @@ export const useToolManagementStore = defineStore('toolManagement', {
           onError(err => {
             this.error = err;
             this.loading = false;
-            console.error("Failed to fetch local tools:", err);
+            console.error("Failed to fetch grouped local tools:", err);
             reject(err);
           });
         });

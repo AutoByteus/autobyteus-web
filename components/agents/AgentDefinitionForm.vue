@@ -134,20 +134,18 @@ const toolStore = useToolManagementStore();
 
 // Fetch required data on mount
 onMounted(async () => {
-  // Fetch local tools if they aren't in the store yet. This can run in parallel.
-  if (toolStore.getLocalTools.length === 0) {
-    toolStore.fetchLocalTools();
+  // Use the new action to fetch grouped local tools
+  if (toolStore.getLocalToolsByCategory.length === 0) {
+    toolStore.fetchLocalToolsGroupedByCategory();
   }
 
   // Fetch the list of MCP servers if it's not in the store.
-  // We must wait for this to complete before fetching tools for each server.
   if (toolStore.getMcpServers.length === 0) {
     await toolStore.fetchMcpServers();
   }
 
   // Now that we're sure the server list is available,
   // iterate over it and fetch tools for any server that doesn't have them yet.
-  // These sub-fetches can run in parallel without blocking the UI.
   toolStore.getMcpServers.forEach(server => {
     if (toolStore.getToolsForServer(server.serverId).length === 0) {
       toolStore.fetchToolsForServer(server.serverId);
@@ -165,23 +163,21 @@ const componentFields = computed(() => [
 
 // Data sources for the GroupableTagInput
 const toolSource = computed((): GroupedSource => {
-  const groups = [
-    {
-      name: 'Local Tools',
-      tags: toolStore.getLocalTools.map(t => t.name),
-      allowAll: false
-    }
-  ];
+  // Create groups for local tools based on their categories
+  const localToolGroups = toolStore.getLocalToolsByCategory.map(group => ({
+    name: group.categoryName,
+    tags: group.tools.map(t => t.name),
+    allowAll: true,
+  }));
   
-  toolStore.getMcpServers.forEach(server => {
-    groups.push({
-      name: server.serverId,
-      tags: toolStore.getToolsForServer(server.serverId).map(t => t.name),
-      allowAll: true
-    });
-  });
+  // Create groups for MCP server tools
+  const mcpServerGroups = toolStore.getMcpServers.map(server => ({
+    name: `MCP: ${server.serverId}`,
+    tags: toolStore.getToolsForServer(server.serverId).map(t => t.name),
+    allowAll: true,
+  }));
 
-  return { type: 'grouped', groups };
+  return { type: 'grouped', groups: [...localToolGroups, ...mcpServerGroups] };
 });
 
 const getComponentSource = (fieldName: string): GroupedSource | FlatSource => {
@@ -190,7 +186,7 @@ const getComponentSource = (fieldName: string): GroupedSource | FlatSource => {
   }
   
   // Map form field name to store property name
-  const storeKeyMap = {
+  const storeKeyMap: { [key: string]: keyof typeof optionsStore } = {
     'input_processor_names': 'inputProcessorNames',
     'llm_response_processor_names': 'llmResponseProcessorNames',
     'system_prompt_processor_names': 'systemPromptProcessorNames',
@@ -198,14 +194,15 @@ const getComponentSource = (fieldName: string): GroupedSource | FlatSource => {
   };
 
   const key = storeKeyMap[fieldName];
+  const tags = optionsStore[key] as string[] | undefined;
   return {
     type: 'flat',
-    tags: optionsStore[key] || []
+    tags: tags || []
   };
 };
 
 
-const getInitialValue = () => ({
+const getInitialValue = (): { [key: string]: any } => ({
   name: '',
   role: '',
   description: '',
@@ -224,7 +221,8 @@ watch(initialData, (newData) => {
     formData.system_prompt_category = newData.systemPromptCategory || '';
     formData.system_prompt_name = newData.systemPromptName || '';
     componentFields.value.forEach(field => {
-      formData[field.name] = newData[field.camelCase] || newData[field.name] || [];
+      const key = field.name as keyof typeof formData;
+      formData[key] = newData[field.camelCase] || newData[key] || [];
     });
   } else {
     Object.assign(formData, getInitialValue());
@@ -243,12 +241,26 @@ watch(() => formData.system_prompt_category, () => {
 });
 
 // Event Handlers
-function handleAddAllTools(serverName: string) {
-  const toolsFromServer = toolStore.getToolsForServer(serverName).map(t => t.name);
+function handleAddAllTools(groupName: string) {
+  let toolsToAdd: string[] = [];
+  
+  const mcpPrefix = 'MCP: ';
+  if (groupName.startsWith(mcpPrefix)) {
+    const serverId = groupName.substring(mcpPrefix.length);
+    toolsToAdd = toolStore.getToolsForServer(serverId).map(t => t.name);
+  } else {
+    // It's a local tool category
+    const categoryGroup = toolStore.getLocalToolsByCategory.find(g => g.categoryName === groupName);
+    if (categoryGroup) {
+      toolsToAdd = categoryGroup.tools.map(t => t.name);
+    }
+  }
+
   const currentTools = formData.tool_names;
-  const newToolSet = new Set([...currentTools, ...toolsFromServer]);
+  const newToolSet = new Set([...currentTools, ...toolsToAdd]);
   formData.tool_names = Array.from(newToolSet);
 }
+
 
 const handleSubmit = () => {
   const submissionData = {

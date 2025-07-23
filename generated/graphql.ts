@@ -271,12 +271,11 @@ export type McpServerConfig = {
 };
 
 /** Represents one of the possible MCP server configurations. */
-export type McpServerConfigUnion = SseMcpServerConfig | StdioMcpServerConfig | StreamableHttpMcpServerConfig;
+export type McpServerConfigUnion = StdioMcpServerConfig | StreamableHttpMcpServerConfig;
 
 export type McpServerInput = {
   enabled?: InputMaybe<Scalars['Boolean']['input']>;
   serverId: Scalars['String']['input'];
-  sseConfig?: InputMaybe<SseMcpServerConfigInput>;
   stdioConfig?: InputMaybe<StdioMcpServerConfigInput>;
   streamableHttpConfig?: InputMaybe<StreamableHttpMcpServerConfigInput>;
   toolNamePrefix?: InputMaybe<Scalars['String']['input']>;
@@ -284,7 +283,6 @@ export type McpServerInput = {
 };
 
 export enum McpTransportTypeEnum {
-  Sse = 'SSE',
   Stdio = 'STDIO',
   StreamableHttp = 'STREAMABLE_HTTP'
 }
@@ -463,6 +461,11 @@ export type MutationWriteFileContentArgs = {
   workspaceId: Scalars['String']['input'];
 };
 
+export enum NodeType {
+  Agent = 'AGENT',
+  Workflow = 'WORKFLOW'
+}
+
 export type ParameterDefinition = {
   __typename?: 'ParameterDefinition';
   defaultValue?: Maybe<Scalars['JSON']['output']>;
@@ -546,8 +549,11 @@ export type Query = {
   promptDetailsByNameAndCategory?: Maybe<PromptDetails>;
   searchFiles: Array<Scalars['String']['output']>;
   tools: Array<ToolDefinitionDetail>;
+  toolsGroupedByCategory: Array<ToolCategoryGroup>;
   totalCostInPeriod: Scalars['Float']['output'];
   usageStatisticsInPeriod: Array<UsageStatistics>;
+  workflowDefinition?: Maybe<WorkflowDefinition>;
+  workflowDefinitions: Array<WorkflowDefinition>;
 };
 
 
@@ -602,8 +608,13 @@ export type QuerySearchFilesArgs = {
 
 
 export type QueryToolsArgs = {
-  category?: InputMaybe<ToolCategoryEnum>;
+  origin?: InputMaybe<ToolOriginEnum>;
   sourceServerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryToolsGroupedByCategoryArgs = {
+  origin: ToolOriginEnum;
 };
 
 
@@ -616,6 +627,11 @@ export type QueryTotalCostInPeriodArgs = {
 export type QueryUsageStatisticsInPeriodArgs = {
   endTime: Scalars['DateTime']['input'];
   startTime: Scalars['DateTime']['input'];
+};
+
+
+export type QueryWorkflowDefinitionArgs = {
+  id: Scalars['String']['input'];
 };
 
 export type SendAgentUserInputInput = {
@@ -640,23 +656,6 @@ export type ServerSetting = {
   description: Scalars['String']['output'];
   key: Scalars['String']['output'];
   value: Scalars['String']['output'];
-};
-
-export type SseMcpServerConfig = McpServerConfig & {
-  __typename?: 'SseMcpServerConfig';
-  enabled: Scalars['Boolean']['output'];
-  headers?: Maybe<Scalars['JSON']['output']>;
-  serverId: Scalars['String']['output'];
-  token?: Maybe<Scalars['String']['output']>;
-  toolNamePrefix?: Maybe<Scalars['String']['output']>;
-  transportType: McpTransportTypeEnum;
-  url: Scalars['String']['output'];
-};
-
-export type SseMcpServerConfigInput = {
-  headers?: InputMaybe<Scalars['JSON']['input']>;
-  token?: InputMaybe<Scalars['String']['input']>;
-  url: Scalars['String']['input'];
 };
 
 export type StdioMcpServerConfig = McpServerConfig & {
@@ -742,18 +741,25 @@ export type ToolArgumentSchema = {
   parameters: Array<ToolParameterDefinition>;
 };
 
-export enum ToolCategoryEnum {
-  Local = 'LOCAL',
-  Mcp = 'MCP'
-}
+export type ToolCategoryGroup = {
+  __typename?: 'ToolCategoryGroup';
+  categoryName: Scalars['String']['output'];
+  tools: Array<ToolDefinitionDetail>;
+};
 
 export type ToolDefinitionDetail = {
   __typename?: 'ToolDefinitionDetail';
   argumentSchema?: Maybe<ToolArgumentSchema>;
-  category: ToolCategoryEnum;
+  category: Scalars['String']['output'];
   description: Scalars['String']['output'];
   name: Scalars['String']['output'];
+  origin: ToolOriginEnum;
 };
+
+export enum ToolOriginEnum {
+  Local = 'LOCAL',
+  Mcp = 'MCP'
+}
 
 export type ToolParameterDefinition = {
   __typename?: 'ToolParameterDefinition';
@@ -805,6 +811,25 @@ export type UsageStatistics = {
   promptCost?: Maybe<Scalars['Float']['output']>;
   promptTokens: Scalars['Int']['output'];
   totalCost?: Maybe<Scalars['Float']['output']>;
+};
+
+export type WorkflowDefinition = {
+  __typename?: 'WorkflowDefinition';
+  beginNodeId: Scalars['String']['output'];
+  description: Scalars['String']['output'];
+  endNodeId: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  nodes: Array<WorkflowNode>;
+};
+
+export type WorkflowNode = {
+  __typename?: 'WorkflowNode';
+  dependencies: Array<Scalars['String']['output']>;
+  nodeId: Scalars['String']['output'];
+  nodeType: NodeType;
+  properties: Scalars['JSON']['output'];
+  referenceId: Scalars['String']['output'];
 };
 
 export type WorkspaceDefinition = {
@@ -925,7 +950,7 @@ export type ConfigureMcpServerMutationVariables = Exact<{
 }>;
 
 
-export type ConfigureMcpServerMutation = { __typename?: 'Mutation', configureMcpServer: { __typename?: 'ConfigureMcpServerResult', savedConfig: { __typename?: 'SseMcpServerConfig', serverId: string, transportType: McpTransportTypeEnum, enabled: boolean, toolNamePrefix?: string | null, url: string, token?: string | null, headers?: any | null } | { __typename?: 'StdioMcpServerConfig', serverId: string, transportType: McpTransportTypeEnum, enabled: boolean, toolNamePrefix?: string | null, command: string, args?: Array<string> | null, env?: any | null, cwd?: string | null } | { __typename?: 'StreamableHttpMcpServerConfig', serverId: string, transportType: McpTransportTypeEnum, enabled: boolean, toolNamePrefix?: string | null, url: string, token?: string | null, headers?: any | null } } };
+export type ConfigureMcpServerMutation = { __typename?: 'Mutation', configureMcpServer: { __typename?: 'ConfigureMcpServerResult', savedConfig: { __typename?: 'StdioMcpServerConfig', serverId: string, transportType: McpTransportTypeEnum, enabled: boolean, toolNamePrefix?: string | null, command: string, args?: Array<string> | null, env?: any | null, cwd?: string | null } | { __typename?: 'StreamableHttpMcpServerConfig', serverId: string, transportType: McpTransportTypeEnum, enabled: boolean, toolNamePrefix?: string | null, url: string, token?: string | null, headers?: any | null } } };
 
 export type DeleteMcpServerMutationVariables = Exact<{
   serverId: Scalars['String']['input'];
@@ -1040,7 +1065,7 @@ export type GetAvailableLlmProvidersWithModelsQuery = { __typename?: 'Query', av
 export type GetMcpServersQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetMcpServersQuery = { __typename?: 'Query', mcpServers: Array<{ __typename: 'SseMcpServerConfig', serverId: string, transportType: McpTransportTypeEnum, enabled: boolean, toolNamePrefix?: string | null, url: string, token?: string | null, headers?: any | null } | { __typename: 'StdioMcpServerConfig', serverId: string, transportType: McpTransportTypeEnum, enabled: boolean, toolNamePrefix?: string | null, command: string, args?: Array<string> | null, env?: any | null, cwd?: string | null } | { __typename: 'StreamableHttpMcpServerConfig', serverId: string, transportType: McpTransportTypeEnum, enabled: boolean, toolNamePrefix?: string | null, url: string, token?: string | null, headers?: any | null }> };
+export type GetMcpServersQuery = { __typename?: 'Query', mcpServers: Array<{ __typename: 'StdioMcpServerConfig', serverId: string, transportType: McpTransportTypeEnum, enabled: boolean, toolNamePrefix?: string | null, command: string, args?: Array<string> | null, env?: any | null, cwd?: string | null } | { __typename: 'StreamableHttpMcpServerConfig', serverId: string, transportType: McpTransportTypeEnum, enabled: boolean, toolNamePrefix?: string | null, url: string, token?: string | null, headers?: any | null }> };
 
 export type PreviewMcpServerToolsQueryVariables = Exact<{
   input: McpServerInput;
@@ -1083,12 +1108,19 @@ export type GetUsageStatisticsInPeriodQueryVariables = Exact<{
 export type GetUsageStatisticsInPeriodQuery = { __typename?: 'Query', usageStatisticsInPeriod: Array<{ __typename?: 'UsageStatistics', llmModel: string, promptTokens: number, assistantTokens: number, promptCost?: number | null, assistantCost?: number | null, totalCost?: number | null }> };
 
 export type GetToolsQueryVariables = Exact<{
-  category?: InputMaybe<ToolCategoryEnum>;
+  origin?: InputMaybe<ToolOriginEnum>;
   sourceServerId?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 
-export type GetToolsQuery = { __typename?: 'Query', tools: Array<{ __typename?: 'ToolDefinitionDetail', name: string, description: string, category: ToolCategoryEnum, argumentSchema?: { __typename?: 'ToolArgumentSchema', parameters: Array<{ __typename?: 'ToolParameterDefinition', name: string, paramType: ToolParameterTypeEnum, description: string, required: boolean, defaultValue?: string | null, enumValues?: Array<string> | null }> } | null }> };
+export type GetToolsQuery = { __typename?: 'Query', tools: Array<{ __typename?: 'ToolDefinitionDetail', name: string, description: string, origin: ToolOriginEnum, category: string, argumentSchema?: { __typename?: 'ToolArgumentSchema', parameters: Array<{ __typename?: 'ToolParameterDefinition', name: string, paramType: ToolParameterTypeEnum, description: string, required: boolean, defaultValue?: string | null, enumValues?: Array<string> | null }> } | null }> };
+
+export type GetToolsGroupedByCategoryQueryVariables = Exact<{
+  origin: ToolOriginEnum;
+}>;
+
+
+export type GetToolsGroupedByCategoryQuery = { __typename?: 'Query', toolsGroupedByCategory: Array<{ __typename?: 'ToolCategoryGroup', categoryName: string, tools: Array<{ __typename?: 'ToolDefinitionDetail', name: string, description: string, origin: ToolOriginEnum, category: string, argumentSchema?: { __typename?: 'ToolArgumentSchema', parameters: Array<{ __typename?: 'ToolParameterDefinition', name: string, paramType: ToolParameterTypeEnum, description: string, required: boolean, defaultValue?: string | null, enumValues?: Array<string> | null }> } | null }> }> };
 
 export type GetAvailableWorkspaceDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1527,15 +1559,6 @@ export const ConfigureMcpServerDocument = gql`
         args
         env
         cwd
-      }
-      ... on SseMcpServerConfig {
-        serverId
-        transportType
-        enabled
-        toolNamePrefix
-        url
-        token
-        headers
       }
       ... on StreamableHttpMcpServerConfig {
         serverId
@@ -2138,15 +2161,6 @@ export const GetMcpServersDocument = gql`
       env
       cwd
     }
-    ... on SseMcpServerConfig {
-      serverId
-      transportType
-      enabled
-      toolNamePrefix
-      url
-      token
-      headers
-    }
     ... on StreamableHttpMcpServerConfig {
       serverId
       transportType
@@ -2382,10 +2396,11 @@ export function useGetUsageStatisticsInPeriodLazyQuery(variables?: GetUsageStati
 }
 export type GetUsageStatisticsInPeriodQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetUsageStatisticsInPeriodQuery, GetUsageStatisticsInPeriodQueryVariables>;
 export const GetToolsDocument = gql`
-    query GetTools($category: ToolCategoryEnum, $sourceServerId: String) {
-  tools(category: $category, sourceServerId: $sourceServerId) {
+    query GetTools($origin: ToolOriginEnum, $sourceServerId: String) {
+  tools(origin: $origin, sourceServerId: $sourceServerId) {
     name
     description
+    origin
     category
     argumentSchema {
       parameters {
@@ -2413,7 +2428,7 @@ export const GetToolsDocument = gql`
  *
  * @example
  * const { result, loading, error } = useGetToolsQuery({
- *   category: // value for 'category'
+ *   origin: // value for 'origin'
  *   sourceServerId: // value for 'sourceServerId'
  * });
  */
@@ -2424,6 +2439,52 @@ export function useGetToolsLazyQuery(variables: GetToolsQueryVariables | VueComp
   return VueApolloComposable.useLazyQuery<GetToolsQuery, GetToolsQueryVariables>(GetToolsDocument, variables, options);
 }
 export type GetToolsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetToolsQuery, GetToolsQueryVariables>;
+export const GetToolsGroupedByCategoryDocument = gql`
+    query GetToolsGroupedByCategory($origin: ToolOriginEnum!) {
+  toolsGroupedByCategory(origin: $origin) {
+    categoryName
+    tools {
+      name
+      description
+      origin
+      category
+      argumentSchema {
+        parameters {
+          name
+          paramType
+          description
+          required
+          defaultValue
+          enumValues
+        }
+      }
+    }
+  }
+}
+    `;
+
+/**
+ * __useGetToolsGroupedByCategoryQuery__
+ *
+ * To run a query within a Vue component, call `useGetToolsGroupedByCategoryQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetToolsGroupedByCategoryQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param variables that will be passed into the query
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetToolsGroupedByCategoryQuery({
+ *   origin: // value for 'origin'
+ * });
+ */
+export function useGetToolsGroupedByCategoryQuery(variables: GetToolsGroupedByCategoryQueryVariables | VueCompositionApi.Ref<GetToolsGroupedByCategoryQueryVariables> | ReactiveFunction<GetToolsGroupedByCategoryQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetToolsGroupedByCategoryQuery, GetToolsGroupedByCategoryQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetToolsGroupedByCategoryQuery, GetToolsGroupedByCategoryQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetToolsGroupedByCategoryQuery, GetToolsGroupedByCategoryQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetToolsGroupedByCategoryQuery, GetToolsGroupedByCategoryQueryVariables>(GetToolsGroupedByCategoryDocument, variables, options);
+}
+export function useGetToolsGroupedByCategoryLazyQuery(variables?: GetToolsGroupedByCategoryQueryVariables | VueCompositionApi.Ref<GetToolsGroupedByCategoryQueryVariables> | ReactiveFunction<GetToolsGroupedByCategoryQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetToolsGroupedByCategoryQuery, GetToolsGroupedByCategoryQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetToolsGroupedByCategoryQuery, GetToolsGroupedByCategoryQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetToolsGroupedByCategoryQuery, GetToolsGroupedByCategoryQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetToolsGroupedByCategoryQuery, GetToolsGroupedByCategoryQueryVariables>(GetToolsGroupedByCategoryDocument, variables, options);
+}
+export type GetToolsGroupedByCategoryQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetToolsGroupedByCategoryQuery, GetToolsGroupedByCategoryQueryVariables>;
 export const GetAvailableWorkspaceDefinitionsDocument = gql`
     query GetAvailableWorkspaceDefinitions {
   availableWorkspaceDefinitions {
