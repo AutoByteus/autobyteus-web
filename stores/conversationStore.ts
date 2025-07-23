@@ -12,7 +12,6 @@ import type {
   ContextFileType,
 } from '~/generated/graphql';
 import type { Conversation, Message, ContextFilePath, AIMessage } from '~/types/conversation';
-import apiService from '~/services/api';
 import { useAgentSessionStore } from '~/stores/agentSessionStore';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
@@ -483,26 +482,6 @@ export const useConversationStore = defineStore('conversation', {
       } catch (error) {
         console.error("Error posting tool execution approval:", error);
         // Here you might want to show an error to the user
-      }
-    },
-
-    async uploadFile(file: File): Promise<string> {
-      const agentSessionStore = useAgentSessionStore();
-      const workspaceId = agentSessionStore.activeSession?.workspaceId;
-      if (!workspaceId) throw new Error("Workspace ID not available for file upload.");
-      
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('workspace_id', workspaceId);
-
-      try {
-        const response = await apiService.post<{ fileUrl: string }>('/upload-file', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        return response.data.fileUrl;
-      } catch (error) {
-        console.error('Error uploading file:', error);
-        throw error;
       }
     },
 

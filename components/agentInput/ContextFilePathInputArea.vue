@@ -5,39 +5,63 @@
     @drop.prevent="onFileDrop"
     @paste="onPaste"
   >
+    <!-- Hidden file input for upload button -->
+    <input
+      ref="fileInputRef"
+      type="file"
+      multiple
+      class="hidden"
+      @change="onFileSelect"
+    />
+
     <!-- Clickable Header Area -->
     <div
-      @click="toggleContextList"
-      class="flex items-center justify-between cursor-pointer p-2 -m-2 mb-1 rounded hover:bg-gray-100 transition-colors"
+      class="flex items-center justify-between p-2 -m-2 mb-1 rounded"
       :class="{ 'mb-2': isContextListExpanded && contextFilePaths.length > 0 }"
-      role="button"
-      :aria-expanded="isContextListExpanded.toString()"
-      aria-controls="context-file-list"
     >
-      <div class="flex items-center">
-        <!-- Chevron icon is now conditional -->
-        <svg
-          v-if="contextFilePaths.length > 0"
-          class="w-5 h-5 transform transition-transform text-gray-600 mr-2 flex-shrink-0"
-          :class="{ 'rotate-90': isContextListExpanded }"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-        </svg>
-        <span class="font-medium text-sm text-gray-800" :class="{ 'ml-7': contextFilePaths.length === 0 }">
-          Context Files ({{ contextFilePaths.length }})
-        </span>
-        <span v-if="contextFilePaths.length === 0" class="text-xs text-gray-500 ml-1.5"> (drag and drop or paste)</span>
+      <div
+        @click="toggleContextList"
+        class="flex items-center flex-grow cursor-pointer p-1 -m-1 rounded hover:bg-gray-100 transition-colors"
+        role="button"
+        :aria-expanded="isContextListExpanded.toString()"
+        aria-controls="context-file-list"
+      >
+        <div class="flex items-center">
+          <!-- Chevron icon is now conditional -->
+          <svg
+            vif="contextFilePaths.length > 0"
+            class="w-5 h-5 transform transition-transform text-gray-600 mr-2 flex-shrink-0"
+            :class="{ 'rotate-90': isContextListExpanded }"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+          <span class="font-medium text-sm text-gray-800" :class="{ 'ml-7': contextFilePaths.length === 0 }">
+            Context Files ({{ contextFilePaths.length }})
+          </span>
+          <span v-if="contextFilePaths.length === 0" class="text-xs text-gray-500 ml-1.5"> (drag, paste, or upload)</span>
+        </div>
       </div>
-      <!-- Placeholder for any right-aligned item in header if needed in future -->
+      
+      <!-- Upload Button -->
+      <button
+        @click.stop="triggerFileInput"
+        class="text-blue-500 hover:text-white hover:bg-blue-500 transition-colors duration-300 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 ml-2 flex-shrink-0"
+        title="Upload files"
+        aria-label="Upload files"
+      >
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 6V18M18 12H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </div>
 
     <!-- File List (conditionally rendered) -->
     <ul
-      v-if="isContextListExpanded && contextFilePaths.length > 0"
+      vif="isContextListExpanded && contextFilePaths.length > 0"
       id="context-file-list"
       class="space-y-2"
     >
@@ -47,7 +71,7 @@
         class="bg-gray-100 p-2 rounded transition-colors duration-300 flex items-center justify-between"
       >
         <div class="flex items-center space-x-2 flex-grow min-w-0">
-          <i :class="['fas', filePath.type === 'Image' ? 'fa-image' : 'fa-file', 'text-gray-500 w-4 flex-shrink-0']"></i>
+          <i :class="['fas', getIconForFileType(filePath.type), 'text-gray-500 w-4 flex-shrink-0']"></i>
           <span class="text-sm text-gray-600 truncate">
             {{ filePath.path }}
           </span>
@@ -85,14 +109,31 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useConversationStore } from '~/stores/conversationStore';
+import { useFileUploadStore } from '~/stores/fileUploadStore'; // IMPORT the new store
 import { getFilePathsFromFolder, determineFileType } from '~/utils/fileExplorer/fileUtils';
 import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
+import type { ContextFilePath } from '~/types/conversation';
 
 const conversationStore = useConversationStore();
+const fileUploadStore = useFileUploadStore(); // INSTANTIATE the new store
 
 const contextFilePaths = computed(() => conversationStore.currentContextPaths);
 const uploadingFiles = ref<string[]>([]);
 const isContextListExpanded = ref(true);
+const fileInputRef = ref<HTMLInputElement | null>(null);
+
+const getIconForFileType = (type: ContextFilePath['type']) => {
+  switch (type) {
+    case 'Image':
+      return 'fa-image';
+    case 'Audio':
+      return 'fa-file-audio';
+    case 'Video':
+      return 'fa-file-video';
+    default:
+      return 'fa-file';
+  }
+};
 
 const toggleContextList = () => {
   if (contextFilePaths.value.length > 0) {
@@ -106,101 +147,98 @@ const removeContextFilePath = (index: number) => {
   conversationStore.removeContextFilePath(index);
 };
 
-const addFileAndExpand = (filePath: string, fileType: 'Text' | 'Image') => {
-  conversationStore.addContextFilePath({ path: filePath, type: fileType });
-  if (!isContextListExpanded.value) {
-    isContextListExpanded.value = true;
-  }
-};
-
-
 const clearAllContextFilePaths = () => {
   conversationStore.clearContextFilePaths();
   isContextListExpanded.value = true;
 };
 
+const processAndUploadFiles = async (files: (File | null)[]) => {
+  const validFiles = files.filter((f): f is File => f !== null);
+  if (validFiles.length === 0) {
+    return;
+  }
+  
+  if (!isContextListExpanded.value) {
+    isContextListExpanded.value = true;
+  }
+
+  const uploadPromises = validFiles.map(async (file) => {
+    const tempPath = URL.createObjectURL(file);
+    
+    let fileType: ContextFilePath['type'];
+    if (file.type.startsWith('image/')) fileType = 'Image';
+    else if (file.type.startsWith('audio/')) fileType = 'Audio';
+    else if (file.type.startsWith('video/')) fileType = 'Video';
+    else fileType = 'Text';
+
+    conversationStore.addContextFilePath({ path: tempPath, type: fileType });
+    uploadingFiles.value.push(tempPath);
+
+    try {
+      // USE the new store for the upload action
+      const uploadedFilePath = await fileUploadStore.uploadFile(file);
+      const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
+      if (tempIndex !== -1) {
+        conversationStore.removeContextFilePath(tempIndex);
+      }
+      conversationStore.addContextFilePath({ path: uploadedFilePath, type: fileType });
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
+      if (tempIndex !== -1) {
+        conversationStore.removeContextFilePath(tempIndex);
+      }
+    } finally {
+      uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath);
+      // It's good practice to revoke object URLs, but this can cause issues if the path is still needed.
+      // For now, we'll omit it to avoid breaking image previews if they rely on the blob URL.
+      // URL.revokeObjectURL(tempPath);
+    }
+  });
+
+  await Promise.all(uploadPromises);
+};
+
+const triggerFileInput = () => {
+  fileInputRef.value?.click();
+};
+
+const onFileSelect = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  if (input.files) {
+    processAndUploadFiles(Array.from(input.files));
+  }
+  // Reset the input value to allow selecting the same file again
+  input.value = '';
+};
+
 const onFileDrop = async (event: DragEvent) => {
-  let filesWereAdded = false;
   const dragData = event.dataTransfer?.getData('application/json');
   if (dragData) {
-    filesWereAdded = true;
     const droppedNode: TreeNode = JSON.parse(dragData);
     const filePaths = getFilePathsFromFolder(droppedNode);
     for (const filePath of filePaths) {
-      // CLEANUP: No workaround needed here. `determineFileType` now returns the correct PascalCase type.
       const fileType = await determineFileType(filePath);
       conversationStore.addContextFilePath({ path: filePath, type: fileType });
     }
-  } else if (event.dataTransfer?.files.length) {
-    filesWereAdded = true;
-    for (const file of event.dataTransfer.files) {
-      const tempPath = URL.createObjectURL(file);
-      const fileType = file.type.startsWith('image/') ? 'Image' : 'Text';
-      conversationStore.addContextFilePath({ path: tempPath, type: fileType });
-      uploadingFiles.value.push(tempPath);
-
-      try {
-        const uploadedFilePath = await conversationStore.uploadFile(file);
-        const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
-        if (tempIndex !== -1) {
-          conversationStore.removeContextFilePath(tempIndex);
-        }
-        conversationStore.addContextFilePath({ path: uploadedFilePath, type: fileType });
-        uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath && path !== uploadedFilePath);
-
-
-      } catch (error) {
-        console.error('Error uploading file:', error);
-        const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
-        if (tempIndex !== -1) {
-          conversationStore.removeContextFilePath(tempIndex);
-        }
-        uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath);
-      }
+    if (filePaths.length > 0 && !isContextListExpanded.value) {
+      isContextListExpanded.value = true;
     }
-  }
-
-  if (filesWereAdded && !isContextListExpanded.value) {
-     isContextListExpanded.value = true;
+  } else if (event.dataTransfer?.files) {
+    await processAndUploadFiles(Array.from(event.dataTransfer.files));
   }
 };
 
 const onPaste = async (event: ClipboardEvent) => {
-  let pastedContent = false;
   const items = event.clipboardData?.items;
   if (items) {
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        pastedContent = true;
-        const blob = item.getAsFile();
-        if (blob) {
-          const tempPath = URL.createObjectURL(blob);
-          conversationStore.addContextFilePath({ path: tempPath, type: 'Image' });
-          uploadingFiles.value.push(tempPath);
-
-          try {
-            const uploadedFilePath = await conversationStore.uploadFile(blob);
-            const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
-            if (tempIndex !== -1) {
-               conversationStore.removeContextFilePath(tempIndex);
-            }
-            conversationStore.addContextFilePath({ path: uploadedFilePath, type: 'Image' });
-            uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath && path !== uploadedFilePath);
-
-          } catch (error) {
-            console.error('Error uploading pasted image:', error);
-            const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
-            if (tempIndex !== -1) {
-              conversationStore.removeContextFilePath(tempIndex);
-            }
-            uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath);
-          }
-        }
-      }
+    const fileLikes = Array.from(items)
+      .filter(item => item.kind === 'file')
+      .map(item => item.getAsFile());
+    
+    if (fileLikes.length > 0) {
+      await processAndUploadFiles(fileLikes);
     }
-  }
-  if (pastedContent && !isContextListExpanded.value) {
-      isContextListExpanded.value = true;
   }
 };
 
@@ -209,7 +247,6 @@ watch(contextFilePaths, (newPaths) => {
         isContextListExpanded.value = true;
     }
 }, { deep: true });
-
 </script>
 
 <style scoped>

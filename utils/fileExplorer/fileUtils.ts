@@ -14,19 +14,31 @@ export function getFilePathsFromFolder(node: TreeNode): string[] {
   return filePaths
 }
 
-export async function determineFileType(filePath: string): Promise<'Text' | 'Image'> {
-  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
-  const lowercasePath = filePath.toLowerCase()
+export async function determineFileType(filePath: string): Promise<'Text' | 'Image' | 'Audio' | 'Video'> {
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+  const audioExtensions = ['.mp3', '.wav', '.m4a', '.flac', '.ogg'];
+  const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
+  const lowercasePath = filePath.toLowerCase();
   
   for (const ext of imageExtensions) {
     if (lowercasePath.endsWith(ext)) {
-      // FIX: Return PascalCase 'Image' to align with ContextFilePath interface and GraphQL enum.
-      return 'Image'
+      return 'Image';
+    }
+  }
+
+  for (const ext of audioExtensions) {
+    if (lowercasePath.endsWith(ext)) {
+      return 'Audio';
+    }
+  }
+
+  for (const ext of videoExtensions) {
+    if (lowercasePath.endsWith(ext)) {
+      return 'Video';
     }
   }
   
-  // FIX: Return PascalCase 'Text' to align with ContextFilePath interface and GraphQL enum.
-  return 'Text'
+  return 'Text';
 }
 
 export function findNodeById(root: TreeNode, id: string): TreeNode | null {

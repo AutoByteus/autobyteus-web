@@ -40,20 +40,37 @@ describe('fileUtils', () => {
   })
 
   describe('determineFileType', () => {
-    it('should determine file type as image for image files', async () => {
+    it('should determine file type as Image for image files', async () => {
       const fileType = await determineFileType('image.jpg')
-      expect(fileType).toBe('image')
+      expect(fileType).toBe('Image')
     })
 
-    it('should determine file type as text for text files', async () => {
+    it('should determine file type as Text for text files', async () => {
       const fileType = await determineFileType('document.txt')
-      expect(fileType).toBe('text')
+      expect(fileType).toBe('Text')
     })
+
+    it('should determine file type as Audio for audio files', async () => {
+      expect(await determineFileType('song.mp3')).toBe('Audio');
+      expect(await determineFileType('sound.wav')).toBe('Audio');
+      expect(await determineFileType('track.m4a')).toBe('Audio');
+    });
+
+    it('should determine file type as Video for video files', async () => {
+      expect(await determineFileType('movie.mp4')).toBe('Video');
+      expect(await determineFileType('clip.mov')).toBe('Video');
+      expect(await determineFileType('film.mkv')).toBe('Video');
+    });
 
     it('should be case-insensitive', async () => {
       const fileType = await determineFileType('PHOTO.PNG')
-      expect(fileType).toBe('image')
+      expect(fileType).toBe('Image')
     })
+
+    it('should default to Text for unknown extensions', async () => {
+        const fileType = await determineFileType('archive.zip');
+        expect(fileType).toBe('Text');
+    });
   })
 
   describe('findNodeById', () => {
