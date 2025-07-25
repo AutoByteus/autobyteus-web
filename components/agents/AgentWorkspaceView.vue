@@ -5,14 +5,14 @@
       <ExclamationTriangleIcon class="w-5 h-5 mr-2 inline" /> {{ error }}
     </div>
     <div v-if="loading" class="alert alert-info mb-4 p-4 bg-blue-100 text-blue-700 rounded-md">
-      <ArrowPathIcon class="w-5 h-5 mr-2 inline animate-spin" /> Loading session...
+      <ArrowPathIcon class="w-5 h-5 mr-2 inline animate-spin" /> Loading launch profile...
     </div>
 
     <!-- Main Content -->
-    <div v-if="activeSession" class="flex flex-col h-full">
+    <div v-if="activeLaunchProfile" class="flex flex-col h-full">
       <!-- Header: Agent Name and Action buttons -->
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 px-3 pt-1 pb-0">
-        <h4 class="text-lg font-medium text-gray-700">{{ activeSession.name }}</h4>
+        <h4 class="text-lg font-medium text-gray-700">{{ activeLaunchProfile.name }}</h4>
         <div class="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
           <button 
             @click="handleNewConversation" 
@@ -45,15 +45,15 @@
         @close="closeConversationHistory"
       />
     </div>
-     <div v-else-if="!loading && !error && !agentSessionStore.activeSessionId" class="p-4 text-center text-gray-500">
-      Please select or create an agent session to begin.
+     <div v-else-if="!loading && !error && !launchProfileStore.activeProfileId" class="p-4 text-center text-gray-500">
+      Please select or create a launch profile to begin.
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue';
-import { useAgentSessionStore } from '~/stores/agentSessionStore';
+import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
 import { useConversationStore } from '~/stores/conversationStore';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue';
@@ -65,7 +65,7 @@ import {
   ArrowPathIcon
 } from '@heroicons/vue/24/solid';
 
-const agentSessionStore = useAgentSessionStore();
+const launchProfileStore = useAgentLaunchProfileStore();
 const conversationStore = useConversationStore();
 const conversationHistoryStore = useConversationHistoryStore();
 
@@ -73,16 +73,16 @@ const loading = ref(false);
 const error = ref<string | null>(null);
 const isHistoryPanelOpen = ref(false);
 
-const activeSession = computed(() => agentSessionStore.activeSession);
+const activeLaunchProfile = computed(() => launchProfileStore.activeLaunchProfile);
 const historicalConversations = computed(() => conversationHistoryStore.getConversations);
 
 onMounted(() => {
-  watch(() => agentSessionStore.activeSessionId, 
-    (newSessionId) => {
-      if (newSessionId) {
-        // This ensures that when a session becomes active, we either select
+  watch(() => launchProfileStore.activeProfileId, 
+    (newProfileId) => {
+      if (newProfileId) {
+        // This ensures that when a profile becomes active, we either select
         // its latest conversation or create a new one.
-        conversationStore.ensureConversationForSession(newSessionId);
+        conversationStore.ensureConversationForLaunchProfile(newProfileId);
       }
     }, 
     { immediate: true }
@@ -90,19 +90,19 @@ onMounted(() => {
 });
 
 const handleNewConversation = () => {
-  if (activeSession.value) {
+  if (activeLaunchProfile.value) {
     conversationStore.createNewConversation();
   } else {
-    alert("Please select an active session to create a new conversation.");
+    alert("Please select an active launch profile to create a new conversation.");
   }
 };
 
 const handleShowConversationHistory = () => {
-  if (activeSession.value) {
-    conversationHistoryStore.setAgentDefinitionId(activeSession.value.agentDefinition.id); 
+  if (activeLaunchProfile.value) {
+    conversationHistoryStore.setAgentDefinitionId(activeLaunchProfile.value.agentDefinition.id); 
     isHistoryPanelOpen.value = true;
   } else {
-    alert("No active session to show history for.")
+    alert("No active launch profile to show history for.")
   }
 };
 

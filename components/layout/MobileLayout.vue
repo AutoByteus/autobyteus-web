@@ -18,7 +18,7 @@
     <!-- Mobile Panels -->
     <div class="flex-1 bg-white shadow overflow-hidden relative mt-2"> 
       <!-- File Explorer -->
-      <div v-if="activeSessionHasWorkspace" v-show="activeMobilePanel === 'explorer'" class="h-full p-0 overflow-auto">
+      <div v-if="activeLaunchProfileHasWorkspace" v-show="activeMobilePanel === 'explorer'" class="h-full p-0 overflow-auto">
         <FileExplorer />
       </div>
 
@@ -27,14 +27,14 @@
         <ContentViewer :expandedMode="true" />
       </div>
 
-      <!-- Agent Session Panel -->
-      <div v-show="activeMobilePanel === 'sessions'" class="h-full p-0 overflow-auto">
-        <AgentSessionPanel />
+      <!-- Launch Profile Panel -->
+      <div v-show="activeMobilePanel === 'profiles'" class="h-full p-0 overflow-auto">
+        <LaunchProfilePanel />
       </div>
 
       <!-- Agent View -->
       <div v-show="activeMobilePanel === 'agent'" class="h-full p-0 overflow-auto">
-        <AgentSessionView />
+        <AgentWorkspaceView />
       </div>
 
       <!-- Terminal -->
@@ -54,13 +54,13 @@
         Open Editor
       </button>
 
-      <!-- Agent session button -->
+      <!-- Agent profile button -->
       <button
-        v-if="activeMobilePanel === 'agent' && !activeSessionId"
-        @click="activeMobilePanel = 'sessions'"
+        v-if="activeMobilePanel === 'agent' && !activeProfileId"
+        @click="activeMobilePanel = 'profiles'"
         class="px-4 py-2 bg-blue-500 text-white rounded shadow-lg z-20 text-sm"
       >
-        Select Session
+        Select Profile
       </button>
     </div>
   </div>
@@ -71,31 +71,31 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
 import ContentViewer from '~/components/fileExplorer/FileContentViewer.vue'
-import AgentSessionPanel from '~/components/agentSessions/AgentSessionPanel.vue'
-import AgentSessionView from '~/components/agentSessions/AgentSessionView.vue'
+import LaunchProfilePanel from '~/components/launchProfiles/LaunchProfilePanel.vue'
+import AgentWorkspaceView from '~/components/agents/AgentWorkspaceView.vue'
 import RightSideTabs from './RightSideTabs.vue'
 import { useMobilePanels } from '~/composables/useMobilePanels'
-import { useAgentSessionStore } from '~/stores/agentSessionStore'
+import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore'
 
 const props = defineProps<{  
   showFileContent: boolean
 }>()
 
-const agentSessionStore = useAgentSessionStore()
+const launchProfileStore = useAgentLaunchProfileStore()
 const { activeMobilePanel } = useMobilePanels()
 
-const activeSessionId = computed(() => agentSessionStore.activeSessionId)
-const activeSessionHasWorkspace = computed(() => !!agentSessionStore.activeSession?.workspaceId)
+const activeProfileId = computed(() => launchProfileStore.activeProfileId)
+const activeLaunchProfileHasWorkspace = computed(() => !!launchProfileStore.activeLaunchProfile?.workspaceId)
 
 const availableTabs = computed(() => {
   const tabs = [
-    ...(activeSessionHasWorkspace.value ? [{ id: 'explorer', label: 'Files' }] : []),
-    { id: 'sessions', label: 'Sessions' },
+    ...(activeLaunchProfileHasWorkspace.value ? [{ id: 'explorer', label: 'Files' }] : []),
+    { id: 'profiles', label: 'Profiles' },
     { id: 'agent', label: 'Agent' },
     { id: 'terminal', label: 'Terminal' }
   ]
   
-  if (props.showFileContent && activeSessionHasWorkspace.value) {
+  if (props.showFileContent && activeLaunchProfileHasWorkspace.value) {
     const explorerIndex = tabs.findIndex(t => t.id === 'explorer');
     if (explorerIndex !== -1) {
       tabs.splice(explorerIndex + 1, 0, { id: 'content', label: 'Content' });
@@ -105,12 +105,12 @@ const availableTabs = computed(() => {
   return tabs
 })
 
-// Handle tab clicks with special logic for agent/sessions
+// Handle tab clicks with special logic for agent/profiles
 const handleTabClick = (tabId: string) => {
-  // If clicking agent tab without an active session,
-  // redirect to sessions tab first
-  if (tabId === 'agent' && !activeSessionId.value) {
-    activeMobilePanel.value = 'sessions'
+  // If clicking agent tab without an active profile,
+  // redirect to profiles tab first
+  if (tabId === 'agent' && !activeProfileId.value) {
+    activeMobilePanel.value = 'profiles'
   } else {
     activeMobilePanel.value = tabId
   }

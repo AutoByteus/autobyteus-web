@@ -10,7 +10,7 @@ import type {
 import { TreeNode, convertJsonToTreeNode } from '~/utils/fileExplorer/TreeNode'
 import { createNodeIdToNodeDictionary, handleFileSystemChange } from '~/utils/fileExplorer/fileUtils'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
-import { useAgentSessionStore } from '~/stores/agentSessionStore';
+import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
 
 // Interface for workspace type definitions used in the creation modal
 export interface WorkspaceType {
@@ -136,12 +136,12 @@ export const useWorkspaceStore = defineStore('workspace', {
     }
   },
   getters: {
-    // REWRITTEN: activeWorkspace now derives its value from agentSessionStore.
+    // REWRITTEN: activeWorkspace now derives its value from agentLaunchProfileStore.
     activeWorkspace(): WorkspaceInfo | null {
-      const agentSessionStore = useAgentSessionStore();
-      const activeSession = agentSessionStore.activeSession;
-      if (activeSession?.workspaceId && this.workspaces[activeSession.workspaceId]) {
-        return this.workspaces[activeSession.workspaceId];
+      const launchProfileStore = useAgentLaunchProfileStore();
+      const activeLaunchProfile = launchProfileStore.activeLaunchProfile;
+      if (activeLaunchProfile?.workspaceId && this.workspaces[activeLaunchProfile.workspaceId]) {
+        return this.workspaces[activeLaunchProfile.workspaceId];
       }
       return null;
     },

@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="show" class="fixed inset-0 flex items-center justify-center z-[9999]">
+    <div v-if="show" class="fixed inset-0 flex items-center justify-center z-">
       <!-- Backdrop with blur -->
       <div class="absolute inset-0 bg-black bg-opacity-40 backdrop-blur-sm" @click="onCancel"></div>
       
@@ -12,14 +12,14 @@
       >
         <!-- Title -->
         <h2 class="text-lg font-semibold text-gray-800 mb-2">
-          Delete Session
+          {{ title }}
         </h2>
         
         <!-- Message -->
         <div class="mb-6">
           <p class="text-gray-700">
-            Are you sure you want to delete the session <br>
-            <span class="font-medium text-red-600">"{{ targetName }}"</span>?
+            Are you sure you want to delete the {{ itemType.toLowerCase() }} <br>
+            <span class="font-medium text-red-600">"{{ itemName }}"</span>?
           </p>
           <p class="text-sm text-gray-500 mt-2">
             This action cannot be undone.
@@ -43,7 +43,7 @@
             class="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
             @click="onConfirm"
           >
-            Delete Session
+            {{ confirmText }}
           </button>
         </div>
       </div>
@@ -52,21 +52,28 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{  show: boolean
-  targetName: string
-}>()
+const props = withDefaults(defineProps<{  show: boolean;
+  itemName: string;
+  itemType?: string;
+  title?: string;
+  confirmText?: string;
+}>(), {
+  itemType: 'item',
+  title: 'Delete Item',
+  confirmText: 'Delete'
+});
 
-const emit = defineEmits<{  (e: 'confirm'): void
-  (e: 'cancel'): void
-}>()
+const emit = defineEmits<{  (e: 'confirm'): void;
+  (e: 'cancel'): void;
+}>();
 
 const onConfirm = () => {
-  emit('confirm')
-}
+  emit('confirm');
+};
 
 const onCancel = () => {
-  emit('cancel')
-}
+  emit('cancel');
+};
 </script>
 
 <style scoped>

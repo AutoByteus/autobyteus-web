@@ -167,7 +167,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace';
-import { useAgentSessionStore } from '~/stores/agentSessionStore';
+import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
 import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
 
 const props = defineProps<{  agentDefinitionId: string;
@@ -177,7 +177,7 @@ const props = defineProps<{  agentDefinitionId: string;
 const emit = defineEmits(['close', 'success']);
 
 const workspaceStore = useWorkspaceStore();
-const agentSessionStore = useAgentSessionStore();
+const agentLaunchProfileStore = useAgentLaunchProfileStore();
 const agentDefinitionStore = useAgentDefinitionStore();
 
 const configMode = ref<'new' | 'existing' | 'none' | null>(null);
@@ -246,7 +246,7 @@ const handleSubmit = async () => {
   try {
     const agentDef = agentDefinitionStore.getAgentDefinitionById(props.agentDefinitionId);
     if (!agentDef) {
-      throw new Error("Could not find agent definition to create session.");
+      throw new Error("Could not find agent definition to create launch profile.");
     }
     
     let workspaceId: string | null = null;
@@ -291,19 +291,19 @@ const handleSubmit = async () => {
         break;
     }
     
-    // Create agent session
-    const newSession = agentSessionStore.createSession(
+    // Create agent launch profile
+    const newProfile = agentLaunchProfileStore.createLaunchProfile(
       agentDef,
       workspaceId,
       workspaceName,
       workspaceTypeName,
       workspaceConfig
     );
-    agentSessionStore.setActiveSession(newSession.sessionId);
+    agentLaunchProfileStore.setActiveLaunchProfile(newProfile.id);
     
     emit('success');
   } catch (e: any) {
-    console.error("Failed to create workspace and session:", e);
+    console.error("Failed to create workspace and launch profile:", e);
     error.value = e.message || "An unknown error occurred.";
   }
 };

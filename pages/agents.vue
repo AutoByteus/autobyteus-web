@@ -7,11 +7,11 @@
       </div>
       <nav class="flex-1 px-2 py-4 space-y-1">
         <button
-          @click="handleNavigation({ view: 'sessions' })"
+          @click="handleNavigation({ view: 'launch-profiles' })"
           class="flex items-center w-full px-3 py-2 text-sm font-semibold rounded-md text-left transition-colors"
-          :class="currentView === 'sessions' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-200'"
+          :class="currentView === 'launch-profiles' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-200'"
         >
-          My Sessions
+          My Launch Profiles
         </button>
         <button
           @click="handleNavigation({ view: 'list' })"
@@ -34,7 +34,7 @@
 
     <!-- Main Content Area -->
     <main class="flex-1 overflow-y-auto">
-      <AgentSessionManager v-if="currentView === 'sessions'" @navigate="handleNavigation" />
+      <LaunchProfileManager v-if="currentView === 'launch-profiles'" @navigate="handleNavigation" />
       <AgentList v-else-if="currentView === 'list'" @navigate="handleNavigation" />
       <AgentCreate v-else-if="currentView === 'create'" @navigate="handleNavigation" />
       <AgentDetail v-else-if="currentView === 'detail' && currentId" :agent-id="currentId" @navigate="handleNavigation" />
@@ -42,7 +42,7 @@
       <div v-else class="p-8">
         <h1 class="text-xl font-bold">Invalid View</h1>
         <p>The requested view is not available.</p>
-        <button @click="handleNavigation({ view: 'sessions' })" class="mt-4 text-indigo-600 hover:underline">Go to My Sessions</button>
+        <button @click="handleNavigation({ view: 'launch-profiles' })" class="mt-4 text-indigo-600 hover:underline">Go to My Launch Profiles</button>
       </div>
     </main>
   </div>
@@ -51,7 +51,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import AgentSessionManager from '~/components/agents/AgentSessionManager.vue';
+import LaunchProfileManager from '~/components/agents/LaunchProfileManager.vue';
 import AgentList from '~/components/agents/AgentList.vue';
 import AgentDetail from '~/components/agents/AgentDetail.vue';
 import AgentCreate from '~/components/agents/AgentCreate.vue';
@@ -60,14 +60,14 @@ import AgentEdit from '~/components/agents/AgentEdit.vue';
 const route = useRoute();
 const router = useRouter();
 
-type View = 'list' | 'detail' | 'create' | 'edit' | 'sessions';
+type View = 'list' | 'detail' | 'create' | 'edit' | 'launch-profiles';
 
 const currentView = computed((): View => {
   const view = route.query.view as View;
-  if (['list', 'detail', 'create', 'edit', 'sessions'].includes(view)) {
+  if (['list', 'detail', 'create', 'edit', 'launch-profiles'].includes(view)) {
     return view;
   }
-  return 'sessions'; // Default view is now 'sessions'
+  return 'launch-profiles'; // Default view is now 'launch-profiles'
 });
 
 const currentId = computed(() => route.query.id as string | undefined);

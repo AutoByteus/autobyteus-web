@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia';
 
-interface SessionPanelOverlayState {
+interface LaunchProfilePanelOverlayState {
   isOpen: boolean;
 }
 
-export const useAgentSessionPanelOverlayStore = defineStore('agentSessionPanelOverlay', {
-  state: (): SessionPanelOverlayState => ({
+export const useLaunchProfilePanelOverlayStore = defineStore('launchProfilePanelOverlay', {
+  state: (): LaunchProfilePanelOverlayState => ({
     isOpen: false,
   }),
 

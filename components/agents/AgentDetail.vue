@@ -89,7 +89,10 @@
     <!-- Agent Delete Confirmation Dialog -->
     <AgentDeleteConfirmDialog
       :show="showDeleteConfirm"
-      :target-name="agentDef ? agentDef.name : ''"
+      :item-name="agentDef ? agentDef.name : ''"
+      item-type="Agent Definition"
+      title="Delete Agent Definition"
+      confirm-text="Delete Definition"
       @confirm="onDeleteConfirmed"
       @cancel="onDeleteCanceled"
     />

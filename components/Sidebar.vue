@@ -16,15 +16,15 @@
       </span>
     </NuxtLink>
 
-    <!-- Sidebar Toggle Button for Agent Session Panel -->
+    <!-- Sidebar Toggle Button for Launch Profile Panel -->
     <button 
       v-if="route.path === '/workspace'"
-      @click="toggleSessionPanel"
+      @click="toggleProfilePanel"
       class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 p-1 bg-gray-700 rounded-full text-gray-300 hover:text-white hover:bg-gray-600 transition-all duration-200"
     >
       <svg 
         class="w-3 h-3 transition-transform duration-200" 
-        :class="{ 'rotate-180': isSessionPanelOpen }"
+        :class="{ 'rotate-180': isProfilePanelOpen }"
         fill="none" 
         stroke="currentColor" 
         viewBox="0 0 24 24"
@@ -133,14 +133,14 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
-import { useAgentSessionPanelOverlayStore } from '~/stores/agentSessionPanelOverlayStore';
+import { useLaunchProfilePanelOverlayStore } from '~/stores/launchProfilePanelOverlayStore';
 
 const route = useRoute();
-const agentSessionPanelOverlayStore = useAgentSessionPanelOverlayStore();
-const { isOpen: isSessionPanelOpen } = storeToRefs(agentSessionPanelOverlayStore);
+const launchProfilePanelOverlayStore = useLaunchProfilePanelOverlayStore();
+const { isOpen: isProfilePanelOpen } = storeToRefs(launchProfilePanelOverlayStore);
 
-const toggleSessionPanel = () => {
-  agentSessionPanelOverlayStore.toggle();
+const toggleProfilePanel = () => {
+  launchProfilePanelOverlayStore.toggle();
 };
 </script>
 

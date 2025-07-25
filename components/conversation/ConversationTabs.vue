@@ -49,25 +49,25 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useConversationStore } from '~/stores/conversationStore';
-import { useAgentSessionStore } from '~/stores/agentSessionStore';
+import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
 import Conversation from './Conversation.vue';
 import type { Conversation as ConversationType } from '~/types/conversation';
 
 const conversationStore = useConversationStore();
-const agentSessionStore = useAgentSessionStore();
+const launchProfileStore = useAgentLaunchProfileStore();
 
 const allOpenConversations = computed(() => conversationStore.allOpenConversations);
 const currentSelectedConversationId = computed(() => conversationStore.selectedConversationId);
 const currentSelectedConversation = computed(() => conversationStore.selectedConversation);
-const activeSession = computed(() => agentSessionStore.activeSession);
+const activeLaunchProfile = computed(() => launchProfileStore.activeLaunchProfile);
 
 const getConversationLabel = (conversation: ConversationType) => {
-  if (!activeSession.value) return '...';
+  if (!activeLaunchProfile.value) return '...';
   if (conversation.id.startsWith('temp-')) {
-    return `New - ${activeSession.value.name}`;
+    return `New - ${activeLaunchProfile.value.name}`;
   }
   const idSuffix = conversation.id.slice(-4).toUpperCase();
-  return `${activeSession.value.name} - ${idSuffix}`;
+  return `${activeLaunchProfile.value.name} - ${idSuffix}`;
 };
 
 const handleCloseConv = async (conversation: ConversationType) => {

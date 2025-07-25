@@ -7,6 +7,17 @@
         <ul class="w-full space-y-1"> 
           <li>
             <button 
+              @click="$emit('change-page', 'launch-profiles')"
+              class="flex w-full items-center justify-start px-4 py-3 rounded-md transition-colors duration-150 ease-in-out"
+              :class="activePage === 'launch-profiles' 
+                ? 'bg-indigo-600 text-white shadow-sm' 
+                : 'text-gray-700 hover:bg-indigo-100 hover:text-indigo-700'"
+            >
+              <span class="text-left font-medium">My Launch Profiles</span>
+            </button>
+          </li>
+          <li>
+            <button 
               @click="$emit('change-page', 'local-agents')"
               class="flex w-full items-center justify-start px-4 py-3 rounded-md transition-colors duration-150 ease-in-out"
               :class="activePage === 'local-agents' 

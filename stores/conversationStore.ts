@@ -12,7 +12,7 @@ import type {
   ContextFileType,
 } from '~/generated/graphql';
 import type { Conversation, Message, ContextFilePath, AIMessage } from '~/types/conversation';
-import { useAgentSessionStore } from '~/stores/agentSessionStore';
+import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
 import type { AIResponseSegment, ToolCallSegment } from '~/utils/aiResponseParser/types';
@@ -20,8 +20,8 @@ import { processAgentResponseEvent } from '~/services/agentResponseProcessor';
 import { AgentInstanceContext } from '~/types/agentInstanceContext';
 import { createParserContext } from '~/utils/aiResponseParser/parserContextFactory';
 
-// REFACTORED: This state is now per-agent-session
-interface SessionConversationState {
+// REFACTORED: This state is now per-agent-launch-profile
+interface ProfileConversationState {
   activeConversations: Map<string, Conversation>; 
   selectedConversationId: string | null; 
   conversationRequirements: Map<string, string>; 
@@ -37,12 +37,12 @@ interface SessionConversationState {
   agentInstanceContextsMap: Map<string, AgentInstanceContext>; // ADDED FOR UNIQUE IDs
 }
 
-// REFACTORED: The store's state is keyed by agent session ID
+// REFACTORED: The store's state is keyed by agent launch profile ID
 interface ConversationStoreState {
-  conversationsByAgentSession: Map<string, SessionConversationState>;
+  conversationsByLaunchProfile: Map<string, ProfileConversationState>;
 }
 
-const createDefaultSessionState = (): SessionConversationState => ({
+const createDefaultProfileState = (): ProfileConversationState => ({
   activeConversations: new Map(),
   selectedConversationId: null,
   conversationRequirements: new Map(),
@@ -60,44 +60,44 @@ const createDefaultSessionState = (): SessionConversationState => ({
 
 export const useConversationStore = defineStore('conversation', {
   state: (): ConversationStoreState => ({
-    conversationsByAgentSession: new Map(),
+    conversationsByLaunchProfile: new Map(),
   }),
 
   getters: {
-    // REFACTORED: Helper getter to safely access the current active agent session's state
-    _currentSessionState(state): SessionConversationState | null {
-      const agentSessionStore = useAgentSessionStore();
-      const activeSessionId = agentSessionStore.activeSessionId;
-      if (!activeSessionId) return null;
-      return state.conversationsByAgentSession.get(activeSessionId) || null;
+    // REFACTORED: Helper getter to safely access the current active agent launch profile's state
+    _currentProfileState(state): ProfileConversationState | null {
+      const launchProfileStore = useAgentLaunchProfileStore();
+      const activeProfileId = launchProfileStore.activeProfileId;
+      if (!activeProfileId) return null;
+      return state.conversationsByLaunchProfile.get(activeProfileId) || null;
     },
 
     allOpenConversations(): Conversation[] {
-      return this._currentSessionState ? Array.from(this._currentSessionState.activeConversations.values()) : [];
+      return this._currentProfileState ? Array.from(this._currentProfileState.activeConversations.values()) : [];
     },
 
     selectedConversation(): Conversation | null {
-      if (!this._currentSessionState || !this._currentSessionState.selectedConversationId) return null;
-      return this._currentSessionState.activeConversations.get(this._currentSessionState.selectedConversationId) || null;
+      if (!this._currentProfileState || !this._currentProfileState.selectedConversationId) return null;
+      return this._currentProfileState.activeConversations.get(this._currentProfileState.selectedConversationId) || null;
     },
 
     selectedConversationId(): string | null {
-      return this._currentSessionState?.selectedConversationId || null;
+      return this._currentProfileState?.selectedConversationId || null;
     },
 
     currentContextPaths(): ContextFilePath[] {
-      if (!this.selectedConversationId || !this._currentSessionState) return [];
-      return this._currentSessionState.conversationContextPaths.get(this.selectedConversationId) || [];
+      if (!this.selectedConversationId || !this._currentProfileState) return [];
+      return this._currentProfileState.conversationContextPaths.get(this.selectedConversationId) || [];
     },
 
     currentModelSelection(): string {
-      if (!this.selectedConversationId || !this._currentSessionState) return '';
-      return this._currentSessionState.conversationModelSelection.get(this.selectedConversationId) || '';
+      if (!this.selectedConversationId || !this._currentProfileState) return '';
+      return this._currentProfileState.conversationModelSelection.get(this.selectedConversationId) || '';
     },
 
     isCurrentlySending(): boolean {
-      if (!this.selectedConversationId || !this._currentSessionState) return false;
-      return !!this._currentSessionState.isSendingMap.get(this.selectedConversationId);
+      if (!this.selectedConversationId || !this._currentProfileState) return false;
+      return !!this._currentProfileState.isSendingMap.get(this.selectedConversationId);
     },
 
     conversationMessages(): Message[] {
@@ -105,35 +105,35 @@ export const useConversationStore = defineStore('conversation', {
     },
 
     currentRequirement(): string {
-      if (!this.selectedConversationId || !this._currentSessionState) return '';
-      return this._currentSessionState.conversationRequirements.get(this.selectedConversationId) || '';
+      if (!this.selectedConversationId || !this._currentProfileState) return '';
+      return this._currentProfileState.conversationRequirements.get(this.selectedConversationId) || '';
     },
 
     // NEW: Getters for agent settings
     currentAutoExecuteTools(): boolean {
-      if (!this.selectedConversationId || !this._currentSessionState) return false;
+      if (!this.selectedConversationId || !this._currentProfileState) return false;
       // Use nullish coalescing to return false if the key doesn't exist for the conversation
-      return this._currentSessionState.conversationAutoExecuteTools.get(this.selectedConversationId) ?? false;
+      return this._currentProfileState.conversationAutoExecuteTools.get(this.selectedConversationId) ?? false;
     },
 
     currentUseXmlToolFormat(): boolean {
-      if (!this.selectedConversationId || !this._currentSessionState) return false;
+      if (!this.selectedConversationId || !this._currentProfileState) return false;
       // Use nullish coalescing to return false if the key doesn't exist for the conversation
-      return this._currentSessionState.conversationUseXmlToolFormat.get(this.selectedConversationId) ?? false;
+      return this._currentProfileState.conversationUseXmlToolFormat.get(this.selectedConversationId) ?? false;
     },
 
     // ADDED: Getter for parsing toggle
     currentParseToolCalls(): boolean {
-      if (!this.selectedConversationId || !this._currentSessionState) return true;
+      if (!this.selectedConversationId || !this._currentProfileState) return true;
       // Default to true if not set, as per requirements
-      return this._currentSessionState.conversationParseToolCalls.get(this.selectedConversationId) ?? true;
+      return this._currentProfileState.conversationParseToolCalls.get(this.selectedConversationId) ?? true;
     },
 
-    // FIXED: This getter now searches across all sessions to find the context.
+    // FIXED: This getter now searches across all profiles to find the context.
     getInstanceContextForConversation: (state) => (conversationId: string): AgentInstanceContext | undefined => {
-      for (const sessionState of state.conversationsByAgentSession.values()) {
-        if (sessionState.agentInstanceContextsMap.has(conversationId)) {
-          return sessionState.agentInstanceContextsMap.get(conversationId);
+      for (const profileState of state.conversationsByLaunchProfile.values()) {
+        if (profileState.agentInstanceContextsMap.has(conversationId)) {
+          return profileState.agentInstanceContextsMap.get(conversationId);
         }
       }
       return undefined;
@@ -141,36 +141,36 @@ export const useConversationStore = defineStore('conversation', {
   },
 
   actions: {
-    // REFACTORED: Helper action to get or create state for the current agent session
-    _getOrCreateCurrentSessionState(): SessionConversationState {
-      const agentSessionStore = useAgentSessionStore();
-      const activeSessionId = agentSessionStore.activeSessionId;
-      if (!activeSessionId) {
-        throw new Error("Cannot get conversation state: No agent session is active.");
+    // REFACTORED: Helper action to get or create state for the current agent launch profile
+    _getOrCreateCurrentProfileState(): ProfileConversationState {
+      const launchProfileStore = useAgentLaunchProfileStore();
+      const activeProfileId = launchProfileStore.activeProfileId;
+      if (!activeProfileId) {
+        throw new Error("Cannot get conversation state: No agent launch profile is active.");
       }
-      if (!this.conversationsByAgentSession.has(activeSessionId)) {
-        this.conversationsByAgentSession.set(activeSessionId, createDefaultSessionState());
+      if (!this.conversationsByLaunchProfile.has(activeProfileId)) {
+        this.conversationsByLaunchProfile.set(activeProfileId, createDefaultProfileState());
       }
-      return this.conversationsByAgentSession.get(activeSessionId)!;
+      return this.conversationsByLaunchProfile.get(activeProfileId)!;
     },
 
     setSelectedConversationId(conversationId: string | null) {
       try {
-        const sessionState = this._getOrCreateCurrentSessionState();
-        sessionState.selectedConversationId = conversationId;
+        const profileState = this._getOrCreateCurrentProfileState();
+        profileState.selectedConversationId = conversationId;
       } catch (e) {
         console.error(e);
       }
     },
 
     createNewConversation() {
-      const agentSessionStore = useAgentSessionStore();
-      const activeSession = agentSessionStore.activeSession;
-      if (!activeSession) {
-        console.error('Cannot create new conversation without an active session.');
+      const launchProfileStore = useAgentLaunchProfileStore();
+      const activeLaunchProfile = launchProfileStore.activeLaunchProfile;
+      if (!activeLaunchProfile) {
+        console.error('Cannot create new conversation without an active launch profile.');
         return;
       }
-      const sessionState = this._getOrCreateCurrentSessionState();
+      const profileState = this._getOrCreateCurrentProfileState();
       
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const now = new Date().toISOString();
@@ -179,89 +179,89 @@ export const useConversationStore = defineStore('conversation', {
         messages: [],
         createdAt: now,
         updatedAt: now,
-        agentDefinitionId: activeSession.agentDefinition.id,
+        agentDefinitionId: activeLaunchProfile.agentDefinition.id,
       };
 
-      sessionState.activeConversations.set(tempId, newConversation);
-      sessionState.conversationRequirements.set(tempId, '');
-      sessionState.conversationContextPaths.set(tempId, []);
-      sessionState.conversationModelSelection.set(tempId, '');
-      sessionState.isSendingMap.set(tempId, false);
-      sessionState.isSubscribedMap.set(tempId, false);
+      profileState.activeConversations.set(tempId, newConversation);
+      profileState.conversationRequirements.set(tempId, '');
+      profileState.conversationContextPaths.set(tempId, []);
+      profileState.conversationModelSelection.set(tempId, '');
+      profileState.isSendingMap.set(tempId, false);
+      profileState.isSubscribedMap.set(tempId, false);
       // Set default agent settings for new conversations
-      sessionState.conversationAutoExecuteTools.set(tempId, false);
-      sessionState.conversationUseXmlToolFormat.set(tempId, true); // UPDATED: Default to true as per new requirement
-      sessionState.conversationParseToolCalls.set(tempId, true); // ADDED
-      sessionState.agentInstanceContextsMap.set(tempId, new AgentInstanceContext(tempId)); // ADDED FOR UNIQUE IDs
-      sessionState.selectedConversationId = tempId;
+      profileState.conversationAutoExecuteTools.set(tempId, false);
+      profileState.conversationUseXmlToolFormat.set(tempId, true); // UPDATED: Default to true as per new requirement
+      profileState.conversationParseToolCalls.set(tempId, true); // ADDED
+      profileState.agentInstanceContextsMap.set(tempId, new AgentInstanceContext(tempId)); // ADDED FOR UNIQUE IDs
+      profileState.selectedConversationId = tempId;
     },
 
     updateUserRequirement(newRequirement: string) {
-      const sessionState = this._getOrCreateCurrentSessionState();
-      if (sessionState.selectedConversationId) {
-        sessionState.conversationRequirements.set(sessionState.selectedConversationId, newRequirement);
+      const profileState = this._getOrCreateCurrentProfileState();
+      if (profileState.selectedConversationId) {
+        profileState.conversationRequirements.set(profileState.selectedConversationId, newRequirement);
       }
     },
 
     updateModelSelection(newModel: string) {
-      const sessionState = this._getOrCreateCurrentSessionState();
-      if (sessionState.selectedConversationId) {
-        sessionState.conversationModelSelection.set(sessionState.selectedConversationId, newModel);
+      const profileState = this._getOrCreateCurrentProfileState();
+      if (profileState.selectedConversationId) {
+        profileState.conversationModelSelection.set(profileState.selectedConversationId, newModel);
       }
     },
 
     // NEW: Actions to update agent settings
     updateAutoExecuteTools(autoExecute: boolean) {
-      const sessionState = this._getOrCreateCurrentSessionState();
-      if (sessionState.selectedConversationId) {
-        sessionState.conversationAutoExecuteTools.set(sessionState.selectedConversationId, autoExecute);
+      const profileState = this._getOrCreateCurrentProfileState();
+      if (profileState.selectedConversationId) {
+        profileState.conversationAutoExecuteTools.set(profileState.selectedConversationId, autoExecute);
       }
     },
 
     updateUseXmlToolFormat(useXml: boolean) {
-      const sessionState = this._getOrCreateCurrentSessionState();
-      if (sessionState.selectedConversationId) {
-        sessionState.conversationUseXmlToolFormat.set(sessionState.selectedConversationId, useXml);
+      const profileState = this._getOrCreateCurrentProfileState();
+      if (profileState.selectedConversationId) {
+        profileState.conversationUseXmlToolFormat.set(profileState.selectedConversationId, useXml);
       }
     },
 
     // ADDED: Action to update parsing toggle
     updateParseToolCalls(parse: boolean) {
-      const sessionState = this._getOrCreateCurrentSessionState();
-      if (sessionState.selectedConversationId) {
-        sessionState.conversationParseToolCalls.set(sessionState.selectedConversationId, parse);
+      const profileState = this._getOrCreateCurrentProfileState();
+      if (profileState.selectedConversationId) {
+        profileState.conversationParseToolCalls.set(profileState.selectedConversationId, parse);
       }
     },
     
     async closeConversation(conversationIdToClose: string) {
-      const sessionState = this._getOrCreateCurrentSessionState();
+      const profileState = this._getOrCreateCurrentProfileState();
       
-      const unsubscribe = sessionState.subscriptionUnsubscribeMap.get(conversationIdToClose);
+      const unsubscribe = profileState.subscriptionUnsubscribeMap.get(conversationIdToClose);
       if (unsubscribe) {
         unsubscribe();
-        sessionState.subscriptionUnsubscribeMap.delete(conversationIdToClose);
-        sessionState.isSubscribedMap.delete(conversationIdToClose);
+        profileState.subscriptionUnsubscribeMap.delete(conversationIdToClose);
+        profileState.isSubscribedMap.delete(conversationIdToClose);
       }
 
-      const conversationToClose = sessionState.activeConversations.get(conversationIdToClose);
+      const conversationToClose = profileState.activeConversations.get(conversationIdToClose);
       if (!conversationToClose) return;
 
-      sessionState.activeConversations.delete(conversationIdToClose);
-      sessionState.conversationRequirements.delete(conversationIdToClose);
-      sessionState.conversationContextPaths.delete(conversationIdToClose);
-      sessionState.conversationModelSelection.delete(conversationIdToClose);
-      sessionState.isSendingMap.delete(conversationIdToClose);
-      sessionState.conversationAutoExecuteTools.delete(conversationIdToClose);
-      sessionState.conversationUseXmlToolFormat.delete(conversationIdToClose);
-      sessionState.conversationParseToolCalls.delete(conversationIdToClose); // ADDED
-      sessionState.agentInstanceContextsMap.delete(conversationIdToClose); // ADDED FOR UNIQUE IDs
+      profileState.activeConversations.delete(conversationIdToClose);
+      profileState.conversationRequirements.delete(conversationIdToClose);
+      profileState.conversationContextPaths.delete(conversationIdToClose);
+      profileState.conversationModelSelection.delete(conversationIdToClose);
+      profileState.isSendingMap.delete(conversationIdToClose);
+      profileState.conversationAutoExecuteTools.delete(conversationIdToClose);
+      profileState.conversationUseXmlToolFormat.delete(conversationIdToClose);
+      profileState.conversationParseToolCalls.delete(conversationIdToClose); // ADDED
+      profileState.agentInstanceContextsMap.delete(conversationIdToClose); // ADDED FOR UNIQUE IDs
 
-      if (sessionState.selectedConversationId === conversationIdToClose) {
-        const openConversationsArray = Array.from(sessionState.activeConversations.values());
+      if (profileState.selectedConversationId === conversationIdToClose) {
+        const openConversationsArray = Array.from(profileState.activeConversations.values());
         if (openConversationsArray.length > 0) {
-          sessionState.selectedConversationId = openConversationsArray[openConversationsArray.length - 1].id;
+          profileState.selectedConversationId = openConversationsArray[openConversationsArray.length - 1].id;
         } else {
-          sessionState.selectedConversationId = null;
+          profileState.selectedConversationId = null;
         }
       }
 
@@ -276,8 +276,8 @@ export const useConversationStore = defineStore('conversation', {
     },
 
     addMessageToConversation(conversationId: string, message: Message) {
-      const sessionState = this._getOrCreateCurrentSessionState();
-      const conversation = sessionState.activeConversations.get(conversationId);
+      const profileState = this._getOrCreateCurrentProfileState();
+      const conversation = profileState.activeConversations.get(conversationId);
       if (!conversation) {
         console.error(`Conversation ${conversationId} not found to add message.`);
         return;
@@ -287,13 +287,13 @@ export const useConversationStore = defineStore('conversation', {
     },
 
     async sendUserInputAndSubscribe(): Promise<void> {
-      const agentSessionStore = useAgentSessionStore();
-      const activeSession = agentSessionStore.activeSession;
-      if (!activeSession) {
-        throw new Error("Cannot send input: No active agent session.");
+      const launchProfileStore = useAgentLaunchProfileStore();
+      const activeLaunchProfile = launchProfileStore.activeLaunchProfile;
+      if (!activeLaunchProfile) {
+        throw new Error("Cannot send input: No active launch profile.");
       }
       
-      const sessionState = this._getOrCreateCurrentSessionState();
+      const profileState = this._getOrCreateCurrentProfileState();
       const currentConversation = this.selectedConversation;
       if (!currentConversation) {
         throw new Error('No active conversation selected.');
@@ -304,31 +304,31 @@ export const useConversationStore = defineStore('conversation', {
       
       const isNewConversation = conversationId.startsWith('temp-');
       const conversationIdForRequest = isNewConversation ? null : conversationId;
-      const currentRequirementText = sessionState.conversationRequirements.get(conversationId) || '';
-      const contextPaths = sessionState.conversationContextPaths.get(conversationId) || [];
-      const autoExecuteTools = sessionState.conversationAutoExecuteTools.get(conversationId) ?? false;
-      const useXmlToolFormat = sessionState.conversationUseXmlToolFormat.get(conversationId) ?? false;
-      const parseToolCalls = sessionState.conversationParseToolCalls.get(conversationId) ?? true; // ADDED
+      const currentRequirementText = profileState.conversationRequirements.get(conversationId) || '';
+      const contextPaths = profileState.conversationContextPaths.get(conversationId) || [];
+      const autoExecuteTools = profileState.conversationAutoExecuteTools.get(conversationId) ?? false;
+      const useXmlToolFormat = profileState.conversationUseXmlToolFormat.get(conversationId) ?? false;
+      const parseToolCalls = profileState.conversationParseToolCalls.get(conversationId) ?? true; // ADDED
       
       let llmModelName: string | null = null;
       let agentDefinitionId: string | null = null;
       let workspaceId: string | null = null;
 
       if (isNewConversation) {
-        llmModelName = sessionState.conversationModelSelection.get(conversationId) || null;
+        llmModelName = profileState.conversationModelSelection.get(conversationId) || null;
         if (!llmModelName) {
             console.error("Model not selected for the first message.");
             throw new Error("Please select a model for the first message.");
         }
-        agentDefinitionId = activeSession.agentDefinition.id;
-        workspaceId = activeSession.workspaceId; // Get workspaceId for new conversations
+        agentDefinitionId = activeLaunchProfile.agentDefinition.id;
+        workspaceId = activeLaunchProfile.workspaceId; // Get workspaceId for new conversations
         currentConversation.llmModelName = llmModelName; // Set model name on conversation
         currentConversation.useXmlToolFormat = useXmlToolFormat; // Set useXml on conversation
         currentConversation.parseToolCalls = parseToolCalls; // ADDED
       }
 
       const { mutate: sendAgentUserInputMutation } = useMutation<SendAgentUserInputMutation, SendAgentUserInputMutationVariables>(SendAgentUserInput);
-      sessionState.isSendingMap.set(conversationId, true);
+      profileState.isSendingMap.set(conversationId, true);
 
       try {
         const result = await sendAgentUserInputMutation({
@@ -359,83 +359,83 @@ export const useConversationStore = defineStore('conversation', {
           });
           
           if (isNewConversation) {
-            const oldTempConversation = sessionState.activeConversations.get(conversationId)!;
+            const oldTempConversation = profileState.activeConversations.get(conversationId)!;
             
-            sessionState.activeConversations.delete(conversationId);
+            profileState.activeConversations.delete(conversationId);
             oldTempConversation.id = permanentAgentId;
             oldTempConversation.updatedAt = new Date().toISOString(); 
-            sessionState.activeConversations.set(permanentAgentId, oldTempConversation);
+            profileState.activeConversations.set(permanentAgentId, oldTempConversation);
             finalConversationId = permanentAgentId;
 
             // ADDED FOR UNIQUE IDs
-            const instanceContext = sessionState.agentInstanceContextsMap.get(conversationId);
+            const instanceContext = profileState.agentInstanceContextsMap.get(conversationId);
             if (instanceContext) {
               instanceContext.updateId(permanentAgentId);
-              sessionState.agentInstanceContextsMap.set(permanentAgentId, instanceContext);
-              sessionState.agentInstanceContextsMap.delete(conversationId);
+              profileState.agentInstanceContextsMap.set(permanentAgentId, instanceContext);
+              profileState.agentInstanceContextsMap.delete(conversationId);
             }
 
-            sessionState.conversationRequirements.set(permanentAgentId, sessionState.conversationRequirements.get(conversationId) || '');
-            sessionState.conversationContextPaths.set(permanentAgentId, sessionState.conversationContextPaths.get(conversationId) || []);
-            sessionState.conversationModelSelection.set(permanentAgentId, sessionState.conversationModelSelection.get(conversationId) || '');
-            sessionState.isSendingMap.set(permanentAgentId, sessionState.isSendingMap.get(conversationId) || false);
-            sessionState.isSubscribedMap.set(permanentAgentId, sessionState.isSubscribedMap.get(conversationId) || false);
-            sessionState.conversationAutoExecuteTools.set(permanentAgentId, sessionState.conversationAutoExecuteTools.get(conversationId) ?? false);
-            sessionState.conversationUseXmlToolFormat.set(permanentAgentId, sessionState.conversationUseXmlToolFormat.get(conversationId) ?? false);
-            sessionState.conversationParseToolCalls.set(permanentAgentId, sessionState.conversationParseToolCalls.get(conversationId) ?? true); // ADDED
+            profileState.conversationRequirements.set(permanentAgentId, profileState.conversationRequirements.get(conversationId) || '');
+            profileState.conversationContextPaths.set(permanentAgentId, profileState.conversationContextPaths.get(conversationId) || []);
+            profileState.conversationModelSelection.set(permanentAgentId, profileState.conversationModelSelection.get(conversationId) || '');
+            profileState.isSendingMap.set(permanentAgentId, profileState.isSendingMap.get(conversationId) || false);
+            profileState.isSubscribedMap.set(permanentAgentId, profileState.isSubscribedMap.get(conversationId) || false);
+            profileState.conversationAutoExecuteTools.set(permanentAgentId, profileState.conversationAutoExecuteTools.get(conversationId) ?? false);
+            profileState.conversationUseXmlToolFormat.set(permanentAgentId, profileState.conversationUseXmlToolFormat.get(conversationId) ?? false);
+            profileState.conversationParseToolCalls.set(permanentAgentId, profileState.conversationParseToolCalls.get(conversationId) ?? true); // ADDED
 
-            sessionState.conversationRequirements.delete(conversationId);
-            sessionState.conversationContextPaths.delete(conversationId); 
-            sessionState.conversationModelSelection.delete(conversationId);
-            sessionState.isSendingMap.delete(conversationId);
-            sessionState.isSubscribedMap.delete(conversationId);
-            sessionState.conversationAutoExecuteTools.delete(conversationId);
-            sessionState.conversationUseXmlToolFormat.delete(conversationId);
-            sessionState.conversationParseToolCalls.delete(conversationId); // ADDED
+            profileState.conversationRequirements.delete(conversationId);
+            profileState.conversationContextPaths.delete(conversationId); 
+            profileState.conversationModelSelection.delete(conversationId);
+            profileState.isSendingMap.delete(conversationId);
+            profileState.isSubscribedMap.delete(conversationId);
+            profileState.conversationAutoExecuteTools.delete(conversationId);
+            profileState.conversationUseXmlToolFormat.delete(conversationId);
+            profileState.conversationParseToolCalls.delete(conversationId); // ADDED
             
-            if (sessionState.selectedConversationId === conversationId) {
-              sessionState.selectedConversationId = permanentAgentId;
+            if (profileState.selectedConversationId === conversationId) {
+              profileState.selectedConversationId = permanentAgentId;
             }
           }
           
-          sessionState.conversationContextPaths.set(finalConversationId, []);
-          sessionState.conversationRequirements.set(finalConversationId, ''); 
+          profileState.conversationContextPaths.set(finalConversationId, []);
+          profileState.conversationRequirements.set(finalConversationId, ''); 
 
           // UPDATED: Only subscribe if not already subscribed
-          if (!sessionState.isSubscribedMap.get(finalConversationId)) {
+          if (!profileState.isSubscribedMap.get(finalConversationId)) {
             this.subscribeToAgentResponse(finalConversationId);
           }
 
           const conversationHistoryStore = useConversationHistoryStore();
-          if (conversationHistoryStore.agentDefinitionId === activeSession.agentDefinition.id) {
+          if (conversationHistoryStore.agentDefinitionId === activeLaunchProfile.agentDefinition.id) {
              await conversationHistoryStore.fetchConversationHistory();
           }
         } else {
-          sessionState.isSendingMap.set(conversationId, false); 
+          profileState.isSendingMap.set(conversationId, false); 
           throw new Error('Failed to send user input: No data returned.');
         }
       } catch (error) {
         console.error('Error sending user input:', error);
-        sessionState.isSendingMap.set(conversationId, false); 
+        profileState.isSendingMap.set(conversationId, false); 
         throw error;
       }
     },
 
     subscribeToAgentResponse(agentId: string) {
-      const sessionState = this._getOrCreateCurrentSessionState();
+      const profileState = this._getOrCreateCurrentProfileState();
       const { onResult, onError, stop } = useSubscription<AgentResponseSubscriptionType, AgentResponseSubscriptionVariables>(
         AgentResponseSubscription, { agentId }
       );
       
-      sessionState.isSubscribedMap.set(agentId, true);
-      sessionState.subscriptionUnsubscribeMap.set(agentId, stop);
+      profileState.isSubscribedMap.set(agentId, true);
+      profileState.subscriptionUnsubscribeMap.set(agentId, stop);
 
       onResult(({ data }) => {
-        sessionState.isSendingMap.set(agentId, false);
+        profileState.isSendingMap.set(agentId, false);
         if (!data?.agentResponse) return;
 
         const { agentId: respAgentId, data: eventData } = data.agentResponse;
-        const conversation = sessionState.activeConversations.get(respAgentId);
+        const conversation = profileState.activeConversations.get(respAgentId);
         if (!conversation) return;
 
         conversation.updatedAt = new Date().toISOString();
@@ -448,8 +448,8 @@ export const useConversationStore = defineStore('conversation', {
       onError((error) => {
         console.error(`Subscription error for agent ${agentId}:`, error);
         stop();
-        sessionState.isSubscribedMap.set(agentId, false);
-        sessionState.subscriptionUnsubscribeMap.delete(agentId);
+        profileState.isSubscribedMap.set(agentId, false);
+        profileState.subscriptionUnsubscribeMap.delete(agentId);
       });
     },
 
@@ -468,8 +468,8 @@ export const useConversationStore = defineStore('conversation', {
           throw new Error(result?.data?.approveToolInvocation?.message || "Failed to post tool approval.");
         }
         // Also update the local state immediately for better UX
-        const sessionState = this._getOrCreateCurrentSessionState();
-        const conversation = sessionState.activeConversations.get(agentId);
+        const profileState = this._getOrCreateCurrentProfileState();
+        const conversation = profileState.activeConversations.get(agentId);
         if (conversation) {
           const segment = conversation.messages
             .flatMap(m => m.type === 'ai' ? m.segments : [])
@@ -486,42 +486,42 @@ export const useConversationStore = defineStore('conversation', {
     },
 
     addContextFilePath(contextFilePath: ContextFilePath) {
-      const sessionState = this._getOrCreateCurrentSessionState();
-      if (sessionState.selectedConversationId) {
-        const currentPaths = sessionState.conversationContextPaths.get(sessionState.selectedConversationId) || [];
-        sessionState.conversationContextPaths.set(sessionState.selectedConversationId, [...currentPaths, contextFilePath]);
-        const conv = sessionState.activeConversations.get(sessionState.selectedConversationId);
+      const profileState = this._getOrCreateCurrentProfileState();
+      if (profileState.selectedConversationId) {
+        const currentPaths = profileState.conversationContextPaths.get(profileState.selectedConversationId) || [];
+        profileState.conversationContextPaths.set(profileState.selectedConversationId, [...currentPaths, contextFilePath]);
+        const conv = profileState.activeConversations.get(profileState.selectedConversationId);
         if (conv) conv.updatedAt = new Date().toISOString();
       }
     },
 
     removeContextFilePath(index: number) {
-      const sessionState = this._getOrCreateCurrentSessionState();
-      if (sessionState.selectedConversationId) {
-        const currentPaths = sessionState.conversationContextPaths.get(sessionState.selectedConversationId) || [];
+      const profileState = this._getOrCreateCurrentProfileState();
+      if (profileState.selectedConversationId) {
+        const currentPaths = profileState.conversationContextPaths.get(profileState.selectedConversationId) || [];
         const newPaths = [...currentPaths];
         newPaths.splice(index, 1);
-        sessionState.conversationContextPaths.set(sessionState.selectedConversationId, newPaths);
-        const conv = sessionState.activeConversations.get(sessionState.selectedConversationId);
+        profileState.conversationContextPaths.set(profileState.selectedConversationId, newPaths);
+        const conv = profileState.activeConversations.get(profileState.selectedConversationId);
         if (conv) conv.updatedAt = new Date().toISOString(); 
       }
     },
 
     clearContextFilePaths() {
-      const sessionState = this._getOrCreateCurrentSessionState();
-      if (sessionState.selectedConversationId) {
-        sessionState.conversationContextPaths.set(sessionState.selectedConversationId, []);
-        const conv = sessionState.activeConversations.get(sessionState.selectedConversationId);
+      const profileState = this._getOrCreateCurrentProfileState();
+      if (profileState.selectedConversationId) {
+        profileState.conversationContextPaths.set(profileState.selectedConversationId, []);
+        const conv = profileState.activeConversations.get(profileState.selectedConversationId);
         if (conv) conv.updatedAt = new Date().toISOString();
       }
     },
 
     setConversationFromHistory(historicalConversationData: Conversation) {
-      const sessionState = this._getOrCreateCurrentSessionState();
-      const agentSessionStore = useAgentSessionStore();
-      const activeSession = agentSessionStore.activeSession;
-      if (!activeSession) {
-        console.error("Cannot set conversation from history: No active session.");
+      const profileState = this._getOrCreateCurrentProfileState();
+      const launchProfileStore = useAgentLaunchProfileStore();
+      const activeLaunchProfile = launchProfileStore.activeLaunchProfile;
+      if (!activeLaunchProfile) {
+        console.error("Cannot set conversation from history: No active launch profile.");
         return;
       }
       
@@ -563,41 +563,41 @@ export const useConversationStore = defineStore('conversation', {
         messages: copiedMessages,
         createdAt: historicalConversationData.createdAt || now, 
         updatedAt: now,
-        agentDefinitionId: activeSession.agentDefinition.id,
+        agentDefinitionId: activeLaunchProfile.agentDefinition.id,
       };
 
-      sessionState.activeConversations.set(tempId, newConversation);
-      sessionState.conversationRequirements.set(tempId, ''); 
-      sessionState.conversationContextPaths.set(tempId, []);
-      sessionState.conversationModelSelection.set(tempId, historicalConversationData.llmModelName || ''); 
-      sessionState.isSendingMap.set(tempId, false);
-      sessionState.isSubscribedMap.set(tempId, false);
-      sessionState.conversationAutoExecuteTools.set(tempId, false);
-      sessionState.conversationUseXmlToolFormat.set(tempId, (historicalConversationData as any).useXmlToolFormat ?? true);
-      sessionState.conversationParseToolCalls.set(tempId, (historicalConversationData as any).parseToolCalls ?? true);
+      profileState.activeConversations.set(tempId, newConversation);
+      profileState.conversationRequirements.set(tempId, ''); 
+      profileState.conversationContextPaths.set(tempId, []);
+      profileState.conversationModelSelection.set(tempId, historicalConversationData.llmModelName || ''); 
+      profileState.isSendingMap.set(tempId, false);
+      profileState.isSubscribedMap.set(tempId, false);
+      profileState.conversationAutoExecuteTools.set(tempId, false);
+      profileState.conversationUseXmlToolFormat.set(tempId, (historicalConversationData as any).useXmlToolFormat ?? true);
+      profileState.conversationParseToolCalls.set(tempId, (historicalConversationData as any).parseToolCalls ?? true);
       // Store the context for the new temp conversation
-      sessionState.agentInstanceContextsMap.set(tempId, agentInstanceContext);
-      sessionState.selectedConversationId = tempId;
+      profileState.agentInstanceContextsMap.set(tempId, agentInstanceContext);
+      profileState.selectedConversationId = tempId;
     },
     
-    ensureConversationForSession(sessionId: string): void {
-      if (!sessionId) {
-        console.warn("ensureConversationForSession called without a session ID.");
+    ensureConversationForLaunchProfile(profileId: string): void {
+      if (!profileId) {
+        console.warn("ensureConversationForLaunchProfile called without a profile ID.");
         return;
       }
       
-      if (!this.conversationsByAgentSession.has(sessionId)) {
-        this.conversationsByAgentSession.set(sessionId, createDefaultSessionState());
+      if (!this.conversationsByLaunchProfile.has(profileId)) {
+        this.conversationsByLaunchProfile.set(profileId, createDefaultProfileState());
       }
-      const sessionState = this.conversationsByAgentSession.get(sessionId)!;
+      const profileState = this.conversationsByLaunchProfile.get(profileId)!;
 
-      const conversations = Array.from(sessionState.activeConversations.values());
+      const conversations = Array.from(profileState.activeConversations.values());
 
       if (conversations.length > 0) {
-        const latestConversation = conversations.sort((a, b) => 
+        const sortedConversations = conversations.sort((a, b) => 
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-        )[0];
-        sessionState.selectedConversationId = latestConversation.id;
+        );
+        profileState.selectedConversationId = sortedConversations[0].id;
       } else {
         this.createNewConversation();
       }

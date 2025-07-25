@@ -1,18 +1,18 @@
 <template>
   <div class="hidden md:flex flex-1 relative space-x-0 min-h-0">
-    <!-- Agent Session Panel -->
+    <!-- Launch Profile Panel -->
     <div 
-      v-show="isSessionPanelOpen"
-      :style="{ width: sessionPanelWidth + 'px' }"
+      v-show="isProfilePanelOpen"
+      :style="{ width: profilePanelWidth + 'px' }"
       class="bg-white border-r border-gray-200 shadow-xl flex flex-col overflow-hidden transition-all duration-300"
     >
       <div class="flex-1 overflow-auto p-0">
-        <AgentSessionPanel />
+        <LaunchProfilePanel />
       </div>
     </div>
 
     <!-- File Explorer Container - Conditionally rendered -->
-    <template v-if="activeSessionHasWorkspace">
+    <template v-if="activeLaunchProfileHasWorkspace">
       <div :style="{ width: fileExplorerWidth + 'px' }" class="bg-white p-0 shadow flex flex-col min-h-0 relative">
         <div class="flex-1 overflow-auto">
           <FileExplorer />
@@ -34,7 +34,7 @@
     <template v-else>
       <div class="bg-white p-0 shadow flex flex-col min-h-0 flex-1 min-w-[200px]">
         <div class="flex-1 overflow-auto">
-          <AgentSessionView />
+          <AgentWorkspaceView />
         </div>
       </div>
 
@@ -101,30 +101,29 @@ import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
-import { useAgentSessionPanelOverlayStore } from '~/stores/agentSessionPanelOverlayStore'
-import { useAgentSessionStore } from '~/stores/agentSessionStore';
+import { useLaunchProfilePanelOverlayStore } from '~/stores/launchProfilePanelOverlayStore'
+import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
 import { useRightPanel } from '~/composables/useRightPanel'
 import { usePanelResize } from '~/composables/usePanelResize'
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
 import ContentViewer from '~/components/fileExplorer/FileContentViewer.vue'
-import AgentSessionView from '~/components/agentSessions/AgentSessionView.vue'
+import AgentWorkspaceView from '~/components/agents/AgentWorkspaceView.vue'
 import RightSideTabs from './RightSideTabs.vue'
-import AgentSessionPanel from '~/components/agentSessions/AgentSessionPanel.vue'
+import LaunchProfilePanel from '~/components/launchProfiles/LaunchProfilePanel.vue'
 
 const fileContentDisplayModeStore = useFileContentDisplayModeStore()
-const agentSessionStore = useAgentSessionStore()
-const agentSessionPanelOverlayStore = useAgentSessionPanelOverlayStore()
+const launchProfileStore = useAgentLaunchProfileStore()
+const launchProfilePanelOverlayStore = useLaunchProfilePanelOverlayStore()
 
-// Agent Session Panel State
-const { isOpen: isSessionPanelOpen } = storeToRefs(agentSessionPanelOverlayStore)
-const { toggle: toggleSessionPanel } = agentSessionPanelOverlayStore
-const sessionPanelWidth = ref(300)
+// Launch Profile Panel State
+const { isOpen: isProfilePanelOpen } = storeToRefs(launchProfilePanelOverlayStore)
+const profilePanelWidth = ref(300)
 
 const { isFullscreenMode, isMinimizedMode } = storeToRefs(fileContentDisplayModeStore)
 const { fileExplorerWidth, initDragFileToContent } = usePanelResize()
 const { isRightPanelVisible, rightPanelWidth, toggleRightPanel, initDragRightPanel } = useRightPanel()
 
-const activeSessionHasWorkspace = computed(() => !!agentSessionStore.activeSession?.workspaceId);
+const activeLaunchProfileHasWorkspace = computed(() => !!launchProfileStore.activeLaunchProfile?.workspaceId);
 </script>
 
 <style scoped>

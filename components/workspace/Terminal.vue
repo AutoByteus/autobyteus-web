@@ -58,7 +58,12 @@ const handleCommand = async (command: string) => {
     return;
   }
 
-  const workspaceId = workspaceStore.currentSelectedWorkspaceId;
+  const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
+  if (!workspaceId) {
+    terminalInstance.value.writeln(`Error: No active workspace found.`);
+    writePrompt();
+    return;
+  }
 
   try {
     await bashCommandStore.executeBashCommand(

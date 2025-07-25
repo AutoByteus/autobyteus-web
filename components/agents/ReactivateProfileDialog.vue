@@ -5,8 +5,8 @@
         
         <!-- Header -->
         <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg leading-6 font-medium text-gray-900">Resume Session</h3>
-          <p class="mt-1 text-sm text-gray-500">Choose how to resume the session for agent: <span class="font-semibold">{{ session?.agentDefinition.name }}</span></p>
+          <h3 class="text-lg leading-6 font-medium text-gray-900">Reactivate Launch Profile</h3>
+          <p class="mt-1 text-sm text-gray-500">Choose how to reactivate the profile for agent: <span class="font-semibold">{{ launchProfile?.agentDefinition.name }}</span></p>
         </div>
 
         <!-- Body -->
@@ -22,17 +22,17 @@
               <h4 class="font-semibold text-gray-800">
                 Re-create Workspace
               </h4>
-              <p class="text-sm text-gray-600 mt-2">Create a new workspace based on the session's saved configuration.</p>
+              <p class="text-sm text-gray-600 mt-2">Create a new workspace based on the profile's saved configuration.</p>
               
-              <div v-if="selectedOption === 'recreate' && session" class="mt-4 space-y-3 text-sm">
+              <div v-if="selectedOption === 'recreate' && launchProfile" class="mt-4 space-y-3 text-sm">
                 <div>
                   <h5 class="font-semibold text-gray-700">Workspace Type</h5>
-                  <p class="text-gray-600 font-mono pl-1">{{ session.workspaceTypeName }}</p>
+                  <p class="text-gray-600 font-mono pl-1">{{ launchProfile.workspaceTypeName }}</p>
                 </div>
-                <div v-if="Object.keys(session.workspaceConfig || {}).length > 0">
+                <div v-if="Object.keys(launchProfile.workspaceConfig || {}).length > 0">
                   <h5 class="font-semibold text-gray-700">Configuration</h5>
                   <div class="mt-1 p-3 bg-gray-50 border border-gray-200 rounded-md space-y-1 text-xs">
-                    <div v-for="(value, key) in session.workspaceConfig" :key="key" class="flex">
+                    <div v-for="(value, key) in launchProfile.workspaceConfig" :key="key" class="flex">
                       <span class="text-gray-500 mr-2">{{ key }}:</span>
                       <span class="font-mono text-gray-800 truncate" :title="String(value)">{{ value }}</span>
                     </div>
@@ -54,7 +54,7 @@
               <h4 class="font-semibold text-gray-800">
                 Attach to Existing
               </h4>
-              <p class="text-sm text-gray-600 mt-2">Link this session to a currently active workspace.</p>
+              <p class="text-sm text-gray-600 mt-2">Link this profile to a currently active workspace.</p>
               
               <div v-if="isAttachDisabled" class="mt-2 text-sm text-gray-500 italic">No active workspaces available.</div>
 
@@ -122,11 +122,11 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace';
-import type { AgentSession } from '~/stores/agentSessionStore';
+import type { AgentLaunchProfile } from '~/stores/agentLaunchProfileStore';
 import type { WorkspaceInfo } from '~/stores/workspace';
 
 const props = defineProps<{  show: boolean;
-  session: AgentSession | null;
+  launchProfile: AgentLaunchProfile | null; // Renamed from session
 }>();
 
 const emit = defineEmits<{  (e: 'cancel'): void;
@@ -165,12 +165,12 @@ const configsAreEqual = (obj1: any, obj2: any): boolean => {
 };
 
 const recommendedWorkspaceId = computed(() => {
-    if (!props.session?.workspaceConfig || activeWorkspaces.value.length === 0) {
+    if (!props.launchProfile?.workspaceConfig || activeWorkspaces.value.length === 0) {
         return null;
     }
-    const sessionConfig = props.session.workspaceConfig;
+    const profileConfig = props.launchProfile.workspaceConfig;
     const matchingWorkspace = activeWorkspaces.value.find(ws => 
-        configsAreEqual(ws.workspaceConfig, sessionConfig)
+        configsAreEqual(ws.workspaceConfig, profileConfig)
     );
     return matchingWorkspace ? matchingWorkspace.workspaceId : null;
 });
@@ -194,7 +194,7 @@ watch(() => props.show, (newVal) => {
       if (recommendedWorkspaceId.value) {
         selectedWorkspaceId.value = recommendedWorkspaceId.value;
       } else if (activeWorkspaces.value.length > 0) {
-        selectedWorkspaceId.value = activeWorkspaces.value[0].workspaceId;
+        selectedWorkspaceId.value = activeWorkspaces.value.workspaceId;
       } else {
         selectedWorkspaceId.value = '';
       }
