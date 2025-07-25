@@ -102,14 +102,14 @@
 </template>
 
 <script setup lang="ts">
-import { useAgentSessionStore } from '~/stores/agentSessionStore';
+import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
 import { useAudioStore } from '~/stores/audioStore';
 import { ref, watch, onUnmounted, computed } from 'vue';
 
 const props = defineProps<{  disabled?: boolean
 }>();
 
-const agentSessionStore = useAgentSessionStore();
+const agentLaunchProfileStore = useAgentLaunchProfileStore();
 const audioStore = useAudioStore();
 
 const errorMessage = ref<string | null>(null);
@@ -120,11 +120,11 @@ const buttonText = computed(() => {
 });
 
 const handleRecordingToggle = async () => {
-  const workspaceId = agentSessionStore.activeSession?.workspaceId;
-  const agentDefinitionId = agentSessionStore.activeSession?.agentDefinition.id;
+  const workspaceId = agentLaunchProfileStore.activeLaunchProfile?.workspaceId;
+  const agentDefinitionId = agentLaunchProfileStore.activeLaunchProfile?.agentDefinition.id;
 
   if (!workspaceId || !agentDefinitionId) {
-    alert('An active workspace and agent session are required to start recording.');
+    alert('An active workspace and launch profile are required to start recording.');
     return;
   }
 
@@ -148,8 +148,8 @@ watch(
 );
 
 onUnmounted(async () => {
-  const workspaceId = agentSessionStore.activeSession?.workspaceId;
-  const agentDefinitionId = agentSessionStore.activeSession?.agentDefinition.id;
+  const workspaceId = agentLaunchProfileStore.activeLaunchProfile?.workspaceId;
+  const agentDefinitionId = agentLaunchProfileStore.activeLaunchProfile?.agentDefinition.id;
   await audioStore.cleanup(workspaceId, agentDefinitionId);
 });
 </script>
