@@ -3,7 +3,8 @@ import { ParserContext } from '../ParserContext';
 import type { AIResponseSegment, ToolCallSegment } from '../../types';
 import { DefaultJsonToolParsingStrategy } from '../../tool_parsing_strategies/defaultJsonToolParsingStrategy';
 import type { ToolInvocation } from '~/types/tool-invocation';
-import { AgentInstanceContext } from '~/types/agentInstanceContext';
+import { AgentRunState } from '~/types/agent/AgentRunState';
+import type { Conversation } from '~/types/conversation';
 
 // Mock the base ID generator to make tests predictable
 vi.mock('~/utils/toolUtils', () => ({
@@ -18,16 +19,24 @@ vi.mock('~/utils/toolUtils', () => ({
   }
 }));
 
+const createMockConversation = (id: string): Conversation => ({
+  id,
+  messages: [],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
+
 describe('ParserContext', () => {
   let segments: AIResponseSegment[];
   let context: ParserContext;
-  let agentInstanceContext: AgentInstanceContext;
+  let agentRunState: AgentRunState;
   const mockStrategy = new DefaultJsonToolParsingStrategy();
 
   beforeEach(() => {
     segments = [];
-    agentInstanceContext = new AgentInstanceContext('test-conv-id');
-    context = new ParserContext(segments, mockStrategy, false, true, agentInstanceContext);
+    const mockConversation = createMockConversation('test-conv-id');
+    agentRunState = new AgentRunState('test-conv-id', mockConversation);
+    context = new ParserContext(segments, mockStrategy, false, true, agentRunState);
   });
 
   describe('Text Segments', () => {

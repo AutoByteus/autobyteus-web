@@ -2,8 +2,9 @@ import type { GraphQLAssistantChunkData, GraphQLAssistantCompleteResponseData } 
 import type { Conversation, AIMessage, UserMessage } from '~/types/conversation';
 import type { ThinkSegment, AIResponseSegment } from '~/utils/aiResponseParser/types';
 import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
-import { useConversationStore } from '~/stores/conversationStore';
+import { useAgentRunStore } from '~/stores/agentRunStore';
 import { createParserContext } from '~/utils/aiResponseParser/parserContextFactory';
+import type { AgentRunState } from '~/types/agent/AgentRunState';
 
 /**
  * Finds the last AI message in the conversation or creates a new one if needed.
@@ -15,18 +16,18 @@ function findOrCreateAIMessage(conversation: Conversation): AIMessage {
   let lastMessage = conversation.messages[conversation.messages.length - 1] as AIMessage | undefined;
 
   if (!lastMessage || lastMessage.type !== 'ai' || lastMessage.isComplete) {
-    const conversationStore = useConversationStore();
-    const agentInstanceContext = conversationStore.getInstanceContextForConversation(conversation.id);
+    const agentRunStore = useAgentRunStore();
+    const runState = agentRunStore.getAgentStateById(conversation.id);
 
-    if (!agentInstanceContext) {
+    if (!runState) {
       // This is a critical failure. The context should always exist for an active conversation.
       // Throw an error to make it visible, as parsing cannot proceed correctly without it.
-      throw new Error(`Critical: AgentInstanceContext not found for conversation ${conversation.id}`);
+      throw new Error(`Critical: AgentRunState not found for agent ${conversation.id}`);
     }
     
     const segments: AIResponseSegment[] = [];
     // REFACTORED: Use the factory to simplify ParserContext creation.
-    const parserContext = createParserContext(conversation, segments, agentInstanceContext);
+    const parserContext = createParserContext(conversation, segments, runState);
     const parser = new IncrementalAIResponseParser(parserContext);
 
     const newAiMessage: AIMessage = {

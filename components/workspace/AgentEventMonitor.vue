@@ -1,6 +1,6 @@
 <template>
-  <!-- This root div is a flex column aiming to fill its parent's height (from ConversationTabs) -->
-  <div class="flex flex-col h-full p-4"> <!-- Added p-4 for overall padding inside the conversation area -->
+  <!-- This root div is a flex column aiming to fill its parent's height (from AgentEventMonitorTabs) -->
+  <div class="flex flex-col h-full p-4"> <!-- Added p-4 for overall padding inside the monitor area -->
     
     <!-- Messages and Totals -->
     <!-- This div will take its natural height. No flex-grow here, allow it to be short. -->
@@ -21,7 +21,7 @@
           <AIMessage
             v-else
             :message="message"
-            :conversation-id="conversationId"
+            :agent-id="agentId"
             :message-index="index"
           />
 
@@ -56,7 +56,7 @@ import AgentUserInputForm from '~/components/agentInput/AgentUserInputForm.vue';
 const props = defineProps<{  conversation: Conversation;
 }>();
 
-const conversationId = computed(() => props.conversation.id);
+const agentId = computed(() => props.conversation.id);
 
 const formatTokenCost = (message: Message) => {
   if (message.type === 'user') {

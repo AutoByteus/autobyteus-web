@@ -74,17 +74,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useConversationStore } from '~/stores/conversationStore';
+import { useAgentRunStore } from '~/stores/agentRunStore';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import AudioRecorder from '~/components/AudioRecorder.vue';
 import GroupedSelect from '~/components/agentInput/GroupedSelect.vue';
 
 // Initialize stores
-const conversationStore = useConversationStore();
+const agentRunStore = useAgentRunStore();
 const llmProviderConfigStore = useLLMProviderConfigStore();
 
 // Store refs
-const { currentRequirement: storeCurrentRequirement, isCurrentlySending } = storeToRefs(conversationStore);
+const { currentRequirement: storeCurrentRequirement, isCurrentlySending } = storeToRefs(agentRunStore);
 const { isLoadingModels, providersWithModels } = storeToRefs(llmProviderConfigStore);
 
 // Local component state
@@ -97,23 +97,23 @@ const isSearching = ref(false);
 
 // Computed properties for v-model binding to the store
 const selectedModel = computed({
-  get: () => conversationStore.currentModelSelection,
-  set: (value: string | null) => conversationStore.updateModelSelection(value)
+  get: () => agentRunStore.selectedAgent?.config.llmModelName ?? null,
+  set: (value: string | null) => agentRunStore.updateSelectedAgentConfig({ llmModelName: value ?? '' })
 });
 
 const autoExecuteTools = computed({
-  get: () => conversationStore.currentAutoExecuteTools,
-  set: (value: boolean) => conversationStore.updateAutoExecuteTools(value)
+  get: () => agentRunStore.selectedAgent?.config.autoExecuteTools ?? false,
+  set: (value: boolean) => agentRunStore.updateSelectedAgentConfig({ autoExecuteTools: value })
 });
 
 const useXmlToolFormat = computed({
-  get: () => conversationStore.currentUseXmlToolFormat,
-  set: (value: boolean) => conversationStore.updateUseXmlToolFormat(value)
+  get: () => agentRunStore.selectedAgent?.config.useXmlToolFormat ?? false,
+  set: (value: boolean) => agentRunStore.updateSelectedAgentConfig({ useXmlToolFormat: value })
 });
 
 const parseToolCalls = computed({
-  get: () => conversationStore.currentParseToolCalls,
-  set: (value: boolean) => conversationStore.updateParseToolCalls(value)
+  get: () => agentRunStore.selectedAgent?.config.parseToolCalls ?? true,
+  set: (value: boolean) => agentRunStore.updateSelectedAgentConfig({ parseToolCalls: value })
 });
 
 const groupedModelOptions = computed(() => {
@@ -183,7 +183,7 @@ const adjustTextareaHeight = () => {
 const { call: debouncedUpdateStore, cancel: cancelDebouncedUpdateStore, flush: flushDebouncedUpdateStore } = 
   debounce((text: string) => {
     if (text !== storeCurrentRequirement.value) {
-      conversationStore.updateUserRequirement(text);
+      agentRunStore.updateUserRequirement(text);
     }
   }, 750);
 
@@ -204,7 +204,7 @@ const handleInput = (event: Event) => {
 const syncStoreImmediately = () => {
   cancelDebouncedUpdateStore(); 
   if (internalRequirement.value !== storeCurrentRequirement.value) {
-    conversationStore.updateUserRequirement(internalRequirement.value);
+    agentRunStore.updateUserRequirement(internalRequirement.value);
   }
 };
 
@@ -220,7 +220,7 @@ const handleSend = async () => {
   syncStoreImmediately(); 
 
   try {
-    await conversationStore.sendUserInputAndSubscribe();
+    await agentRunStore.sendUserInputAndSubscribe();
   } catch (error) {
     console.error('Error sending requirement:', error);
     alert('Failed to send requirement. Please try again.');

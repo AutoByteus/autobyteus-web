@@ -108,16 +108,16 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useConversationStore } from '~/stores/conversationStore';
-import { useFileUploadStore } from '~/stores/fileUploadStore'; // IMPORT the new store
+import { useAgentRunStore } from '~/stores/agentRunStore';
+import { useFileUploadStore } from '~/stores/fileUploadStore';
 import { getFilePathsFromFolder, determineFileType } from '~/utils/fileExplorer/fileUtils';
 import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
 import type { ContextFilePath } from '~/types/conversation';
 
-const conversationStore = useConversationStore();
-const fileUploadStore = useFileUploadStore(); // INSTANTIATE the new store
+const agentRunStore = useAgentRunStore();
+const fileUploadStore = useFileUploadStore();
 
-const contextFilePaths = computed(() => conversationStore.currentContextPaths);
+const contextFilePaths = computed(() => agentRunStore.currentContextPaths);
 const uploadingFiles = ref<string[]>([]);
 const isContextListExpanded = ref(true);
 const fileInputRef = ref<HTMLInputElement | null>(null);
@@ -144,11 +144,11 @@ const toggleContextList = () => {
 };
 
 const removeContextFilePath = (index: number) => {
-  conversationStore.removeContextFilePath(index);
+  agentRunStore.removeContextFilePath(index);
 };
 
 const clearAllContextFilePaths = () => {
-  conversationStore.clearContextFilePaths();
+  agentRunStore.clearContextFilePaths();
   isContextListExpanded.value = true;
 };
 
@@ -171,28 +171,24 @@ const processAndUploadFiles = async (files: (File | null)[]) => {
     else if (file.type.startsWith('video/')) fileType = 'Video';
     else fileType = 'Text';
 
-    conversationStore.addContextFilePath({ path: tempPath, type: fileType });
+    agentRunStore.addContextFilePath({ path: tempPath, type: fileType });
     uploadingFiles.value.push(tempPath);
 
     try {
-      // USE the new store for the upload action
       const uploadedFilePath = await fileUploadStore.uploadFile(file);
       const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
       if (tempIndex !== -1) {
-        conversationStore.removeContextFilePath(tempIndex);
+        agentRunStore.removeContextFilePath(tempIndex);
       }
-      conversationStore.addContextFilePath({ path: uploadedFilePath, type: fileType });
+      agentRunStore.addContextFilePath({ path: uploadedFilePath, type: fileType });
     } catch (error) {
       console.error('Error uploading file:', error);
       const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
       if (tempIndex !== -1) {
-        conversationStore.removeContextFilePath(tempIndex);
+        agentRunStore.removeContextFilePath(tempIndex);
       }
     } finally {
       uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath);
-      // It's good practice to revoke object URLs, but this can cause issues if the path is still needed.
-      // For now, we'll omit it to avoid breaking image previews if they rely on the blob URL.
-      // URL.revokeObjectURL(tempPath);
     }
   });
 
@@ -208,7 +204,6 @@ const onFileSelect = (event: Event) => {
   if (input.files) {
     processAndUploadFiles(Array.from(input.files));
   }
-  // Reset the input value to allow selecting the same file again
   input.value = '';
 };
 
@@ -219,7 +214,7 @@ const onFileDrop = async (event: DragEvent) => {
     const filePaths = getFilePathsFromFolder(droppedNode);
     for (const filePath of filePaths) {
       const fileType = await determineFileType(filePath);
-      conversationStore.addContextFilePath({ path: filePath, type: fileType });
+      agentRunStore.addContextFilePath({ path: filePath, type: fileType });
     }
     if (filePaths.length > 0 && !isContextListExpanded.value) {
       isContextListExpanded.value = true;

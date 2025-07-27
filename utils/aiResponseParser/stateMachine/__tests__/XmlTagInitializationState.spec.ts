@@ -8,21 +8,30 @@ import { ParserStateType } from '../State';
 import type { AIResponseSegment } from '../../types';
 import { XmlToolParsingStrategy } from '../../tool_parsing_strategies/xmlToolParsingStrategy';
 import { DefaultJsonToolParsingStrategy } from '../../tool_parsing_strategies/defaultJsonToolParsingStrategy';
-import { AgentInstanceContext } from '~/types/agentInstanceContext';
+import { AgentRunState } from '~/types/agent/AgentRunState';
+import type { Conversation } from '~/types/conversation';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: () => 'mock_id'
 }));
 
+const createMockConversation = (id: string): Conversation => ({
+  id,
+  messages: [],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
+
 describe('XmlTagInitializationState', () => {
   let segments: AIResponseSegment[];
   let context: ParserContext;
-  let agentContext: AgentInstanceContext;
+  let agentRunState: AgentRunState;
 
   it('should transition to FileOpeningTagParsingState for known tag <file', () => {
     segments = [];
-    agentContext = new AgentInstanceContext('test-conv-id');
-    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), true, true, agentContext);
+    const mockConversation = createMockConversation('test-conv-id');
+    agentRunState = new AgentRunState('test-conv-id', mockConversation);
+    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), true, true, agentRunState);
     context.buffer = '<file path="test.txt">';
     context.pos = 0;
     context.currentState = new TextState(context);
@@ -35,8 +44,9 @@ describe('XmlTagInitializationState', () => {
   
   it('should transition to ToolParsingState when <tool is recognized and parsing is enabled', () => {
     segments = [];
-    agentContext = new AgentInstanceContext('test-conv-id');
-    context = new ParserContext(segments, new XmlToolParsingStrategy(), true, true, agentContext);
+    const mockConversation = createMockConversation('test-conv-id');
+    agentRunState = new AgentRunState('test-conv-id', mockConversation);
+    context = new ParserContext(segments, new XmlToolParsingStrategy(), true, true, agentRunState);
     context.buffer = '<tool name="test">';
     context.pos = 0;
     context.currentState = new TextState(context);
@@ -49,8 +59,9 @@ describe('XmlTagInitializationState', () => {
 
   it('should revert to TextState when <tool is recognized but parsing is disabled', () => {
     segments = [];
-    agentContext = new AgentInstanceContext('test-conv-id');
-    context = new ParserContext(segments, new XmlToolParsingStrategy(), true, false, agentContext); // parsing disabled
+    const mockConversation = createMockConversation('test-conv-id');
+    agentRunState = new AgentRunState('test-conv-id', mockConversation);
+    context = new ParserContext(segments, new XmlToolParsingStrategy(), true, false, agentRunState); // parsing disabled
     context.buffer = '<tool name="test">';
     context.pos = 0;
     context.currentState = new TextState(context);
@@ -68,8 +79,9 @@ describe('XmlTagInitializationState', () => {
 
   it('should revert to TextState for an unrecognized tag', () => {
     segments = [];
-    agentContext = new AgentInstanceContext('test-conv-id');
-    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), true, true, agentContext);
+    const mockConversation = createMockConversation('test-conv-id');
+    agentRunState = new AgentRunState('test-conv-id', mockConversation);
+    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), true, true, agentRunState);
     context.buffer = '<unknown-tag>';
     context.pos = 0;
     context.currentState = new TextState(context);
@@ -87,8 +99,9 @@ describe('XmlTagInitializationState', () => {
   
   it('should wait for more characters for a partial match', () => {
     segments = [];
-    agentContext = new AgentInstanceContext('test-conv-id');
-    context = new ParserContext(segments, new XmlToolParsingStrategy(), true, true, agentContext);
+    const mockConversation = createMockConversation('test-conv-id');
+    agentRunState = new AgentRunState('test-conv-id', mockConversation);
+    context = new ParserContext(segments, new XmlToolParsingStrategy(), true, true, agentRunState);
     context.buffer = '<to';
     context.pos = 0;
     context.currentState = new TextState(context);

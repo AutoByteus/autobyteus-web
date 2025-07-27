@@ -5,7 +5,6 @@ import type {
 } from '~/generated/graphql';
 import type { Conversation } from '~/types/conversation';
 import type { ToolCallSegment } from '~/utils/aiResponseParser/types';
-import { useConversationStore } from '~/stores/conversationStore';
 
 /**
  * Finds a specific ToolCallSegment within a conversation by its invocationId.

@@ -4,7 +4,7 @@ import { getLanguage } from '../languageDetector';
 import type { State } from './State';
 import type { ToolParsingStrategy } from '../tool_parsing_strategies/base';
 import type { ToolInvocation } from '~/types/tool-invocation';
-import type { AgentInstanceContext } from '~/types/agentInstanceContext';
+import type { AgentRunState } from '~/types/agent/AgentRunState';
 
 type CurrentSegment = FileSegment | AIResponseTextSegment | ThinkSegment | ToolCallSegment | null;
 
@@ -20,16 +20,16 @@ export class ParserContext {
   public readonly strategy: ToolParsingStrategy;
   public readonly useXml: boolean;
   public readonly parseToolCalls: boolean;
-  public readonly agentInstanceContext: AgentInstanceContext;
+  public readonly agentRunState: AgentRunState;
 
   private _currentState: State | null = null;
 
-  constructor(segments: AIResponseSegment[], strategy: ToolParsingStrategy, useXml: boolean, parseToolCalls: boolean, agentInstanceContext: AgentInstanceContext) {
+  constructor(segments: AIResponseSegment[], strategy: ToolParsingStrategy, useXml: boolean, parseToolCalls: boolean, agentRunState: AgentRunState) {
     this.segments = segments;
     this.strategy = strategy;
     this.useXml = useXml;
     this.parseToolCalls = parseToolCalls;
-    this.agentInstanceContext = agentInstanceContext;
+    this.agentRunState = agentRunState;
   }
 
   set currentState(state: State) {
@@ -96,7 +96,7 @@ export class ParserContext {
 
   startXmlToolCallSegment(toolName: string): void {
       // Generate ID immediately with empty args, will be updated later.
-      const invocationId = this.agentInstanceContext.generateUniqueInvocationId(toolName, {});
+      const invocationId = this.agentRunState.generateUniqueInvocationId(toolName, {});
       const toolCallSegment: ToolCallSegment = {
           type: 'tool_call',
           invocationId,
@@ -135,7 +135,7 @@ export class ParserContext {
 
   endCurrentToolSegment(): void {
       if (this.currentSegment && this.currentSegment.type === 'tool_call') {
-          this.currentSegment.invocationId = this.agentInstanceContext.generateUniqueInvocationId(this.currentSegment.toolName, this.currentSegment.arguments);
+          this.currentSegment.invocationId = this.agentRunState.generateUniqueInvocationId(this.currentSegment.toolName, this.currentSegment.arguments);
           this.currentSegment.status = 'parsed';
       }
       this.currentSegment = null;
@@ -159,7 +159,7 @@ export class ParserContext {
               const invocation = invocations[i];
               const toolCallSegment: ToolCallSegment = {
                   type: 'tool_call',
-                  invocationId: this.agentInstanceContext.generateUniqueInvocationId(invocation.name, invocation.arguments),
+                  invocationId: this.agentRunState.generateUniqueInvocationId(invocation.name, invocation.arguments),
                   toolName: invocation.name,
                   arguments: invocation.arguments,
                   status: 'parsed',

@@ -5,17 +5,26 @@ import type { AIResponseSegment } from '../../types';
 import { DefaultJsonToolParsingStrategy } from '../../tool_parsing_strategies/defaultJsonToolParsingStrategy';
 import { XmlTagInitializationState } from '../XmlTagInitializationState';
 import { JsonInitializationState } from '../JsonInitializationState';
-import { AgentInstanceContext } from '~/types/agentInstanceContext';
+import { AgentRunState } from '~/types/agent/AgentRunState';
+import type { Conversation } from '~/types/conversation';
+
+const createMockConversation = (id: string): Conversation => ({
+  id,
+  messages: [],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
 
 describe('TextState', () => {
   let segments: AIResponseSegment[];
   let context: ParserContext;
-  let agentContext: AgentInstanceContext;
+  let agentRunState: AgentRunState;
 
   beforeEach(() => {
     segments = [];
-    agentContext = new AgentInstanceContext('test-conv-id');
-    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false, true, agentContext);
+    const mockConversation = createMockConversation('test-conv-id');
+    agentRunState = new AgentRunState('test-conv-id', mockConversation);
+    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false, true, agentRunState);
     context.currentState = new TextState(context);
   });
 
@@ -51,7 +60,7 @@ describe('TextState', () => {
 
   it('should always transition when `<` is encountered, even if parseToolCalls is false', () => {
     // This is the corrected behavior. TextState doesn't care about the flag.
-    const disabledContext = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false, false, agentContext);
+    const disabledContext = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false, false, agentRunState);
     disabledContext.currentState = new TextState(disabledContext);
     disabledContext.buffer = 'Hello <file path="test.txt">';
     disabledContext.pos = 0;

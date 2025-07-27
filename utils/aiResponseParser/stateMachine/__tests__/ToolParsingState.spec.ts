@@ -4,7 +4,8 @@ import { TextState } from '../TextState';
 import { ParserContext } from '../ParserContext';
 import type { AIResponseSegment } from '../../types';
 import type { ToolParsingStrategy, SignatureMatch } from '../../tool_parsing_strategies/base';
-import { AgentInstanceContext } from '~/types/agentInstanceContext';
+import { AgentRunState } from '~/types/agent/AgentRunState';
+import type { Conversation } from '~/types/conversation';
 
 // Mock the tool utils to prevent the sha256 error and make tests predictable.
 vi.mock('~/utils/toolUtils', () => ({
@@ -13,6 +14,13 @@ vi.mock('~/utils/toolUtils', () => ({
     return `call_base_${toolName}_${argString}`;
   }
 }));
+
+const createMockConversation = (id: string): Conversation => ({
+  id,
+  messages: [],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
 
 // A simple mock strategy for precise control over the state's behavior
 class MockToolStrategy implements ToolParsingStrategy {
@@ -49,13 +57,14 @@ describe('ToolParsingState', () => {
   let context: ParserContext;
   let mockStrategy: MockToolStrategy;
   let state: ToolParsingState;
-  let agentContext: AgentInstanceContext;
+  let agentRunState: AgentRunState;
 
   beforeEach(() => {
     segments = [];
     mockStrategy = new MockToolStrategy();
-    agentContext = new AgentInstanceContext('test-conv-id');
-    context = new ParserContext(segments, mockStrategy, false, true, agentContext);
+    const mockConversation = createMockConversation('test-conv-id');
+    agentRunState = new AgentRunState('test-conv-id', mockConversation);
+    context = new ParserContext(segments, mockStrategy, false, true, agentRunState);
     vi.clearAllMocks();
   });
 

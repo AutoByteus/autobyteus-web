@@ -10,7 +10,7 @@
         <FileContentSegment
           v-else-if="segment.type === 'file'"
           :fileSegment="segment"
-          :conversation-id="conversationId"
+          :conversation-id="agentId"
           :message-index="messageIndex"
         />
         <ThinkSegment
@@ -21,12 +21,12 @@
           <FileWriterSegment
             v-if="segment.toolName === 'FileWriter'"
             :segment="segment"
-            :conversation-id="conversationId"
+            :conversation-id="agentId"
           />
           <ToolCallSegment
             v-else
             :segment="segment"
-            :conversation-id="conversationId"
+            :conversation-id="agentId"
           />
         </template>
       </template>
@@ -43,7 +43,7 @@ import ToolCallSegment from '~/components/conversation/segments/ToolCallSegment.
 import FileWriterSegment from '~/components/conversation/segments/FileWriterSegment.vue';
 
 const props = defineProps<{  message: AIMessage;
-  conversationId: string;
+  agentId: string;
   messageIndex: number;
 }>();
 </script>

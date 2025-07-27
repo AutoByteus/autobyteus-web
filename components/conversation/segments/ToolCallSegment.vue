@@ -83,13 +83,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ToolCallSegment } from '~/utils/aiResponseParser/types';
-import { useConversationStore } from '~/stores/conversationStore';
+import { useAgentRunStore } from '~/stores/agentRunStore';
 
 const props = defineProps<{  segment: ToolCallSegment;
-  conversationId: string;
+  conversationId: string; // This is the agentId
 }>();
 
-const conversationStore = useConversationStore();
+const agentRunStore = useAgentRunStore();
 
 const statusClass = computed(() => {
   switch (props.segment.status) {
@@ -105,11 +105,11 @@ const statusClass = computed(() => {
 });
 
 const onApprove = () => {
-  conversationStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, true);
+  agentRunStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, true);
 };
 
 const onDeny = () => {
-  conversationStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, false, 'User denied execution.');
+  agentRunStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, false, 'User denied execution.');
 };
 </script>
 

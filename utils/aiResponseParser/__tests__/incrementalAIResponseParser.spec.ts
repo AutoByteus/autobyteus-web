@@ -4,7 +4,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { LLMProvider } from '~/types/llm';
 import { ParserContext } from '../stateMachine/ParserContext';
 import { getToolParsingStrategy } from '../strategyProvider';
-import { AgentInstanceContext } from '~/types/agentInstanceContext';
+import { AgentRunState } from '~/types/agent/AgentRunState';
+import type { Conversation } from '~/types/conversation';
 
 // Mock the toolUtils to have a predictable invocation ID
 vi.mock('~/utils/toolUtils', () => ({
@@ -19,18 +20,26 @@ vi.mock('~/utils/toolUtils', () => ({
   }
 }));
 
+const createMockConversation = (id: string): Conversation => ({
+  id,
+  messages: [],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
+
 describe('IncrementalAIResponseParser with Strategies', () => {
   let segments: AIResponseSegment[];
-  let agentContext: AgentInstanceContext;
+  let agentRunState: AgentRunState;
 
   beforeEach(() => {
     segments = [];
-    agentContext = new AgentInstanceContext('test-conv-id');
+    const mockConversation = createMockConversation('test-conv-id');
+    agentRunState = new AgentRunState('test-conv-id', mockConversation);
   });
 
   const createParser = (provider: LLMProvider, useXml: boolean, parseToolCalls: boolean): IncrementalAIResponseParser => {
     const strategy = getToolParsingStrategy(provider, useXml);
-    const parserContext = new ParserContext(segments, strategy, useXml, parseToolCalls, agentContext);
+    const parserContext = new ParserContext(segments, strategy, useXml, parseToolCalls, agentRunState);
     return new IncrementalAIResponseParser(parserContext);
   };
 
@@ -108,7 +117,8 @@ describe('IncrementalAIResponseParser with Strategies', () => {
 
     // Test with JSON strategy
     segments = [];
-    agentContext = new AgentInstanceContext('test-conv-id-2'); // Reset context for new test
+    const mockConversation = createMockConversation('test-conv-id-2');
+    agentRunState = new AgentRunState('test-conv-id-2', mockConversation); // Reset context for new test
     const parserJson = createParser(LLMProvider.OPENAI, false, true);
     parserJson.processChunks(['Here is a file to write: ']);
     parserJson.processChunks(['{"tool_calls": [{"function": {"name": "file_writer", "arguments": "{\\"path\\":\\"/data.txt\\",\\"content\\":\\"some data\\"}"}}]}']);

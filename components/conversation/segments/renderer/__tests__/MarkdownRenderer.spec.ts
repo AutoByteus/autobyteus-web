@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
-import MarkdownRenderer from '../conversation/segments/renderer/MarkdownRenderer.vue';
+import MarkdownRenderer from '~/components/conversation/segments/renderer/MarkdownRenderer.vue';
 import { plantumlService } from '~/services/plantumlService';
 
 // Mock plantumlService

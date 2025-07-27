@@ -59,15 +59,15 @@
 <script setup lang="ts">
 import { computed, h } from 'vue';
 import type { ToolCallSegment } from '~/utils/aiResponseParser/types';
-import { useConversationStore } from '~/stores/conversationStore';
+import { useAgentRunStore } from '~/stores/agentRunStore';
 import FileDisplay from '~/components/conversation/segments/renderer/FileDisplay.vue';
 import { BeakerIcon, CheckCircleIcon, ClockIcon, CodeBracketIcon, ExclamationCircleIcon, HandRaisedIcon, XCircleIcon } from '@heroicons/vue/24/solid';
 
 const props = defineProps<{  segment: ToolCallSegment;
-  conversationId: string;
+  conversationId: string; // This is the agentId
 }>();
 
-const conversationStore = useConversationStore();
+const agentRunStore = useAgentRunStore();
 
 const statusStyles = {
     parsed: { class: 'border-gray-300 dark:border-gray-600', icon: CodeBracketIcon, iconClass: 'text-gray-400' },
@@ -84,11 +84,11 @@ const statusIcon = computed(() => statusStyles[props.segment.status]?.icon || Co
 const statusIconClass = computed(() => statusStyles[props.segment.status]?.iconClass || 'text-gray-400');
 
 const onApprove = () => {
-  conversationStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, true);
+  agentRunStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, true);
 };
 
 const onDeny = () => {
-  conversationStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, false, 'User denied execution.');
+  agentRunStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, false, 'User denied execution.');
 };
 </script>
 

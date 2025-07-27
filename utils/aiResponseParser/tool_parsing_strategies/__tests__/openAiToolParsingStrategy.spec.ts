@@ -3,7 +3,8 @@ import { OpenAiToolParsingStrategy } from '../openAiToolParsingStrategy';
 import { ParserContext } from '../../stateMachine/ParserContext';
 import { LLMProvider } from '~/types/llm';
 import type { AIResponseSegment, ToolCallSegment } from '../../types';
-import { AgentInstanceContext } from '~/types/agentInstanceContext';
+import { AgentRunState } from '~/types/agent/AgentRunState';
+import type { Conversation } from '~/types/conversation';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
@@ -12,18 +13,25 @@ vi.mock('~/utils/toolUtils', () => ({
   }
 }));
 
+const createMockConversation = (id: string): Conversation => ({
+  id,
+  messages: [],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
+
 describe('OpenAiToolParsingStrategy', () => {
     let context: ParserContext;
     let segments: AIResponseSegment[];
     let strategy: OpenAiToolParsingStrategy;
-    let agentContext: AgentInstanceContext;
+    let agentRunState: AgentRunState;
 
     beforeEach(() => {
         segments = [];
         strategy = new OpenAiToolParsingStrategy();
-        agentContext = new AgentInstanceContext('test-conv-id');
-        // FIXED: Updated ParserContext constructor call
-        context = new ParserContext(segments, strategy, false, true, agentContext);
+        const mockConversation = createMockConversation('test-conv-id');
+        agentRunState = new AgentRunState('test-conv-id', mockConversation);
+        context = new ParserContext(segments, strategy, false, true, agentRunState);
     });
 
     it('checkSignature should return "match" for a "tool_calls" signature', () => {

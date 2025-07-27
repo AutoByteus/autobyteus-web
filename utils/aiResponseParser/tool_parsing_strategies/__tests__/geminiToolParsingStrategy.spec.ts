@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GeminiToolParsingStrategy } from '../geminiToolParsingStrategy';
 import { ParserContext } from '../../stateMachine/ParserContext';
 import type { AIResponseSegment, ToolCallSegment, AIResponseTextSegment } from '../../types';
-import { AgentInstanceContext } from '~/types/agentInstanceContext';
+import { AgentRunState } from '~/types/agent/AgentRunState';
+import type { Conversation } from '~/types/conversation';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
@@ -11,17 +12,25 @@ vi.mock('~/utils/toolUtils', () => ({
   }
 }));
 
+const createMockConversation = (id: string): Conversation => ({
+  id,
+  messages: [],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
+
 describe('GeminiToolParsingStrategy (Simplified)', () => {
     let context: ParserContext;
     let segments: AIResponseSegment[];
     let strategy: GeminiToolParsingStrategy;
-    let agentContext: AgentInstanceContext;
+    let agentRunState: AgentRunState;
 
     beforeEach(() => {
         segments = [];
         strategy = new GeminiToolParsingStrategy();
-        agentContext = new AgentInstanceContext('test-conv-id');
-        context = new ParserContext(segments, strategy, false, true, agentContext);
+        const mockConversation = createMockConversation('test-conv-id');
+        agentRunState = new AgentRunState('test-conv-id', mockConversation);
+        context = new ParserContext(segments, strategy, false, true, agentRunState);
     });
 
     // --- Signature Checks ---

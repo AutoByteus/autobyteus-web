@@ -4,7 +4,7 @@ import { GET_CONVERSATION_HISTORY } from '~/graphql/queries/conversation_queries
 import type { GetConversationHistoryQuery, GetConversationHistoryQueryVariables } from '~/generated/graphql';
 import type { Conversation, UserMessage, AIMessage } from '~/types/conversation';
 import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
-import { AgentInstanceContext } from '~/types/agentInstanceContext';
+import { AgentRunState } from '~/types/agent/AgentRunState';
 import { createParserContext } from '~/utils/aiResponseParser/parserContextFactory';
 import type { AIResponseSegment } from '~/utils/aiResponseParser/types';
 
@@ -96,9 +96,8 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.error = null;
     },
     mapToConversation(agentConversation: GetConversationHistoryQuery['getConversationHistory']['conversations'][number]): Conversation {
-      // REFACTORED: This function now performs a "lightweight" mapping.
-      // It no longer parses the AI message content into segments. That heavy lifting
-      // is now deferred to the conversationStore when a user chooses to continue a conversation.
+      // This function performs a "lightweight" mapping.
+      // Heavy parsing is deferred to the agentRunStore when a user continues a conversation.
       return {
         id: agentConversation.agentId, // This is the historical conversation ID
         messages: agentConversation.messages.map(msg => {
@@ -122,7 +121,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
               text: aiText,
               timestamp: new Date(msg.timestamp),
               chunks: [aiText], // Store the full text as a single chunk
-              segments: [], // Segments will be populated on-demand by conversationStore
+              segments: [], // Segments will be populated on-demand by agentRunStore
               isComplete: true,
               parserInstance: null, // No parser instance needed at this stage
               completionTokens: msg.tokenCount || undefined,
@@ -132,7 +131,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
           }
         }),
         createdAt: agentConversation.createdAt,
-        updatedAt: agentConversation.createdAt, // Should be agentConversation.updatedAt if available, using createdAt as fallback
+        updatedAt: agentConversation.createdAt, // Should be agentConversation.updatedAt if available
         llmModelName: agentConversation.llmModel || undefined,
         useXmlToolFormat: agentConversation.useXmlToolFormat,
         parseToolCalls: true, // Assuming true for historical conversations

@@ -3,7 +3,8 @@ import { XmlToolParsingStrategy } from '../xmlToolParsingStrategy';
 import { ParserContext } from '../../stateMachine/ParserContext';
 import { LLMProvider } from '~/types/llm';
 import type { AIResponseSegment, ToolCallSegment } from '../../types';
-import { AgentInstanceContext } from '~/types/agentInstanceContext';
+import { AgentRunState } from '~/types/agent/AgentRunState';
+import type { Conversation } from '~/types/conversation';
 
 // Mock the invocation ID generator for predictable test results
 vi.mock('~/utils/toolUtils', () => ({
@@ -18,17 +19,25 @@ vi.mock('~/utils/toolUtils', () => ({
   }
 }));
 
+const createMockConversation = (id: string): Conversation => ({
+  id,
+  messages: [],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
+
 describe('XmlToolParsingStrategy', () => {
     let context: ParserContext;
     let segments: AIResponseSegment[];
     let strategy: XmlToolParsingStrategy;
-    let agentContext: AgentInstanceContext;
+    let agentRunState: AgentRunState;
 
     beforeEach(() => {
         segments = [];
         strategy = new XmlToolParsingStrategy();
-        agentContext = new AgentInstanceContext('test-conv-id');
-        context = new ParserContext(segments, strategy, true, true, agentContext);
+        const mockConversation = createMockConversation('test-conv-id');
+        agentRunState = new AgentRunState('test-conv-id', mockConversation);
+        context = new ParserContext(segments, strategy, true, true, agentRunState);
     });
 
     // --- Signature Checks ---

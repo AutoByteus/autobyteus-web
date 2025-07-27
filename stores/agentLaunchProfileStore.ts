@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { v4 as uuidv4 } from 'uuid';
 import type { AgentDefinition } from './agentDefinitionStore';
-import { useConversationStore } from './conversationStore';
+import { useAgentRunStore } from './agentRunStore';
 
 export interface AgentLaunchProfile {
   id: string; // Renamed from sessionId
@@ -186,8 +186,8 @@ export const useAgentLaunchProfileStore = defineStore('agentLaunchProfile', { //
       this.activeProfileId = profileId;
       console.log(`Active launch profile changed to: ${profileId}`);
       
-      const conversationStore = useConversationStore();
-      conversationStore.ensureConversationForLaunchProfile(profileId);
+      const agentRunStore = useAgentRunStore();
+      agentRunStore.ensureAgentForLaunchProfile(profileId);
     },
   },
   
