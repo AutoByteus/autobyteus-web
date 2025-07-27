@@ -1,34 +1,21 @@
 import type { GraphQLAssistantChunkData, GraphQLAssistantCompleteResponseData } from '~/generated/graphql';
-import type { Conversation, AIMessage, UserMessage } from '~/types/conversation';
+import type { AIMessage, UserMessage } from '~/types/conversation';
+import type { AgentContext } from '~/types/agent/AgentContext';
 import type { ThinkSegment, AIResponseSegment } from '~/utils/aiResponseParser/types';
 import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
-import { useAgentRunStore } from '~/stores/agentRunStore';
-import { createParserContext } from '~/utils/aiResponseParser/parserContextFactory';
-import type { AgentRunState } from '~/types/agent/AgentRunState';
+import { ParserContext } from '~/utils/aiResponseParser/stateMachine/ParserContext';
 
 /**
  * Finds the last AI message in the conversation or creates a new one if needed.
  * This is typically done at the start of processing a new stream of AI responses.
- * @param conversation The conversation object.
+ * @param agentContext The full context for the agent run.
  * @returns The active AIMessage.
  */
-function findOrCreateAIMessage(conversation: Conversation): AIMessage {
-  let lastMessage = conversation.messages[conversation.messages.length - 1] as AIMessage | undefined;
+function findOrCreateAIMessage(agentContext: AgentContext): AIMessage {
+  let lastMessage = agentContext.lastAIMessage;
 
-  if (!lastMessage || lastMessage.type !== 'ai' || lastMessage.isComplete) {
-    const agentRunStore = useAgentRunStore();
-    const runState = agentRunStore.getAgentStateById(conversation.id);
-
-    if (!runState) {
-      // This is a critical failure. The context should always exist for an active conversation.
-      // Throw an error to make it visible, as parsing cannot proceed correctly without it.
-      throw new Error(`Critical: AgentRunState not found for agent ${conversation.id}`);
-    }
-    
+  if (!lastMessage || lastMessage.isComplete) {
     const segments: AIResponseSegment[] = [];
-    // REFACTORED: Use the factory to simplify ParserContext creation.
-    const parserContext = createParserContext(conversation, segments, runState);
-    const parser = new IncrementalAIResponseParser(parserContext);
 
     const newAiMessage: AIMessage = {
       type: 'ai',
@@ -36,11 +23,20 @@ function findOrCreateAIMessage(conversation: Conversation): AIMessage {
       timestamp: new Date(),
       chunks: [],
       isComplete: false,
-      segments: segments, // The parser context will mutate this array
-      parserInstance: parser,
+      segments: segments,
+      parserInstance: null as any, // Will be set below
     };
 
-    conversation.messages.push(newAiMessage);
+    // Add the message to the conversation *before* creating the parser
+    agentContext.conversation.messages.push(newAiMessage);
+
+    // Now that the message is in place, create the parser context
+    const parserContext = new ParserContext(agentContext);
+    const parser = new IncrementalAIResponseParser(parserContext);
+    
+    // Assign the parser instance back to the message
+    newAiMessage.parserInstance = parser;
+
     lastMessage = newAiMessage;
   }
 
@@ -66,10 +62,10 @@ function updateThinkSegment(message: AIMessage, reasoningChunk: string): void {
 /**
  * Processes a chunk of an assistant's response, updating the conversation state.
  * @param eventData The chunk data from the GraphQL subscription.
- * @param conversation The full conversation object to be mutated.
+ * @param agentContext The full context for the agent run.
  */
-export function handleAssistantChunk(eventData: GraphQLAssistantChunkData, conversation: Conversation): void {
-  const aiMessage = findOrCreateAIMessage(conversation);
+export function handleAssistantChunk(eventData: GraphQLAssistantChunkData, agentContext: AgentContext): void {
+  const aiMessage = findOrCreateAIMessage(agentContext);
 
   // 1. Process reasoning text.
   if (eventData.reasoning) {
@@ -90,7 +86,7 @@ export function handleAssistantChunk(eventData: GraphQLAssistantChunkData, conve
 
     // A completing chunk might also have the final token usage.
     if (eventData.usage) {
-      const userMessage = conversation.messages.findLast(m => m.type === 'user') as UserMessage | undefined;
+      const userMessage = agentContext.conversation.messages.findLast(m => m.type === 'user') as UserMessage | undefined;
       if (userMessage && eventData.usage.promptTokens != null) {
         userMessage.promptTokens = eventData.usage.promptTokens;
         userMessage.promptCost = eventData.usage.promptCost;
@@ -107,12 +103,12 @@ export function handleAssistantChunk(eventData: GraphQLAssistantChunkData, conve
  * Processes the final 'complete' event for an assistant's turn. This event primarily
  * provides the final token usage statistics.
  * @param eventData The complete response data from the GraphQL subscription.
- * @param conversation The full conversation object to be mutated.
+ * @param agentContext The full context for the agent run.
  */
-export function handleAssistantCompleteResponse(eventData: GraphQLAssistantCompleteResponseData, conversation: Conversation): void {
-  const lastMessage = conversation.messages[conversation.messages.length - 1];
+export function handleAssistantCompleteResponse(eventData: GraphQLAssistantCompleteResponseData, agentContext: AgentContext): void {
+  const lastMessage = agentContext.lastAIMessage;
 
-  if (!lastMessage || lastMessage.type !== 'ai') {
+  if (!lastMessage) {
     console.warn('Received AssistantCompleteResponseData without a preceding AI message. Ignoring.');
     return;
   }
@@ -128,7 +124,7 @@ export function handleAssistantCompleteResponse(eventData: GraphQLAssistantCompl
 
   // Assign final token usage costs.
   if (eventData.usage) {
-    const userMessage = conversation.messages.findLast(m => m.type === 'user') as UserMessage | undefined;
+    const userMessage = agentContext.conversation.messages.findLast(m => m.type === 'user') as UserMessage | undefined;
     if (userMessage && eventData.usage.promptTokens != null) {
       userMessage.promptTokens = eventData.usage.promptTokens;
       userMessage.promptCost = eventData.usage.promptCost;

@@ -15,12 +15,12 @@ import type { Conversation, Message, ContextFilePath, AIMessage } from '~/types/
 import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
-import type { AIResponseSegment, ToolCallSegment } from '~/utils/aiResponseParser/types';
 import { processAgentResponseEvent } from '~/services/agentResponseProcessor';
-import { createParserContext } from '~/utils/aiResponseParser/parserContextFactory';
 import { AgentContext } from '~/types/agent/AgentContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import { AgentRunState } from '~/types/agent/AgentRunState';
+import { ParserContext } from '~/utils/aiResponseParser/stateMachine/ParserContext';
+import type { ToolCallSegment } from '~/utils/aiResponseParser/types';
 
 // State related to a specific Agent Launch Profile
 interface ProfileAgentState {
@@ -77,12 +77,11 @@ export const useAgentRunStore = defineStore('agentRun', {
       return this.selectedAgent?.isSending ?? false;
     },
 
-    // A helper to find an AgentRunState by its ID across all profiles
-    getAgentStateById: (state) => (agentId: string): AgentRunState | undefined => {
+    getAgentContextById: (state) => (agentId: string): AgentContext | undefined => {
       for (const profileState of state.agentsByLaunchProfile.values()) {
         const agentContext = profileState.activeAgents.get(agentId);
         if (agentContext) {
-          return agentContext.state;
+          return agentContext;
         }
       }
       return undefined;
@@ -294,18 +293,22 @@ export const useAgentRunStore = defineStore('agentRun', {
       }
 
       onResult(({ data }) => {
-        const agentOnResult = profileState.activeAgents.get(agentId);
-        if(agentOnResult) agentOnResult.isSending = false;
-
         if (!data?.agentResponse) return;
-
+        
         const { agentId: respAgentId, data: eventData } = data.agentResponse;
-        const agentToUpdate = profileState.activeAgents.get(respAgentId);
-        if (!agentToUpdate) return;
+        
+        // Find the agent context using the ID from the event
+        const agentToUpdate = this.getAgentContextById(respAgentId);
 
-        agentToUpdate.state.conversation.updatedAt = new Date().toISOString();
+        if (!agentToUpdate) {
+            console.warn(`Received event for unknown or closed agent with ID: ${respAgentId}. Ignoring.`);
+            return;
+        }
+
+        agentToUpdate.isSending = false;
+
         if (eventData) {
-          processAgentResponseEvent(eventData, agentToUpdate.state.conversation);
+            processAgentResponseEvent(eventData, agentToUpdate);
         }
       });
 
@@ -364,32 +367,11 @@ export const useAgentRunStore = defineStore('agentRun', {
         console.error("Cannot set agent from history: No active launch profile.");
         return;
       }
-
+    
       const profileState = this._getOrCreateCurrentProfileState();
       const tempId = `temp-hist-${Date.now()}`;
-      
-      const agentState = new AgentRunState(tempId, { ...historicalConversationData, id: tempId });
-      
-      agentState.conversation.messages = agentState.conversation.messages.map(m => {
-        if (m.type === 'ai') {
-          const segments: AIResponseSegment[] = [];
-          const parserContext = createParserContext(
-            {
-              llmModelName: historicalConversationData.llmModelName,
-              useXmlToolFormat: historicalConversationData.useXmlToolFormat,
-              parseToolCalls: historicalConversationData.parseToolCalls,
-            },
-            segments,
-            agentState
-          );
-          const parser = new IncrementalAIResponseParser(parserContext);
-          if (m.text) parser.processChunks([m.text]);
-          parser.finalize();
-          return { ...m, segments, parserInstance: parser, isComplete: true };
-        }
-        return { ...m };
-      });
-      
+    
+      // Create the final AgentContext first
       const agentConfig: AgentRunConfig = {
         launchProfileId: activeLaunchProfile.id,
         workspaceId: activeLaunchProfile.workspaceId,
@@ -398,8 +380,40 @@ export const useAgentRunStore = defineStore('agentRun', {
         useXmlToolFormat: historicalConversationData.useXmlToolFormat ?? true,
         parseToolCalls: historicalConversationData.parseToolCalls ?? true,
       };
-
-      const newAgentContext = new AgentContext(agentConfig, agentState);
+      
+      const newAgentState = new AgentRunState(tempId, {
+        ...historicalConversationData,
+        id: tempId,
+        messages: [], // Start with empty messages
+      });
+      const newAgentContext = new AgentContext(agentConfig, newAgentState);
+    
+      // Now, re-process messages one by one
+      const originalMessages = historicalConversationData.messages;
+      for (const msg of originalMessages) {
+        if (msg.type === 'user') {
+          newAgentContext.conversation.messages.push(msg);
+        } else if (msg.type === 'ai') {
+          const aiMessage: AIMessage = {
+            ...(msg as AIMessage),
+            segments: [],
+            isComplete: false,
+            parserInstance: null as any, // Placeholder
+          };
+          newAgentContext.conversation.messages.push(aiMessage); // Add to conversation so lastAIMessage is correct
+    
+          const parserContext = new ParserContext(newAgentContext);
+          const parser = new IncrementalAIResponseParser(parserContext);
+    
+          if (msg.text) {
+            parser.processChunks([msg.text]);
+          }
+          parser.finalize();
+    
+          aiMessage.parserInstance = parser;
+          aiMessage.isComplete = true;
+        }
+      }
       
       profileState.activeAgents.set(tempId, newAgentContext);
       profileState.selectedAgentId = tempId;

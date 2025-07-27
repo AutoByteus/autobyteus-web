@@ -1,4 +1,4 @@
-import type { Conversation } from '~/types/conversation';
+import type { Conversation, Message, AIMessage } from '~/types/conversation';
 import { generateBaseInvocationId } from '~/utils/toolUtils';
 
 export class AgentRunState {
@@ -11,6 +11,22 @@ export class AgentRunState {
     this.agentId = initialId;
     this.conversation = initialConversation;
   }
+  
+  // --- Start: New helper getters ---
+  get lastMessage(): Message | undefined {
+    // Provides direct access to the last message, if any.
+    if (!this.conversation.messages || this.conversation.messages.length === 0) {
+      return undefined;
+    }
+    return this.conversation.messages[this.conversation.messages.length - 1];
+  }
+
+  get lastAIMessage(): AIMessage | undefined {
+    // Uses the lastMessage getter to efficiently find the last AI message.
+    const lastMsg = this.lastMessage;
+    return (lastMsg?.type === 'ai') ? lastMsg : undefined;
+  }
+  // --- End: New helper getters ---
 
   /**
    * Promotes the temporary run ID to the permanent one received from the backend.

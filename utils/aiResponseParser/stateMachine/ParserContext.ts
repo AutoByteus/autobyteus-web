@@ -5,6 +5,9 @@ import type { State } from './State';
 import type { ToolParsingStrategy } from '../tool_parsing_strategies/base';
 import type { ToolInvocation } from '~/types/tool-invocation';
 import type { AgentRunState } from '~/types/agent/AgentRunState';
+import type { AgentContext } from '~/types/agent/AgentContext';
+import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
+import { getToolParsingStrategy } from '../strategyProvider';
 
 type CurrentSegment = FileSegment | AIResponseTextSegment | ThinkSegment | ToolCallSegment | null;
 
@@ -24,12 +27,19 @@ export class ParserContext {
 
   private _currentState: State | null = null;
 
-  constructor(segments: AIResponseSegment[], strategy: ToolParsingStrategy, useXml: boolean, parseToolCalls: boolean, agentRunState: AgentRunState) {
-    this.segments = segments;
-    this.strategy = strategy;
-    this.useXml = useXml;
-    this.parseToolCalls = parseToolCalls;
-    this.agentRunState = agentRunState;
+  constructor(agentContext: AgentContext) {
+    const lastAiMsg = agentContext.lastAIMessage;
+    if (!lastAiMsg) {
+      throw new Error("ParserContext cannot be created without an active AI message.");
+    }
+
+    this.segments = lastAiMsg.segments;
+    this.agentRunState = agentContext.state;
+    this.useXml = agentContext.useXmlToolFormat;
+    this.parseToolCalls = agentContext.parseToolCalls;
+    
+    const provider = useLLMProviderConfigStore().getProviderForModel(agentContext.config.llmModelName);
+    this.strategy = getToolParsingStrategy(provider!, this.useXml);
   }
 
   set currentState(state: State) {

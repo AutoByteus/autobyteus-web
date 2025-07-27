@@ -1,6 +1,6 @@
 import type { AgentRunConfig } from './AgentRunConfig';
 import type { AgentRunState } from './AgentRunState';
-import type { ContextFilePath } from '~/types/conversation';
+import type { ContextFilePath, Conversation, AIMessage } from '~/types/conversation';
 
 /**
  * A container class that holds the complete context for a single agent run.
@@ -29,4 +29,23 @@ export class AgentContext {
     this.isSubscribed = false;
     this.unsubscribe = undefined;
   }
+  
+  // --- Start: New helper getters (Facade) ---
+  get conversation(): Conversation {
+    return this.state.conversation;
+  }
+  
+  get lastAIMessage(): AIMessage | undefined {
+    // Delegate to the new helper on AgentRunState
+    return this.state.lastAIMessage;
+  }
+
+  get useXmlToolFormat(): boolean {
+    return this.config.useXmlToolFormat;
+  }
+
+  get parseToolCalls(): boolean {
+    return this.config.parseToolCalls;
+  }
+  // --- End: New helper getters (Facade) ---
 }

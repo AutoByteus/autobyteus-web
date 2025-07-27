@@ -1,5 +1,5 @@
 import type { AgentResponseSubscription } from '~/generated/graphql';
-import type { Conversation } from '~/types/conversation';
+import type { AgentContext } from '~/types/agent/AgentContext';
 import { 
   handleAssistantChunk,
   handleAssistantCompleteResponse
@@ -13,27 +13,30 @@ import {
 /**
  * Main dispatcher for processing all agent response events.
  * @param eventData - The 'data' object from the GraphQL subscription payload.
- * @param conversation - The conversation object to be updated.
+ * @param agentContext - The context of the agent this event belongs to.
  */
 export function processAgentResponseEvent(
   eventData: AgentResponseSubscription['agentResponse']['data'],
-  conversation: Conversation
+  agentContext: AgentContext
 ): void {
+  // Update the 'updatedAt' timestamp on the conversation
+  agentContext.conversation.updatedAt = new Date().toISOString();
+
   switch (eventData.__typename) {
     case 'GraphQLAssistantChunkData':
-      return handleAssistantChunk(eventData, conversation);
+      return handleAssistantChunk(eventData, agentContext);
 
     case 'GraphQLAssistantCompleteResponseData':
-      return handleAssistantCompleteResponse(eventData, conversation);
+      return handleAssistantCompleteResponse(eventData, agentContext);
 
     case 'GraphQLToolInvocationApprovalRequestedData':
-      return handleToolInvocationApprovalRequested(eventData, conversation);
+      return handleToolInvocationApprovalRequested(eventData, agentContext);
 
     case 'GraphQLToolInvocationAutoExecutingData':
-      return handleToolInvocationAutoExecuting(eventData, conversation);
+      return handleToolInvocationAutoExecuting(eventData, agentContext);
 
     case 'GraphQLToolInteractionLogEntryData':
-      return handleToolInteractionLog(eventData, conversation);
+      return handleToolInteractionLog(eventData, agentContext);
       
     case 'GraphQLErrorEventData':
       // Handle error events here or in a dedicated handler.

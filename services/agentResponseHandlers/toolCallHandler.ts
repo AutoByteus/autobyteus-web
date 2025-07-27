@@ -3,17 +3,17 @@ import type {
   GraphQLToolInvocationAutoExecutingData,
   GraphQLToolInteractionLogEntryData,
 } from '~/generated/graphql';
-import type { Conversation } from '~/types/conversation';
+import type { AgentContext } from '~/types/agent/AgentContext';
 import type { ToolCallSegment } from '~/utils/aiResponseParser/types';
 
 /**
  * Finds a specific ToolCallSegment within a conversation by its invocationId.
- * @param conversation The conversation to search within.
+ * @param agentContext The agent context containing the conversation to search within.
  * @param invocationId The ID of the tool invocation to find.
  * @returns The ToolCallSegment if found, otherwise null.
  */
-function findToolCallSegment(conversation: Conversation, invocationId: string): ToolCallSegment | null {
-  for (const message of conversation.messages) {
+function findToolCallSegment(agentContext: AgentContext, invocationId: string): ToolCallSegment | null {
+  for (const message of agentContext.conversation.messages) {
     if (message.type === 'ai') {
       for (const segment of message.segments) {
         if (segment.type === 'tool_call' && segment.invocationId === invocationId) {
@@ -27,9 +27,9 @@ function findToolCallSegment(conversation: Conversation, invocationId: string): 
 
 export function handleToolInvocationApprovalRequested(
   data: GraphQLToolInvocationApprovalRequestedData,
-  conversation: Conversation
+  agentContext: AgentContext
 ): void {
-  const segment = findToolCallSegment(conversation, data.invocationId);
+  const segment = findToolCallSegment(agentContext, data.invocationId);
   if (segment) {
     segment.status = 'awaiting-approval';
   } else {
@@ -39,9 +39,9 @@ export function handleToolInvocationApprovalRequested(
 
 export function handleToolInvocationAutoExecuting(
   data: GraphQLToolInvocationAutoExecutingData,
-  conversation: Conversation
+  agentContext: AgentContext
 ): void {
-  const segment = findToolCallSegment(conversation, data.invocationId);
+  const segment = findToolCallSegment(agentContext, data.invocationId);
   if (segment) {
     segment.status = 'executing';
   } else {
@@ -81,9 +81,9 @@ function parseErrorFromLog(logEntry: string): string | null {
 
 export function handleToolInteractionLog(
   data: GraphQLToolInteractionLogEntryData,
-  conversation: Conversation
+  agentContext: AgentContext
 ): void {
-  const segment = findToolCallSegment(conversation, data.toolInvocationId);
+  const segment = findToolCallSegment(agentContext, data.toolInvocationId);
   if (segment) {
     // Always append the raw log
     segment.logs.push(data.logEntry);
