@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
 import { OpenAiToolParsingStrategy } from '../openAiToolParsingStrategy';
 import { ParserContext } from '../../stateMachine/ParserContext';
-import { LLMProvider } from '~/types/llm';
 import type { AIResponseSegment, ToolCallSegment } from '../../types';
 import { AgentRunState } from '~/types/agent/AgentRunState';
-import type { Conversation } from '~/types/conversation';
+import type { Conversation, AIMessage } from '~/types/conversation';
+import { AgentContext } from '~/types/agent/AgentContext';
+import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
@@ -13,25 +15,33 @@ vi.mock('~/utils/toolUtils', () => ({
   }
 }));
 
-const createMockConversation = (id: string): Conversation => ({
-  id,
-  messages: [],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-});
+vi.mock('~/stores/llmProviderConfig', () => ({
+  useLLMProviderConfigStore: vi.fn(() => ({
+    getProviderForModel: vi.fn(() => 'openai'),
+  })),
+}));
+
+const createMockAgentContext = (segments: AIResponseSegment[]): AgentContext => {
+  const conversation: Conversation = { id: 'test-conv-id', messages: [], createdAt: '', updatedAt: '' };
+  const lastAIMessage: AIMessage = { type: 'ai', text: '', timestamp: new Date(), chunks: [], segments, isComplete: false, parserInstance: null as any };
+  conversation.messages.push(lastAIMessage);
+  const agentState = new AgentRunState('test-conv-id', conversation);
+  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelName: 'test-model', autoExecuteTools: false, useXmlToolFormat: false, parseToolCalls: true };
+  return new AgentContext(agentConfig, agentState);
+};
+
 
 describe('OpenAiToolParsingStrategy', () => {
     let context: ParserContext;
     let segments: AIResponseSegment[];
     let strategy: OpenAiToolParsingStrategy;
-    let agentRunState: AgentRunState;
 
     beforeEach(() => {
+        setActivePinia(createPinia());
         segments = [];
         strategy = new OpenAiToolParsingStrategy();
-        const mockConversation = createMockConversation('test-conv-id');
-        agentRunState = new AgentRunState('test-conv-id', mockConversation);
-        context = new ParserContext(segments, strategy, false, true, agentRunState);
+        const agentContext = createMockAgentContext(segments);
+        context = new ParserContext(agentContext);
     });
 
     it('checkSignature should return "match" for a "tool_calls" signature', () => {
@@ -56,7 +66,10 @@ describe('OpenAiToolParsingStrategy', () => {
 
     it('should parse the official OpenAI format with a "tool_calls" array', () => {
         const stream = `{"tool_calls": [{"function": {"name": "write_file", "arguments": "{\\"path\\":\\"/test.txt\\"}"}}]}`;
-        strategy.startSegment(context, stream);
+        strategy.startSegment(context, '{"tool_calls":');
+        for (const char of `[{"function": {"name": "write_file", "arguments": "{\\"path\\":\\"/test.txt\\"}"}}]}`) {
+            strategy.processChar(char, context);
+        }
         strategy.finalize(context);
 
         const segment = segments[0] as ToolCallSegment;
@@ -66,7 +79,10 @@ describe('OpenAiToolParsingStrategy', () => {
     
     it('should handle escaped quotes within argument strings', () => {
         const stream = `{"tool_calls": [{"function": {"name": "echo", "arguments": "{\\"text\\":\\"He said \\\\\\\"Hello!\\\\\\\"\\"}"}}]}`;
-        strategy.startSegment(context, stream);
+        strategy.startSegment(context, '{"tool_calls":');
+        for (const char of `[{"function": {"name": "echo", "arguments": "{\\"text\\":\\"He said \\\\\\\"Hello!\\\\\\\"\\"}"}}]}`) {
+            strategy.processChar(char, context);
+        }
         strategy.finalize(context);
 
         const segment = segments[0] as ToolCallSegment;

@@ -17,6 +17,12 @@ export class JsonInitializationState extends BaseState {
   }
 
   run(): void {
+    // FIX: If tool parsing is disabled, treat the trigger char as text and immediately revert.
+    if (!this.context.parseToolCalls) {
+      this.context.appendTextSegment(this.signatureBuffer);
+      this.context.transitionTo(new TextState(this.context));
+      return;
+    }
 
     while (this.context.hasMoreChars()) {
       const char = this.context.peekChar()!;
@@ -26,18 +32,11 @@ export class JsonInitializationState extends BaseState {
       const match = this.context.strategy.checkSignature(this.signatureBuffer);
 
       if (match === 'match') {
-        // CORRECTED: Check the parseToolCalls flag HERE.
-        if (this.context.parseToolCalls) {
-          // We found a match. The signature buffer now contains the full signature.
-          // We must rewind the position so the ToolParsingState can start fresh
-          // from the beginning of the signature.
-          this.context.pos -= this.signatureBuffer.length;
-          this.context.transitionTo(new ToolParsingState(this.context, this.signatureBuffer));
-        } else {
-          // Parsing is disabled, so treat this as text and revert.
-          this.context.appendTextSegment(this.signatureBuffer);
-          this.context.transitionTo(new TextState(this.context));
-        }
+        // We found a match. The signature buffer now contains the full signature.
+        // We must rewind the position so the ToolParsingState can start fresh
+        // from the beginning of the signature.
+        this.context.pos -= this.signatureBuffer.length;
+        this.context.transitionTo(new ToolParsingState(this.context, this.signatureBuffer));
         return;
       }
       

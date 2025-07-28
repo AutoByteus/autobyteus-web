@@ -1,11 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
 import { StateMachine } from '../StateMachine';
 import type { AIResponseSegment } from '../../types';
-import { XmlToolParsingStrategy } from '../../tool_parsing_strategies/xmlToolParsingStrategy';
-import { OpenAiToolParsingStrategy } from '../../tool_parsing_strategies/openAiToolParsingStrategy';
 import { ParserContext } from '../ParserContext';
 import { AgentRunState } from '~/types/agent/AgentRunState';
-import type { Conversation } from '~/types/conversation';
+import type { Conversation, AIMessage } from '~/types/conversation';
+import { AgentContext } from '~/types/agent/AgentContext';
+import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
+import { LLMProvider } from '~/types/llm';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
@@ -14,20 +16,39 @@ vi.mock('~/utils/toolUtils', () => ({
   }
 }));
 
-const createMockConversation = (id: string): Conversation => ({
-  id,
-  messages: [],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-});
+vi.mock('~/stores/llmProviderConfig', () => ({
+  useLLMProviderConfigStore: vi.fn(() => ({
+    getProviderForModel: (modelName: string) => {
+      if (modelName === 'anthropic') return LLMProvider.ANTHROPIC;
+      if (modelName === 'openai') return LLMProvider.OPENAI;
+      return LLMProvider.DEFAULT;
+    },
+  })),
+}));
+
+const createMockAgentContext = (
+  segments: AIResponseSegment[],
+  modelName: string,
+  useXml: boolean,
+  parseToolCalls: boolean
+): AgentContext => {
+  const conversation: Conversation = { id: 'test-conv-id', messages: [], createdAt: '', updatedAt: '' };
+  const lastAIMessage: AIMessage = { type: 'ai', text: '', timestamp: new Date(), chunks: [], segments, isComplete: false, parserInstance: null as any };
+  conversation.messages.push(lastAIMessage);
+  const agentState = new AgentRunState('test-conv-id', conversation);
+  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelName: modelName, autoExecuteTools: false, useXmlToolFormat: useXml, parseToolCalls };
+  return new AgentContext(agentConfig, agentState);
+};
 
 describe('StateMachine with a pre-selected Strategy', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
   it('should parse a mix of text and XML tags when given XmlToolParsingStrategy', () => {
     const segments: AIResponseSegment[] = [];
-    const mockConversation = createMockConversation('test-conv-id');
-    const agentRunState = new AgentRunState('test-conv-id', mockConversation);
-    const xmlStrategy = new XmlToolParsingStrategy();
-    const parserContext = new ParserContext(segments, xmlStrategy, true, true, agentRunState);
+    const agentContext = createMockAgentContext(segments, 'anthropic', true, true);
+    const parserContext = new ParserContext(agentContext);
     const machine = new StateMachine(parserContext);
 
     machine.appendChunks([
@@ -50,10 +71,8 @@ describe('StateMachine with a pre-selected Strategy', () => {
 
   it('should parse a mix of text and JSON when given OpenAiToolParsingStrategy', () => {
     const segments: AIResponseSegment[] = [];
-    const mockConversation = createMockConversation('test-conv-id');
-    const agentRunState = new AgentRunState('test-conv-id', mockConversation);
-    const openAiStrategy = new OpenAiToolParsingStrategy();
-    const parserContext = new ParserContext(segments, openAiStrategy, false, true, agentRunState);
+    const agentContext = createMockAgentContext(segments, 'openai', false, true);
+    const parserContext = new ParserContext(agentContext);
     const machine = new StateMachine(parserContext);
 
     machine.appendChunks(['Hello {"tool_calls":[{"function":{"name":"test","arguments":"{}"}}]} and done.']);
@@ -72,10 +91,8 @@ describe('StateMachine with a pre-selected Strategy', () => {
 
   it('should treat an unknown tag as text', () => {
     const segments: AIResponseSegment[] = [];
-    const mockConversation = createMockConversation('test-conv-id');
-    const agentRunState = new AgentRunState('test-conv-id', mockConversation);
-    const openAiStrategy = new OpenAiToolParsingStrategy();
-    const parserContext = new ParserContext(segments, openAiStrategy, false, true, agentRunState);
+    const agentContext = createMockAgentContext(segments, 'openai', false, true);
+    const parserContext = new ParserContext(agentContext);
     const machine = new StateMachine(parserContext);
 
     machine.appendChunks(['Some <unknown>tag</unknown> text']);

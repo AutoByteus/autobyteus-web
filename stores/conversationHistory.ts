@@ -5,7 +5,6 @@ import type { GetConversationHistoryQuery, GetConversationHistoryQueryVariables 
 import type { Conversation, UserMessage, AIMessage } from '~/types/conversation';
 import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
 import { AgentRunState } from '~/types/agent/AgentRunState';
-import { createParserContext } from '~/utils/aiResponseParser/parserContextFactory';
 import type { AIResponseSegment } from '~/utils/aiResponseParser/types';
 
 interface ConversationHistoryState {
@@ -123,7 +122,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
               chunks: [aiText], // Store the full text as a single chunk
               segments: [], // Segments will be populated on-demand by agentRunStore
               isComplete: true,
-              parserInstance: null, // No parser instance needed at this stage
+              parserInstance: null as any, // No parser instance needed at this stage
               completionTokens: msg.tokenCount || undefined,
               completionCost: msg.cost || undefined
             };

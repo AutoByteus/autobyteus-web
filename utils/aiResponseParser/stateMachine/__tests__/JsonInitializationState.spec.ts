@@ -1,49 +1,69 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
 import { JsonInitializationState } from '../JsonInitializationState';
 import { TextState } from '../TextState';
 import { ToolParsingState } from '../ToolParsingState';
 import { ParserContext } from '../ParserContext';
 import { ParserStateType } from '../State';
 import type { AIResponseSegment } from '../../types';
-import { OpenAiToolParsingStrategy } from '../../tool_parsing_strategies/openAiToolParsingStrategy';
 import { AgentRunState } from '~/types/agent/AgentRunState';
-import type { Conversation } from '~/types/conversation';
+import type { Conversation, AIMessage } from '~/types/conversation';
+import { AgentContext } from '~/types/agent/AgentContext';
+import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
+import { LLMProvider } from '~/types/llm';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: () => 'mock_id'
 }));
 
-const createMockConversation = (id: string): Conversation => ({
-  id,
-  messages: [],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-});
+vi.mock('~/stores/llmProviderConfig', () => ({
+  useLLMProviderConfigStore: vi.fn(() => ({
+    getProviderForModel: (modelName: string) => {
+      if (modelName === 'openai-model') return LLMProvider.OPENAI;
+      return LLMProvider.DEFAULT;
+    },
+  })),
+}));
+
+const createMockAgentContext = (segments: AIResponseSegment[], parseToolCalls: boolean): AgentContext => {
+  const conversation: Conversation = { id: 'test-conv-id', messages: [], createdAt: '', updatedAt: '' };
+  const lastAIMessage: AIMessage = { type: 'ai', text: '', timestamp: new Date(), chunks: [], segments, isComplete: false, parserInstance: null as any };
+  conversation.messages.push(lastAIMessage);
+  const agentState = new AgentRunState('test-conv-id', conversation);
+  const agentConfig: AgentRunConfig = {
+    launchProfileId: 'lp-1',
+    workspaceId: null,
+    llmModelName: 'openai-model',
+    autoExecuteTools: false,
+    useXmlToolFormat: false, // Important for this test
+    parseToolCalls: parseToolCalls,
+  };
+  return new AgentContext(agentConfig, agentState);
+};
 
 describe('JsonInitializationState', () => {
   let segments: AIResponseSegment[];
   let context: ParserContext;
-  let strategy: OpenAiToolParsingStrategy;
-  let agentRunState: AgentRunState;
 
   beforeEach(() => {
+    setActivePinia(createPinia()); // Set up a fresh Pinia instance for each test
     segments = [];
-    strategy = new OpenAiToolParsingStrategy();
-    const mockConversation = createMockConversation('test-conv-id');
-    agentRunState = new AgentRunState('test-conv-id', mockConversation);
   });
 
   it('should transition to ToolParsingState on a matching signature when parsing is enabled', () => {
-    context = new ParserContext(segments, strategy, false, true, agentRunState); // parsing enabled
+    const agentContext = createMockAgentContext(segments, true);
+    context = new ParserContext(agentContext);
     context.buffer = '{"tool_calls": [{}]}';
     context.pos = 0;
+    // The TextState would have found '{' and transitioned us, so we start from JsonInitializationState
     context.currentState = new JsonInitializationState(context);
     context.currentState.run();
     expect(context.currentState.stateType).toBe(ParserStateType.TOOL_PARSING_STATE);
   });
 
   it('should transition back to TextState if signature does not match', () => {
-    context = new ParserContext(segments, strategy, false, true, agentRunState);
+    const agentContext = createMockAgentContext(segments, true);
+    context = new ParserContext(agentContext);
     context.buffer = '{"not_a_tool": "value"}';
     context.pos = 0;
     context.currentState = new JsonInitializationState(context);
@@ -56,7 +76,8 @@ describe('JsonInitializationState', () => {
   });
 
   it('should revert to TextState if a tool signature matches but parsing is disabled', () => {
-    context = new ParserContext(segments, strategy, false, false, agentRunState); // parsing disabled
+    const agentContext = createMockAgentContext(segments, false); // parsing disabled
+    context = new ParserContext(agentContext);
     context.buffer = '{"tool_calls": [{}]}'; // a valid JSON tool signature
     context.pos = 0;
     context.currentState = new JsonInitializationState(context);
@@ -68,7 +89,8 @@ describe('JsonInitializationState', () => {
   });
 
   it('should wait for more characters for a partial match', () => {
-    context = new ParserContext(segments, strategy, false, true, agentRunState);
+    const agentContext = createMockAgentContext(segments, true);
+    context = new ParserContext(agentContext);
     context.buffer = '{"tool_c';
     context.pos = 0;
     context.currentState = new JsonInitializationState(context);

@@ -1,9 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
 import { GeminiToolParsingStrategy } from '../geminiToolParsingStrategy';
 import { ParserContext } from '../../stateMachine/ParserContext';
 import type { AIResponseSegment, ToolCallSegment, AIResponseTextSegment } from '../../types';
 import { AgentRunState } from '~/types/agent/AgentRunState';
-import type { Conversation } from '~/types/conversation';
+import type { Conversation, AIMessage } from '~/types/conversation';
+import { AgentContext } from '~/types/agent/AgentContext';
+import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
@@ -12,25 +15,32 @@ vi.mock('~/utils/toolUtils', () => ({
   }
 }));
 
-const createMockConversation = (id: string): Conversation => ({
-  id,
-  messages: [],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-});
+vi.mock('~/stores/llmProviderConfig', () => ({
+  useLLMProviderConfigStore: vi.fn(() => ({
+    getProviderForModel: vi.fn(() => 'gemini'),
+  })),
+}));
+
+const createMockAgentContext = (segments: AIResponseSegment[]): AgentContext => {
+  const conversation: Conversation = { id: 'test-conv-id', messages: [], createdAt: '', updatedAt: '' };
+  const lastAIMessage: AIMessage = { type: 'ai', text: '', timestamp: new Date(), chunks: [], segments, isComplete: false, parserInstance: null as any };
+  conversation.messages.push(lastAIMessage);
+  const agentState = new AgentRunState('test-conv-id', conversation);
+  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelName: 'test-model', autoExecuteTools: false, useXmlToolFormat: false, parseToolCalls: true };
+  return new AgentContext(agentConfig, agentState);
+};
 
 describe('GeminiToolParsingStrategy (Simplified)', () => {
     let context: ParserContext;
     let segments: AIResponseSegment[];
     let strategy: GeminiToolParsingStrategy;
-    let agentRunState: AgentRunState;
 
     beforeEach(() => {
+        setActivePinia(createPinia());
         segments = [];
         strategy = new GeminiToolParsingStrategy();
-        const mockConversation = createMockConversation('test-conv-id');
-        agentRunState = new AgentRunState('test-conv-id', mockConversation);
-        context = new ParserContext(segments, strategy, false, true, agentRunState);
+        const agentContext = createMockAgentContext(segments);
+        context = new ParserContext(agentContext);
     });
 
     // --- Signature Checks ---
@@ -138,7 +148,8 @@ describe('GeminiToolParsingStrategy (Simplified)', () => {
 
         it('should return no invocations if "name" is missing', () => {
             const stream = '{"args": {}}';
-            strategy.startSegment(context, stream);
+            strategy.startSegment(context, '{"args":');
+            for(const char of ' {}}') strategy.processChar(char, context);
             strategy.finalize(context);
             // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);
@@ -148,7 +159,8 @@ describe('GeminiToolParsingStrategy (Simplified)', () => {
 
         it('should return no invocations if "name" is not a string', () => {
             const stream = '{"name": 123, "args": {}}';
-            strategy.startSegment(context, stream);
+            strategy.startSegment(context, '{"name":');
+            for(const char of ' 123, "args": {}}') strategy.processChar(char, context);
             strategy.finalize(context);
             // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);
@@ -158,7 +170,8 @@ describe('GeminiToolParsingStrategy (Simplified)', () => {
 
         it('should return no invocations if "args" is not an object', () => {
             const stream = '{"name": "test", "args": "invalid"}';
-            strategy.startSegment(context, stream);
+            strategy.startSegment(context, '{"name":');
+            for(const char of ' "test", "args": "invalid"}') strategy.processChar(char, context);
             strategy.finalize(context);
             // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);
@@ -168,7 +181,8 @@ describe('GeminiToolParsingStrategy (Simplified)', () => {
 
         it('should return no invocations if "args" is an array', () => {
             const stream = '{"name": "test", "args": []}';
-            strategy.startSegment(context, stream);
+            strategy.startSegment(context, '{"name":');
+            for(const char of ' "test", "args": []}') strategy.processChar(char, context);
             strategy.finalize(context);
             // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);

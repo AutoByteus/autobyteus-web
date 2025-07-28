@@ -1,11 +1,13 @@
 import { IncrementalAIResponseParser } from '../incrementalAIResponseParser';
 import type { AIResponseSegment } from '../types';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
 import { LLMProvider } from '~/types/llm';
 import { ParserContext } from '../stateMachine/ParserContext';
-import { getToolParsingStrategy } from '../strategyProvider';
 import { AgentRunState } from '~/types/agent/AgentRunState';
-import type { Conversation } from '~/types/conversation';
+import type { Conversation, AIMessage } from '~/types/conversation';
+import { AgentContext } from '~/types/agent/AgentContext';
+import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 
 // Mock the toolUtils to have a predictable invocation ID
 vi.mock('~/utils/toolUtils', () => ({
@@ -20,26 +22,57 @@ vi.mock('~/utils/toolUtils', () => ({
   }
 }));
 
-const createMockConversation = (id: string): Conversation => ({
-  id,
-  messages: [],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-});
+vi.mock('~/stores/llmProviderConfig', () => ({
+  useLLMProviderConfigStore: vi.fn(() => ({
+    getProviderForModel: (modelName: string) => {
+      if (modelName === 'anthropic') return LLMProvider.ANTHROPIC;
+      if (modelName === 'openai') return LLMProvider.OPENAI;
+      return LLMProvider.DEFAULT;
+    },
+  })),
+}));
+
+const createMockAgentContext = (
+  segments: AIResponseSegment[],
+  modelName: string,
+  useXml: boolean,
+  parseToolCalls: boolean,
+  convId: string
+): AgentContext => {
+  const conversation: Conversation = {
+    id: convId,
+    messages: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const lastAIMessage: AIMessage = {
+    type: 'ai', text: '', timestamp: new Date(), chunks: [],
+    segments: segments, isComplete: false, parserInstance: null as any,
+  };
+  conversation.messages.push(lastAIMessage);
+
+  const agentState = new AgentRunState(convId, conversation);
+  const agentConfig: AgentRunConfig = {
+    launchProfileId: 'test-profile', workspaceId: null,
+    llmModelName: modelName, autoExecuteTools: false, useXmlToolFormat: useXml, parseToolCalls: parseToolCalls,
+  };
+
+  return new AgentContext(agentConfig, agentState);
+};
 
 describe('IncrementalAIResponseParser with Strategies', () => {
   let segments: AIResponseSegment[];
-  let agentRunState: AgentRunState;
 
   beforeEach(() => {
+    setActivePinia(createPinia());
     segments = [];
-    const mockConversation = createMockConversation('test-conv-id');
-    agentRunState = new AgentRunState('test-conv-id', mockConversation);
   });
 
   const createParser = (provider: LLMProvider, useXml: boolean, parseToolCalls: boolean): IncrementalAIResponseParser => {
-    const strategy = getToolParsingStrategy(provider, useXml);
-    const parserContext = new ParserContext(segments, strategy, useXml, parseToolCalls, agentRunState);
+    const modelName = provider === LLMProvider.ANTHROPIC ? 'anthropic' : 'openai';
+    const agentContext = createMockAgentContext(segments, modelName, useXml, parseToolCalls, `test-conv-${Date.now()}`);
+    const parserContext = new ParserContext(agentContext);
     return new IncrementalAIResponseParser(parserContext);
   };
 
@@ -117,8 +150,6 @@ describe('IncrementalAIResponseParser with Strategies', () => {
 
     // Test with JSON strategy
     segments = [];
-    const mockConversation = createMockConversation('test-conv-id-2');
-    agentRunState = new AgentRunState('test-conv-id-2', mockConversation); // Reset context for new test
     const parserJson = createParser(LLMProvider.OPENAI, false, true);
     parserJson.processChunks(['Here is a file to write: ']);
     parserJson.processChunks(['{"tool_calls": [{"function": {"name": "file_writer", "arguments": "{\\"path\\":\\"/data.txt\\",\\"content\\":\\"some data\\"}"}}]}']);

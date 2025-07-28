@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
 import { XmlToolParsingStrategy } from '../xmlToolParsingStrategy';
 import { ParserContext } from '../../stateMachine/ParserContext';
-import { LLMProvider } from '~/types/llm';
 import type { AIResponseSegment, ToolCallSegment } from '../../types';
 import { AgentRunState } from '~/types/agent/AgentRunState';
-import type { Conversation } from '~/types/conversation';
+import type { Conversation, AIMessage } from '~/types/conversation';
+import { AgentContext } from '~/types/agent/AgentContext';
+import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 
 // Mock the invocation ID generator for predictable test results
 vi.mock('~/utils/toolUtils', () => ({
@@ -19,25 +21,32 @@ vi.mock('~/utils/toolUtils', () => ({
   }
 }));
 
-const createMockConversation = (id: string): Conversation => ({
-  id,
-  messages: [],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-});
+vi.mock('~/stores/llmProviderConfig', () => ({
+  useLLMProviderConfigStore: vi.fn(() => ({
+    getProviderForModel: vi.fn(() => 'anthropic'),
+  })),
+}));
+
+const createMockAgentContext = (segments: AIResponseSegment[]): AgentContext => {
+  const conversation: Conversation = { id: 'test-conv-id', messages: [], createdAt: '', updatedAt: '' };
+  const lastAIMessage: AIMessage = { type: 'ai', text: '', timestamp: new Date(), chunks: [], segments, isComplete: false, parserInstance: null as any };
+  conversation.messages.push(lastAIMessage);
+  const agentState = new AgentRunState('test-conv-id', conversation);
+  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelName: 'test-model', autoExecuteTools: false, useXmlToolFormat: true, parseToolCalls: true };
+  return new AgentContext(agentConfig, agentState);
+};
 
 describe('XmlToolParsingStrategy', () => {
     let context: ParserContext;
     let segments: AIResponseSegment[];
     let strategy: XmlToolParsingStrategy;
-    let agentRunState: AgentRunState;
 
     beforeEach(() => {
+        setActivePinia(createPinia());
         segments = [];
         strategy = new XmlToolParsingStrategy();
-        const mockConversation = createMockConversation('test-conv-id');
-        agentRunState = new AgentRunState('test-conv-id', mockConversation);
-        context = new ParserContext(segments, strategy, true, true, agentRunState);
+        const agentContext = createMockAgentContext(segments);
+        context = new ParserContext(agentContext);
     });
 
     // --- Signature Checks ---

@@ -1,9 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
 import { DefaultJsonToolParsingStrategy } from '../defaultJsonToolParsingStrategy';
 import { ParserContext } from '../../stateMachine/ParserContext';
 import type { AIResponseSegment, ToolCallSegment, AIResponseTextSegment } from '../../types';
 import { AgentRunState } from '~/types/agent/AgentRunState';
-import type { Conversation } from '~/types/conversation';
+import type { Conversation, AIMessage } from '~/types/conversation';
+import { AgentContext } from '~/types/agent/AgentContext';
+import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
@@ -12,25 +15,32 @@ vi.mock('~/utils/toolUtils', () => ({
   }
 }));
 
-const createMockConversation = (id: string): Conversation => ({
-  id,
-  messages: [],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-});
+vi.mock('~/stores/llmProviderConfig', () => ({
+  useLLMProviderConfigStore: vi.fn(() => ({
+    getProviderForModel: vi.fn(() => 'default'),
+  })),
+}));
+
+const createMockAgentContext = (segments: AIResponseSegment[]): AgentContext => {
+  const conversation: Conversation = { id: 'test-conv-id', messages: [], createdAt: '', updatedAt: '' };
+  const lastAIMessage: AIMessage = { type: 'ai', text: '', timestamp: new Date(), chunks: [], segments, isComplete: false, parserInstance: null as any };
+  conversation.messages.push(lastAIMessage);
+  const agentState = new AgentRunState('test-conv-id', conversation);
+  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelName: 'test-model', autoExecuteTools: false, useXmlToolFormat: false, parseToolCalls: true };
+  return new AgentContext(agentConfig, agentState);
+};
 
 describe('DefaultJsonToolParsingStrategy', () => {
     let context: ParserContext;
     let segments: AIResponseSegment[];
     let strategy: DefaultJsonToolParsingStrategy;
-    let agentRunState: AgentRunState;
 
     beforeEach(() => {
+        setActivePinia(createPinia());
         segments = [];
         strategy = new DefaultJsonToolParsingStrategy();
-        const mockConversation = createMockConversation('test-conv-id');
-        agentRunState = new AgentRunState('test-conv-id', mockConversation);
-        context = new ParserContext(segments, strategy, false, true, agentRunState);
+        const agentContext = createMockAgentContext(segments);
+        context = new ParserContext(agentContext);
     });
 
     it('should parse a single tool call from a real example, streamed in chunks', () => {
@@ -98,7 +108,10 @@ describe('DefaultJsonToolParsingStrategy', () => {
 
         it('should return no invocations if "function" is missing', () => {
             const stream = '{"tool": {"parameters": {}}}';
-            strategy.startSegment(context, stream);
+            strategy.startSegment(context, '{"tool":');
+            for (const char of ' {"parameters": {}}}') {
+                strategy.processChar(char, context);
+            }
             strategy.finalize(context);
             // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);
@@ -108,7 +121,10 @@ describe('DefaultJsonToolParsingStrategy', () => {
 
         it('should return no invocations if "function" is not a string', () => {
             const stream = '{"tool": {"function": 123, "parameters": {}}}';
-            strategy.startSegment(context, stream);
+            strategy.startSegment(context, '{"tool":');
+            for (const char of ' {"function": 123, "parameters": {}}}') {
+                strategy.processChar(char, context);
+            }
             strategy.finalize(context);
             // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);
@@ -118,7 +134,10 @@ describe('DefaultJsonToolParsingStrategy', () => {
 
         it('should return no invocations if "parameters" is not an object', () => {
             const stream = '{"tool": {"function": "test", "parameters": "not-an-object"}}';
-            strategy.startSegment(context, stream);
+            strategy.startSegment(context, '{"tool":');
+            for (const char of ' {"function": "test", "parameters": "not-an-object"}}') {
+                strategy.processChar(char, context);
+            }
             strategy.finalize(context);
             // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);
@@ -128,7 +147,10 @@ describe('DefaultJsonToolParsingStrategy', () => {
 
         it('should return no invocations if "tool" is not an object', () => {
             const stream = '{"tool": "invalid"}';
-            strategy.startSegment(context, stream);
+            strategy.startSegment(context, '{"tool":');
+            for (const char of ' "invalid"}') {
+                strategy.processChar(char, context);
+            }
             strategy.finalize(context);
             // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);

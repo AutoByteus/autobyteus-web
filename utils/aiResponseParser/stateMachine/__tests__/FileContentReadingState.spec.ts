@@ -1,29 +1,38 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
 import { FileContentReadingState } from '../FileContentReadingState';
 import { ParserContext } from '../ParserContext';
 import { FileClosingTagScanState } from '../FileClosingTagScanState';
 import type { AIResponseSegment } from '../../types';
-import { DefaultJsonToolParsingStrategy } from '../../tool_parsing_strategies/defaultJsonToolParsingStrategy';
 import { AgentRunState } from '~/types/agent/AgentRunState';
-import type { Conversation } from '~/types/conversation';
+import type { Conversation, AIMessage } from '~/types/conversation';
+import { AgentContext } from '~/types/agent/AgentContext';
+import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 
-const createMockConversation = (id: string): Conversation => ({
-  id,
-  messages: [],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-});
+vi.mock('~/stores/llmProviderConfig', () => ({
+  useLLMProviderConfigStore: vi.fn(() => ({
+    getProviderForModel: vi.fn(() => 'default'),
+  })),
+}));
+
+const createMockAgentContext = (segments: AIResponseSegment[]): AgentContext => {
+  const conversation: Conversation = { id: 'test-conv-id', messages: [], createdAt: '', updatedAt: '' };
+  const lastAIMessage: AIMessage = { type: 'ai', text: '', timestamp: new Date(), chunks: [], segments, isComplete: false, parserInstance: null as any };
+  conversation.messages.push(lastAIMessage);
+  const agentState = new AgentRunState('test-conv-id', conversation);
+  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelName: 'test-model', autoExecuteTools: false, useXmlToolFormat: false, parseToolCalls: true };
+  return new AgentContext(agentConfig, agentState);
+};
 
 describe('FileContentReadingState', () => {
   let segments: AIResponseSegment[];
   let context: ParserContext;
-  let agentRunState: AgentRunState;
 
   beforeEach(() => {
+    setActivePinia(createPinia());
     segments = [];
-    const mockConversation = createMockConversation('test-conv-id');
-    agentRunState = new AgentRunState('test-conv-id', mockConversation);
-    context = new ParserContext(segments, new DefaultJsonToolParsingStrategy(), false, true, agentRunState);
+    const agentContext = createMockAgentContext(segments);
+    context = new ParserContext(agentContext);
     context.startFileSegment('src/app.js');
     context.currentState = new FileContentReadingState(context);
   });

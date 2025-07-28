@@ -1,11 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
 import { ToolParsingState } from '../ToolParsingState';
 import { TextState } from '../TextState';
 import { ParserContext } from '../ParserContext';
 import type { AIResponseSegment } from '../../types';
 import type { ToolParsingStrategy, SignatureMatch } from '../../tool_parsing_strategies/base';
 import { AgentRunState } from '~/types/agent/AgentRunState';
-import type { Conversation } from '~/types/conversation';
+import type { Conversation, AIMessage } from '~/types/conversation';
+import { AgentContext } from '~/types/agent/AgentContext';
+import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 
 // Mock the tool utils to prevent the sha256 error and make tests predictable.
 vi.mock('~/utils/toolUtils', () => ({
@@ -15,12 +18,11 @@ vi.mock('~/utils/toolUtils', () => ({
   }
 }));
 
-const createMockConversation = (id: string): Conversation => ({
-  id,
-  messages: [],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-});
+vi.mock('~/stores/llmProviderConfig', () => ({
+  useLLMProviderConfigStore: vi.fn(() => ({
+    getProviderForModel: vi.fn(() => 'default'),
+  })),
+}));
 
 // A simple mock strategy for precise control over the state's behavior
 class MockToolStrategy implements ToolParsingStrategy {
@@ -52,19 +54,29 @@ class MockToolStrategy implements ToolParsingStrategy {
   }
 }
 
+const createMockAgentContext = (segments: AIResponseSegment[]): AgentContext => {
+  const conversation: Conversation = { id: 'test-conv-id', messages: [], createdAt: '', updatedAt: '' };
+  const lastAIMessage: AIMessage = { type: 'ai', text: '', timestamp: new Date(), chunks: [], segments, isComplete: false, parserInstance: null as any };
+  conversation.messages.push(lastAIMessage);
+  const agentState = new AgentRunState('test-conv-id', conversation);
+  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelName: 'test-model', autoExecuteTools: false, useXmlToolFormat: false, parseToolCalls: true };
+  return new AgentContext(agentConfig, agentState);
+};
+
 describe('ToolParsingState', () => {
   let segments: AIResponseSegment[];
   let context: ParserContext;
   let mockStrategy: MockToolStrategy;
   let state: ToolParsingState;
-  let agentRunState: AgentRunState;
 
   beforeEach(() => {
+    setActivePinia(createPinia());
     segments = [];
     mockStrategy = new MockToolStrategy();
-    const mockConversation = createMockConversation('test-conv-id');
-    agentRunState = new AgentRunState('test-conv-id', mockConversation);
-    context = new ParserContext(segments, mockStrategy, false, true, agentRunState);
+    const agentContext = createMockAgentContext(segments);
+    context = new ParserContext(agentContext);
+    // @ts-ignore - Manually setting strategy for this test
+    context.strategy = mockStrategy;
     vi.clearAllMocks();
   });
 
