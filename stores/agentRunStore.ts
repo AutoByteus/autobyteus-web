@@ -158,7 +158,7 @@ export const useAgentRunStore = defineStore('agentRun', {
       }
     },
 
-    async closeAgent(agentIdToClose: string) {
+    async closeAgent(agentIdToClose: string, options: { terminate: boolean }) {
       const profileState = this._getOrCreateCurrentProfileState();
       const agentToClose = profileState.activeAgents.get(agentIdToClose);
 
@@ -167,6 +167,8 @@ export const useAgentRunStore = defineStore('agentRun', {
       // Unsubscribe if a subscription exists
       if (agentToClose.unsubscribe) {
         agentToClose.unsubscribe();
+        agentToClose.isSubscribed = false;
+        agentToClose.unsubscribe = undefined;
       }
 
       // Remove the agent from the map
@@ -178,8 +180,8 @@ export const useAgentRunStore = defineStore('agentRun', {
         profileState.selectedAgentId = openAgentsArray.length > 0 ? openAgentsArray[openAgentsArray.length - 1].state.agentId : null;
       }
 
-      // If the agent had a permanent ID, terminate the backend instance
-      if (!agentIdToClose.startsWith('temp-')) {
+      // Conditionally terminate the backend instance
+      if (options.terminate && !agentIdToClose.startsWith('temp-')) {
         try {
           const { mutate: terminateAgentInstanceMutation } = useMutation(TerminateAgentInstance);
           await terminateAgentInstanceMutation({ id: agentIdToClose });
