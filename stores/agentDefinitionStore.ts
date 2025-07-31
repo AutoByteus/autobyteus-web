@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { useQuery, useMutation } from '@vue/apollo-composable';
+import { useMutation, useApolloClient } from '@vue/apollo-composable';
 import { GetAgentDefinitions } from '~/graphql/queries/agentDefinitionQueries';
 import { CreateAgentDefinition, UpdateAgentDefinition, DeleteAgentDefinition } from '~/graphql/mutations/agentDefinitionMutations';
 
@@ -62,29 +62,31 @@ export const useAgentDefinitionStore = defineStore('agentDefinition', () => {
   const agentDefinitions = ref<AgentDefinition[]>([]);
   const loading = ref(false);
   const error = ref<any>(null);
+  const { client } = useApolloClient();
 
   // --- ACTIONS ---
 
   // Fetch all agent definitions
-  function fetchAllAgentDefinitions() {
-    const { onResult, onError, loading: queryLoading } = useQuery(GetAgentDefinitions, null, {
-      fetchPolicy: 'network-only', // Always fetch from the network
-    });
+  async function fetchAllAgentDefinitions() {
+    loading.value = true;
+    error.value = null;
+    try {
+      const { data, errors } = await client.query({
+        query: GetAgentDefinitions,
+        fetchPolicy: 'network-only',
+      });
 
-    loading.value = queryLoading.value;
-
-    onResult(result => {
-      if (result.data) {
-        agentDefinitions.value = result.data.agentDefinitions;
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map(e => e.message).join(', '));
       }
-      loading.value = false;
-    });
 
-    onError(err => {
-      error.value = err;
+      agentDefinitions.value = data.agentDefinitions || [];
+    } catch (e) {
+      error.value = e;
+      console.error("Failed to fetch agent definitions:", e);
+    } finally {
       loading.value = false;
-      console.error("Failed to fetch agent definitions:", err);
-    });
+    }
   }
 
   // Create a new agent definition
@@ -99,7 +101,7 @@ export const useAgentDefinitionStore = defineStore('agentDefinition', () => {
       }
       if (result?.data?.createAgentDefinition) {
         // Refresh the list after creation
-        fetchAllAgentDefinitions();
+        await fetchAllAgentDefinitions();
         return result.data.createAgentDefinition;
       }
       return null;
@@ -124,7 +126,7 @@ export const useAgentDefinitionStore = defineStore('agentDefinition', () => {
       }
       if (result?.data?.updateAgentDefinition) {
         // Refresh the list after update
-        fetchAllAgentDefinitions();
+        await fetchAllAgentDefinitions();
         return result.data.updateAgentDefinition;
       }
       return null;
@@ -149,7 +151,7 @@ export const useAgentDefinitionStore = defineStore('agentDefinition', () => {
       }
       if (result?.data?.deleteAgentDefinition?.success) {
         // Refresh the list after deletion
-        fetchAllAgentDefinitions();
+        await fetchAllAgentDefinitions();
         return true;
       }
       return false;

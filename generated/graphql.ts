@@ -53,10 +53,12 @@ export type AgentDefinition = {
 
 export type AgentInstance = {
   __typename?: 'AgentInstance';
+  agentDefinitionId?: Maybe<Scalars['String']['output']>;
   currentPhase: Scalars['String']['output'];
   id: Scalars['String']['output'];
   name: Scalars['String']['output'];
   role: Scalars['String']['output'];
+  workspace?: Maybe<WorkspaceInfo>;
 };
 
 export enum AgentOperationalPhase {
@@ -841,9 +843,11 @@ export type WorkspaceDefinition = {
 
 export type WorkspaceInfo = {
   __typename?: 'WorkspaceInfo';
+  config: Scalars['JSON']['output'];
   fileExplorer?: Maybe<Scalars['JSON']['output']>;
   name: Scalars['String']['output'];
   workspaceId: Scalars['String']['output'];
+  workspaceTypeName: Scalars['String']['output'];
 };
 
 export type CreateAgentDefinitionMutationVariables = Exact<{
@@ -1024,6 +1028,11 @@ export type GetAgentDefinitionsQueryVariables = Exact<{ [key: string]: never; }>
 
 
 export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename?: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForWorkflow: boolean }> }> };
+
+export type GetAgentInstancesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetAgentInstancesQuery = { __typename?: 'Query', agentInstances: Array<{ __typename?: 'AgentInstance', id: string, name: string, role: string, currentPhase: string, agentDefinitionId?: string | null, workspace?: { __typename?: 'WorkspaceInfo', workspaceId: string, name: string, workspaceTypeName: string, config: any } | null }> };
 
 export type GetConversationHistoryQueryVariables = Exact<{
   agentDefinitionId: Scalars['String']['input'];
@@ -1976,6 +1985,43 @@ export function useGetAgentDefinitionsLazyQuery(options: VueApolloComposable.Use
   return VueApolloComposable.useLazyQuery<GetAgentDefinitionsQuery, GetAgentDefinitionsQueryVariables>(GetAgentDefinitionsDocument, {}, options);
 }
 export type GetAgentDefinitionsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAgentDefinitionsQuery, GetAgentDefinitionsQueryVariables>;
+export const GetAgentInstancesDocument = gql`
+    query GetAgentInstances {
+  agentInstances {
+    id
+    name
+    role
+    currentPhase
+    agentDefinitionId
+    workspace {
+      workspaceId
+      name
+      workspaceTypeName
+      config
+    }
+  }
+}
+    `;
+
+/**
+ * __useGetAgentInstancesQuery__
+ *
+ * To run a query within a Vue component, call `useGetAgentInstancesQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetAgentInstancesQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetAgentInstancesQuery();
+ */
+export function useGetAgentInstancesQuery(options: VueApolloComposable.UseQueryOptions<GetAgentInstancesQuery, GetAgentInstancesQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetAgentInstancesQuery, GetAgentInstancesQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetAgentInstancesQuery, GetAgentInstancesQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetAgentInstancesQuery, GetAgentInstancesQueryVariables>(GetAgentInstancesDocument, {}, options);
+}
+export function useGetAgentInstancesLazyQuery(options: VueApolloComposable.UseQueryOptions<GetAgentInstancesQuery, GetAgentInstancesQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetAgentInstancesQuery, GetAgentInstancesQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetAgentInstancesQuery, GetAgentInstancesQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetAgentInstancesQuery, GetAgentInstancesQueryVariables>(GetAgentInstancesDocument, {}, options);
+}
+export type GetAgentInstancesQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAgentInstancesQuery, GetAgentInstancesQueryVariables>;
 export const GetConversationHistoryDocument = gql`
     query GetConversationHistory($agentDefinitionId: String!, $page: Int, $pageSize: Int) {
   getConversationHistory(

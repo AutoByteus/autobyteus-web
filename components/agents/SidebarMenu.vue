@@ -13,7 +13,7 @@
                 ? 'bg-indigo-600 text-white shadow-sm' 
                 : 'text-gray-700 hover:bg-indigo-100 hover:text-indigo-700'"
             >
-              <span class="text-left font-medium">My Launch Profiles</span>
+              <span class="text-left font-medium">Launch Profiles</span>
             </button>
           </li>
           <li>

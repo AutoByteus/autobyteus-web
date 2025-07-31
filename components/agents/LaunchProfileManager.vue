@@ -3,7 +3,7 @@
     <div class="max-w-full mx-auto">
       <div class="flex justify-between items-center mb-6">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">My Launch Profiles</h1>
+          <h1 class="text-2xl font-bold text-gray-900">Launch Profiles</h1>
           <p class="text-gray-500 mt-1">Manage active and past launch profiles.</p>
         </div>
       </div>

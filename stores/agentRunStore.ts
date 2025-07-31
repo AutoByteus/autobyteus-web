@@ -145,6 +145,43 @@ export const useAgentRunStore = defineStore('agentRun', {
       profileState.activeAgents.set(tempId, newAgentContext);
       profileState.selectedAgentId = tempId;
     },
+    
+    createContextForExistingAgent(agentId: string) {
+      const launchProfileStore = useAgentLaunchProfileStore();
+      const activeLaunchProfile = launchProfileStore.activeLaunchProfile;
+      if (!activeLaunchProfile) {
+        console.error('Cannot create context for existing agent: no active launch profile.');
+        return;
+      }
+      const profileState = this._getOrCreateCurrentProfileState();
+      const now = new Date().toISOString();
+
+      const newConversation: Conversation = {
+        id: agentId,
+        messages: [], // Start with empty conversation for now
+        createdAt: now,
+        updatedAt: now,
+        agentDefinitionId: activeLaunchProfile.agentDefinition.id,
+      };
+      
+      const agentConfig: AgentRunConfig = {
+        launchProfileId: activeLaunchProfile.id,
+        workspaceId: activeLaunchProfile.workspaceId,
+        llmModelName: '', // This should ideally come from the agent instance info
+        autoExecuteTools: false,
+        useXmlToolFormat: true,
+        parseToolCalls: true,
+      };
+
+      const agentState = new AgentRunState(agentId, newConversation);
+      const newAgentContext = new AgentContext(agentConfig, agentState);
+
+      profileState.activeAgents.set(agentId, newAgentContext);
+      profileState.selectedAgentId = agentId;
+      
+      // Automatically subscribe to events for this attached agent
+      this.subscribeToAgentResponse(agentId);
+    },
 
     updateSelectedAgentConfig(updates: Partial<AgentRunConfig>) {
         if (this.selectedAgent) {
@@ -421,14 +458,18 @@ export const useAgentRunStore = defineStore('agentRun', {
       profileState.selectedAgentId = tempId;
     },
     
-    ensureAgentForLaunchProfile(profileId: string): void {
+    ensureAgentForLaunchProfile(profileId: string, attachToAgentId?: string): void {
       if (!profileId) return;
       if (!this.agentsByLaunchProfile.has(profileId)) {
         this.agentsByLaunchProfile.set(profileId, createDefaultProfileState());
       }
       const profileState = this.agentsByLaunchProfile.get(profileId)!;
       if (profileState.activeAgents.size === 0) {
-        this.createNewAgent();
+        if (attachToAgentId) {
+          this.createContextForExistingAgent(attachToAgentId);
+        } else {
+          this.createNewAgent();
+        }
       } else {
          const latestAgent = Array.from(profileState.activeAgents.values()).sort((a, b) => 
             new Date(b.state.conversation.updatedAt).getTime() - new Date(a.state.conversation.updatedAt).getTime()

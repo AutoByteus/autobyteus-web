@@ -24,8 +24,8 @@
               role="button"
               tabindex="0"
               class="ml-2 text-gray-500 hover:text-gray-700 cursor-pointer"
-              @click.stop="promptToCloseAgent(agent.state.agentId)"
-              @keydown.enter.stop="promptToCloseAgent(agent.state.agentId)"
+              @click.stop="handleCloseAgent(agent.state.agentId)"
+              @keydown.enter.stop="handleCloseAgent(agent.state.agentId)"
               title="Close Agent"
             >
               &times;
@@ -45,30 +45,15 @@
         Select an agent or start a new one.
       </div>
     </div>
-    
-    <!-- Confirmation Dialog for closing agent -->
-    <ConfirmationDialog
-      :is-open="isCloseConfirmVisible"
-      title="Close Agent Tab"
-      message="Do you want to terminate the agent on the server or just close this tab, leaving the agent running in the background?"
-      confirm-button-text="Terminate & Close"
-      secondary-button-text="Just Close Tab"
-      cancel-button-text="Cancel"
-      @confirm="handleConfirmClose"
-      @secondary-confirm="handleSecondaryClose"
-      @cancel="handleCancelClose"
-      @close="handleCancelClose"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import { useAgentRunStore } from '~/stores/agentRunStore';
 import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
 import AgentEventMonitor from './AgentEventMonitor.vue';
 import type { AgentContext } from '~/types/agent/AgentContext';
-import ConfirmationDialog from '~/components/workspace/ConfirmationDialog.vue';
 
 const agentRunStore = useAgentRunStore();
 const launchProfileStore = useAgentLaunchProfileStore();
@@ -77,9 +62,6 @@ const allOpenAgents = computed(() => agentRunStore.allOpenAgents);
 const currentSelectedAgentId = computed(() => agentRunStore.selectedAgentId);
 const currentSelectedAgent = computed(() => agentRunStore.selectedAgent);
 const activeLaunchProfile = computed(() => launchProfileStore.activeLaunchProfile);
-
-const isCloseConfirmVisible = ref(false);
-const agentIdToClose = ref<string | null>(null);
 
 const getAgentLabel = (agent: AgentContext) => {
   if (!activeLaunchProfile.value) return '...';
@@ -90,38 +72,12 @@ const getAgentLabel = (agent: AgentContext) => {
   return `${activeLaunchProfile.value.name} - ${idSuffix}`;
 };
 
-const promptToCloseAgent = (agentId: string) => {
-  agentIdToClose.value = agentId;
-  isCloseConfirmVisible.value = true;
-};
-
-const handleConfirmClose = async () => {
-  if (agentIdToClose.value) {
-    try {
-      await agentRunStore.closeAgent(agentIdToClose.value, { terminate: true });
-    } catch (error) {
-      console.error(`Error terminating and closing agent ${agentIdToClose.value}:`, error);
-    }
+const handleCloseAgent = async (agentId: string) => {
+  try {
+    await agentRunStore.closeAgent(agentId, { terminate: true });
+  } catch (error) {
+    console.error(`Error terminating and closing agent ${agentId}:`, error);
   }
-  isCloseConfirmVisible.value = false;
-  agentIdToClose.value = null;
-};
-
-const handleSecondaryClose = async () => {
-  if (agentIdToClose.value) {
-    try {
-      await agentRunStore.closeAgent(agentIdToClose.value, { terminate: false });
-    } catch (error) {
-      console.error(`Error closing agent tab for ${agentIdToClose.value}:`, error);
-    }
-  }
-  isCloseConfirmVisible.value = false;
-  agentIdToClose.value = null;
-};
-
-const handleCancelClose = () => {
-  isCloseConfirmVisible.value = false;
-  agentIdToClose.value = null;
 };
 
 const handleSelectAgent = (agentId: string) => {

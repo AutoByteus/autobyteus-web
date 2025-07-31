@@ -175,19 +175,19 @@ export const useAgentLaunchProfileStore = defineStore('agentLaunchProfile', { //
       }
     },
 
-    setActiveLaunchProfile(profileId: string | null) {
+    setActiveLaunchProfile(profileId: string | null, attachToAgentId?: string) {
       if (!profileId || !this.activeLaunchProfiles[profileId]) {
         this.activeProfileId = null;
         return;
       }
       
-      if (this.activeProfileId === profileId) return;
+      if (this.activeProfileId === profileId && !attachToAgentId) return;
 
       this.activeProfileId = profileId;
       console.log(`Active launch profile changed to: ${profileId}`);
       
       const agentRunStore = useAgentRunStore();
-      agentRunStore.ensureAgentForLaunchProfile(profileId);
+      agentRunStore.ensureAgentForLaunchProfile(profileId, attachToAgentId);
     },
   },
   

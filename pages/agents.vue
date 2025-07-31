@@ -11,7 +11,7 @@
           class="flex items-center w-full px-3 py-2 text-sm font-semibold rounded-md text-left transition-colors"
           :class="currentView === 'launch-profiles' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-200'"
         >
-          My Launch Profiles
+          Launch Profiles
         </button>
         <button
           @click="handleNavigation({ view: 'list' })"
@@ -21,7 +21,7 @@
           Local Agents
         </button>
         <a href="#" class="flex items-center px-3 py-2 text-sm font-semibold text-gray-400 cursor-not-allowed">
-          Remote Agents
+          Running Agents
         </a>
         <a href="#" class="flex items-center px-3 py-2 text-sm font-semibold text-gray-400 cursor-not-allowed">
           Agent Marketplace
@@ -36,13 +36,14 @@
     <main class="flex-1 overflow-y-auto">
       <LaunchProfileManager v-if="currentView === 'launch-profiles'" @navigate="handleNavigation" />
       <AgentList v-else-if="currentView === 'list'" @navigate="handleNavigation" />
+      <RunningAgentList v-else-if="currentView === 'remote-agents'" @navigate="handleNavigation" />
       <AgentCreate v-else-if="currentView === 'create'" @navigate="handleNavigation" />
       <AgentDetail v-else-if="currentView === 'detail' && currentId" :agent-id="currentId" @navigate="handleNavigation" />
       <AgentEdit v-else-if="currentView === 'edit' && currentId" :agent-id="currentId" @navigate="handleNavigation" />
       <div v-else class="p-8">
         <h1 class="text-xl font-bold">Invalid View</h1>
         <p>The requested view is not available.</p>
-        <button @click="handleNavigation({ view: 'launch-profiles' })" class="mt-4 text-indigo-600 hover:underline">Go to My Launch Profiles</button>
+        <button @click="handleNavigation({ view: 'launch-profiles' })" class="mt-4 text-indigo-600 hover:underline">Go to Launch Profiles</button>
       </div>
     </main>
   </div>
@@ -56,15 +57,17 @@ import AgentList from '~/components/agents/AgentList.vue';
 import AgentDetail from '~/components/agents/AgentDetail.vue';
 import AgentCreate from '~/components/agents/AgentCreate.vue';
 import AgentEdit from '~/components/agents/AgentEdit.vue';
+import RunningAgentList from '~/components/agents/RunningAgentList.vue';
 
 const route = useRoute();
 const router = useRouter();
 
-type View = 'list' | 'detail' | 'create' | 'edit' | 'launch-profiles';
+type View = 'list' | 'detail' | 'create' | 'edit' | 'launch-profiles' | 'remote-agents';
 
 const currentView = computed((): View => {
   const view = route.query.view as View;
-  if (['list', 'detail', 'create', 'edit', 'launch-profiles'].includes(view)) {
+  const validViews = ['list', 'detail', 'create', 'edit', 'launch-profiles']; // 'remote-agents' is removed
+  if (view && validViews.includes(view)) {
     return view;
   }
   return 'launch-profiles'; // Default view is now 'launch-profiles'
