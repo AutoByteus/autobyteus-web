@@ -35,7 +35,6 @@ vi.mock('~/stores/llmProviderConfig', () => ({
 const createMockAgentContext = (
   segments: AIResponseSegment[],
   modelName: string,
-  useXml: boolean,
   parseToolCalls: boolean,
   convId: string
 ): AgentContext => {
@@ -55,7 +54,7 @@ const createMockAgentContext = (
   const agentState = new AgentRunState(convId, conversation);
   const agentConfig: AgentRunConfig = {
     launchProfileId: 'test-profile', workspaceId: null,
-    llmModelName: modelName, autoExecuteTools: false, useXmlToolFormat: useXml, parseToolCalls: parseToolCalls,
+    llmModelName: modelName, autoExecuteTools: false, parseToolCalls: parseToolCalls,
   };
 
   return new AgentContext(agentConfig, agentState);
@@ -69,15 +68,15 @@ describe('IncrementalAIResponseParser with Strategies', () => {
     segments = [];
   });
 
-  const createParser = (provider: LLMProvider, useXml: boolean, parseToolCalls: boolean): IncrementalAIResponseParser => {
+  const createParser = (provider: LLMProvider, parseToolCalls: boolean): IncrementalAIResponseParser => {
     const modelName = provider === LLMProvider.ANTHROPIC ? 'anthropic' : 'openai';
-    const agentContext = createMockAgentContext(segments, modelName, useXml, parseToolCalls, `test-conv-${Date.now()}`);
+    const agentContext = createMockAgentContext(segments, modelName, parseToolCalls, `test-conv-${Date.now()}`);
     const parserContext = new ParserContext(agentContext);
     return new IncrementalAIResponseParser(parserContext);
   };
 
   it('should parse a complete XML tool_call segment using the XmlToolParsingStrategy', () => {
-    const parser = createParser(LLMProvider.ANTHROPIC, true, true);
+    const parser = createParser(LLMProvider.ANTHROPIC, true);
     
     const chunks = [
       '<tool name="file_writer" id="123">',
@@ -106,7 +105,7 @@ describe('IncrementalAIResponseParser with Strategies', () => {
   });
 
   it('should parse a complete OpenAI JSON tool_call segment using the OpenAiToolParsingStrategy', () => {
-    const parser = createParser(LLMProvider.OPENAI, false, true);
+    const parser = createParser(LLMProvider.OPENAI, true);
 
     const chunks = [
       '{"tool_calls": [{',
@@ -133,7 +132,7 @@ describe('IncrementalAIResponseParser with Strategies', () => {
 
   it('should handle mixed text and multiple tool calls with different strategies', () => {
     // Test with XML strategy
-    const parserXml = createParser(LLMProvider.ANTHROPIC, true, true);
+    const parserXml = createParser(LLMProvider.ANTHROPIC, true);
     parserXml.processChunks([' And here is an XML tool: ']);
     parserXml.processChunks(['<tool name="file_reader"><arguments><arg name="path">/data.txt</arg></arguments></tool>']);
     parserXml.processChunks([' All done.']);
@@ -150,7 +149,7 @@ describe('IncrementalAIResponseParser with Strategies', () => {
 
     // Test with JSON strategy
     segments = [];
-    const parserJson = createParser(LLMProvider.OPENAI, false, true);
+    const parserJson = createParser(LLMProvider.OPENAI, true);
     parserJson.processChunks(['Here is a file to write: ']);
     parserJson.processChunks(['{"tool_calls": [{"function": {"name": "file_writer", "arguments": "{\\"path\\":\\"/data.txt\\",\\"content\\":\\"some data\\"}"}}]}']);
     parserJson.finalize();
@@ -165,7 +164,7 @@ describe('IncrementalAIResponseParser with Strategies', () => {
   });
 
   it('should correctly handle a non-tool JSON object as text', () => {
-      const parser = createParser(LLMProvider.OPENAI, false, true);
+      const parser = createParser(LLMProvider.OPENAI, true);
       parser.processChunks(['This is not a tool: {"key": "value"}']);
       parser.finalize();
       expect(segments).toEqual([
@@ -174,7 +173,7 @@ describe('IncrementalAIResponseParser with Strategies', () => {
   });
 
   it('should treat tool calls as plain text when parseToolCalls is false but still parse file tags', () => {
-    const parser = createParser(LLMProvider.ANTHROPIC, true, false); // parseToolCalls = false
+    const parser = createParser(LLMProvider.ANTHROPIC, false); // parseToolCalls = false
   
     const chunks = [
       'Some text ',
@@ -204,7 +203,7 @@ describe('IncrementalAIResponseParser with Strategies', () => {
 
   it('should treat an unknown XML tag like <bash> as plain text and not swallow it', () => {
     // This test specifically verifies the fix for the "swallowed tag" bug.
-    const parser = createParser(LLMProvider.ANTHROPIC, true, true);
+    const parser = createParser(LLMProvider.ANTHROPIC, true);
 
     const chunks = [
       'I am now executing step 4: Developing and presenting the complete solution.\n\n',

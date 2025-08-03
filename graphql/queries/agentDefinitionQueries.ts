@@ -26,7 +26,7 @@ export const GetAgentDefinitions = gql`
         updatedAt
         parentPromptId
         isActive
-        isForWorkflow
+        isForAgentTeam
       }
     }
   }

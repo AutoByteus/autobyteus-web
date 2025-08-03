@@ -51,13 +51,13 @@
           </li>
           <li>
             <button 
-              @click="$emit('change-page', 'workflows')"
+              @click="$emit('change-page', 'agent-teams')"
               class="flex w-full items-center justify-start px-4 py-3 rounded-md transition-colors duration-150 ease-in-out"
-              :class="activePage === 'workflows' 
+              :class="activePage === 'agent-teams' 
                 ? 'bg-indigo-600 text-white shadow-sm' 
                 : 'text-gray-700 hover:bg-indigo-100 hover:text-indigo-700'"
             >
-              <span class="text-left font-medium">Workflows</span>
+              <span class="text-left font-medium">Agent Teams</span>
             </button>
           </li>
         </ul>

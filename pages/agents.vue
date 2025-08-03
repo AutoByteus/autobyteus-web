@@ -27,7 +27,7 @@
           Agent Marketplace
         </a>
         <a href="#" class="flex items-center px-3 py-2 text-sm font-semibold text-gray-400 cursor-not-allowed">
-          Workflows
+          Agent Teams
         </a>
       </nav>
     </aside>

@@ -23,7 +23,6 @@
           class="min-w-[240px]"
           v-model="selectedModel"
           v-model:autoExecuteTools="autoExecuteTools"
-          v-model:useXmlToolFormat="useXmlToolFormat"
           v-model:parseToolCalls="parseToolCalls"
           :options="groupedModelOptions"
           :loading="isLoadingModels"
@@ -104,11 +103,6 @@ const selectedModel = computed({
 const autoExecuteTools = computed({
   get: () => agentRunStore.selectedAgent?.config.autoExecuteTools ?? false,
   set: (value: boolean) => agentRunStore.updateSelectedAgentConfig({ autoExecuteTools: value })
-});
-
-const useXmlToolFormat = computed({
-  get: () => agentRunStore.selectedAgent?.config.useXmlToolFormat ?? false,
-  set: (value: boolean) => agentRunStore.updateSelectedAgentConfig({ useXmlToolFormat: value })
 });
 
 const parseToolCalls = computed({

@@ -21,7 +21,6 @@ export class ParserContext {
   public currentSegment: CurrentSegment = null;
   
   public readonly strategy: ToolParsingStrategy;
-  public readonly useXml: boolean;
   public readonly parseToolCalls: boolean;
   public readonly agentRunState: AgentRunState;
 
@@ -35,11 +34,10 @@ export class ParserContext {
 
     this.segments = lastAiMsg.segments;
     this.agentRunState = agentContext.state;
-    this.useXml = agentContext.useXmlToolFormat;
     this.parseToolCalls = agentContext.parseToolCalls;
     
     const provider = useLLMProviderConfigStore().getProviderForModel(agentContext.config.llmModelName);
-    this.strategy = getToolParsingStrategy(provider!, this.useXml);
+    this.strategy = getToolParsingStrategy(provider!);
   }
 
   set currentState(state: State) {

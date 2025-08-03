@@ -32,7 +32,6 @@ export type AgentConversation = {
   createdAt: Scalars['String']['output'];
   llmModel?: Maybe<Scalars['String']['output']>;
   messages: Array<Message>;
-  useXmlToolFormat?: Maybe<Scalars['Boolean']['output']>;
 };
 
 export type AgentDefinition = {
@@ -74,6 +73,40 @@ export enum AgentOperationalPhase {
   ShutdownComplete = 'SHUTDOWN_COMPLETE',
   ShuttingDown = 'SHUTTING_DOWN',
   ToolDenied = 'TOOL_DENIED',
+  Uninitialized = 'UNINITIALIZED'
+}
+
+export type AgentTeamDefinition = {
+  __typename?: 'AgentTeamDefinition';
+  coordinatorMemberName: Scalars['String']['output'];
+  description: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  nodes: Array<TeamMember>;
+  role?: Maybe<Scalars['String']['output']>;
+};
+
+export enum AgentTeamEventSourceType {
+  Agent = 'AGENT',
+  SubTeam = 'SUB_TEAM',
+  Team = 'TEAM'
+}
+
+export type AgentTeamInstance = {
+  __typename?: 'AgentTeamInstance';
+  currentPhase: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  role?: Maybe<Scalars['String']['output']>;
+};
+
+export enum AgentTeamOperationalPhase {
+  Bootstrapping = 'BOOTSTRAPPING',
+  Error = 'ERROR',
+  Idle = 'IDLE',
+  Processing = 'PROCESSING',
+  ShutdownComplete = 'SHUTDOWN_COMPLETE',
+  ShuttingDown = 'SHUTTING_DOWN',
   Uninitialized = 'UNINITIALIZED'
 }
 
@@ -150,10 +183,30 @@ export type CreateAgentDefinitionInput = {
   toolNames?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
+export type CreateAgentTeamDefinitionInput = {
+  coordinatorMemberName: Scalars['String']['input'];
+  description: Scalars['String']['input'];
+  name: Scalars['String']['input'];
+  nodes: Array<TeamMemberInput>;
+  role?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type CreateAgentTeamInstanceInput = {
+  memberConfigs: Array<TeamMemberConfigInput>;
+  teamDefinitionId: Scalars['String']['input'];
+};
+
+export type CreateAgentTeamInstanceResult = {
+  __typename?: 'CreateAgentTeamInstanceResult';
+  message: Scalars['String']['output'];
+  success: Scalars['Boolean']['output'];
+  teamId?: Maybe<Scalars['String']['output']>;
+};
+
 export type CreatePromptInput = {
   category: Scalars['String']['input'];
   description?: InputMaybe<Scalars['String']['input']>;
-  isForWorkflow?: InputMaybe<Scalars['Boolean']['input']>;
+  isForAgentTeam?: InputMaybe<Scalars['Boolean']['input']>;
   name: Scalars['String']['input'];
   promptContent: Scalars['String']['input'];
   suitableForModels?: InputMaybe<Scalars['String']['input']>;
@@ -166,6 +219,12 @@ export type CreateWorkspaceInput = {
 
 export type DeleteAgentDefinitionResult = {
   __typename?: 'DeleteAgentDefinitionResult';
+  message: Scalars['String']['output'];
+  success: Scalars['Boolean']['output'];
+};
+
+export type DeleteAgentTeamDefinitionResult = {
+  __typename?: 'DeleteAgentTeamDefinitionResult';
   message: Scalars['String']['output'];
   success: Scalars['Boolean']['output'];
 };
@@ -186,6 +245,12 @@ export type DeletePromptResult = {
   success: Scalars['Boolean']['output'];
 };
 
+export type GraphQlAgentEventRebroadcastPayload = {
+  __typename?: 'GraphQLAgentEventRebroadcastPayload';
+  agentEvent: GraphQlStreamEvent;
+  agentName: Scalars['String']['output'];
+};
+
 export type GraphQlAgentOperationalPhaseTransitionData = {
   __typename?: 'GraphQLAgentOperationalPhaseTransitionData';
   errorDetails?: Maybe<Scalars['String']['output']>;
@@ -194,6 +259,24 @@ export type GraphQlAgentOperationalPhaseTransitionData = {
   oldPhase?: Maybe<AgentOperationalPhase>;
   toolName?: Maybe<Scalars['String']['output']>;
   trigger?: Maybe<Scalars['String']['output']>;
+};
+
+export type GraphQlAgentTeamPhaseTransitionData = {
+  __typename?: 'GraphQLAgentTeamPhaseTransitionData';
+  errorMessage?: Maybe<Scalars['String']['output']>;
+  newPhase: AgentTeamOperationalPhase;
+  oldPhase?: Maybe<AgentTeamOperationalPhase>;
+};
+
+export type GraphQlAgentTeamStreamDataPayload = GraphQlAgentEventRebroadcastPayload | GraphQlAgentTeamPhaseTransitionData | GraphQlSubTeamEventRebroadcastPayload;
+
+export type GraphQlAgentTeamStreamEvent = {
+  __typename?: 'GraphQLAgentTeamStreamEvent';
+  data: GraphQlAgentTeamStreamDataPayload;
+  eventId: Scalars['String']['output'];
+  eventSourceType: AgentTeamEventSourceType;
+  teamId: Scalars['String']['output'];
+  timestamp: Scalars['DateTime']['output'];
 };
 
 export type GraphQlAssistantChunkData = {
@@ -228,6 +311,12 @@ export type GraphQlStreamEvent = {
   eventId: Scalars['String']['output'];
   eventType: StreamEventType;
   timestamp: Scalars['DateTime']['output'];
+};
+
+export type GraphQlSubTeamEventRebroadcastPayload = {
+  __typename?: 'GraphQLSubTeamEventRebroadcastPayload';
+  subTeamEvent: GraphQlAgentTeamStreamEvent;
+  subTeamNodeName: Scalars['String']['output'];
 };
 
 export type GraphQlTokenUsage = {
@@ -319,10 +408,13 @@ export type Mutation = {
   approveToolInvocation: ApproveToolInvocationResult;
   configureMcpServer: ConfigureMcpServerResult;
   createAgentDefinition: AgentDefinition;
+  createAgentTeamDefinition: AgentTeamDefinition;
+  createAgentTeamInstance: CreateAgentTeamInstanceResult;
   createFileOrFolder: Scalars['String']['output'];
   createPrompt: Prompt;
   createWorkspace: WorkspaceInfo;
   deleteAgentDefinition: DeleteAgentDefinitionResult;
+  deleteAgentTeamDefinition: DeleteAgentTeamDefinitionResult;
   deleteFileOrFolder: Scalars['String']['output'];
   deleteMcpServer: DeleteMcpServerResult;
   deletePrompt: DeletePromptResult;
@@ -332,10 +424,13 @@ export type Mutation = {
   reloadLlmModels: Scalars['String']['output'];
   renameFileOrFolder: Scalars['String']['output'];
   sendAgentUserInput: SendAgentUserInputResult;
+  sendMessageToTeam: SendMessageToTeamResult;
   setLlmProviderApiKey: Scalars['String']['output'];
   syncPrompts: SyncPromptsResult;
   terminateAgentInstance: TerminateAgentInstanceResult;
+  terminateAgentTeamInstance: TerminateAgentTeamInstanceResult;
   updateAgentDefinition: AgentDefinition;
+  updateAgentTeamDefinition: AgentTeamDefinition;
   updatePrompt: Prompt;
   updateServerSetting: Scalars['String']['output'];
   writeFileContent: Scalars['String']['output'];
@@ -362,6 +457,16 @@ export type MutationCreateAgentDefinitionArgs = {
 };
 
 
+export type MutationCreateAgentTeamDefinitionArgs = {
+  input: CreateAgentTeamDefinitionInput;
+};
+
+
+export type MutationCreateAgentTeamInstanceArgs = {
+  input: CreateAgentTeamInstanceInput;
+};
+
+
 export type MutationCreateFileOrFolderArgs = {
   isFile: Scalars['Boolean']['input'];
   path: Scalars['String']['input'];
@@ -380,6 +485,11 @@ export type MutationCreateWorkspaceArgs = {
 
 
 export type MutationDeleteAgentDefinitionArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type MutationDeleteAgentTeamDefinitionArgs = {
   id: Scalars['String']['input'];
 };
 
@@ -430,6 +540,11 @@ export type MutationSendAgentUserInputArgs = {
 };
 
 
+export type MutationSendMessageToTeamArgs = {
+  input: SendMessageToTeamInput;
+};
+
+
 export type MutationSetLlmProviderApiKeyArgs = {
   apiKey: Scalars['String']['input'];
   provider: Scalars['String']['input'];
@@ -441,8 +556,18 @@ export type MutationTerminateAgentInstanceArgs = {
 };
 
 
+export type MutationTerminateAgentTeamInstanceArgs = {
+  id: Scalars['String']['input'];
+};
+
+
 export type MutationUpdateAgentDefinitionArgs = {
   input: UpdateAgentDefinitionInput;
+};
+
+
+export type MutationUpdateAgentTeamDefinitionArgs = {
+  input: UpdateAgentTeamDefinitionInput;
 };
 
 
@@ -462,11 +587,6 @@ export type MutationWriteFileContentArgs = {
   filePath: Scalars['String']['input'];
   workspaceId: Scalars['String']['input'];
 };
-
-export enum NodeType {
-  Agent = 'AGENT',
-  Workflow = 'WORKFLOW'
-}
 
 export type ParameterDefinition = {
   __typename?: 'ParameterDefinition';
@@ -492,7 +612,7 @@ export type Prompt = {
   description?: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];
   isActive: Scalars['Boolean']['output'];
-  isForWorkflow: Scalars['Boolean']['output'];
+  isForAgentTeam: Scalars['Boolean']['output'];
   name: Scalars['String']['output'];
   parentPromptId?: Maybe<Scalars['String']['output']>;
   promptContent: Scalars['String']['output'];
@@ -532,6 +652,10 @@ export type Query = {
   agentDefinitions: Array<AgentDefinition>;
   agentInstance?: Maybe<AgentInstance>;
   agentInstances: Array<AgentInstance>;
+  agentTeamDefinition?: Maybe<AgentTeamDefinition>;
+  agentTeamDefinitions: Array<AgentTeamDefinition>;
+  agentTeamInstance?: Maybe<AgentTeamInstance>;
+  agentTeamInstances: Array<AgentTeamInstance>;
   availableInputProcessorNames: Array<Scalars['String']['output']>;
   availableLlmProvidersWithModels: Array<ProviderWithModels>;
   availableLlmResponseProcessorNames: Array<Scalars['String']['output']>;
@@ -554,8 +678,6 @@ export type Query = {
   toolsGroupedByCategory: Array<ToolCategoryGroup>;
   totalCostInPeriod: Scalars['Float']['output'];
   usageStatisticsInPeriod: Array<UsageStatistics>;
-  workflowDefinition?: Maybe<WorkflowDefinition>;
-  workflowDefinitions: Array<WorkflowDefinition>;
 };
 
 
@@ -565,6 +687,16 @@ export type QueryAgentDefinitionArgs = {
 
 
 export type QueryAgentInstanceArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type QueryAgentTeamDefinitionArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type QueryAgentTeamInstanceArgs = {
   id: Scalars['String']['input'];
 };
 
@@ -631,17 +763,11 @@ export type QueryUsageStatisticsInPeriodArgs = {
   startTime: Scalars['DateTime']['input'];
 };
 
-
-export type QueryWorkflowDefinitionArgs = {
-  id: Scalars['String']['input'];
-};
-
 export type SendAgentUserInputInput = {
   agentDefinitionId?: InputMaybe<Scalars['String']['input']>;
   agentId?: InputMaybe<Scalars['String']['input']>;
   autoExecuteTools?: InputMaybe<Scalars['Boolean']['input']>;
   llmModelName?: InputMaybe<Scalars['String']['input']>;
-  useXmlToolFormat?: InputMaybe<Scalars['Boolean']['input']>;
   userInput: AgentUserInput;
   workspaceId?: InputMaybe<Scalars['String']['input']>;
 };
@@ -649,6 +775,18 @@ export type SendAgentUserInputInput = {
 export type SendAgentUserInputResult = {
   __typename?: 'SendAgentUserInputResult';
   agentId?: Maybe<Scalars['String']['output']>;
+  message: Scalars['String']['output'];
+  success: Scalars['Boolean']['output'];
+};
+
+export type SendMessageToTeamInput = {
+  targetNodeName?: InputMaybe<Scalars['String']['input']>;
+  teamId: Scalars['String']['input'];
+  userInput: AgentUserInput;
+};
+
+export type SendMessageToTeamResult = {
+  __typename?: 'SendMessageToTeamResult';
   message: Scalars['String']['output'];
   success: Scalars['Boolean']['output'];
 };
@@ -710,12 +848,18 @@ export type StreamableHttpMcpServerConfigInput = {
 export type Subscription = {
   __typename?: 'Subscription';
   agentResponse: GraphQlStreamEvent;
+  agentTeamResponse: GraphQlAgentTeamStreamEvent;
   fileSystemChanged: Scalars['String']['output'];
 };
 
 
 export type SubscriptionAgentResponseArgs = {
   agentId: Scalars['String']['input'];
+};
+
+
+export type SubscriptionAgentTeamResponseArgs = {
+  teamId: Scalars['String']['input'];
 };
 
 
@@ -732,8 +876,41 @@ export type SyncPromptsResult = {
   syncedCount: Scalars['Int']['output'];
 };
 
+export type TeamMember = {
+  __typename?: 'TeamMember';
+  dependencies: Array<Scalars['String']['output']>;
+  memberName: Scalars['String']['output'];
+  referenceId: Scalars['String']['output'];
+  referenceType: TeamMemberType;
+};
+
+export type TeamMemberConfigInput = {
+  autoExecuteTools: Scalars['Boolean']['input'];
+  llmModelName: Scalars['String']['input'];
+  memberName: Scalars['String']['input'];
+  workspaceId?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type TeamMemberInput = {
+  dependencies?: InputMaybe<Array<Scalars['String']['input']>>;
+  memberName: Scalars['String']['input'];
+  referenceId: Scalars['String']['input'];
+  referenceType: TeamMemberType;
+};
+
+export enum TeamMemberType {
+  Agent = 'AGENT',
+  AgentTeam = 'AGENT_TEAM'
+}
+
 export type TerminateAgentInstanceResult = {
   __typename?: 'TerminateAgentInstanceResult';
+  message: Scalars['String']['output'];
+  success: Scalars['Boolean']['output'];
+};
+
+export type TerminateAgentTeamInstanceResult = {
+  __typename?: 'TerminateAgentTeamInstanceResult';
   message: Scalars['String']['output'];
   success: Scalars['Boolean']['output'];
 };
@@ -797,6 +974,15 @@ export type UpdateAgentDefinitionInput = {
   toolNames?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
+export type UpdateAgentTeamDefinitionInput = {
+  coordinatorMemberName?: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['String']['input'];
+  name?: InputMaybe<Scalars['String']['input']>;
+  nodes?: InputMaybe<Array<TeamMemberInput>>;
+  role?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type UpdatePromptInput = {
   description?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
@@ -813,25 +999,6 @@ export type UsageStatistics = {
   promptCost?: Maybe<Scalars['Float']['output']>;
   promptTokens: Scalars['Int']['output'];
   totalCost?: Maybe<Scalars['Float']['output']>;
-};
-
-export type WorkflowDefinition = {
-  __typename?: 'WorkflowDefinition';
-  beginNodeId: Scalars['String']['output'];
-  description: Scalars['String']['output'];
-  endNodeId: Scalars['String']['output'];
-  id: Scalars['String']['output'];
-  name: Scalars['String']['output'];
-  nodes: Array<WorkflowNode>;
-};
-
-export type WorkflowNode = {
-  __typename?: 'WorkflowNode';
-  dependencies: Array<Scalars['String']['output']>;
-  nodeId: Scalars['String']['output'];
-  nodeType: NodeType;
-  properties: Scalars['JSON']['output'];
-  referenceId: Scalars['String']['output'];
 };
 
 export type WorkspaceDefinition = {
@@ -968,21 +1135,21 @@ export type CreatePromptMutationVariables = Exact<{
 }>;
 
 
-export type CreatePromptMutation = { __typename?: 'Mutation', createPrompt: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null, isActive: boolean, isForWorkflow: boolean } };
+export type CreatePromptMutation = { __typename?: 'Mutation', createPrompt: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } };
 
 export type UpdatePromptMutationVariables = Exact<{
   input: UpdatePromptInput;
 }>;
 
 
-export type UpdatePromptMutation = { __typename?: 'Mutation', updatePrompt: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForWorkflow: boolean } };
+export type UpdatePromptMutation = { __typename?: 'Mutation', updatePrompt: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } };
 
 export type AddNewPromptRevisionMutationVariables = Exact<{
   input: AddNewPromptRevisionInput;
 }>;
 
 
-export type AddNewPromptRevisionMutation = { __typename?: 'Mutation', addNewPromptRevision: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null, isActive: boolean, isForWorkflow: boolean } };
+export type AddNewPromptRevisionMutation = { __typename?: 'Mutation', addNewPromptRevision: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } };
 
 export type SyncPromptsMutationVariables = Exact<{ [key: string]: never; }>;
 
@@ -1027,7 +1194,7 @@ export type GetAgentCustomizationOptionsQuery = { __typename?: 'Query', availabl
 export type GetAgentDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename?: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForWorkflow: boolean }> }> };
+export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename?: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean }> }> };
 
 export type GetAgentInstancesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1041,7 +1208,7 @@ export type GetConversationHistoryQueryVariables = Exact<{
 }>;
 
 
-export type GetConversationHistoryQuery = { __typename?: 'Query', getConversationHistory: { __typename?: 'ConversationHistory', totalPages: number, currentPage: number, conversations: Array<{ __typename?: 'AgentConversation', agentId: string, agentDefinitionId: string, createdAt: string, llmModel?: string | null, useXmlToolFormat?: boolean | null, messages: Array<{ __typename?: 'Message', messageId?: string | null, role: string, message: string, timestamp: string, contextPaths?: Array<string> | null, originalMessage?: string | null, tokenCount?: number | null, cost?: number | null }> }> } };
+export type GetConversationHistoryQuery = { __typename?: 'Query', getConversationHistory: { __typename?: 'ConversationHistory', totalPages: number, currentPage: number, conversations: Array<{ __typename?: 'AgentConversation', agentId: string, agentDefinitionId: string, createdAt: string, llmModel?: string | null, messages: Array<{ __typename?: 'Message', messageId?: string | null, role: string, message: string, timestamp: string, contextPaths?: Array<string> | null, originalMessage?: string | null, tokenCount?: number | null, cost?: number | null }> }> } };
 
 export type GetFileContentQueryVariables = Exact<{
   workspaceId: Scalars['String']['input'];
@@ -1647,7 +1814,7 @@ export const CreatePromptDocument = gql`
     createdAt
     parentPromptId
     isActive
-    isForWorkflow
+    isForAgentTeam
   }
 }
     `;
@@ -1687,7 +1854,7 @@ export const UpdatePromptDocument = gql`
     updatedAt
     parentPromptId
     isActive
-    isForWorkflow
+    isForAgentTeam
   }
 }
     `;
@@ -1726,7 +1893,7 @@ export const AddNewPromptRevisionDocument = gql`
     createdAt
     parentPromptId
     isActive
-    isForWorkflow
+    isForAgentTeam
   }
 }
     `;
@@ -1960,7 +2127,7 @@ export const GetAgentDefinitionsDocument = gql`
       updatedAt
       parentPromptId
       isActive
-      isForWorkflow
+      isForAgentTeam
     }
   }
 }
@@ -2034,7 +2201,6 @@ export const GetConversationHistoryDocument = gql`
       agentDefinitionId
       createdAt
       llmModel
-      useXmlToolFormat
       messages {
         messageId
         role

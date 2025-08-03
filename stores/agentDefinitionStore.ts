@@ -19,6 +19,7 @@ export interface AgentDefinition {
     id: string;
     name: string;
     category: string;
+    isForAgentTeam: boolean;
   }[];
   systemPromptCategory?: string;
   systemPromptName?: string;

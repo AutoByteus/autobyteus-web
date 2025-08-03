@@ -78,23 +78,6 @@
             <div class="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-400 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
           </div>
         </label>
-
-        <!-- Use XML Tool Format Toggle -->
-        <label for="xml-format-toggle" class="flex items-center justify-between" :class="parseToolCalls ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'">
-          <span class="text-base font-medium text-gray-800 dark:text-gray-200">Use XML Tool Format</span>
-          <div class="relative">
-            <input 
-              type="checkbox" 
-              id="xml-format-toggle" 
-              class="sr-only peer" 
-              :checked="useXmlToolFormat"
-              @change="emit('update:useXmlToolFormat', ($event.target as HTMLInputElement).checked)"
-              :disabled="!parseToolCalls"
-            >
-            <div class="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-400 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"
-                 :class="parseToolCalls ? 'peer-checked:bg-blue-600' : 'peer-checked:bg-gray-400 dark:peer-checked:bg-gray-500'"></div>
-          </div>
-        </label>
         
         <!-- Auto-execute Tools Toggle -->
         <label for="auto-execute-toggle" class="flex items-center justify-between cursor-pointer">
@@ -136,8 +119,7 @@ const props = withDefaults(defineProps<{  modelValue: string | null;
   loading?: boolean;
   disabled?: boolean;
   autoExecuteTools: boolean;
-  useXmlToolFormat: boolean;
-  parseToolCalls: boolean; // ADDED
+  parseToolCalls: boolean;
 }>(), {
   placeholder: 'Select an option',
   loading: false,
@@ -147,8 +129,7 @@ const props = withDefaults(defineProps<{  modelValue: string | null;
 const emit = defineEmits([
   'update:modelValue',
   'update:autoExecuteTools',
-  'update:useXmlToolFormat',
-  'update:parseToolCalls' // ADDED
+  'update:parseToolCalls'
 ]);
 
 const isOpen = ref(false);

@@ -40,10 +40,6 @@ export class AgentContext {
     return this.state.lastAIMessage;
   }
 
-  get useXmlToolFormat(): boolean {
-    return this.config.useXmlToolFormat;
-  }
-
   get parseToolCalls(): boolean {
     return this.config.parseToolCalls;
   }

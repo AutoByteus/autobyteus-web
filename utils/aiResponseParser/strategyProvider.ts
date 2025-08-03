@@ -7,19 +7,18 @@ import { DefaultJsonToolParsingStrategy } from './tool_parsing_strategies/defaul
 
 /**
  * Mirrors the backend ProviderAwareToolUsageParser logic to select the single,
- * correct tool parsing strategy based on configuration.
+ * correct tool parsing strategy based on the LLM provider.
  *
  * @param provider - The LLM provider being used.
- * @param useXml - A boolean flag indicating if XML tool formats are enabled.
  * @returns The single ToolParsingStrategy instance to be used for the session.
  */
-export function getToolParsingStrategy(provider: LLMProvider, useXml: boolean): ToolParsingStrategy {
-    if (useXml) {
-        // Per backend logic, Anthropic and default XML are handled by the same parser.
+export function getToolParsingStrategy(provider: LLMProvider): ToolParsingStrategy {
+    // If provider is Anthropic, it uses XML.
+    if (provider === LLMProvider.ANTHROPIC) {
         return new XmlToolParsingStrategy();
     }
 
-    // If not using XML, select the JSON parser based on the provider.
+    // Otherwise, select the JSON parser based on the provider.
     switch (provider) {
         case LLMProvider.OPENAI:
             return new OpenAiToolParsingStrategy();

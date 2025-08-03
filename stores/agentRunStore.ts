@@ -135,7 +135,6 @@ export const useAgentRunStore = defineStore('agentRun', {
         workspaceId: activeLaunchProfile.workspaceId,
         llmModelName: '', // To be selected by the user
         autoExecuteTools: false,
-        useXmlToolFormat: true,
         parseToolCalls: true,
       };
 
@@ -169,7 +168,6 @@ export const useAgentRunStore = defineStore('agentRun', {
         workspaceId: activeLaunchProfile.workspaceId,
         llmModelName: '', // This should ideally come from the agent instance info
         autoExecuteTools: false,
-        useXmlToolFormat: true,
         parseToolCalls: true,
       };
 
@@ -254,7 +252,6 @@ export const useAgentRunStore = defineStore('agentRun', {
 
       if (isNewAgent) {
         state.conversation.llmModelName = config.llmModelName;
-        state.conversation.useXmlToolFormat = config.useXmlToolFormat;
         state.conversation.parseToolCalls = config.parseToolCalls;
       }
 
@@ -277,7 +274,6 @@ export const useAgentRunStore = defineStore('agentRun', {
             workspaceId: config.workspaceId,
             llmModelName: config.llmModelName,
             autoExecuteTools: config.autoExecuteTools,
-            useXmlToolFormat: config.useXmlToolFormat,
           }
         });
 
@@ -416,7 +412,6 @@ export const useAgentRunStore = defineStore('agentRun', {
         workspaceId: activeLaunchProfile.workspaceId,
         llmModelName: historicalConversationData.llmModelName || '',
         autoExecuteTools: false,
-        useXmlToolFormat: historicalConversationData.useXmlToolFormat ?? true,
         parseToolCalls: historicalConversationData.parseToolCalls ?? true,
       };
       

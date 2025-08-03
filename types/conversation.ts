@@ -41,7 +41,5 @@ export interface Conversation {
   // This is set on the first turn and persists for the conversation.
   llmModelName?: string;
   // This is set on the first turn and persists for the conversation.
-  useXmlToolFormat?: boolean;
-  // This is set on the first turn and persists for the conversation.
   parseToolCalls?: boolean;
 }

@@ -3,6 +3,5 @@ export interface AgentRunConfig {
   workspaceId: string | null;
   llmModelName: string;
   autoExecuteTools: boolean;
-  useXmlToolFormat: boolean;
   parseToolCalls: boolean;
 }
