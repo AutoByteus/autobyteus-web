@@ -1059,6 +1059,27 @@ export type ApproveToolInvocationMutationVariables = Exact<{
 
 export type ApproveToolInvocationMutation = { __typename?: 'Mutation', approveToolInvocation: { __typename?: 'ApproveToolInvocationResult', success: boolean, message: string } };
 
+export type CreateAgentTeamDefinitionMutationVariables = Exact<{
+  input: CreateAgentTeamDefinitionInput;
+}>;
+
+
+export type CreateAgentTeamDefinitionMutation = { __typename?: 'Mutation', createAgentTeamDefinition: { __typename?: 'AgentTeamDefinition', id: string, name: string } };
+
+export type UpdateAgentTeamDefinitionMutationVariables = Exact<{
+  input: UpdateAgentTeamDefinitionInput;
+}>;
+
+
+export type UpdateAgentTeamDefinitionMutation = { __typename?: 'Mutation', updateAgentTeamDefinition: { __typename?: 'AgentTeamDefinition', id: string, name: string } };
+
+export type DeleteAgentTeamDefinitionMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+}>;
+
+
+export type DeleteAgentTeamDefinitionMutation = { __typename?: 'Mutation', deleteAgentTeamDefinition: { __typename?: 'DeleteAgentTeamDefinitionResult', success: boolean, message: string } };
+
 export type WriteFileContentMutationVariables = Exact<{
   workspaceId: Scalars['String']['input'];
   filePath: Scalars['String']['input'];
@@ -1200,6 +1221,11 @@ export type GetAgentInstancesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type GetAgentInstancesQuery = { __typename?: 'Query', agentInstances: Array<{ __typename?: 'AgentInstance', id: string, name: string, role: string, currentPhase: string, agentDefinitionId?: string | null, workspace?: { __typename?: 'WorkspaceInfo', workspaceId: string, name: string, workspaceTypeName: string, config: any } | null }> };
+
+export type GetAgentTeamDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetAgentTeamDefinitionsQuery = { __typename?: 'Query', agentTeamDefinitions: Array<{ __typename?: 'AgentTeamDefinition', id: string, name: string, description: string, role?: string | null, coordinatorMemberName: string, nodes: Array<{ __typename?: 'TeamMember', memberName: string, referenceId: string, referenceType: TeamMemberType, dependencies: Array<string> }> }> };
 
 export type GetConversationHistoryQueryVariables = Exact<{
   agentDefinitionId: Scalars['String']['input'];
@@ -1515,6 +1541,96 @@ export function useApproveToolInvocationMutation(options: VueApolloComposable.Us
   return VueApolloComposable.useMutation<ApproveToolInvocationMutation, ApproveToolInvocationMutationVariables>(ApproveToolInvocationDocument, options);
 }
 export type ApproveToolInvocationMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<ApproveToolInvocationMutation, ApproveToolInvocationMutationVariables>;
+export const CreateAgentTeamDefinitionDocument = gql`
+    mutation CreateAgentTeamDefinition($input: CreateAgentTeamDefinitionInput!) {
+  createAgentTeamDefinition(input: $input) {
+    id
+    name
+  }
+}
+    `;
+
+/**
+ * __useCreateAgentTeamDefinitionMutation__
+ *
+ * To run a mutation, you first call `useCreateAgentTeamDefinitionMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useCreateAgentTeamDefinitionMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useCreateAgentTeamDefinitionMutation({
+ *   variables: {
+ *     input: // value for 'input'
+ *   },
+ * });
+ */
+export function useCreateAgentTeamDefinitionMutation(options: VueApolloComposable.UseMutationOptions<CreateAgentTeamDefinitionMutation, CreateAgentTeamDefinitionMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<CreateAgentTeamDefinitionMutation, CreateAgentTeamDefinitionMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<CreateAgentTeamDefinitionMutation, CreateAgentTeamDefinitionMutationVariables>(CreateAgentTeamDefinitionDocument, options);
+}
+export type CreateAgentTeamDefinitionMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<CreateAgentTeamDefinitionMutation, CreateAgentTeamDefinitionMutationVariables>;
+export const UpdateAgentTeamDefinitionDocument = gql`
+    mutation UpdateAgentTeamDefinition($input: UpdateAgentTeamDefinitionInput!) {
+  updateAgentTeamDefinition(input: $input) {
+    id
+    name
+  }
+}
+    `;
+
+/**
+ * __useUpdateAgentTeamDefinitionMutation__
+ *
+ * To run a mutation, you first call `useUpdateAgentTeamDefinitionMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useUpdateAgentTeamDefinitionMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useUpdateAgentTeamDefinitionMutation({
+ *   variables: {
+ *     input: // value for 'input'
+ *   },
+ * });
+ */
+export function useUpdateAgentTeamDefinitionMutation(options: VueApolloComposable.UseMutationOptions<UpdateAgentTeamDefinitionMutation, UpdateAgentTeamDefinitionMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<UpdateAgentTeamDefinitionMutation, UpdateAgentTeamDefinitionMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<UpdateAgentTeamDefinitionMutation, UpdateAgentTeamDefinitionMutationVariables>(UpdateAgentTeamDefinitionDocument, options);
+}
+export type UpdateAgentTeamDefinitionMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<UpdateAgentTeamDefinitionMutation, UpdateAgentTeamDefinitionMutationVariables>;
+export const DeleteAgentTeamDefinitionDocument = gql`
+    mutation DeleteAgentTeamDefinition($id: String!) {
+  deleteAgentTeamDefinition(id: $id) {
+    success
+    message
+  }
+}
+    `;
+
+/**
+ * __useDeleteAgentTeamDefinitionMutation__
+ *
+ * To run a mutation, you first call `useDeleteAgentTeamDefinitionMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useDeleteAgentTeamDefinitionMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useDeleteAgentTeamDefinitionMutation({
+ *   variables: {
+ *     id: // value for 'id'
+ *   },
+ * });
+ */
+export function useDeleteAgentTeamDefinitionMutation(options: VueApolloComposable.UseMutationOptions<DeleteAgentTeamDefinitionMutation, DeleteAgentTeamDefinitionMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<DeleteAgentTeamDefinitionMutation, DeleteAgentTeamDefinitionMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<DeleteAgentTeamDefinitionMutation, DeleteAgentTeamDefinitionMutationVariables>(DeleteAgentTeamDefinitionDocument, options);
+}
+export type DeleteAgentTeamDefinitionMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<DeleteAgentTeamDefinitionMutation, DeleteAgentTeamDefinitionMutationVariables>;
 export const WriteFileContentDocument = gql`
     mutation WriteFileContent($workspaceId: String!, $filePath: String!, $content: String!) {
   writeFileContent(
@@ -2189,6 +2305,43 @@ export function useGetAgentInstancesLazyQuery(options: VueApolloComposable.UseQu
   return VueApolloComposable.useLazyQuery<GetAgentInstancesQuery, GetAgentInstancesQueryVariables>(GetAgentInstancesDocument, {}, options);
 }
 export type GetAgentInstancesQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAgentInstancesQuery, GetAgentInstancesQueryVariables>;
+export const GetAgentTeamDefinitionsDocument = gql`
+    query GetAgentTeamDefinitions {
+  agentTeamDefinitions {
+    id
+    name
+    description
+    role
+    coordinatorMemberName
+    nodes {
+      memberName
+      referenceId
+      referenceType
+      dependencies
+    }
+  }
+}
+    `;
+
+/**
+ * __useGetAgentTeamDefinitionsQuery__
+ *
+ * To run a query within a Vue component, call `useGetAgentTeamDefinitionsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetAgentTeamDefinitionsQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetAgentTeamDefinitionsQuery();
+ */
+export function useGetAgentTeamDefinitionsQuery(options: VueApolloComposable.UseQueryOptions<GetAgentTeamDefinitionsQuery, GetAgentTeamDefinitionsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetAgentTeamDefinitionsQuery, GetAgentTeamDefinitionsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetAgentTeamDefinitionsQuery, GetAgentTeamDefinitionsQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetAgentTeamDefinitionsQuery, GetAgentTeamDefinitionsQueryVariables>(GetAgentTeamDefinitionsDocument, {}, options);
+}
+export function useGetAgentTeamDefinitionsLazyQuery(options: VueApolloComposable.UseQueryOptions<GetAgentTeamDefinitionsQuery, GetAgentTeamDefinitionsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetAgentTeamDefinitionsQuery, GetAgentTeamDefinitionsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetAgentTeamDefinitionsQuery, GetAgentTeamDefinitionsQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetAgentTeamDefinitionsQuery, GetAgentTeamDefinitionsQueryVariables>(GetAgentTeamDefinitionsDocument, {}, options);
+}
+export type GetAgentTeamDefinitionsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAgentTeamDefinitionsQuery, GetAgentTeamDefinitionsQueryVariables>;
 export const GetConversationHistoryDocument = gql`
     query GetConversationHistory($agentDefinitionId: String!, $page: Int, $pageSize: Int) {
   getConversationHistory(
