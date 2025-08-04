@@ -35,7 +35,6 @@ const createMockAgentContext = (segments: AIResponseSegment[], parseToolCalls: b
     workspaceId: null,
     llmModelName: 'openai-model',
     autoExecuteTools: false,
-    useXmlToolFormat: false, // Important for this test
     parseToolCalls: parseToolCalls,
   };
   return new AgentContext(agentConfig, agentState);

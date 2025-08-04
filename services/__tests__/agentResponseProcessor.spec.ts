@@ -33,7 +33,6 @@ const createMockAgentContext = (): AgentContext => {
     workspaceId: 'ws-1',
     llmModelName: 'test-model',
     autoExecuteTools: false,
-    useXmlToolFormat: false,
     parseToolCalls: true,
   };
   return new AgentContext(agentConfig, agentState);

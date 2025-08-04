@@ -132,7 +132,6 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
         createdAt: agentConversation.createdAt,
         updatedAt: agentConversation.createdAt, // Should be agentConversation.updatedAt if available
         llmModelName: agentConversation.llmModel || undefined,
-        useXmlToolFormat: agentConversation.useXmlToolFormat,
         parseToolCalls: true, // Assuming true for historical conversations
         agentDefinitionId: agentConversation.agentDefinitionId,
       };

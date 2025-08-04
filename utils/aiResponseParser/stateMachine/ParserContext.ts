@@ -11,6 +11,14 @@ import { getToolParsingStrategy } from '../strategyProvider';
 
 type CurrentSegment = FileSegment | AIResponseTextSegment | ThinkSegment | ToolCallSegment | null;
 
+/**
+ * REFACTOR: A dedicated class to hold status specific to file parsing.
+ * Renamed from FileParsingState to avoid confusion with behavioral states.
+ */
+export class FileParsingStatus {
+  public nestingLevel: number = 0;
+}
+
 export class ParserContext {
   public segments: AIResponseSegment[];
   public buffer: string = '';
@@ -20,6 +28,9 @@ export class ParserContext {
   public fileClosingBuffer: string = '';
   public currentSegment: CurrentSegment = null;
   
+  // REFACTOR: Use a dedicated status object for file parsing with a clearer name.
+  public fileParsingStatus: FileParsingStatus | null = null;
+
   public readonly strategy: ToolParsingStrategy;
   public readonly parseToolCalls: boolean;
   public readonly agentRunState: AgentRunState;
@@ -81,6 +92,8 @@ export class ParserContext {
   }
 
   endFileSegment(): void {
+    // REFACTOR: Reset the dedicated file parsing status object.
+    this.fileParsingStatus = null;
     this.currentSegment = null;
   }
   

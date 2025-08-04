@@ -21,7 +21,7 @@ const createMockAgentContext = (segments: AIResponseSegment[], parseToolCalls: b
   const lastAIMessage: AIMessage = { type: 'ai', text: '', timestamp: new Date(), chunks: [], segments, isComplete: false, parserInstance: null as any };
   conversation.messages.push(lastAIMessage);
   const agentState = new AgentRunState('test-conv-id', conversation);
-  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelName: 'test-model', autoExecuteTools: false, useXmlToolFormat: false, parseToolCalls };
+  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelName: 'test-model', autoExecuteTools: false, parseToolCalls };
   return new AgentContext(agentConfig, agentState);
 };
 

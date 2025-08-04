@@ -27,7 +27,7 @@ vi.mock('~/stores/llmProviderConfig', () => ({
     getProviderForModel: (modelName: string) => {
       if (modelName === 'anthropic') return LLMProvider.ANTHROPIC;
       if (modelName === 'openai') return LLMProvider.OPENAI;
-      return LLMProvider.DEFAULT;
+      return LLMProvider.DEEPSEEK;
     },
   })),
 }));

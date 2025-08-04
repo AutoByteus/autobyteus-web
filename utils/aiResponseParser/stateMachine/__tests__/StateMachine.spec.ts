@@ -29,14 +29,13 @@ vi.mock('~/stores/llmProviderConfig', () => ({
 const createMockAgentContext = (
   segments: AIResponseSegment[],
   modelName: string,
-  useXml: boolean,
   parseToolCalls: boolean
 ): AgentContext => {
   const conversation: Conversation = { id: 'test-conv-id', messages: [], createdAt: '', updatedAt: '' };
   const lastAIMessage: AIMessage = { type: 'ai', text: '', timestamp: new Date(), chunks: [], segments, isComplete: false, parserInstance: null as any };
   conversation.messages.push(lastAIMessage);
   const agentState = new AgentRunState('test-conv-id', conversation);
-  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelName: modelName, autoExecuteTools: false, useXmlToolFormat: useXml, parseToolCalls };
+  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelName: modelName, autoExecuteTools: false, parseToolCalls };
   return new AgentContext(agentConfig, agentState);
 };
 
@@ -47,7 +46,7 @@ describe('StateMachine with a pre-selected Strategy', () => {
 
   it('should parse a mix of text and XML tags when given XmlToolParsingStrategy', () => {
     const segments: AIResponseSegment[] = [];
-    const agentContext = createMockAgentContext(segments, 'anthropic', true, true);
+    const agentContext = createMockAgentContext(segments, 'anthropic', true);
     const parserContext = new ParserContext(agentContext);
     const machine = new StateMachine(parserContext);
 
@@ -71,7 +70,7 @@ describe('StateMachine with a pre-selected Strategy', () => {
 
   it('should parse a mix of text and JSON when given OpenAiToolParsingStrategy', () => {
     const segments: AIResponseSegment[] = [];
-    const agentContext = createMockAgentContext(segments, 'openai', false, true);
+    const agentContext = createMockAgentContext(segments, 'openai', true);
     const parserContext = new ParserContext(agentContext);
     const machine = new StateMachine(parserContext);
 
@@ -91,7 +90,7 @@ describe('StateMachine with a pre-selected Strategy', () => {
 
   it('should treat an unknown tag as text', () => {
     const segments: AIResponseSegment[] = [];
-    const agentContext = createMockAgentContext(segments, 'openai', false, true);
+    const agentContext = createMockAgentContext(segments, 'openai', true);
     const parserContext = new ParserContext(agentContext);
     const machine = new StateMachine(parserContext);
 
