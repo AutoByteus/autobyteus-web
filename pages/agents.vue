@@ -73,10 +73,10 @@ import AgentDetail from '~/components/agents/AgentDetail.vue';
 import AgentCreate from '~/components/agents/AgentCreate.vue';
 import AgentEdit from '~/components/agents/AgentEdit.vue';
 // Agent Team Components
-import AgentTeamList from '~/components/teams/AgentTeamList.vue';
-import AgentTeamDetail from '~/components/teams/AgentTeamDetail.vue';
-import AgentTeamCreate from '~/components/teams/AgentTeamCreate.vue';
-import AgentTeamEdit from '~/components/teams/AgentTeamEdit.vue';
+import AgentTeamList from '~/components/agentTeams/AgentTeamList.vue';
+import AgentTeamDetail from '~/components/agentTeams/AgentTeamDetail.vue';
+import AgentTeamCreate from '~/components/agentTeams/AgentTeamCreate.vue';
+import AgentTeamEdit from '~/components/agentTeams/AgentTeamEdit.vue';
 
 
 const route = useRoute();

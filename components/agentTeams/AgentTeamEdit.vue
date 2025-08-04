@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, toRefs } from 'vue';
 import { useAgentTeamDefinitionStore, type UpdateAgentTeamDefinitionInput } from '~/stores/agentTeamDefinitionStore';
-import AgentTeamDefinitionForm from '~/components/teams/AgentTeamDefinitionForm.vue';
+import AgentTeamDefinitionForm from '~/components/agentTeams/AgentTeamDefinitionForm.vue';
 
 const props = defineProps<{ teamId: string }>();
 const { teamId } = toRefs(props);

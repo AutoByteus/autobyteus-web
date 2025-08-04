@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
 import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
-import AgentTeamCard from '~/components/teams/AgentTeamCard.vue';
+import AgentTeamCard from '~/components/agentTeams/AgentTeamCard.vue';
 
 const emit = defineEmits(['navigate']);
 

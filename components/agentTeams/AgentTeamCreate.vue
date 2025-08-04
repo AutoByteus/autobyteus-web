@@ -27,7 +27,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useAgentTeamDefinitionStore, type CreateAgentTeamDefinitionInput } from '~/stores/agentTeamDefinitionStore';
-import AgentTeamDefinitionForm from '~/components/teams/AgentTeamDefinitionForm.vue';
+import AgentTeamDefinitionForm from '~/components/agentTeams/AgentTeamDefinitionForm.vue';
 
 const emit = defineEmits(['navigate']);
 
