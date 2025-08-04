@@ -29,7 +29,7 @@ import { ref, computed } from 'vue';
 import AgentEventMonitorTabs from '~/components/workspace/AgentEventMonitorTabs.vue';
 import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue';
 import WorkspaceHeaderActions from '~/components/workspace/WorkspaceHeaderActions.vue';
-import AgentStatusDisplay from '~/components/agent/AgentStatusDisplay.vue';
+import AgentStatusDisplay from '~/components/workspace/AgentStatusDisplay.vue';
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';

@@ -13,6 +13,10 @@ export function usePhaseVisuals(phase: Ref<string | undefined>) {
     const currentPhase = phase.value || AgentOperationalPhase.Uninitialized;
 
     switch (currentPhase) {
+      // Explicitly handle uninitialized state
+      case AgentOperationalPhase.Uninitialized:
+        return { text: 'Uninitialized', colorClass: 'bg-gray-400', iconComponent: CogIcon };
+
       // Initialization phases
       case AgentOperationalPhase.Bootstrapping:
         return { text: 'Bootstrapping', colorClass: 'bg-blue-500 animate-pulse', iconComponent: CogIcon };
@@ -39,13 +43,13 @@ export function usePhaseVisuals(phase: Ref<string | undefined>) {
       case AgentOperationalPhase.Error:
         return { text: 'Error', colorClass: 'bg-red-500', iconComponent: ExclamationTriangleIcon };
       case AgentOperationalPhase.ShuttingDown:
-        return { text: 'Shutting Down', colorClass: 'bg-gray-500 animate-pulse', iconComponent: ExclamationTriangleIcon };
+        return { text: 'Shutting Down', colorClass: 'bg-orange-500 animate-pulse', iconComponent: ExclamationTriangleIcon };
       case AgentOperationalPhase.ShutdownComplete:
-        return { text: 'Offline', colorClass: 'bg-gray-400', iconComponent: ExclamationTriangleIcon };
+        return { text: 'Offline', colorClass: 'bg-slate-600', iconComponent: ExclamationTriangleIcon };
 
-      // Default/uninitialized state
+      // Default/fallback state
       default:
-        return { text: 'Initializing', colorClass: 'bg-gray-400', iconComponent: CogIcon };
+        return { text: 'Initializing', colorClass: 'bg-orange-400', iconComponent: CogIcon };
     }
   });
 

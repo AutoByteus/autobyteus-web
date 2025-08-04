@@ -1,6 +1,6 @@
 <template>
   <div>
-    <strong>AI:</strong>
+    <strong>Agent:</strong>
     <div>
       <template v-for="(segment, segmentIndex) in message.segments" :key="segmentIndex">
         <TextSegment
