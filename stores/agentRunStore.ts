@@ -11,233 +11,34 @@ import type {
   ApproveToolInvocationMutationVariables,
   ContextFileType,
 } from '~/generated/graphql';
-import type { Conversation, Message, ContextFilePath, AIMessage } from '~/types/conversation';
-import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
+import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
-import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
 import { processAgentResponseEvent } from '~/services/agentResponseProcessor';
-import { AgentContext } from '~/types/agent/AgentContext';
-import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
-import { AgentRunState } from '~/types/agent/AgentRunState';
-import { ParserContext } from '~/utils/aiResponseParser/stateMachine/ParserContext';
 import type { ToolCallSegment } from '~/utils/aiResponseParser/types';
 
-// State related to a specific Agent Launch Profile
-interface ProfileAgentState {
-  activeAgents: Map<string, AgentContext>;
-  selectedAgentId: string | null;
-}
-
-// The main store state, organizing agent runs by launch profile
-interface AgentRunStoreState {
-  agentsByLaunchProfile: Map<string, ProfileAgentState>;
-}
-
-const createDefaultProfileState = (): ProfileAgentState => ({
-  activeAgents: new Map(),
-  selectedAgentId: null,
-});
-
+/**
+ * @store agentRun
+ * @description This store is the "service" or "orchestration" layer for agent interactions.
+ * It is responsible for all GraphQL communication (mutations, subscriptions) related to an agent run.
+ * It does NOT hold agent state directly; it retrieves state from and dispatches updates to the `agentContextsStore`.
+ */
 export const useAgentRunStore = defineStore('agentRun', {
-  state: (): AgentRunStoreState => ({
-    agentsByLaunchProfile: new Map(),
-  }),
+  // NO STATE IN THIS REFACTORED STORE
+  state: () => ({}),
 
-  getters: {
-    // Helper to safely access the current launch profile's state
-    _currentProfileState(state): ProfileAgentState | null {
-      const launchProfileStore = useAgentLaunchProfileStore();
-      const activeProfileId = launchProfileStore.activeProfileId;
-      if (!activeProfileId) return null;
-      return state.agentsByLaunchProfile.get(activeProfileId) || null;
-    },
-
-    allOpenAgents(): AgentContext[] {
-      return this._currentProfileState ? Array.from(this._currentProfileState.activeAgents.values()) : [];
-    },
-
-    selectedAgent(): AgentContext | null {
-      if (!this._currentProfileState || !this._currentProfileState.selectedAgentId) return null;
-      return this._currentProfileState.activeAgents.get(this._currentProfileState.selectedAgentId) || null;
-    },
-
-    selectedAgentId(): string | null {
-      return this._currentProfileState?.selectedAgentId || null;
-    },
-
-    currentContextPaths(): ContextFilePath[] {
-      return this.selectedAgent?.contextFilePaths ?? [];
-    },
-    
-    currentRequirement(): string {
-      return this.selectedAgent?.requirement ?? '';
-    },
-
-    isCurrentlySending(): boolean {
-      return this.selectedAgent?.isSending ?? false;
-    },
-
-    getAgentContextById: (state) => (agentId: string): AgentContext | undefined => {
-      for (const profileState of state.agentsByLaunchProfile.values()) {
-        const agentContext = profileState.activeAgents.get(agentId);
-        if (agentContext) {
-          return agentContext;
-        }
-      }
-      return undefined;
-    },
-  },
+  // NO GETTERS IN THIS REFACTORED STORE
+  getters: {},
 
   actions: {
-    _getOrCreateCurrentProfileState(): ProfileAgentState {
-      const launchProfileStore = useAgentLaunchProfileStore();
-      const activeProfileId = launchProfileStore.activeProfileId;
-      if (!activeProfileId) {
-        throw new Error("Cannot access agent run state: No agent launch profile is active.");
-      }
-      if (!this.agentsByLaunchProfile.has(activeProfileId)) {
-        this.agentsByLaunchProfile.set(activeProfileId, createDefaultProfileState());
-      }
-      return this.agentsByLaunchProfile.get(activeProfileId)!;
-    },
-
-    setSelectedAgentId(agentId: string | null) {
-      try {
-        const profileState = this._getOrCreateCurrentProfileState();
-        profileState.selectedAgentId = agentId;
-      } catch (e) {
-        console.error(e);
-      }
-    },
-
-    createNewAgent() {
-      const launchProfileStore = useAgentLaunchProfileStore();
-      const activeLaunchProfile = launchProfileStore.activeLaunchProfile;
-      if (!activeLaunchProfile) {
-        console.error('Cannot create new agent run without an active launch profile.');
-        return;
-      }
-      const profileState = this._getOrCreateCurrentProfileState();
-      
-      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const now = new Date().toISOString();
-
-      const newConversation: Conversation = {
-        id: tempId,
-        messages: [],
-        createdAt: now,
-        updatedAt: now,
-        agentDefinitionId: activeLaunchProfile.agentDefinition.id,
-      };
-      
-      const agentConfig: AgentRunConfig = {
-        launchProfileId: activeLaunchProfile.id,
-        workspaceId: activeLaunchProfile.workspaceId,
-        llmModelName: '', // To be selected by the user
-        autoExecuteTools: false,
-        parseToolCalls: true,
-      };
-
-      const agentState = new AgentRunState(tempId, newConversation);
-      const newAgentContext = new AgentContext(agentConfig, agentState);
-
-      profileState.activeAgents.set(tempId, newAgentContext);
-      profileState.selectedAgentId = tempId;
-    },
-    
-    createContextForExistingAgent(agentId: string) {
-      const launchProfileStore = useAgentLaunchProfileStore();
-      const activeLaunchProfile = launchProfileStore.activeLaunchProfile;
-      if (!activeLaunchProfile) {
-        console.error('Cannot create context for existing agent: no active launch profile.');
-        return;
-      }
-      const profileState = this._getOrCreateCurrentProfileState();
-      const now = new Date().toISOString();
-
-      const newConversation: Conversation = {
-        id: agentId,
-        messages: [], // Start with empty conversation for now
-        createdAt: now,
-        updatedAt: now,
-        agentDefinitionId: activeLaunchProfile.agentDefinition.id,
-      };
-      
-      const agentConfig: AgentRunConfig = {
-        launchProfileId: activeLaunchProfile.id,
-        workspaceId: activeLaunchProfile.workspaceId,
-        llmModelName: '', // This should ideally come from the agent instance info
-        autoExecuteTools: false,
-        parseToolCalls: true,
-      };
-
-      const agentState = new AgentRunState(agentId, newConversation);
-      const newAgentContext = new AgentContext(agentConfig, agentState);
-
-      profileState.activeAgents.set(agentId, newAgentContext);
-      profileState.selectedAgentId = agentId;
-      
-      // Automatically subscribe to events for this attached agent
-      this.subscribeToAgentResponse(agentId);
-    },
-
-    updateSelectedAgentConfig(updates: Partial<AgentRunConfig>) {
-        if (this.selectedAgent) {
-            Object.assign(this.selectedAgent.config, updates);
-        }
-    },
-
-    updateUserRequirement(newRequirement: string) {
-      if (this.selectedAgent) {
-        this.selectedAgent.requirement = newRequirement;
-      }
-    },
-
-    async closeAgent(agentIdToClose: string, options: { terminate: boolean }) {
-      const profileState = this._getOrCreateCurrentProfileState();
-      const agentToClose = profileState.activeAgents.get(agentIdToClose);
-
-      if (!agentToClose) return;
-
-      // Unsubscribe if a subscription exists
-      if (agentToClose.unsubscribe) {
-        agentToClose.unsubscribe();
-        agentToClose.isSubscribed = false;
-        agentToClose.unsubscribe = undefined;
-      }
-
-      // Remove the agent from the map
-      profileState.activeAgents.delete(agentIdToClose);
-      
-      // If the closed agent was selected, select another one
-      if (profileState.selectedAgentId === agentIdToClose) {
-        const openAgentsArray = Array.from(profileState.activeAgents.values());
-        profileState.selectedAgentId = openAgentsArray.length > 0 ? openAgentsArray[openAgentsArray.length - 1].state.agentId : null;
-      }
-
-      // Conditionally terminate the backend instance
-      if (options.terminate && !agentIdToClose.startsWith('temp-')) {
-        try {
-          const { mutate: terminateAgentInstanceMutation } = useMutation(TerminateAgentInstance);
-          await terminateAgentInstanceMutation({ id: agentIdToClose });
-        } catch (error) {
-          console.error('Error closing agent on backend:', error);
-        }
-      }
-    },
-
-    addMessageToAgent(agentId: string, message: Message) {
-      const profileState = this._getOrCreateCurrentProfileState();
-      const agent = profileState.activeAgents.get(agentId);
-      if (agent) {
-        agent.state.conversation.messages.push(message);
-        agent.state.conversation.updatedAt = new Date().toISOString();
-      }
-    },
-
+    /**
+     * @action sendUserInputAndSubscribe
+     * @description Sends the user's input to the backend to start or continue an agent run,
+     * then ensures a subscription is active to receive live updates.
+     */
     async sendUserInputAndSubscribe(): Promise<void> {
-      const profileState = this._getOrCreateCurrentProfileState();
-      const currentAgent = this.selectedAgent;
+      const agentContextsStore = useAgentContextsStore();
+      const currentAgent = agentContextsStore.selectedAgent;
+
       if (!currentAgent) {
         throw new Error('No active agent selected.');
       }
@@ -255,8 +56,11 @@ export const useAgentRunStore = defineStore('agentRun', {
         state.conversation.parseToolCalls = config.parseToolCalls;
       }
 
-      this.addMessageToAgent(agentId, {
-        type: 'user', text: currentAgent.requirement, timestamp: new Date(), contextFilePaths: currentAgent.contextFilePaths
+      agentContextsStore.addMessageToAgent(agentId, {
+        type: 'user',
+        text: currentAgent.requirement,
+        timestamp: new Date(),
+        contextFilePaths: currentAgent.contextFilePaths
       });
 
       currentAgent.isSending = true;
@@ -285,18 +89,10 @@ export const useAgentRunStore = defineStore('agentRun', {
         let finalAgentId = agentId;
         if (isNewAgent) {
           finalAgentId = permanentAgentId;
-          const tempAgent = profileState.activeAgents.get(agentId)!;
-          tempAgent.state.promoteTemporaryId(permanentAgentId);
-
-          profileState.activeAgents.set(permanentAgentId, tempAgent);
-          profileState.activeAgents.delete(agentId);
-          
-          if (profileState.selectedAgentId === agentId) {
-            profileState.selectedAgentId = permanentAgentId;
-          }
+          agentContextsStore.promoteTemporaryAgentId(agentId, permanentAgentId);
         }
         
-        const finalAgent = profileState.activeAgents.get(finalAgentId)!;
+        const finalAgent = agentContextsStore.getAgentContextById(finalAgentId)!;
         finalAgent.requirement = '';
         finalAgent.contextFilePaths = [];
 
@@ -315,13 +111,17 @@ export const useAgentRunStore = defineStore('agentRun', {
       }
     },
 
+    /**
+     * @action subscribeToAgentResponse
+     * @description Sets up a GraphQL subscription to receive real-time events for a specific agent run.
+     */
     subscribeToAgentResponse(agentId: string) {
-      const profileState = this._getOrCreateCurrentProfileState();
+      const agentContextsStore = useAgentContextsStore();
       const { onResult, onError, stop } = useSubscription<AgentResponseSubscriptionType, AgentResponseSubscriptionVariables>(
         AgentResponseSubscription, { agentId }
       );
       
-      const agent = profileState.activeAgents.get(agentId);
+      const agent = agentContextsStore.getAgentContextById(agentId);
       if (agent) {
         agent.isSubscribed = true;
         agent.unsubscribe = stop;
@@ -332,8 +132,7 @@ export const useAgentRunStore = defineStore('agentRun', {
         
         const { agentId: respAgentId, data: eventData } = data.agentResponse;
         
-        // Find the agent context using the ID from the event
-        const agentToUpdate = this.getAgentContextById(respAgentId);
+        const agentToUpdate = agentContextsStore.getAgentContextById(respAgentId);
 
         if (!agentToUpdate) {
             console.warn(`Received event for unknown or closed agent with ID: ${respAgentId}. Ignoring.`);
@@ -350,7 +149,7 @@ export const useAgentRunStore = defineStore('agentRun', {
       onError((error) => {
         console.error(`Subscription error for agent ${agentId}:`, error);
         stop();
-        const agentOnError = profileState.activeAgents.get(agentId);
+        const agentOnError = agentContextsStore.getAgentContextById(agentId);
         if(agentOnError) {
           agentOnError.isSubscribed = false;
           agentOnError.unsubscribe = undefined;
@@ -358,12 +157,17 @@ export const useAgentRunStore = defineStore('agentRun', {
       });
     },
     
+    /**
+     * @action postToolExecutionApproval
+     * @description Sends the user's approval or denial for a tool call to the backend.
+     */
     async postToolExecutionApproval(agentId: string, invocationId: string, isApproved: boolean, reason: string | null = null) {
       const { mutate: approveToolInvocationMutation } = useMutation<ApproveToolInvocationMutation, ApproveToolInvocationMutationVariables>(ApproveToolInvocation);
       try {
         await approveToolInvocationMutation({ input: { agentId, invocationId, isApproved, reason }});
         
-        const agent = this._getOrCreateCurrentProfileState().activeAgents.get(agentId);
+        const agentContextsStore = useAgentContextsStore();
+        const agent = agentContextsStore.getAgentContextById(agentId);
         if (agent) {
           const segment = agent.state.conversation.messages
             .flatMap(m => m.type === 'ai' ? m.segments : [])
@@ -377,99 +181,55 @@ export const useAgentRunStore = defineStore('agentRun', {
       }
     },
 
-    addContextFilePath(contextFilePath: ContextFilePath) {
-      if (this.selectedAgent) {
-        this.selectedAgent.contextFilePaths.push(contextFilePath);
-      }
-    },
+    /**
+     * @action closeAgent
+     * @description Closes an agent tab in the UI, unsubscribes from events, and optionally terminates the backend instance.
+     */
+    async closeAgent(agentIdToClose: string, options: { terminate: boolean }) {
+      const agentContextsStore = useAgentContextsStore();
+      const agentToClose = agentContextsStore.getAgentContextById(agentIdToClose);
 
-    removeContextFilePath(index: number) {
-      if (this.selectedAgent) {
-        this.selectedAgent.contextFilePaths.splice(index, 1);
-      }
-    },
+      if (!agentToClose) return;
 
-    clearContextFilePaths() {
-      if (this.selectedAgent) {
-        this.selectedAgent.contextFilePaths = [];
+      if (agentToClose.unsubscribe) {
+        agentToClose.unsubscribe();
+        agentToClose.isSubscribed = false;
+        agentToClose.unsubscribe = undefined;
       }
-    },
 
-    setAgentFromHistory(historicalConversationData: Conversation) {
-      const launchProfileStore = useAgentLaunchProfileStore();
-      const activeLaunchProfile = launchProfileStore.activeLaunchProfile;
-      if (!activeLaunchProfile) {
-        console.error("Cannot set agent from history: No active launch profile.");
-        return;
-      }
-    
-      const profileState = this._getOrCreateCurrentProfileState();
-      const tempId = `temp-hist-${Date.now()}`;
-    
-      // Create the final AgentContext first
-      const agentConfig: AgentRunConfig = {
-        launchProfileId: activeLaunchProfile.id,
-        workspaceId: activeLaunchProfile.workspaceId,
-        llmModelName: historicalConversationData.llmModelName || '',
-        autoExecuteTools: false,
-        parseToolCalls: historicalConversationData.parseToolCalls ?? true,
-      };
+      agentContextsStore.removeAgentContext(agentIdToClose);
       
-      const newAgentState = new AgentRunState(tempId, {
-        ...historicalConversationData,
-        id: tempId,
-        messages: [], // Start with empty messages
-      });
-      const newAgentContext = new AgentContext(agentConfig, newAgentState);
-    
-      // Now, re-process messages one by one
-      const originalMessages = historicalConversationData.messages;
-      for (const msg of originalMessages) {
-        if (msg.type === 'user') {
-          newAgentContext.conversation.messages.push(msg);
-        } else if (msg.type === 'ai') {
-          const aiMessage: AIMessage = {
-            ...(msg as AIMessage),
-            segments: [],
-            isComplete: false,
-            parserInstance: null as any, // Placeholder
-          };
-          newAgentContext.conversation.messages.push(aiMessage); // Add to conversation so lastAIMessage is correct
-    
-          const parserContext = new ParserContext(newAgentContext);
-          const parser = new IncrementalAIResponseParser(parserContext);
-    
-          if (msg.text) {
-            parser.processChunks([msg.text]);
-          }
-          parser.finalize();
-    
-          aiMessage.parserInstance = parser;
-          aiMessage.isComplete = true;
+      if (options.terminate && !agentIdToClose.startsWith('temp-')) {
+        try {
+          const { mutate: terminateAgentInstanceMutation } = useMutation(TerminateAgentInstance);
+          await terminateAgentInstanceMutation({ id: agentIdToClose });
+        } catch (error) {
+          console.error('Error closing agent on backend:', error);
         }
       }
-      
-      profileState.activeAgents.set(tempId, newAgentContext);
-      profileState.selectedAgentId = tempId;
     },
-    
+
+    /**
+     * @action ensureAgentForLaunchProfile
+     * @description Ensures that there is at least one agent context for a given launch profile.
+     * Creates a new one if none exist, or attaches to a specified running agent.
+     */
     ensureAgentForLaunchProfile(profileId: string, attachToAgentId?: string): void {
-      if (!profileId) return;
-      if (!this.agentsByLaunchProfile.has(profileId)) {
-        this.agentsByLaunchProfile.set(profileId, createDefaultProfileState());
-      }
-      const profileState = this.agentsByLaunchProfile.get(profileId)!;
+      const agentContextsStore = useAgentContextsStore();
+      const profileState = agentContextsStore._getOrCreateCurrentProfileState();
+
       if (profileState.activeAgents.size === 0) {
         if (attachToAgentId) {
-          this.createContextForExistingAgent(attachToAgentId);
+          agentContextsStore.createContextForExistingAgent(attachToAgentId);
+          this.subscribeToAgentResponse(attachToAgentId); // Automatically subscribe when attaching
         } else {
-          this.createNewAgent();
+          agentContextsStore.createNewAgentContext();
         }
       } else {
          const latestAgent = Array.from(profileState.activeAgents.values()).sort((a, b) => 
             new Date(b.state.conversation.updatedAt).getTime() - new Date(a.state.conversation.updatedAt).getTime()
          )[0];
-         profileState.selectedAgentId = latestAgent.state.agentId;
+         agentContextsStore.setSelectedAgentId(latestAgent.state.agentId);
       }
     },
   },

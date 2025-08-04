@@ -50,7 +50,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
-import { useAgentRunStore } from '~/stores/agentRunStore';
+import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import ConversationList from '~/components/conversation/ConversationList.vue';
 
 const props = defineProps<{  isOpen: boolean;
@@ -61,14 +61,14 @@ const emit = defineEmits<{  (e: 'close'): void;
 }>();
 
 const conversationHistoryStore = useConversationHistoryStore();
-const agentRunStore = useAgentRunStore();
+const agentContextsStore = useAgentContextsStore();
 
 const panelConversations = computed(() => conversationHistoryStore.getConversations);
 
 const handleActivateConversation = (conversationId: string) => {
   const conversationToLoad = panelConversations.value.find(conv => conv.id === conversationId);
   if (conversationToLoad) {
-    agentRunStore.setAgentFromHistory(conversationToLoad);
+    agentContextsStore.createContextFromHistory(conversationToLoad);
   } else {
     console.error(`Failed to find conversation with ID ${conversationId} in history panel.`);
   }

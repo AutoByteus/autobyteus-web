@@ -50,17 +50,19 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useAgentRunStore } from '~/stores/agentRunStore';
 import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
 import AgentEventMonitor from './AgentEventMonitor.vue';
 import type { AgentContext } from '~/types/agent/AgentContext';
 
+const agentContextsStore = useAgentContextsStore();
 const agentRunStore = useAgentRunStore();
 const launchProfileStore = useAgentLaunchProfileStore();
 
-const allOpenAgents = computed(() => agentRunStore.allOpenAgents);
-const currentSelectedAgentId = computed(() => agentRunStore.selectedAgentId);
-const currentSelectedAgent = computed(() => agentRunStore.selectedAgent);
+const allOpenAgents = computed(() => agentContextsStore.allOpenAgents);
+const currentSelectedAgentId = computed(() => agentContextsStore.selectedAgentId);
+const currentSelectedAgent = computed(() => agentContextsStore.selectedAgent);
 const activeLaunchProfile = computed(() => launchProfileStore.activeLaunchProfile);
 
 const getAgentLabel = (agent: AgentContext) => {
@@ -81,7 +83,7 @@ const handleCloseAgent = async (agentId: string) => {
 };
 
 const handleSelectAgent = (agentId: string) => {
-  agentRunStore.setSelectedAgentId(agentId);
+  agentContextsStore.setSelectedAgentId(agentId);
 };
 </script>
 

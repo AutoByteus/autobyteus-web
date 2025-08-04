@@ -186,6 +186,7 @@ export const useAgentLaunchProfileStore = defineStore('agentLaunchProfile', { //
       this.activeProfileId = profileId;
       console.log(`Active launch profile changed to: ${profileId}`);
       
+      // Lazily import to avoid circular dependency issues
       const agentRunStore = useAgentRunStore();
       agentRunStore.ensureAgentForLaunchProfile(profileId, attachToAgentId);
     },

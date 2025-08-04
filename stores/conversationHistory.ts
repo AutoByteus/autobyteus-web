@@ -3,9 +3,6 @@ import { useQuery } from '@vue/apollo-composable';
 import { GET_CONVERSATION_HISTORY } from '~/graphql/queries/conversation_queries';
 import type { GetConversationHistoryQuery, GetConversationHistoryQueryVariables } from '~/generated/graphql';
 import type { Conversation, UserMessage, AIMessage } from '~/types/conversation';
-import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
-import { AgentRunState } from '~/types/agent/AgentRunState';
-import type { AIResponseSegment } from '~/utils/aiResponseParser/types';
 
 interface ConversationHistoryState {
   agentDefinitionId: string | null;
@@ -96,7 +93,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
     },
     mapToConversation(agentConversation: GetConversationHistoryQuery['getConversationHistory']['conversations'][number]): Conversation {
       // This function performs a "lightweight" mapping.
-      // Heavy parsing is deferred to the agentRunStore when a user continues a conversation.
+      // Heavy parsing is deferred to the agentContextsStore when a user continues a conversation.
       return {
         id: agentConversation.agentId, // This is the historical conversation ID
         messages: agentConversation.messages.map(msg => {
@@ -106,7 +103,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
               text: msg.originalMessage || '',
               contextFilePaths: msg.contextPaths?.map(path => ({
                 path,
-                type: 'text', // Assuming text, adjust if type info is available
+                type: 'Text', // Standardize to match ContextFilePath type
               })) || [],
               timestamp: new Date(msg.timestamp),
               promptTokens: msg.tokenCount || undefined,
@@ -120,7 +117,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
               text: aiText,
               timestamp: new Date(msg.timestamp),
               chunks: [aiText], // Store the full text as a single chunk
-              segments: [], // Segments will be populated on-demand by agentRunStore
+              segments: [], // Segments will be populated on-demand by agentContextsStore
               isComplete: true,
               parserInstance: null as any, // No parser instance needed at this stage
               completionTokens: msg.tokenCount || undefined,
@@ -130,9 +127,9 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
           }
         }),
         createdAt: agentConversation.createdAt,
-        updatedAt: agentConversation.createdAt, // Should be agentConversation.updatedAt if available
+        updatedAt: agentConversation.createdAt,
         llmModelName: agentConversation.llmModel || undefined,
-        parseToolCalls: true, // Assuming true for historical conversations
+        parseToolCalls: true,
         agentDefinitionId: agentConversation.agentDefinitionId,
       };
     }

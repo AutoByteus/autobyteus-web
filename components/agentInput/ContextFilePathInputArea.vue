@@ -108,16 +108,16 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useAgentRunStore } from '~/stores/agentRunStore';
+import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useFileUploadStore } from '~/stores/fileUploadStore';
 import { getFilePathsFromFolder, determineFileType } from '~/utils/fileExplorer/fileUtils';
 import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
 import type { ContextFilePath } from '~/types/conversation';
 
-const agentRunStore = useAgentRunStore();
+const agentContextsStore = useAgentContextsStore();
 const fileUploadStore = useFileUploadStore();
 
-const contextFilePaths = computed(() => agentRunStore.currentContextPaths);
+const contextFilePaths = computed(() => agentContextsStore.currentContextPaths);
 const uploadingFiles = ref<string[]>([]);
 const isContextListExpanded = ref(true);
 const fileInputRef = ref<HTMLInputElement | null>(null);
@@ -144,11 +144,11 @@ const toggleContextList = () => {
 };
 
 const removeContextFilePath = (index: number) => {
-  agentRunStore.removeContextFilePath(index);
+  agentContextsStore.removeContextFilePath(index);
 };
 
 const clearAllContextFilePaths = () => {
-  agentRunStore.clearContextFilePaths();
+  agentContextsStore.clearContextFilePaths();
   isContextListExpanded.value = true;
 };
 
@@ -171,21 +171,21 @@ const processAndUploadFiles = async (files: (File | null)[]) => {
     else if (file.type.startsWith('video/')) fileType = 'Video';
     else fileType = 'Text';
 
-    agentRunStore.addContextFilePath({ path: tempPath, type: fileType });
+    agentContextsStore.addContextFilePath({ path: tempPath, type: fileType });
     uploadingFiles.value.push(tempPath);
 
     try {
       const uploadedFilePath = await fileUploadStore.uploadFile(file);
       const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
       if (tempIndex !== -1) {
-        agentRunStore.removeContextFilePath(tempIndex);
+        agentContextsStore.removeContextFilePath(tempIndex);
       }
-      agentRunStore.addContextFilePath({ path: uploadedFilePath, type: fileType });
+      agentContextsStore.addContextFilePath({ path: uploadedFilePath, type: fileType });
     } catch (error) {
       console.error('Error uploading file:', error);
       const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
       if (tempIndex !== -1) {
-        agentRunStore.removeContextFilePath(tempIndex);
+        agentContextsStore.removeContextFilePath(tempIndex);
       }
     } finally {
       uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath);
@@ -214,7 +214,7 @@ const onFileDrop = async (event: DragEvent) => {
     const filePaths = getFilePathsFromFolder(droppedNode);
     for (const filePath of filePaths) {
       const fileType = await determineFileType(filePath);
-      agentRunStore.addContextFilePath({ path: filePath, type: fileType });
+      agentContextsStore.addContextFilePath({ path: filePath, type: fileType });
     }
     if (filePaths.length > 0 && !isContextListExpanded.value) {
       isContextListExpanded.value = true;

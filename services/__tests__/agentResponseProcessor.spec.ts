@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { processAgentResponseEvent } from '../agentResponseProcessor';
 import * as assistantHandler from '../agentResponseHandlers/assistantResponseHandler';
 import * as toolCallHandler from '../agentResponseHandlers/toolCallHandler';
+import * as statusHandler from '../agentResponseHandlers/phaseTransitionHandler';
 import { AgentContext } from '~/types/agent/AgentContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import { AgentRunState } from '~/types/agent/AgentRunState';
@@ -19,6 +20,11 @@ vi.mock('../agentResponseHandlers/toolCallHandler', () => ({
   handleToolInvocationAutoExecuting: vi.fn(),
   handleToolInteractionLog: vi.fn(),
 }));
+
+vi.mock('../agentResponseHandlers/phaseTransitionHandler', () => ({
+  handleAgentPhaseTransition: vi.fn(),
+}));
+
 
 const createMockAgentContext = (): AgentContext => {
   const conversation: Conversation = {
@@ -91,6 +97,15 @@ describe('processAgentResponseEvent', () => {
     };
     processAgentResponseEvent(eventData, mockAgentContext);
     expect(toolCallHandler.handleToolInteractionLog).toHaveBeenCalledWith(eventData, mockAgentContext);
+  });
+
+  it('should call handleAgentPhaseTransition for GraphQLAgentOperationalPhaseTransitionData', () => {
+    const eventData: AgentResponseSubscription['agentResponse']['data'] = {
+      __typename: 'GraphQLAgentOperationalPhaseTransitionData',
+      newPhase: 'EXECUTING_TOOL',
+    };
+    processAgentResponseEvent(eventData, mockAgentContext);
+    expect(statusHandler.handleAgentPhaseTransition).toHaveBeenCalledWith(eventData, mockAgentContext);
   });
 
   it('should handle GraphQLErrorEventData without calling other handlers', () => {

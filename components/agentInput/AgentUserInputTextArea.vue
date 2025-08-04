@@ -73,22 +73,24 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
+import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useAgentRunStore } from '~/stores/agentRunStore';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import AudioRecorder from '~/components/AudioRecorder.vue';
 import GroupedSelect from '~/components/agentInput/GroupedSelect.vue';
 
 // Initialize stores
+const agentContextsStore = useAgentContextsStore();
 const agentRunStore = useAgentRunStore();
 const llmProviderConfigStore = useLLMProviderConfigStore();
 
 // Store refs
-const { currentRequirement: storeCurrentRequirement, isCurrentlySending } = storeToRefs(agentRunStore);
+const { currentRequirement: storeCurrentRequirement, isCurrentlySending: isSending } = storeToRefs(agentContextsStore);
 const { isLoadingModels, providersWithModels } = storeToRefs(llmProviderConfigStore);
+const { selectedAgent } = storeToRefs(agentContextsStore);
 
 // Local component state
 const internalRequirement = ref(''); // Local state for textarea
-const isSending = computed(() => isCurrentlySending.value);
 const textarea = ref<HTMLTextAreaElement | null>(null);
 const controlsRef = ref<HTMLDivElement | null>(null);
 const textareaHeight = ref(150);
@@ -96,18 +98,30 @@ const isSearching = ref(false);
 
 // Computed properties for v-model binding to the store
 const selectedModel = computed({
-  get: () => agentRunStore.selectedAgent?.config.llmModelName ?? null,
-  set: (value: string | null) => agentRunStore.updateSelectedAgentConfig({ llmModelName: value ?? '' })
+  get: () => selectedAgent.value?.config.llmModelName ?? null,
+  set: (value: string | null) => {
+    if (selectedAgent.value) {
+      agentContextsStore.updateSelectedAgentConfig({ llmModelName: value ?? '' });
+    }
+  }
 });
 
 const autoExecuteTools = computed({
-  get: () => agentRunStore.selectedAgent?.config.autoExecuteTools ?? false,
-  set: (value: boolean) => agentRunStore.updateSelectedAgentConfig({ autoExecuteTools: value })
+  get: () => selectedAgent.value?.config.autoExecuteTools ?? false,
+  set: (value: boolean) => {
+    if (selectedAgent.value) {
+      agentContextsStore.updateSelectedAgentConfig({ autoExecuteTools: value });
+    }
+  }
 });
 
 const parseToolCalls = computed({
-  get: () => agentRunStore.selectedAgent?.config.parseToolCalls ?? true,
-  set: (value: boolean) => agentRunStore.updateSelectedAgentConfig({ parseToolCalls: value })
+  get: () => selectedAgent.value?.config.parseToolCalls ?? true,
+  set: (value: boolean) => {
+    if (selectedAgent.value) {
+      agentContextsStore.updateSelectedAgentConfig({ parseToolCalls: value });
+    }
+  }
 });
 
 const groupedModelOptions = computed(() => {
@@ -177,7 +191,7 @@ const adjustTextareaHeight = () => {
 const { call: debouncedUpdateStore, cancel: cancelDebouncedUpdateStore, flush: flushDebouncedUpdateStore } = 
   debounce((text: string) => {
     if (text !== storeCurrentRequirement.value) {
-      agentRunStore.updateUserRequirement(text);
+      agentContextsStore.updateUserRequirement(text);
     }
   }, 750);
 
@@ -198,7 +212,7 @@ const handleInput = (event: Event) => {
 const syncStoreImmediately = () => {
   cancelDebouncedUpdateStore(); 
   if (internalRequirement.value !== storeCurrentRequirement.value) {
-    agentRunStore.updateUserRequirement(internalRequirement.value);
+    agentContextsStore.updateUserRequirement(internalRequirement.value);
   }
 };
 

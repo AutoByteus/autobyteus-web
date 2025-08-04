@@ -1,26 +1,13 @@
 <template>
   <div class="flex flex-col h-full bg-white">
     <!-- Header Bar -->
-    <div v-if="activeLaunchProfile" class="flex items-center justify-between px-3 pt-1 pb-0 border-b border-gray-200 flex-shrink-0">
-      <h4 class="text-lg font-medium text-gray-700 truncate">{{ activeLaunchProfile.name }}</h4>
-      <div class="flex items-center space-x-2">
-        <button 
-          @click="createNewAgent" 
-          class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-blue-500 tooltip transition-colors"
-          aria-label="New Agent"
-          data-tooltip="New Agent"
-        >
-          <PlusCircleIcon class="w-6 h-6" />
-        </button>
-        <button 
-          @click="openHistoryPanel" 
-          class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 tooltip transition-colors"
-          aria-label="History"
-          data-tooltip="History"
-        >
-          <ClockIcon class="w-6 h-6" />
-        </button>
+    <div v-if="activeLaunchProfile" class="flex items-center justify-between px-4 py-2 border-b border-gray-200 flex-shrink-0">
+      <div class="flex items-center space-x-3 min-w-0">
+        <span class="text-xl">🤖</span>
+        <h4 class="text-base font-medium text-gray-800 truncate" :title="headerTitle">{{ headerTitle }}</h4>
+        <AgentStatusDisplay v-if="selectedAgent" :phase="selectedAgent.state.currentPhase" />
       </div>
+      <WorkspaceHeaderActions @new-agent="createNewAgent" @open-history="openHistoryPanel" />
     </div>
     
     <!-- Tabbed Agent Monitors -->
@@ -41,21 +28,43 @@
 import { ref, computed } from 'vue';
 import AgentEventMonitorTabs from '~/components/workspace/AgentEventMonitorTabs.vue';
 import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue';
-import { useAgentRunStore } from '~/stores/agentRunStore';
+import WorkspaceHeaderActions from '~/components/workspace/WorkspaceHeaderActions.vue';
+import AgentStatusDisplay from '~/components/agent/AgentStatusDisplay.vue';
+import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
-import { PlusCircleIcon, ClockIcon } from '@heroicons/vue/24/solid';
 
-const agentRunStore = useAgentRunStore();
+const agentContextsStore = useAgentContextsStore();
 const launchProfileStore = useAgentLaunchProfileStore();
 const conversationHistoryStore = useConversationHistoryStore();
 
 const isHistoryPanelOpen = ref(false);
 
 const activeLaunchProfile = computed(() => launchProfileStore.activeLaunchProfile);
+const selectedAgent = computed(() => agentContextsStore.selectedAgent);
+
+const headerTitle = computed(() => {
+  if (selectedAgent.value && activeLaunchProfile.value) {
+    const agentState = selectedAgent.value.state;
+    const idSuffix = agentState.agentId.slice(-4).toUpperCase();
+    
+    // For new agents, just use the profile name until a real ID is assigned
+    if (agentState.agentId.startsWith('temp-')) {
+      return activeLaunchProfile.value.name;
+    }
+    
+    return `${activeLaunchProfile.value.name} - ${idSuffix}`;
+  }
+  
+  if (activeLaunchProfile.value) {
+    return activeLaunchProfile.value.name;
+  }
+  
+  return 'Workspace'; // A generic fallback
+});
 
 const createNewAgent = () => {
-  agentRunStore.createNewAgent();
+  agentContextsStore.createNewAgentContext();
 };
 
 const openHistoryPanel = () => {
@@ -67,24 +76,3 @@ const openHistoryPanel = () => {
   }
 };
 </script>
-
-<style scoped>
-.tooltip {
-  position: relative;
-}
-
-.tooltip:hover::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: -30px; 
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 4px 8px;
-  background-color: rgba(0, 0, 0, 0.8);
-  color: white;
-  border-radius: 4px;
-  font-size: 12px;
-  white-space: nowrap;
-  z-index: 10;
-}
-</style>

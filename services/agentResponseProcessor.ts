@@ -9,6 +9,7 @@ import {
   handleToolInvocationAutoExecuting,
   handleToolInteractionLog,
 } from './agentResponseHandlers/toolCallHandler';
+import { handleAgentPhaseTransition } from './agentResponseHandlers/phaseTransitionHandler';
 
 /**
  * Main dispatcher for processing all agent response events.
@@ -38,6 +39,9 @@ export function processAgentResponseEvent(
     case 'GraphQLToolInteractionLogEntryData':
       return handleToolInteractionLog(eventData, agentContext);
       
+    case 'GraphQLAgentOperationalPhaseTransitionData':
+      return handleAgentPhaseTransition(eventData, agentContext);
+
     case 'GraphQLErrorEventData':
       // Handle error events here or in a dedicated handler.
       console.error('Agent Stream Error:', eventData.message, eventData.details);

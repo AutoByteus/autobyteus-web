@@ -1,9 +1,10 @@
 import type { Conversation, Message, AIMessage } from '~/types/conversation';
 import { generateBaseInvocationId } from '~/utils/toolUtils';
+import { AgentOperationalPhase } from '~/generated/graphql';
 
 export class AgentRunState {
   public agentId: string;
-  public currentPhase: string = 'IDLE';
+  public currentPhase: string = AgentOperationalPhase.Uninitialized;
   public conversation: Conversation;
   public agent_tool_invocation_counts = new Map<string, number>();
 
