@@ -29,24 +29,39 @@
           :key="teamDef.id"
           :team-def="teamDef"
           @view-details="viewDetails"
+          @run-team="handleRunTeam"
         />
       </div>
+
+      <!-- This button is now on the card/detail view, but I'll add the modal here for completeness -->
+      <TeamLaunchConfigModal 
+        v-if="teamToLaunch"
+        :show="isLaunchModalOpen"
+        :team-definition="teamToLaunch"
+        @close="isLaunchModalOpen = false"
+        @success="onLaunchSuccess"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
-import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
+import { computed, onMounted, ref } from 'vue';
+import { useAgentTeamDefinitionStore, type AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
 import AgentTeamCard from '~/components/agentTeams/AgentTeamCard.vue';
+import TeamLaunchConfigModal from '~/components/agentTeams/TeamLaunchConfigModal.vue';
 
 const emit = defineEmits(['navigate']);
 
 const store = useAgentTeamDefinitionStore();
+const router = useRouter();
 
 const agentTeamDefinitions = computed(() => store.agentTeamDefinitions);
 const loading = computed(() => store.loading);
 const error = computed(() => store.error);
+
+const isLaunchModalOpen = ref(false);
+const teamToLaunch = ref<AgentTeamDefinition | null>(null);
 
 onMounted(() => {
   if (agentTeamDefinitions.value.length === 0) {
@@ -56,5 +71,16 @@ onMounted(() => {
 
 const viewDetails = (teamId: string) => {
   emit('navigate', { view: 'team-detail', id: teamId });
+};
+
+const handleRunTeam = (teamDef: AgentTeamDefinition) => {
+  teamToLaunch.value = teamDef;
+  isLaunchModalOpen.value = true;
+};
+
+// This is now handled on the detail page, but the logic is the same.
+const onLaunchSuccess = (teamId: string) => {
+  console.log(`Team launched with ID: ${teamId}, navigating...`);
+  router.push('/workspace');
 };
 </script>

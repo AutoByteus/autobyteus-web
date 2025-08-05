@@ -32,13 +32,17 @@
         <LaunchProfilePanel />
       </div>
 
-      <!-- Agent View -->
-      <div v-show="activeMobilePanel === 'agent'" class="h-full p-0 overflow-auto">
-        <AgentWorkspaceView />
+      <!-- Main Interaction View (Agent or Team) -->
+      <div v-show="activeMobilePanel === 'main'" class="h-full p-0 overflow-auto">
+        <AgentWorkspaceView v-if="selectedLaunchProfileStore.selectedProfileType === 'agent'" />
+        <TeamWorkspaceView v-else-if="selectedLaunchProfileStore.selectedProfileType === 'team'" />
+        <div v-else class="flex items-center justify-center h-full text-gray-500">
+          <p>Select a profile to begin.</p>
+        </div>
       </div>
 
-      <!-- Terminal -->
-      <div v-show="activeMobilePanel === 'terminal'" class="h-full p-0 overflow-auto">
+      <!-- Right Side Tools (Terminal, VNC etc) -->
+      <div v-show="activeMobilePanel === 'tools'" class="h-full p-0 overflow-auto">
         <RightSideTabs />
       </div>
     </div>
@@ -56,7 +60,7 @@
 
       <!-- Agent profile button -->
       <button
-        v-if="activeMobilePanel === 'agent' && !activeProfileId"
+        v-if="activeMobilePanel === 'main' && !selectedLaunchProfileStore.selectedProfileId"
         @click="activeMobilePanel = 'profiles'"
         class="px-4 py-2 bg-blue-500 text-white rounded shadow-lg z-20 text-sm"
       >
@@ -67,33 +71,37 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { storeToRefs } from 'pinia'
-import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
-import FileContentViewer from '~/components/fileExplorer/FileContentViewer.vue'
-import LaunchProfilePanel from '~/components/launchProfiles/LaunchProfilePanel.vue'
-import AgentWorkspaceView from '~/components/workspace/AgentWorkspaceView.vue'
-import RightSideTabs from './RightSideTabs.vue'
-import { useMobilePanels } from '~/composables/useMobilePanels'
-import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore'
+import { computed } from 'vue';
+import { storeToRefs } from 'pinia';
+import FileExplorer from '~/components/fileExplorer/FileExplorer.vue';
+import FileContentViewer from '~/components/fileExplorer/FileContentViewer.vue';
+import LaunchProfilePanel from '~/components/launchProfiles/LaunchProfilePanel.vue';
+import AgentWorkspaceView from '~/components/workspace/AgentWorkspaceView.vue';
+import TeamWorkspaceView from '~/components/workspace/TeamWorkspaceView.vue'; // Import Team View
+import RightSideTabs from './RightSideTabs.vue';
+import { useMobilePanels } from '~/composables/useMobilePanels';
+import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
+import { useWorkspaceStore } from '~/stores/workspace';
 
 const props = defineProps<{  
   showFileContent: boolean
-}>()
+}>();
 
-const launchProfileStore = useAgentLaunchProfileStore()
-const { activeMobilePanel } = useMobilePanels()
+const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
+const workspaceStore = useWorkspaceStore();
+const { activeMobilePanel } = useMobilePanels();
 
-const activeProfileId = computed(() => launchProfileStore.activeProfileId)
-const activeLaunchProfileHasWorkspace = computed(() => !!launchProfileStore.activeLaunchProfile?.workspaceId)
+const activeLaunchProfileHasWorkspace = computed(() => !!workspaceStore.activeWorkspace);
 
 const availableTabs = computed(() => {
+  const mainTabLabel = selectedLaunchProfileStore.selectedProfileType === 'team' ? 'Team' : 'Agent';
+
   const tabs = [
     ...(activeLaunchProfileHasWorkspace.value ? [{ id: 'explorer', label: 'Files' }] : []),
     { id: 'profiles', label: 'Profiles' },
-    { id: 'agent', label: 'Agent' },
-    { id: 'terminal', label: 'Terminal' }
-  ]
+    { id: 'main', label: mainTabLabel },
+    { id: 'tools', label: 'Tools' }
+  ];
   
   if (props.showFileContent && activeLaunchProfileHasWorkspace.value) {
     const explorerIndex = tabs.findIndex(t => t.id === 'explorer');
@@ -102,17 +110,14 @@ const availableTabs = computed(() => {
     }
   }
   
-  return tabs
-})
+  return tabs;
+});
 
-// Handle tab clicks with special logic for agent/profiles
 const handleTabClick = (tabId: string) => {
-  // If clicking agent tab without an active profile,
-  // redirect to profiles tab first
-  if (tabId === 'agent' && !activeProfileId.value) {
-    activeMobilePanel.value = 'profiles'
+  if (tabId === 'main' && !selectedLaunchProfileStore.selectedProfileId) {
+    activeMobilePanel.value = 'profiles';
   } else {
-    activeMobilePanel.value = tabId
+    activeMobilePanel.value = tabId;
   }
 }
 </script>
@@ -126,7 +131,6 @@ const handleTabClick = (tabId: string) => {
   position: fixed;
 }
 
-/* Enable horizontal scroll for tabs on very small screens */
 .overflow-x-auto {
   -webkit-overflow-scrolling: touch;
 }

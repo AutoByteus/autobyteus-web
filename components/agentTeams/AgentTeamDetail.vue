@@ -24,6 +24,10 @@
               <p class="text-md text-gray-500 mt-1">{{ teamDef.role || 'No role specified' }}</p>
             </div>
             <div class="flex space-x-2">
+              <button @click="openLaunchModal" class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition-colors flex items-center">
+                <span class="block i-heroicons-play-20-solid w-5 h-5 mr-2"></span>
+                Run Team
+              </button>
               <button @click="$emit('navigate', { view: 'team-edit', id: teamDef.id })" class="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-md hover:bg-gray-200 transition-colors flex items-center">
                 <span class="block i-heroicons-pencil-square-20-solid w-5 h-5 mr-2"></span>
                 Edit
@@ -91,6 +95,15 @@
       @cancel="onDeleteCanceled"
     />
 
+    <!-- Team Launch Modal -->
+    <TeamLaunchConfigModal
+      v-if="isLaunchModalOpen && teamDef"
+      :show="isLaunchModalOpen"
+      :team-definition="teamDef"
+      @close="isLaunchModalOpen = false"
+      @success="onLaunchSuccess"
+    />
+
     <!-- Notification -->
     <div v-if="notification"
         :class="[
@@ -107,6 +120,7 @@ import { ref, computed, onMounted, toRefs } from 'vue';
 import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
 import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
 import AgentDeleteConfirmDialog from '~/components/agents/AgentDeleteConfirmDialog.vue';
+import TeamLaunchConfigModal from '~/components/agentTeams/TeamLaunchConfigModal.vue';
 
 const props = defineProps<{ teamId: string }>();
 const { teamId } = toRefs(props);
@@ -115,6 +129,7 @@ const emit = defineEmits(['navigate']);
 
 const store = useAgentTeamDefinitionStore();
 const agentDefStore = useAgentDefinitionStore();
+const router = useRouter();
 
 const teamDef = computed(() => store.getAgentTeamDefinitionById(teamId.value));
 const loading = ref(false);
@@ -122,6 +137,7 @@ const loading = ref(false);
 const notification = ref<{ type: 'success' | 'error'; message: string } | null>(null);
 const showDeleteConfirm = ref(false);
 const teamIdToDelete = ref<string | null>(null);
+const isLaunchModalOpen = ref(false);
 
 onMounted(async () => {
   loading.value = true;
@@ -138,6 +154,17 @@ const getBlueprintName = (type: 'AGENT' | 'AGENT_TEAM', id: string): string => {
   } else {
     return store.getAgentTeamDefinitionById(id)?.name || `Unknown Team (ID: ${id})`;
   }
+};
+
+const openLaunchModal = () => {
+  isLaunchModalOpen.value = true;
+};
+
+const onLaunchSuccess = (teamId: string) => {
+  showNotification('Team launched successfully! Navigating to workspace...', 'success');
+  setTimeout(() => {
+    router.push('/workspace'); // Or a specific team workspace view in the future
+  }, 1500);
 };
 
 const handleDelete = (id: string) => {

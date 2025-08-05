@@ -1,6 +1,5 @@
 import type { GraphQLAgentOperationalPhaseTransitionData } from '~/generated/graphql';
 import type { AgentContext } from '~/types/agent/AgentContext';
-import { useAgentContextsStore } from '~/stores/agentContextsStore';
 
 /**
  * Processes an agent phase transition event by calling the agent contexts store
@@ -16,10 +15,7 @@ export function handleAgentPhaseTransition(
   if (data.newPhase) {
     console.log(`Phase transition for agent ${agentContext.state.agentId}: from ${agentContext.state.currentPhase} to ${data.newPhase}`);
     
-    // Get an instance of the store
-    const agentContextsStore = useAgentContextsStore();
-    
-    // Call the action to mutate the state
-    agentContextsStore.updateAgentPhase(agentContext.state.agentId, data.newPhase);
+    // Directly mutate the phase on the provided context object.
+    agentContext.state.currentPhase = data.newPhase;
   }
 }

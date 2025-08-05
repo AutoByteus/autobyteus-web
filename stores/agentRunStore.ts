@@ -56,12 +56,16 @@ export const useAgentRunStore = defineStore('agentRun', {
         state.conversation.parseToolCalls = config.parseToolCalls;
       }
 
-      agentContextsStore.addMessageToAgent(agentId, {
+      // ** THE FIX IS HERE **
+      // Instead of calling a store action, mutate the context directly.
+      currentAgent.state.conversation.messages.push({
         type: 'user',
         text: currentAgent.requirement,
         timestamp: new Date(),
         contextFilePaths: currentAgent.contextFilePaths
       });
+      currentAgent.state.conversation.updatedAt = new Date().toISOString();
+
 
       currentAgent.isSending = true;
       const { mutate: sendAgentUserInputMutation } = useMutation<SendAgentUserInputMutation, SendAgentUserInputMutationVariables>(SendAgentUserInput);

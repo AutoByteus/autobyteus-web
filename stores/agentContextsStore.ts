@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
+import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
 import { AgentContext } from '~/types/agent/AgentContext';
 import { AgentRunState } from '~/types/agent/AgentRunState';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
@@ -48,10 +49,14 @@ export const useAgentContextsStore = defineStore('agentContexts', {
      * @description (Internal) Safely retrieves the state object for the currently active launch profile.
      */
     _currentProfileState(state): ProfileAgentState | null {
-      const launchProfileStore = useAgentLaunchProfileStore();
-      const activeProfileId = launchProfileStore.activeProfileId;
-      if (!activeProfileId) return null;
-      return state.agentsByLaunchProfile.get(activeProfileId) || null;
+      const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
+      const { selectedProfileId, selectedProfileType } = selectedLaunchProfileStore;
+      
+      // This store only manages agent contexts, so ignore if a team is selected.
+      if (selectedProfileType !== 'agent' || !selectedProfileId) {
+        return null;
+      }
+      return state.agentsByLaunchProfile.get(selectedProfileId) || null;
     },
 
     /**
@@ -111,15 +116,17 @@ export const useAgentContextsStore = defineStore('agentContexts', {
      * @description (Internal) A robust way to get the state for the current profile, creating it if it doesn't exist.
      */
     _getOrCreateCurrentProfileState(): ProfileAgentState {
-      const launchProfileStore = useAgentLaunchProfileStore();
-      const activeProfileId = launchProfileStore.activeProfileId;
-      if (!activeProfileId) {
+      const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
+      const { selectedProfileId, selectedProfileType } = selectedLaunchProfileStore;
+
+      if (selectedProfileType !== 'agent' || !selectedProfileId) {
         throw new Error("Cannot access agent context state: No agent launch profile is active.");
       }
-      if (!this.agentsByLaunchProfile.has(activeProfileId)) {
-        this.agentsByLaunchProfile.set(activeProfileId, createDefaultProfileState());
+      
+      if (!this.agentsByLaunchProfile.has(selectedProfileId)) {
+        this.agentsByLaunchProfile.set(selectedProfileId, createDefaultProfileState());
       }
-      return this.agentsByLaunchProfile.get(activeProfileId)!;
+      return this.agentsByLaunchProfile.get(selectedProfileId)!;
     },
 
     /**
@@ -137,7 +144,7 @@ export const useAgentContextsStore = defineStore('agentContexts', {
      */
     createNewAgentContext() {
       const launchProfileStore = useAgentLaunchProfileStore();
-      const activeLaunchProfile = launchProfileStore.activeLaunchProfile;
+      const activeLaunchProfile = launchProfileStore.activeLaunchProfile; // This getter is now correct because it also uses selectedLaunchProfileStore
       if (!activeLaunchProfile) {
         throw new Error('Cannot create new agent context: No active launch profile.');
       }
@@ -231,29 +238,6 @@ export const useAgentContextsStore = defineStore('agentContexts', {
           const openAgentsArray = Array.from(profileState.activeAgents.values());
           profileState.selectedAgentId = openAgentsArray.length > 0 ? openAgentsArray[openAgentsArray.length - 1].state.agentId : null;
         }
-      }
-    },
-
-    /**
-     * @action addMessageToAgent
-     * @description Appends a message to a specific agent's conversation.
-     */
-    addMessageToAgent(agentId: string, message: Message) {
-      const agentContext = this.getAgentContextById(agentId);
-      if (agentContext) {
-        agentContext.state.conversation.messages.push(message);
-        agentContext.state.conversation.updatedAt = new Date().toISOString();
-      }
-    },
-
-    /**
-     * @action updateAgentPhase
-     * @description Updates the operational phase of a specific agent.
-     */
-    updateAgentPhase(agentId: string, newPhase: string) {
-      const agentContext = this.getAgentContextById(agentId);
-      if (agentContext) {
-        agentContext.state.currentPhase = newPhase;
       }
     },
     

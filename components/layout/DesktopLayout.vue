@@ -34,7 +34,12 @@
     <template v-else>
       <div class="bg-white p-0 shadow flex flex-col min-h-0 flex-1 min-w-[200px]">
         <div class="flex-1 overflow-auto">
-          <AgentWorkspaceView />
+          <!-- UPDATED: Conditional rendering based on selected profile type -->
+          <AgentWorkspaceView v-if="selectedLaunchProfileStore.selectedProfileType === 'agent'" />
+          <TeamWorkspaceView v-else-if="selectedLaunchProfileStore.selectedProfileType === 'team'" />
+          <div v-else class="flex items-center justify-center h-full text-gray-500">
+            <p>Select a profile to begin.</p>
+          </div>
         </div>
       </div>
 
@@ -99,31 +104,33 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import { useLaunchProfilePanelOverlayStore } from '~/stores/launchProfilePanelOverlayStore'
-import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
+import { useWorkspaceStore } from '~/stores/workspace';
 import { useRightPanel } from '~/composables/useRightPanel'
 import { usePanelResize } from '~/composables/usePanelResize'
+import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
 import FileContentViewer from '~/components/fileExplorer/FileContentViewer.vue'
 import AgentWorkspaceView from '~/components/workspace/AgentWorkspaceView.vue'
+import TeamWorkspaceView from '~/components/workspace/TeamWorkspaceView.vue' // Import Team View
 import RightSideTabs from './RightSideTabs.vue'
 import LaunchProfilePanel from '~/components/launchProfiles/LaunchProfilePanel.vue'
 
 const fileContentDisplayModeStore = useFileContentDisplayModeStore()
-const launchProfileStore = useAgentLaunchProfileStore()
 const launchProfilePanelOverlayStore = useLaunchProfilePanelOverlayStore()
+const workspaceStore = useWorkspaceStore();
+const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
 
 // Launch Profile Panel State
 const { isOpen: isProfilePanelOpen } = storeToRefs(launchProfilePanelOverlayStore)
 const profilePanelWidth = ref(300)
 
-const { isFullscreenMode, isMinimizedMode } = storeToRefs(fileContentDisplayModeStore)
+const { isFullscreenMode } = storeToRefs(fileContentDisplayModeStore)
 const { fileExplorerWidth, initDragFileToContent } = usePanelResize()
 const { isRightPanelVisible, rightPanelWidth, toggleRightPanel, initDragRightPanel } = useRightPanel()
 
-const activeLaunchProfileHasWorkspace = computed(() => !!launchProfileStore.activeLaunchProfile?.workspaceId);
+const activeLaunchProfileHasWorkspace = computed(() => !!workspaceStore.activeWorkspace);
 </script>
 
 <style scoped>

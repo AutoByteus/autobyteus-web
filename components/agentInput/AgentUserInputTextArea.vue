@@ -11,6 +11,7 @@
         placeholder="Enter your requirement here..."
         @keydown="handleKeyDown"
         @blur="handleBlur"
+        :disabled="!activeContextStore.activeAgentContext"
       ></textarea>
     </div>
 
@@ -26,7 +27,7 @@
           v-model:parseToolCalls="parseToolCalls"
           :options="groupedModelOptions"
           :loading="isLoadingModels"
-          :disabled="isLoadingModels"
+          :disabled="isLoadingModels || !activeContextStore.activeAgentContext"
           placeholder="Select a model"
         />
 
@@ -37,7 +38,7 @@
         <div class="flex flex-col sm:flex-row gap-3 sm:gap-2">
           <button
             @click="handleSearchContext"
-            :disabled="isSending || !internalRequirement.trim() || isSearching"
+            :disabled="isSending || !internalRequirement.trim() || isSearching || !activeContextStore.activeAgentContext"
             class="flex items-center justify-center px-4 py-2.5 bg-green-500 text-white text-sm font-medium rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
           >
             <svg v-if="isSearching" class="animate-spin h-4 w-4 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -52,7 +53,7 @@
 
           <button 
             @click="handleSend"
-            :disabled="isSending || !internalRequirement.trim()"
+            :disabled="isSending || !internalRequirement.trim() || !activeContextStore.activeAgentContext"
             class="flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
           >
             <svg v-if="isSending" class="animate-spin h-4 w-4 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -73,21 +74,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useAgentContextsStore } from '~/stores/agentContextsStore';
-import { useAgentRunStore } from '~/stores/agentRunStore';
+import { useActiveContextStore } from '~/stores/activeContextStore';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import AudioRecorder from '~/components/AudioRecorder.vue';
 import GroupedSelect from '~/components/agentInput/GroupedSelect.vue';
 
 // Initialize stores
-const agentContextsStore = useAgentContextsStore();
-const agentRunStore = useAgentRunStore();
+const activeContextStore = useActiveContextStore();
 const llmProviderConfigStore = useLLMProviderConfigStore();
 
 // Store refs
-const { currentRequirement: storeCurrentRequirement, isCurrentlySending: isSending } = storeToRefs(agentContextsStore);
+const { isSending, currentRequirement: storeCurrentRequirement } = storeToRefs(activeContextStore);
 const { isLoadingModels, providersWithModels } = storeToRefs(llmProviderConfigStore);
-const { selectedAgent } = storeToRefs(agentContextsStore);
 
 // Local component state
 const internalRequirement = ref(''); // Local state for textarea
@@ -98,29 +96,25 @@ const isSearching = ref(false);
 
 // Computed properties for v-model binding to the store
 const selectedModel = computed({
-  get: () => selectedAgent.value?.config.llmModelName ?? null,
+  get: () => activeContextStore.activeConfig?.llmModelName ?? null,
   set: (value: string | null) => {
-    if (selectedAgent.value) {
-      agentContextsStore.updateSelectedAgentConfig({ llmModelName: value ?? '' });
+    if (value !== null) {
+      activeContextStore.updateConfig({ llmModelName: value });
     }
   }
 });
 
 const autoExecuteTools = computed({
-  get: () => selectedAgent.value?.config.autoExecuteTools ?? false,
+  get: () => activeContextStore.activeConfig?.autoExecuteTools ?? false,
   set: (value: boolean) => {
-    if (selectedAgent.value) {
-      agentContextsStore.updateSelectedAgentConfig({ autoExecuteTools: value });
-    }
+    activeContextStore.updateConfig({ autoExecuteTools: value });
   }
 });
 
 const parseToolCalls = computed({
-  get: () => selectedAgent.value?.config.parseToolCalls ?? true,
+  get: () => activeContextStore.activeConfig?.parseToolCalls ?? true,
   set: (value: boolean) => {
-    if (selectedAgent.value) {
-      agentContextsStore.updateSelectedAgentConfig({ parseToolCalls: value });
-    }
+    activeContextStore.updateConfig({ parseToolCalls: value });
   }
 });
 
@@ -191,7 +185,7 @@ const adjustTextareaHeight = () => {
 const { call: debouncedUpdateStore, cancel: cancelDebouncedUpdateStore, flush: flushDebouncedUpdateStore } = 
   debounce((text: string) => {
     if (text !== storeCurrentRequirement.value) {
-      agentContextsStore.updateUserRequirement(text);
+      activeContextStore.updateRequirement(text);
     }
   }, 750);
 
@@ -212,7 +206,7 @@ const handleInput = (event: Event) => {
 const syncStoreImmediately = () => {
   cancelDebouncedUpdateStore(); 
   if (internalRequirement.value !== storeCurrentRequirement.value) {
-    agentContextsStore.updateUserRequirement(internalRequirement.value);
+    activeContextStore.updateRequirement(internalRequirement.value);
   }
 };
 
@@ -221,14 +215,9 @@ const handleBlur = () => {
 };
 
 const handleSend = async () => {
-  if (!internalRequirement.value.trim()) {
-    alert('Please enter a user requirement before sending.');
-    return;
-  }
   syncStoreImmediately(); 
-
   try {
-    await agentRunStore.sendUserInputAndSubscribe();
+    await activeContextStore.send();
   } catch (error) {
     console.error('Error sending requirement:', error);
     alert('Failed to send requirement. Please try again.');
@@ -255,7 +244,8 @@ const initializeModels = async () => {
     await llmProviderConfigStore.fetchProvidersWithModels();
     const allModels = llmProviderConfigStore.models;
     if (allModels.length > 0 && (!selectedModel.value || !allModels.includes(selectedModel.value))) {
-      selectedModel.value = allModels[0];;
+      // Don't auto-select a model. Let the user choose.
+      // If a default is needed, it should be set in the launch profile or context creation.
     }
   } catch (error) {
     console.error('Failed to fetch available models:', error);

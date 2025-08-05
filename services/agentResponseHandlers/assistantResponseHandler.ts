@@ -4,7 +4,6 @@ import type { AgentContext } from '~/types/agent/AgentContext';
 import type { ThinkSegment, AIResponseSegment } from '~/utils/aiResponseParser/types';
 import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
 import { ParserContext } from '~/utils/aiResponseParser/stateMachine/ParserContext';
-import { useAgentContextsStore } from '~/stores/agentContextsStore';
 
 /**
  * Finds the last AI message in the conversation or creates a new one if needed.
@@ -16,7 +15,6 @@ function findOrCreateAIMessage(agentContext: AgentContext): AIMessage {
   let lastMessage = agentContext.lastAIMessage;
 
   if (!lastMessage || lastMessage.isComplete) {
-    const agentContextsStore = useAgentContextsStore();
     const segments: AIResponseSegment[] = [];
 
     const newAiMessage: AIMessage = {
@@ -29,8 +27,9 @@ function findOrCreateAIMessage(agentContext: AgentContext): AIMessage {
       parserInstance: null as any, // Will be set below
     };
 
-    // Add the message to the conversation *before* creating the parser, using the store action
-    agentContextsStore.addMessageToAgent(agentContext.state.agentId, newAiMessage);
+    // Add the message directly to the conversation of the provided context.
+    agentContext.conversation.messages.push(newAiMessage);
+    agentContext.conversation.updatedAt = new Date().toISOString();
 
     // Now that the message is in place, create the parser context
     const parserContext = new ParserContext(agentContext);

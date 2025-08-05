@@ -12,6 +12,7 @@
       multiple
       class="hidden"
       @change="onFileSelect"
+      :disabled="!activeContextStore.activeAgentContext"
     />
 
     <!-- Clickable Header Area -->
@@ -52,6 +53,7 @@
         class="text-blue-500 hover:text-white hover:bg-blue-500 transition-colors duration-300 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 ml-2 flex-shrink-0"
         title="Upload files"
         aria-label="Upload files"
+        :disabled="!activeContextStore.activeAgentContext"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 6V18M18 12H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -108,16 +110,16 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useAgentContextsStore } from '~/stores/agentContextsStore';
+import { useActiveContextStore } from '~/stores/activeContextStore';
 import { useFileUploadStore } from '~/stores/fileUploadStore';
 import { getFilePathsFromFolder, determineFileType } from '~/utils/fileExplorer/fileUtils';
 import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
 import type { ContextFilePath } from '~/types/conversation';
 
-const agentContextsStore = useAgentContextsStore();
+const activeContextStore = useActiveContextStore();
 const fileUploadStore = useFileUploadStore();
 
-const contextFilePaths = computed(() => agentContextsStore.currentContextPaths);
+const contextFilePaths = computed(() => activeContextStore.currentContextPaths);
 const uploadingFiles = ref<string[]>([]);
 const isContextListExpanded = ref(true);
 const fileInputRef = ref<HTMLInputElement | null>(null);
@@ -144,15 +146,17 @@ const toggleContextList = () => {
 };
 
 const removeContextFilePath = (index: number) => {
-  agentContextsStore.removeContextFilePath(index);
+  activeContextStore.removeContextFilePath(index);
 };
 
 const clearAllContextFilePaths = () => {
-  agentContextsStore.clearContextFilePaths();
+  activeContextStore.clearContextFilePaths();
   isContextListExpanded.value = true;
 };
 
 const processAndUploadFiles = async (files: (File | null)[]) => {
+  if (!activeContextStore.activeAgentContext) return;
+
   const validFiles = files.filter((f): f is File => f !== null);
   if (validFiles.length === 0) {
     return;
@@ -171,21 +175,21 @@ const processAndUploadFiles = async (files: (File | null)[]) => {
     else if (file.type.startsWith('video/')) fileType = 'Video';
     else fileType = 'Text';
 
-    agentContextsStore.addContextFilePath({ path: tempPath, type: fileType });
+    activeContextStore.addContextFilePath({ path: tempPath, type: fileType });
     uploadingFiles.value.push(tempPath);
 
     try {
       const uploadedFilePath = await fileUploadStore.uploadFile(file);
       const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
       if (tempIndex !== -1) {
-        agentContextsStore.removeContextFilePath(tempIndex);
+        activeContextStore.removeContextFilePath(tempIndex);
       }
-      agentContextsStore.addContextFilePath({ path: uploadedFilePath, type: fileType });
+      activeContextStore.addContextFilePath({ path: uploadedFilePath, type: fileType });
     } catch (error) {
       console.error('Error uploading file:', error);
       const tempIndex = contextFilePaths.value.findIndex(cf => cf.path === tempPath);
       if (tempIndex !== -1) {
-        agentContextsStore.removeContextFilePath(tempIndex);
+        activeContextStore.removeContextFilePath(tempIndex);
       }
     } finally {
       uploadingFiles.value = uploadingFiles.value.filter(path => path !== tempPath);
@@ -196,7 +200,9 @@ const processAndUploadFiles = async (files: (File | null)[]) => {
 };
 
 const triggerFileInput = () => {
-  fileInputRef.value?.click();
+  if (activeContextStore.activeAgentContext) {
+    fileInputRef.value?.click();
+  }
 };
 
 const onFileSelect = (event: Event) => {
@@ -208,13 +214,15 @@ const onFileSelect = (event: Event) => {
 };
 
 const onFileDrop = async (event: DragEvent) => {
+  if (!activeContextStore.activeAgentContext) return;
+
   const dragData = event.dataTransfer?.getData('application/json');
   if (dragData) {
     const droppedNode: TreeNode = JSON.parse(dragData);
     const filePaths = getFilePathsFromFolder(droppedNode);
     for (const filePath of filePaths) {
       const fileType = await determineFileType(filePath);
-      agentContextsStore.addContextFilePath({ path: filePath, type: fileType });
+      activeContextStore.addContextFilePath({ path: filePath, type: fileType });
     }
     if (filePaths.length > 0 && !isContextListExpanded.value) {
       isContextListExpanded.value = true;
@@ -225,6 +233,8 @@ const onFileDrop = async (event: DragEvent) => {
 };
 
 const onPaste = async (event: ClipboardEvent) => {
+  if (!activeContextStore.activeAgentContext) return;
+
   const items = event.clipboardData?.items;
   if (items) {
     const fileLikes = Array.from(items)

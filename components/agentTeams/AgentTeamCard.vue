@@ -32,6 +32,9 @@
       <button @click.stop="$emit('view-details', teamDef.id)" class="px-3 py-1.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors">
         View Details
       </button>
+      <button @click.stop="$emit('run-team', teamDef)" class="px-3 py-1.5 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors">
+        Run Team
+      </button>
     </div>
   </div>
 </template>
@@ -42,5 +45,5 @@ import type { AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
 defineProps<{  teamDef: AgentTeamDefinition;
 }>();
 
-defineEmits(['view-details']);
+defineEmits(['view-details', 'run-team']);
 </script>

@@ -1080,6 +1080,27 @@ export type DeleteAgentTeamDefinitionMutationVariables = Exact<{
 
 export type DeleteAgentTeamDefinitionMutation = { __typename?: 'Mutation', deleteAgentTeamDefinition: { __typename?: 'DeleteAgentTeamDefinitionResult', success: boolean, message: string } };
 
+export type CreateAgentTeamInstanceMutationVariables = Exact<{
+  input: CreateAgentTeamInstanceInput;
+}>;
+
+
+export type CreateAgentTeamInstanceMutation = { __typename?: 'Mutation', createAgentTeamInstance: { __typename?: 'CreateAgentTeamInstanceResult', success: boolean, message: string, teamId?: string | null } };
+
+export type TerminateAgentTeamInstanceMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+}>;
+
+
+export type TerminateAgentTeamInstanceMutation = { __typename?: 'Mutation', terminateAgentTeamInstance: { __typename?: 'TerminateAgentTeamInstanceResult', success: boolean, message: string } };
+
+export type SendMessageToTeamMutationVariables = Exact<{
+  input: SendMessageToTeamInput;
+}>;
+
+
+export type SendMessageToTeamMutation = { __typename?: 'Mutation', sendMessageToTeam: { __typename?: 'SendMessageToTeamResult', success: boolean, message: string } };
+
 export type WriteFileContentMutationVariables = Exact<{
   workspaceId: Scalars['String']['input'];
   filePath: Scalars['String']['input'];
@@ -1329,6 +1350,15 @@ export type GetAvailableWorkspaceDefinitionsQueryVariables = Exact<{ [key: strin
 
 export type GetAvailableWorkspaceDefinitionsQuery = { __typename?: 'Query', availableWorkspaceDefinitions: Array<{ __typename?: 'WorkspaceDefinition', workspaceTypeName: string, description: string, configSchema: Array<{ __typename?: 'ParameterDefinition', name: string, type: ParameterType, description: string, required: boolean, defaultValue?: any | null }> }> };
 
+export type NestedTeamEventFragment = { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentOperationalPhaseTransitionData', newPhase: AgentOperationalPhase, oldPhase?: AgentOperationalPhase | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamPhaseTransitionData', newPhase: AgentTeamOperationalPhase, oldPhase?: AgentTeamOperationalPhase | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload' } };
+
+export type AgentTeamResponseSubscriptionVariables = Exact<{
+  teamId: Scalars['String']['input'];
+}>;
+
+
+export type AgentTeamResponseSubscription = { __typename?: 'Subscription', agentTeamResponse: { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentOperationalPhaseTransitionData', newPhase: AgentOperationalPhase, oldPhase?: AgentOperationalPhase | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamPhaseTransitionData', newPhase: AgentTeamOperationalPhase, oldPhase?: AgentTeamOperationalPhase | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload', subTeamNodeName: string, subTeamEvent: { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentOperationalPhaseTransitionData', newPhase: AgentOperationalPhase, oldPhase?: AgentOperationalPhase | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamPhaseTransitionData', newPhase: AgentTeamOperationalPhase, oldPhase?: AgentTeamOperationalPhase | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload', subTeamNodeName: string, subTeamEvent: { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentOperationalPhaseTransitionData', newPhase: AgentOperationalPhase, oldPhase?: AgentOperationalPhase | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamPhaseTransitionData', newPhase: AgentTeamOperationalPhase, oldPhase?: AgentTeamOperationalPhase | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload' } } } } } } };
+
 export type AgentResponseSubscriptionVariables = Exact<{
   agentId: Scalars['String']['input'];
 }>;
@@ -1336,7 +1366,87 @@ export type AgentResponseSubscriptionVariables = Exact<{
 
 export type AgentResponseSubscription = { __typename?: 'Subscription', agentResponse: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentOperationalPhaseTransitionData', newPhase: AgentOperationalPhase, oldPhase?: AgentOperationalPhase | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } };
 
-
+export const NestedTeamEventFragmentDoc = gql`
+    fragment NestedTeamEvent on GraphQLAgentTeamStreamEvent {
+  eventId
+  timestamp
+  teamId
+  eventSourceType
+  data {
+    __typename
+    ... on GraphQLAgentTeamPhaseTransitionData {
+      newPhase
+      oldPhase
+      errorMessage
+    }
+    ... on GraphQLAgentEventRebroadcastPayload {
+      agentName
+      agentEvent {
+        eventId
+        timestamp
+        eventType
+        agentId
+        data {
+          __typename
+          ... on GraphQLAssistantChunkData {
+            content
+            reasoning
+            isComplete
+            usage {
+              promptTokens
+              completionTokens
+              totalTokens
+              promptCost
+              completionCost
+              totalCost
+            }
+          }
+          ... on GraphQLAssistantCompleteResponseData {
+            content
+            reasoning
+            usage {
+              promptTokens
+              completionTokens
+              totalTokens
+              promptCost
+              completionCost
+              totalCost
+            }
+          }
+          ... on GraphQLToolInteractionLogEntryData {
+            logEntry
+            toolInvocationId
+            toolName
+          }
+          ... on GraphQLAgentOperationalPhaseTransitionData {
+            newPhase
+            oldPhase
+            trigger
+            toolName
+            errorMessage
+            errorDetails
+          }
+          ... on GraphQLErrorEventData {
+            source
+            message
+            details
+          }
+          ... on GraphQLToolInvocationApprovalRequestedData {
+            invocationId
+            toolName
+            arguments
+          }
+          ... on GraphQLToolInvocationAutoExecutingData {
+            invocationId
+            toolName
+            arguments
+          }
+        }
+      }
+    }
+  }
+}
+    `;
 export const CreateAgentDefinitionDocument = gql`
     mutation CreateAgentDefinition($input: CreateAgentDefinitionInput!) {
   createAgentDefinition(input: $input) {
@@ -1631,6 +1741,97 @@ export function useDeleteAgentTeamDefinitionMutation(options: VueApolloComposabl
   return VueApolloComposable.useMutation<DeleteAgentTeamDefinitionMutation, DeleteAgentTeamDefinitionMutationVariables>(DeleteAgentTeamDefinitionDocument, options);
 }
 export type DeleteAgentTeamDefinitionMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<DeleteAgentTeamDefinitionMutation, DeleteAgentTeamDefinitionMutationVariables>;
+export const CreateAgentTeamInstanceDocument = gql`
+    mutation CreateAgentTeamInstance($input: CreateAgentTeamInstanceInput!) {
+  createAgentTeamInstance(input: $input) {
+    success
+    message
+    teamId
+  }
+}
+    `;
+
+/**
+ * __useCreateAgentTeamInstanceMutation__
+ *
+ * To run a mutation, you first call `useCreateAgentTeamInstanceMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useCreateAgentTeamInstanceMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useCreateAgentTeamInstanceMutation({
+ *   variables: {
+ *     input: // value for 'input'
+ *   },
+ * });
+ */
+export function useCreateAgentTeamInstanceMutation(options: VueApolloComposable.UseMutationOptions<CreateAgentTeamInstanceMutation, CreateAgentTeamInstanceMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<CreateAgentTeamInstanceMutation, CreateAgentTeamInstanceMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<CreateAgentTeamInstanceMutation, CreateAgentTeamInstanceMutationVariables>(CreateAgentTeamInstanceDocument, options);
+}
+export type CreateAgentTeamInstanceMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<CreateAgentTeamInstanceMutation, CreateAgentTeamInstanceMutationVariables>;
+export const TerminateAgentTeamInstanceDocument = gql`
+    mutation TerminateAgentTeamInstance($id: String!) {
+  terminateAgentTeamInstance(id: $id) {
+    success
+    message
+  }
+}
+    `;
+
+/**
+ * __useTerminateAgentTeamInstanceMutation__
+ *
+ * To run a mutation, you first call `useTerminateAgentTeamInstanceMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useTerminateAgentTeamInstanceMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useTerminateAgentTeamInstanceMutation({
+ *   variables: {
+ *     id: // value for 'id'
+ *   },
+ * });
+ */
+export function useTerminateAgentTeamInstanceMutation(options: VueApolloComposable.UseMutationOptions<TerminateAgentTeamInstanceMutation, TerminateAgentTeamInstanceMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<TerminateAgentTeamInstanceMutation, TerminateAgentTeamInstanceMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<TerminateAgentTeamInstanceMutation, TerminateAgentTeamInstanceMutationVariables>(TerminateAgentTeamInstanceDocument, options);
+}
+export type TerminateAgentTeamInstanceMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<TerminateAgentTeamInstanceMutation, TerminateAgentTeamInstanceMutationVariables>;
+export const SendMessageToTeamDocument = gql`
+    mutation SendMessageToTeam($input: SendMessageToTeamInput!) {
+  sendMessageToTeam(input: $input) {
+    success
+    message
+  }
+}
+    `;
+
+/**
+ * __useSendMessageToTeamMutation__
+ *
+ * To run a mutation, you first call `useSendMessageToTeamMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useSendMessageToTeamMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useSendMessageToTeamMutation({
+ *   variables: {
+ *     input: // value for 'input'
+ *   },
+ * });
+ */
+export function useSendMessageToTeamMutation(options: VueApolloComposable.UseMutationOptions<SendMessageToTeamMutation, SendMessageToTeamMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<SendMessageToTeamMutation, SendMessageToTeamMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<SendMessageToTeamMutation, SendMessageToTeamMutationVariables>(SendMessageToTeamDocument, options);
+}
+export type SendMessageToTeamMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<SendMessageToTeamMutation, SendMessageToTeamMutationVariables>;
 export const WriteFileContentDocument = gql`
     mutation WriteFileContent($workspaceId: String!, $filePath: String!, $content: String!) {
   writeFileContent(
@@ -2885,6 +3086,49 @@ export function useGetAvailableWorkspaceDefinitionsLazyQuery(options: VueApolloC
   return VueApolloComposable.useLazyQuery<GetAvailableWorkspaceDefinitionsQuery, GetAvailableWorkspaceDefinitionsQueryVariables>(GetAvailableWorkspaceDefinitionsDocument, {}, options);
 }
 export type GetAvailableWorkspaceDefinitionsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAvailableWorkspaceDefinitionsQuery, GetAvailableWorkspaceDefinitionsQueryVariables>;
+export const AgentTeamResponseDocument = gql`
+    subscription AgentTeamResponse($teamId: String!) {
+  agentTeamResponse(teamId: $teamId) {
+    ...NestedTeamEvent
+    data {
+      ... on GraphQLSubTeamEventRebroadcastPayload {
+        subTeamNodeName
+        subTeamEvent {
+          ...NestedTeamEvent
+          data {
+            ... on GraphQLSubTeamEventRebroadcastPayload {
+              subTeamNodeName
+              subTeamEvent {
+                ...NestedTeamEvent
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+    ${NestedTeamEventFragmentDoc}`;
+
+/**
+ * __useAgentTeamResponseSubscription__
+ *
+ * To run a query within a Vue component, call `useAgentTeamResponseSubscription` and pass it any options that fit your needs.
+ * When your component renders, `useAgentTeamResponseSubscription` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param variables that will be passed into the subscription
+ * @param options that will be passed into the subscription, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/subscription.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useAgentTeamResponseSubscription({
+ *   teamId: // value for 'teamId'
+ * });
+ */
+export function useAgentTeamResponseSubscription(variables: AgentTeamResponseSubscriptionVariables | VueCompositionApi.Ref<AgentTeamResponseSubscriptionVariables> | ReactiveFunction<AgentTeamResponseSubscriptionVariables>, options: VueApolloComposable.UseSubscriptionOptions<AgentTeamResponseSubscription, AgentTeamResponseSubscriptionVariables> | VueCompositionApi.Ref<VueApolloComposable.UseSubscriptionOptions<AgentTeamResponseSubscription, AgentTeamResponseSubscriptionVariables>> | ReactiveFunction<VueApolloComposable.UseSubscriptionOptions<AgentTeamResponseSubscription, AgentTeamResponseSubscriptionVariables>> = {}) {
+  return VueApolloComposable.useSubscription<AgentTeamResponseSubscription, AgentTeamResponseSubscriptionVariables>(AgentTeamResponseDocument, variables, options);
+}
+export type AgentTeamResponseSubscriptionCompositionFunctionResult = VueApolloComposable.UseSubscriptionReturn<AgentTeamResponseSubscription, AgentTeamResponseSubscriptionVariables>;
 export const AgentResponseDocument = gql`
     subscription AgentResponse($agentId: String!) {
   agentResponse(agentId: $agentId) {

@@ -1,18 +1,20 @@
 <template>
-  <div class="flex flex-col h-full pt-2">
+  <div class="flex flex-col h-full bg-white pt-2">
     <TabList
-      :tabs="tabs"
-      :selectedTab="activeTab"
-      @select="setActiveTab"
+      :tabs="visibleTabs"
+      :selected-tab="activeTab"
+      @select="handleTabSelect"
     />
 
-    <!-- Tab Content - added top border for separation -->
-    <div class="flex-grow overflow-auto relative border-t border-gray-200">
-      <!-- Use v-if instead of v-show to actually mount/unmount components -->
-      <div v-if="activeTab === 'Terminal'" class="h-full">
+    <!-- Tab Content -->
+    <div class="flex-grow overflow-auto relative mt-[-1px]">
+      <div v-if="activeTab === 'teamMembers'" class="h-full">
+        <TeamMembersPanel />
+      </div>
+      <div v-if="activeTab === 'terminal'" class="h-full">
         <Terminal />
       </div>
-      <div v-if="activeTab === 'VNC Viewer'" class="h-full">
+      <div v-if="activeTab === 'vnc'" class="h-full">
         <VncViewer />
       </div>
     </div>
@@ -20,20 +22,51 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import TabList from '~/components/tabs/TabList.vue'
-import Terminal from '~/components/workspace/Terminal.vue'
-import VncViewer from '~/components/workspace/VncViewer.vue'
+import { ref, computed, watch } from 'vue';
+import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
+import TabList from '~/components/tabs/TabList.vue';
+import TeamMembersPanel from '~/components/workspace/TeamMembersPanel.vue';
+import Terminal from '~/components/workspace/Terminal.vue';
+import VncViewer from '~/components/workspace/VncViewer.vue';
 
-const activeTab = ref('Terminal')
-const tabs = [
-  { name: 'Terminal' },
-  { name: 'VNC Viewer' }
-]
+type TabName = 'teamMembers' | 'terminal' | 'vnc';
 
-const setActiveTab = (tabName: string) => {
-  activeTab.value = tabName;
-}
+const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
+const activeTab = ref<TabName>('terminal');
+
+const allTabs = [
+  { name: 'teamMembers' as TabName, label: 'Team', requires: 'team' },
+  { name: 'terminal' as TabName, label: 'Terminal', requires: 'any' },
+  { name: 'vnc' as TabName, label: 'VNC Viewer', requires: 'any' },
+];
+
+const visibleTabs = computed(() => {
+  return allTabs.filter(tab => {
+    if (tab.requires === 'any') return true;
+    return tab.requires === selectedLaunchProfileStore.selectedProfileType;
+  });
+});
+
+const handleTabSelect = (tabName: string) => {
+  activeTab.value = tabName as TabName;
+};
+
+// Watch for changes in the selected profile type to adjust the active tab
+watch(() => selectedLaunchProfileStore.selectedProfileType, (newType) => {
+  if (newType === 'team') {
+    activeTab.value = 'teamMembers';
+  } else if (newType === 'agent' && activeTab.value === 'teamMembers') {
+    activeTab.value = 'terminal';
+  }
+}, { immediate: true });
+
+// Watch for changes in visible tabs to ensure the active tab is always valid
+watch(visibleTabs, (newVisibleTabs) => {
+  const isCurrentTabVisible = newVisibleTabs.some(tab => tab.name === activeTab.value);
+  if (!isCurrentTabVisible && newVisibleTabs.length > 0) {
+    activeTab.value = newVisibleTabs[0].name;
+  }
+});
 </script>
 
 <style scoped>

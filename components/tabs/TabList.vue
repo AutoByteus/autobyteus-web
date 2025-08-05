@@ -7,7 +7,7 @@
       :selected="selectedTab === tab.name" 
       @select="selectTab"
     >
-      {{ tab.name }}
+      {{ tab.label || tab.name }}
     </Tab>
   </div>
 </template>
@@ -15,10 +15,15 @@
 <script setup lang="ts">
 import Tab from "./Tab.vue";
 
-const props = defineProps({
-  tabs: Array,
-  selectedTab: String
-});
+// Define more specific types for props for better type safety and clarity
+interface TabInfo {
+  name: string;
+  label?: string;
+}
+
+const props = defineProps<{  tabs: TabInfo[];
+  selectedTab: string;
+}>();
 
 const emit = defineEmits(["select"]);
 

@@ -2,30 +2,21 @@ import { defineStore } from 'pinia';
 import { v4 as uuidv4 } from 'uuid';
 import type { AgentDefinition } from './agentDefinitionStore';
 import { useAgentRunStore } from './agentRunStore';
-
-export interface AgentLaunchProfile {
-  id: string; // Renamed from sessionId
-  workspaceId: string | null;
-  agentDefinition: AgentDefinition; 
-  name: string;
-  createdAt: string;
-  workspaceTypeName: string;
-  workspaceConfig: any;
-}
+import { useSelectedLaunchProfileStore } from './selectedLaunchProfileStore';
+import type { AgentLaunchProfile } from '~/types/AgentLaunchProfile';
 
 interface AgentLaunchProfileState {
   activeLaunchProfiles: Record<string, AgentLaunchProfile>;
   inactiveLaunchProfiles: Record<string, AgentLaunchProfile>;
-  activeProfileId: string | null; // Renamed from activeSessionId
+  // activeProfileId is now managed by useSelectedLaunchProfileStore
 }
 
-export const LAUNCH_PROFILE_STORAGE_KEY = 'autobyteus-agent-launch-profiles'; // Renamed from SESSION_STORAGE_KEY
+export const LAUNCH_PROFILE_STORAGE_KEY = 'autobyteus-agent-launch-profiles';
 
-export const useAgentLaunchProfileStore = defineStore('agentLaunchProfile', { // Renamed from agentSession
+export const useAgentLaunchProfileStore = defineStore('agentLaunchProfile', {
   state: (): AgentLaunchProfileState => ({
     activeLaunchProfiles: {},
     inactiveLaunchProfiles: {},
-    activeProfileId: null,
   }),
 
   actions: {
@@ -65,7 +56,7 @@ export const useAgentLaunchProfileStore = defineStore('agentLaunchProfile', { //
       const sanitizedConfig = JSON.parse(JSON.stringify(workspaceConfig));
       const profileId = uuidv4();
       const newProfile: AgentLaunchProfile = {
-        id: profileId, // Renamed from sessionId
+        id: profileId,
         agentDefinition,
         workspaceId,
         name: workspaceId ? `${agentDefinition.name} @ ${workspaceName}` : `${agentDefinition.name} @ No Workspace`,
@@ -80,16 +71,16 @@ export const useAgentLaunchProfileStore = defineStore('agentLaunchProfile', { //
     },
     
     deleteLaunchProfile(profileId: string) {
-      let wasActive = false;
+      const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
+      
       if (this.activeLaunchProfiles[profileId]) {
         delete this.activeLaunchProfiles[profileId];
-        wasActive = true;
       } else if (this.inactiveLaunchProfiles[profileId]) {
         delete this.inactiveLaunchProfiles[profileId];
       }
 
-      if (wasActive && this.activeProfileId === profileId) {
-        this.activeProfileId = null;
+      if (selectedLaunchProfileStore.selectedProfileId === profileId) {
+        selectedLaunchProfileStore.clearSelection();
         const remainingProfiles = this.activeLaunchProfileList;
         if (remainingProfiles.length > 0) {
           this.setActiveLaunchProfile(remainingProfiles[0].id);
@@ -176,17 +167,19 @@ export const useAgentLaunchProfileStore = defineStore('agentLaunchProfile', { //
     },
 
     setActiveLaunchProfile(profileId: string | null, attachToAgentId?: string) {
+      const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
+      
       if (!profileId || !this.activeLaunchProfiles[profileId]) {
-        this.activeProfileId = null;
+        selectedLaunchProfileStore.clearSelection();
         return;
       }
       
-      if (this.activeProfileId === profileId && !attachToAgentId) return;
+      if (selectedLaunchProfileStore.selectedProfileId === profileId && !attachToAgentId) return;
 
-      this.activeProfileId = profileId;
-      console.log(`Active launch profile changed to: ${profileId}`);
+      // This is the main change: update the central store instead of a local state property.
+      selectedLaunchProfileStore.selectProfile(profileId, 'agent');
       
-      // Lazily import to avoid circular dependency issues
+      // The rest of the logic remains here for coherence, as requested.
       const agentRunStore = useAgentRunStore();
       agentRunStore.ensureAgentForLaunchProfile(profileId, attachToAgentId);
     },
@@ -199,11 +192,14 @@ export const useAgentLaunchProfileStore = defineStore('agentLaunchProfile', { //
     activeLaunchProfileList(state): AgentLaunchProfile[] {
         return Object.values(state.activeLaunchProfiles).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     },
-    activeLaunchProfile(state): AgentLaunchProfile | null {
-        if(state.activeProfileId) {
-            return state.activeLaunchProfiles[state.activeProfileId] || null;
-        }
-        return null;
+    activeLaunchProfile(): AgentLaunchProfile | null {
+      const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
+      const { selectedProfileId, selectedProfileType } = selectedLaunchProfileStore;
+
+      if (selectedProfileType === 'agent' && selectedProfileId && this.activeLaunchProfiles[selectedProfileId]) {
+        return this.activeLaunchProfiles[selectedProfileId];
+      }
+      return null;
     }
   }
 });

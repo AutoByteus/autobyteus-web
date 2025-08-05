@@ -11,8 +11,9 @@ import { TreeNode, convertJsonToTreeNode } from '~/utils/fileExplorer/TreeNode'
 import { createNodeIdToNodeDictionary, handleFileSystemChange } from '~/utils/fileExplorer/fileUtils'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
 import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
+import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
+import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 
-// Interface for workspace type definitions used in the creation modal
 export interface WorkspaceType {
   name: string;
   description: string;
@@ -27,8 +28,7 @@ export interface WorkspaceType {
   };
 }
 
-// Richer WorkspaceInfo to include file explorer data and creation config
-interface WorkspaceInfo {
+export interface WorkspaceInfo {
   workspaceId: string;
   name: string;
   fileExplorer: TreeNode;
@@ -37,7 +37,6 @@ interface WorkspaceInfo {
   workspaceConfig: any;
 }
 
-// REFACTORED: WorkspaceState no longer tracks the selected ID.
 interface WorkspaceState {
   workspaces: Record<string, WorkspaceInfo>;
   availableWorkspaceTypes: WorkspaceType[];
@@ -136,22 +135,30 @@ export const useWorkspaceStore = defineStore('workspace', {
     }
   },
   getters: {
-    // REWRITTEN: activeWorkspace now derives its value from agentLaunchProfileStore.
     activeWorkspace(): WorkspaceInfo | null {
-      const launchProfileStore = useAgentLaunchProfileStore();
-      const activeLaunchProfile = launchProfileStore.activeLaunchProfile;
-      if (activeLaunchProfile?.workspaceId && this.workspaces[activeLaunchProfile.workspaceId]) {
-        return this.workspaces[activeLaunchProfile.workspaceId];
+      const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
+      const agentProfileStore = useAgentLaunchProfileStore();
+      const teamContextsStore = useAgentTeamContextsStore();
+
+      const { selectedProfileId, selectedProfileType } = selectedLaunchProfileStore;
+      if (!selectedProfileId) return null;
+
+      let workspaceId: string | null = null;
+
+      if (selectedProfileType === 'agent') {
+        const agentProfile = agentProfileStore.activeLaunchProfile;
+        workspaceId = agentProfile?.workspaceId || null;
+      } else if (selectedProfileType === 'team') {
+        const focusedMember = teamContextsStore.focusedMemberContext;
+        workspaceId = focusedMember?.config.workspaceId || null;
       }
-      return null;
+      
+      return workspaceId ? this.workspaces[workspaceId] : null;
     },
-    
-    // REMOVED: currentSelectedWorkspaceId is no longer needed.
     
     allWorkspaceIds: (state): string[] => Object.keys(state.workspaces),
     allWorkspaces: (state): WorkspaceInfo[] => Object.values(state.workspaces),
     
-    // REWRITTEN: currentWorkspaceTree now uses the new activeWorkspace getter.
     currentWorkspaceTree(): TreeNode | null {
       return this.activeWorkspace ? this.activeWorkspace.fileExplorer : null;
     }
