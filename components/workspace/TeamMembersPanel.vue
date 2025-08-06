@@ -35,29 +35,48 @@
     <!-- Footer Actions -->
     <div class="p-4 border-t border-gray-200 flex-shrink-0">
       <button
-        @click="terminateTeam"
-        class="w-full flex items-center justify-center px-4 py-2 bg-red-600 text-white font-semibold text-sm rounded-md hover:bg-red-700 transition-colors"
+        @click="promptTerminateTeam"
+        :disabled="isTeamInstanceTemporary"
+        class="w-full flex items-center justify-center px-4 py-2 bg-red-600 text-white font-semibold text-sm rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <span class="i-heroicons-stop-circle-20-solid w-5 h-5 mr-2"></span>
         Terminate Team
       </button>
     </div>
+    
+    <!-- Delete Confirmation Dialog -->
+    <AgentDeleteConfirmDialog
+      :show="showTerminateConfirm"
+      :item-name="teamName"
+      item-type="Team Instance"
+      title="Terminate Team Instance"
+      confirm-text="Terminate"
+      @confirm="onTerminateConfirmed"
+      @cancel="onTerminateCanceled"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
 import AgentStatusDisplay from '~/components/workspace/AgentStatusDisplay.vue';
+import AgentDeleteConfirmDialog from '~/components/agents/AgentDeleteConfirmDialog.vue';
 
 const teamContextsStore = useAgentTeamContextsStore();
 const teamRunStore = useAgentTeamRunStore();
 
+const showTerminateConfirm = ref(false);
+
 const teamMembers = computed(() => teamContextsStore.teamMembers);
 const focusedMemberName = computed(() => teamContextsStore.focusedMemberContext?.state.agentId);
-const teamName = computed(() => teamContextsStore.activeTeamContext?.launchProfile.name);
+const teamName = computed(() => teamContextsStore.activeTeamContext?.launchProfile.name || 'this team');
 const coordinatorName = computed(() => teamContextsStore.activeTeamContext?.launchProfile.teamDefinition.coordinatorMemberName);
+
+const isTeamInstanceTemporary = computed(() => {
+  return teamContextsStore.activeTeamContext?.teamId.startsWith('temp-') ?? false;
+});
 
 const isCoordinator = (memberName: string) => {
   return memberName === coordinatorName.value;
@@ -67,9 +86,16 @@ const selectMember = (memberName: string) => {
   teamContextsStore.setFocusedMember(memberName);
 };
 
-const terminateTeam = () => {
-  if (confirm("Are you sure you want to terminate this entire team? This action cannot be undone.")) {
-    teamRunStore.terminateActiveTeam();
-  }
+const promptTerminateTeam = () => {
+  showTerminateConfirm.value = true;
+};
+
+const onTerminateConfirmed = () => {
+  teamRunStore.terminateActiveTeam();
+  showTerminateConfirm.value = false;
+};
+
+const onTerminateCanceled = () => {
+  showTerminateConfirm.value = false;
 };
 </script>

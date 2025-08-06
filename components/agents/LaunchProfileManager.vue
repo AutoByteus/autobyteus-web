@@ -9,25 +9,59 @@
       <div v-else>
         <!-- Teams Section -->
         <div class="mb-12">
-          <h2 class="text-xl font-semibold text-gray-800 mb-4">Team Profiles</h2>
-          <div v-if="teamProfiles.length === 0" class="text-center bg-gray-50 rounded-lg py-12 px-6 border border-gray-200">
-            <h3 class="text-lg font-medium text-gray-900">No Team Profiles</h3>
-            <p class="mt-1 text-sm text-gray-500">Create a new team profile from the "Agent Teams" page.</p>
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">Team Launch Profiles</h2>
+          <p class="text-gray-500 mb-6">Manage saved configurations for running agent teams.</p>
+          
+          <!-- Active Team Profiles -->
+          <div class="mb-10">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Active Team Profiles</h3>
+            <div v-if="activeTeamProfiles.length === 0" class="text-center bg-gray-50 rounded-lg py-12 px-6 border border-gray-200">
+              <h3 class="text-lg font-medium text-gray-900">No Active Team Profiles</h3>
+              <p class="mt-1 text-sm text-gray-500">Launch a team from an inactive profile, or create a new one from the "Agent Teams" page.</p>
+            </div>
+            <div v-else class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              <TeamLaunchProfileCard
+                v-for="profile in activeTeamProfiles"
+                :key="profile.id"
+                :profile="profile"
+                :is-active="true"
+                :instance-count="getInstanceCount(profile.id)"
+                @open="handleOpenTeam"
+                @delete="promptDeleteTeam"
+              />
+            </div>
           </div>
-          <div v-else class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            <!-- TeamProfileCard will go here -->
-            <div v-for="profile in teamProfiles" :key="profile.id" class="p-4 border rounded-lg bg-purple-50">
-              <p>{{ profile.name }}</p>
-              <p class="text-xs">Team: {{ profile.teamDefinition.name }}</p>
-              <button @click="relaunchTeam(profile)" class="mt-2 text-sm bg-purple-500 text-white p-2">Re-launch</button>
-              <button @click="deleteTeamProfile(profile.id)" class="mt-2 text-sm bg-red-500 text-white p-2">Delete</button>
+
+          <!-- Inactive Team Profiles -->
+          <div>
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Inactive Team Profiles</h3>
+            <div v-if="inactiveTeamProfiles.length === 0" class="text-center bg-gray-50 rounded-lg py-12 px-6 border border-gray-200">
+              <h3 class="text-lg font-medium text-gray-900">No Inactive Team Profiles</h3>
+              <p class="mt-1 text-sm text-gray-500">Your profile history is clear.</p>
+            </div>
+            <div v-else class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              <TeamLaunchProfileCard
+                v-for="profile in inactiveTeamProfiles"
+                :key="profile.id"
+                :profile="profile"
+                :is-active="false"
+                :instance-count="0"
+                @launch="handleLaunchTeam"
+                @delete="promptDeleteTeam"
+              />
             </div>
           </div>
         </div>
 
+        <!-- Spacer -->
+        <hr class="my-12 border-gray-200">
+
         <!-- Active Agent Profiles -->
         <div class="mb-12">
-          <h2 class="text-xl font-semibold text-gray-800 mb-4">Active Agent Profiles</h2>
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">Agent Launch Profiles</h2>
+           <p class="text-gray-500 mb-6">Manage saved configurations for running single agents.</p>
+
+          <h3 class="text-xl font-semibold text-gray-800 mb-4">Active Agent Profiles</h3>
           <div v-if="activeAgentProfiles.length === 0" class="text-center bg-gray-50 rounded-lg py-12 px-6 border border-gray-200">
             <h3 class="text-lg font-medium text-gray-900">No Active Agent Profiles</h3>
             <p class="mt-1 text-sm text-gray-500">Reactivate a profile from your inactive profiles list, or create a new one from the "Local Agents" page.</p>
@@ -66,7 +100,7 @@
 
         <!-- Inactive Agent Profiles -->
         <div>
-          <h2 class="text-xl font-semibold text-gray-800 mb-4">Inactive Agent Profiles</h2>
+          <h3 class="text-xl font-semibold text-gray-800 mb-4">Inactive Agent Profiles</h3>
           <div v-if="inactiveAgentProfiles.length === 0 && activeAgentProfiles.length > 0" class="text-center bg-gray-50 rounded-lg py-12 px-6 border border-gray-200">
              <h3 class="text-lg font-medium text-gray-900">No Inactive Agent Profiles</h3>
              <p class="mt-1 text-sm text-gray-500">Your profile history is clear.</p>
@@ -111,7 +145,17 @@
       </div>
     </div>
 
-    <!-- Reactivate Profile Dialog -->
+    <!-- Team Launch Modal -->
+    <TeamLaunchConfigModal 
+      v-if="teamToLaunch"
+      :show="showTeamLaunchModal"
+      :team-definition="teamToLaunch.teamDefinition"
+      :existing-profile="teamToLaunch"
+      @close="showTeamLaunchModal = false"
+      @success="onLaunchSuccess"
+    />
+
+    <!-- Reactivate Agent Profile Dialog -->
     <ReactivateProfileDialog
       :show="showReactivateDialog"
       :launch-profile="profileToReactivate"
@@ -122,10 +166,10 @@
     <!-- Delete Confirmation Dialog -->
     <AgentDeleteConfirmDialog
       :show="showDeleteConfirm"
-      :item-name="profileToDelete ? profileToDelete.name : ''"
-      item-type="Launch Profile"
-      title="Delete Launch Profile"
-      confirm-text="Delete Profile"
+      :item-name="itemToDelete ? itemToDelete.name : ''"
+      :item-type="itemToDeleteType"
+      :title="'Delete ' + itemToDeleteType"
+      :confirm-text="'Delete ' + itemToDeleteType"
       @confirm="onDeleteConfirmed"
       @cancel="onDeleteCanceled"
     />
@@ -136,33 +180,38 @@
 import { computed, ref, onMounted } from 'vue';
 import { useAgentLaunchProfileStore, type AgentLaunchProfile } from '~/stores/agentLaunchProfileStore';
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
-import { useWorkspaceStore } from '~/stores/workspace';
+import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import AgentDeleteConfirmDialog from '~/components/agents/AgentDeleteConfirmDialog.vue';
 import ReactivateProfileDialog from '~/components/agents/ReactivateProfileDialog.vue';
-import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
+import TeamLaunchConfigModal from '~/components/agentTeams/TeamLaunchConfigModal.vue';
+import TeamLaunchProfileCard from '~/components/agents/TeamLaunchProfileCard.vue';
 import type { TeamLaunchProfile } from '~/types/TeamLaunchProfile';
 
 const agentProfileStore = useAgentLaunchProfileStore();
 const teamProfileStore = useAgentTeamLaunchProfileStore();
-const workspaceStore = useWorkspaceStore();
-const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
+const teamContextsStore = useAgentTeamContextsStore();
 const router = useRouter();
 
-onMounted(() => {
-  // Data is loaded in workspace.vue, we just access it here.
-});
-
+// --- Agent Profile State ---
 const activeAgentProfiles = computed(() => agentProfileStore.activeLaunchProfileList);
 const inactiveAgentProfiles = computed(() => agentProfileStore.inactiveLaunchProfileList);
-const teamProfiles = computed(() => teamProfileStore.allLaunchProfiles);
-
 const isRestoring = ref(false);
-const showDeleteConfirm = ref(false);
-const profileToDelete = ref<AgentLaunchProfile | null>(null);
-
-const showReactivateDialog = ref(false);
 const profileToReactivate = ref<AgentLaunchProfile | null>(null);
+const showReactivateDialog = ref(false);
 
+// --- Team Profile State ---
+const activeTeamProfiles = computed(() => teamProfileStore.activeLaunchProfiles);
+const inactiveTeamProfiles = computed(() => teamProfileStore.inactiveLaunchProfiles);
+const showTeamLaunchModal = ref(false);
+const teamToLaunch = ref<TeamLaunchProfile | null>(null);
+
+// --- Shared Delete State ---
+const showDeleteConfirm = ref(false);
+const itemToDelete = ref<AgentLaunchProfile | TeamLaunchProfile | null>(null);
+const itemToDeleteType = ref<'Launch Profile' | 'Team Launch Profile'>('Launch Profile');
+
+
+// --- Agent Profile Methods ---
 const openAgentProfile = async (profileId: string) => {
   agentProfileStore.setActiveLaunchProfile(profileId);
   await router.push('/workspace');
@@ -205,31 +254,58 @@ const handleReactivateConfirm = async (payload: { choice: 'recreate' | 'attach',
 };
 
 const promptDeleteAgent = (profile: AgentLaunchProfile) => {
-  profileToDelete.value = profile;
+  itemToDelete.value = profile;
+  itemToDeleteType.value = 'Launch Profile';
   showDeleteConfirm.value = true;
 };
 
+
+// --- Team Profile Methods ---
+const getInstanceCount = (profileId: string) => {
+  return teamContextsStore.allRunningTeamInstancesAcrossProfiles.filter(
+    instance => instance.launchProfile.id === profileId
+  ).length;
+};
+
+const handleOpenTeam = (profile: TeamLaunchProfile) => {
+  teamProfileStore.setActiveLaunchProfile(profile.id);
+  router.push('/workspace');
+};
+
+const handleLaunchTeam = (profile: TeamLaunchProfile) => {
+  teamToLaunch.value = profile;
+  showTeamLaunchModal.value = true;
+};
+
+const onLaunchSuccess = () => {
+  showTeamLaunchModal.value = false;
+  teamToLaunch.value = null;
+  router.push('/workspace');
+};
+
+const promptDeleteTeam = (profile: TeamLaunchProfile) => {
+  itemToDelete.value = profile;
+  itemToDeleteType.value = 'Team Launch Profile';
+  showDeleteConfirm.value = true;
+};
+
+
+// --- Shared Delete Methods ---
 const onDeleteConfirmed = () => {
-  if (profileToDelete.value) {
-    agentProfileStore.deleteLaunchProfile(profileToDelete.value.id);
+  if (!itemToDelete.value) return;
+  
+  if (itemToDeleteType.value === 'Launch Profile') {
+    agentProfileStore.deleteLaunchProfile(itemToDelete.value.id);
+  } else {
+    teamProfileStore.deleteLaunchProfile(itemToDelete.value.id);
   }
+  
   onDeleteCanceled();
 };
 
 const onDeleteCanceled = () => {
   showDeleteConfirm.value = false;
-  profileToDelete.value = null;
-};
-
-const deleteTeamProfile = (profileId: string) => {
-  if(confirm("Are you sure you want to delete this team profile?")) {
-    teamProfileStore.deleteLaunchProfile(profileId);
-  }
-};
-
-const relaunchTeam = (profile: TeamLaunchProfile) => {
-  // This will be implemented with the modal
-  alert(`Re-launching team: ${profile.name}`);
+  itemToDelete.value = null;
 };
 
 </script>

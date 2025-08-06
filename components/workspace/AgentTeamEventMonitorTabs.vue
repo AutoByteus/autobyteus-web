@@ -12,6 +12,7 @@
             team.teamId === currentSelectedTeamId
               ? 'bg-white text-purple-600 border-x border-t border-gray-200'
               : 'bg-gray-200 text-gray-600 hover:bg-gray-300',
+            team.teamId.startsWith('temp-') && 'italic'
           ]"
           @click="handleSelectTeam(team.teamId)"
           :title="getTabTitle(team)"
@@ -21,8 +22,8 @@
             role="button"
             tabindex="0"
             class="ml-2 text-gray-500 hover:text-red-600 cursor-pointer"
-            @click.stop="handleCloseTeam(team.teamId)"
-            @keydown.enter.stop="handleCloseTeam(team.teamId)"
+            @click.stop="promptCloseTeam(team.teamId)"
+            @keydown.enter.stop="promptCloseTeam(team.teamId)"
             title="Terminate Team Instance"
           >
             &times;
@@ -31,33 +32,71 @@
       </div>
     </div>
   </div>
+  
+  <!-- Delete Confirmation Dialog -->
+  <AgentDeleteConfirmDialog
+    :show="showTerminateConfirm"
+    :item-name="itemToDeleteName"
+    item-type="Team Instance"
+    title="Terminate Team Instance"
+    confirm-text="Terminate"
+    @confirm="onTerminateConfirmed"
+    @cancel="onTerminateCanceled"
+  />
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
+import AgentDeleteConfirmDialog from '~/components/agents/AgentDeleteConfirmDialog.vue';
 
 const teamContextsStore = useAgentTeamContextsStore();
 const teamRunStore = useAgentTeamRunStore();
 
+const showTerminateConfirm = ref(false);
+const teamIdToTerminate = ref('');
+
 const allTeamInstances = computed(() => teamContextsStore.allTeamInstances);
 const currentSelectedTeamId = computed(() => teamContextsStore.selectedTeamId);
 
+const itemToDeleteName = computed(() => {
+  if (!teamIdToTerminate.value) return '';
+  const team = allTeamInstances.value.find(t => t.teamId === teamIdToTerminate.value);
+  return team ? getTabLabel(team) : `Instance ${teamIdToTerminate.value.slice(-6).toUpperCase()}`;
+});
+
 const getTabLabel = (team: AgentTeamContext) => {
+  if (team.teamId.startsWith('temp-')) {
+    return `New - ${team.launchProfile.name.replace(' Launch ', ' ')}`;
+  }
   const idSuffix = team.teamId.slice(-6).toUpperCase();
   return `Instance ${idSuffix}`;
 };
 
 const getTabTitle = (team: AgentTeamContext) => {
+  if (team.teamId.startsWith('temp-')) {
+    return `New unsaved instance for profile: "${team.launchProfile.name}"`;
+  }
   return `Team Instance ID: ${team.teamId}`;
 };
 
-const handleCloseTeam = async (teamId: string) => {
-  if (confirm(`Are you sure you want to terminate instance ${teamId.slice(-6).toUpperCase()}?`)) {
-    await teamRunStore.terminateTeamInstance(teamId);
+const promptCloseTeam = (teamId: string) => {
+  teamIdToTerminate.value = teamId;
+  showTerminateConfirm.value = true;
+};
+
+const onTerminateConfirmed = async () => {
+  if (teamIdToTerminate.value) {
+    await teamRunStore.terminateTeamInstance(teamIdToTerminate.value);
   }
+  onTerminateCanceled();
+};
+
+const onTerminateCanceled = () => {
+  showTerminateConfirm.value = false;
+  teamIdToTerminate.value = '';
 };
 
 const handleSelectTeam = (teamId: string) => {

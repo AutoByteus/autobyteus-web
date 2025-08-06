@@ -342,7 +342,7 @@ const handleLaunch = async () => {
   try {
     // 1. Create the persistent launch profile.
     const newPersistentProfile = teamProfileStore.createLaunchProfile(props.teamDefinition, {
-      name: `${props.teamDefinition.name} Launch - ${new Date().toLocaleTimeString()}`,
+      name: `${props.teamDefinition.name} - ${new Date().toLocaleTimeString()}`,
       globalConfig: JSON.parse(JSON.stringify(globalConfig)),
       memberOverrides: JSON.parse(JSON.stringify(Object.values(memberOverrides).filter(ov => Object.keys(ov).length > 1))),
     });

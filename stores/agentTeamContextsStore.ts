@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { useSelectedLaunchProfileStore } from './selectedLaunchProfileStore';
 import { useAgentTeamLaunchProfileStore } from './agentTeamLaunchProfileStore';
 import { useAgentTeamRunStore } from './agentTeamRunStore';
+import { AgentOperationalPhase } from '~/generated/graphql';
 
 import { AgentRunState } from '~/types/agent/AgentRunState';
 import { AgentContext } from '~/types/agent/AgentContext';
@@ -71,6 +72,20 @@ export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
      */
     allTeamInstances(): AgentTeamContext[] {
         return this._currentProfileState ? Array.from(this._currentProfileState.activeTeams.values()) : [];
+    },
+
+    /**
+     * @getter allRunningTeamInstancesAcrossProfiles
+     * @description Returns an array of all active team instances across ALL launch profiles.
+     */
+    allRunningTeamInstancesAcrossProfiles(state): AgentTeamContext[] {
+      const allInstances: AgentTeamContext[] = [];
+      for (const profileState of state.teamsByLaunchProfile.values()) {
+        for (const teamInstance of profileState.activeTeams.values()) {
+          allInstances.push(teamInstance);
+        }
+      }
+      return allInstances;
     },
 
     /**
@@ -169,7 +184,7 @@ export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
         launchProfile: profile,
         members: members,
         focusedMemberName: profile.teamDefinition.coordinatorMemberName,
-        currentPhase: 'BOOTSTRAPPING',
+        currentPhase: AgentOperationalPhase.Uninitialized,
         isSubscribed: false,
         unsubscribe: undefined,
       };

@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { AgentTeamDefinition } from './agentTeamDefinitionStore';
 import type { TeamLaunchProfile, TeamMemberConfigOverride } from '~/types/TeamLaunchProfile';
 import { useSelectedLaunchProfileStore } from './selectedLaunchProfileStore';
+import { useAgentTeamContextsStore } from './agentTeamContextsStore';
 
 interface AgentTeamLaunchProfileState {
   profiles: Record<string, TeamLaunchProfile>;
@@ -96,6 +97,22 @@ export const useAgentTeamLaunchProfileStore = defineStore('agentTeamLaunchProfil
       return Object.values(state.profiles).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     },
     
+    _runningProfileIds(): Set<string> {
+      const teamContextsStore = useAgentTeamContextsStore();
+      const runningInstanceProfileIds = teamContextsStore.allRunningTeamInstancesAcrossProfiles.map(instance => instance.launchProfile.id);
+      return new Set(runningInstanceProfileIds);
+    },
+
+    activeLaunchProfiles(): TeamLaunchProfile[] {
+      const runningIds = this._runningProfileIds;
+      return this.allLaunchProfiles.filter(p => runningIds.has(p.id));
+    },
+    
+    inactiveLaunchProfiles(): TeamLaunchProfile[] {
+      const runningIds = this._runningProfileIds;
+      return this.allLaunchProfiles.filter(p => !runningIds.has(p.id));
+    },
+
     activeLaunchProfile(): TeamLaunchProfile | null {
       const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
       const { selectedProfileId, selectedProfileType } = selectedLaunchProfileStore;
