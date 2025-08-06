@@ -160,11 +160,10 @@ const openLaunchModal = () => {
   isLaunchModalOpen.value = true;
 };
 
-const onLaunchSuccess = (teamId: string) => {
-  showNotification('Team launched successfully! Navigating to workspace...', 'success');
-  setTimeout(() => {
-    router.push('/workspace'); // Or a specific team workspace view in the future
-  }, 1500);
+const onLaunchSuccess = () => {
+  isLaunchModalOpen.value = false;
+  // Navigate to the main workspace view. The correct profile will be active.
+  router.push('/workspace');
 };
 
 const handleDelete = (id: string) => {

@@ -152,7 +152,7 @@
             <button type="button" @click="closeModal" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
             <button type="submit" :disabled="isSubmitting" class="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 flex items-center">
               <span v-if="isSubmitting" class="i-heroicons-arrow-path-20-solid w-4 h-4 mr-2 animate-spin"></span>
-              {{ isSubmitting ? 'Launching...' : 'Launch Team' }}
+              {{ isSubmitting ? 'Setting up...' : 'Set up Team' }}
             </button>
           </div>
         </form>
@@ -166,8 +166,8 @@ import { ref, computed, watch, reactive } from 'vue';
 import type { AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import { useWorkspaceStore } from '~/stores/workspace';
-import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
+import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import type { TeamLaunchProfile, WorkspaceLaunchConfig, TeamMemberConfigOverride } from '~/types/TeamLaunchProfile';
 import WorkspaceConfigForm from '~/components/workspace/WorkspaceConfigForm.vue';
 
@@ -180,10 +180,10 @@ const emit = defineEmits(['close', 'success']);
 
 const llmStore = useLLMProviderConfigStore();
 const workspaceStore = useWorkspaceStore();
-const agentTeamRunStore = useAgentTeamRunStore();
 const teamProfileStore = useAgentTeamLaunchProfileStore();
+const teamContextsStore = useAgentTeamContextsStore();
 
-const isSubmitting = ref(false);
+const isSubmitting = ref(false); // Local state for button, distinct from runStore.isLaunching
 const isInitialized = ref(false);
 
 const uiState = reactive({
@@ -232,7 +232,6 @@ const setMemberWorkspaceMode = (memberName: string, mode: 'default' | 'none' | '
     return;
   }
   
-  // Auto-collapse for simple selections
   if (mode === 'none' || (mode === 'existing' && workspaceStore.allWorkspaces.length > 0)) {
      uiState.editingWorkspaceForAgent = null;
   }
@@ -307,12 +306,16 @@ watch(() => props.show, async (isVisible) => {
     isInitialized.value = false;
     await Promise.all([
       llmStore.fetchProvidersWithModels(),
-      workspaceStore.fetchAvailableWorkspaceTypes()
+      workspaceStore.fetchAvailableWorkspaceTypes(),
+      // Ensure workspaces are loaded. Assuming a fetch method exists.
+      // If not, this might need to be adjusted.
+      // For now, we assume the getter `allWorkspaces` is populated elsewhere.
     ]);
     initializeFormState();
     isInitialized.value = true;
   }
 }, { immediate: true });
+
 
 watch(() => globalConfig.workspaceConfig.mode, (newMode) => {
   if (newMode === 'new' && !globalConfig.workspaceConfig.newWorkspaceConfig) {
@@ -337,26 +340,24 @@ watch(() => globalConfig.workspaceConfig.mode, (newMode) => {
 const handleLaunch = async () => {
   isSubmitting.value = true;
   try {
-    // 1. Create a persistent profile from the form data. This returns the full profile object with a real UUID.
+    // 1. Create the persistent launch profile.
     const newPersistentProfile = teamProfileStore.createLaunchProfile(props.teamDefinition, {
       name: `${props.teamDefinition.name} Launch - ${new Date().toLocaleTimeString()}`,
       globalConfig: JSON.parse(JSON.stringify(globalConfig)),
       memberOverrides: JSON.parse(JSON.stringify(Object.values(memberOverrides).filter(ov => Object.keys(ov).length > 1))),
     });
 
-    // 2. Call the run store's launch action with the newly created, persistent profile.
-    const result = await agentTeamRunStore.launchNewInstanceFromProfile(newPersistentProfile);
+    // 2. Set the newly created profile as the active one.
+    teamProfileStore.setActiveLaunchProfile(newPersistentProfile.id);
 
-    if (result.success && result.teamId) {
-      // The profile is already saved. We just need to emit success.
-      emit('success', result.teamId);
-      closeModal();
-    } else {
-      // If launch fails, the profile still exists. This is acceptable.
-      alert(`Failed to launch team: ${result.message}`);
-    }
+    // 3. Create the temporary local context for the UI. This will now succeed.
+    teamContextsStore.createTemporaryTeamContext(newPersistentProfile);
+    
+    emit('success');
+    closeModal();
+
   } catch (error: any) {
-    console.error("Error launching team:", error);
+    console.error("Error setting up local team context:", error);
     alert(`An unexpected error occurred: ${error.message}`);
   } finally {
     isSubmitting.value = false;

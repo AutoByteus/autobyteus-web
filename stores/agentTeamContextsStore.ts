@@ -99,6 +99,15 @@ export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
     teamMembers(): AgentContext[] {
       if (!this.activeTeamContext) return [];
       return Array.from(this.activeTeamContext.members.values());
+    },
+
+    getTeamContextById: (state) => (teamId: string): AgentTeamContext | null => {
+      for (const profileState of state.teamsByLaunchProfile.values()) {
+        if (profileState.activeTeams.has(teamId)) {
+          return profileState.activeTeams.get(teamId)!;
+        }
+      }
+      return null;
     }
   },
 
@@ -122,22 +131,82 @@ export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
     },
 
     /**
-     * @action createNewTeamContext
-     * @description Orchestrates the creation of a new team instance.
+     * @action createTemporaryTeamContext
+     * @description Creates a new, local-only team context from a launch profile.
      */
-    async createNewTeamContext() {
-      const teamRunStore = useAgentTeamRunStore();
-      const teamLaunchProfileStore = useAgentTeamLaunchProfileStore();
+    createTemporaryTeamContext(profile: TeamLaunchProfile) {
+      const profileState = this._getOrCreateCurrentProfileState();
+      const tempId = `temp-team-${Date.now()}`;
 
-      const activeLaunchProfile = teamLaunchProfileStore.activeLaunchProfile;
-      if (!activeLaunchProfile) {
-        throw new Error("Cannot create new team context: No active team launch profile.");
+      const members = new Map<string, AgentContext>();
+      const agentNodes = profile.teamDefinition.nodes.filter(n => n.referenceType === 'AGENT');
+
+      for (const memberNode of agentNodes) {
+        const override = profile.memberOverrides.find(ov => ov.memberName === memberNode.memberName);
+        const conversation: Conversation = {
+          id: `${tempId}::${memberNode.memberName}`,
+          messages: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        const agentState = new AgentRunState(memberNode.memberName, conversation);
+        const agentContext = new AgentContext(
+          {
+            launchProfileId: profile.id,
+            workspaceId: null, // This will be resolved at runtime
+            llmModelName: override?.llmModelName || profile.globalConfig.llmModelName,
+            autoExecuteTools: override?.autoExecuteTools ?? profile.globalConfig.autoExecuteTools,
+            parseToolCalls: true,
+          },
+          agentState
+        );
+        members.set(memberNode.memberName, agentContext);
       }
-      
-      // The run store will handle backend communication and then call back to add the context.
-      await teamRunStore.launchNewInstanceFromProfile(activeLaunchProfile);
+
+      const newTeamContext: AgentTeamContext = {
+        teamId: tempId,
+        launchProfile: profile,
+        members: members,
+        focusedMemberName: profile.teamDefinition.coordinatorMemberName,
+        currentPhase: 'BOOTSTRAPPING',
+        isSubscribed: false,
+        unsubscribe: undefined,
+      };
+
+      this.addTeamContext(newTeamContext);
     },
 
+    promoteTemporaryTeamId(temporaryId: string, permanentId: string) {
+        const teamContext = this.getTeamContextById(temporaryId);
+        if (!teamContext) {
+            console.error(`Cannot promote ID: Temporary team context ${temporaryId} not found.`);
+            return;
+        }
+
+        const profileState = this._getOrCreateCurrentProfileState();
+        if (!profileState || !profileState.activeTeams.has(temporaryId)) {
+            console.error(`Inconsistency: Team context ${temporaryId} found, but not in its profile's active map.`);
+            return;
+        }
+
+        // Update the context object itself
+        teamContext.teamId = permanentId;
+        // Also update conversation IDs for each member
+        teamContext.members.forEach(member => {
+          member.state.conversation.id = `${permanentId}::${member.state.agentId}`;
+        });
+        
+        // Update the map key
+        profileState.activeTeams.delete(temporaryId);
+        profileState.activeTeams.set(permanentId, teamContext);
+        
+        // Update selection if it was the selected one
+        if (profileState.selectedTeamId === temporaryId) {
+            profileState.selectedTeamId = permanentId;
+        }
+    },
+    
     /**
      * @action addTeamContext
      * @description Adds a fully-formed team context to the current profile's state.

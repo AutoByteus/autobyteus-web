@@ -780,8 +780,10 @@ export type SendAgentUserInputResult = {
 };
 
 export type SendMessageToTeamInput = {
+  memberConfigs?: InputMaybe<Array<TeamMemberConfigInput>>;
   targetNodeName?: InputMaybe<Scalars['String']['input']>;
-  teamId: Scalars['String']['input'];
+  teamDefinitionId?: InputMaybe<Scalars['String']['input']>;
+  teamId?: InputMaybe<Scalars['String']['input']>;
   userInput: AgentUserInput;
 };
 
@@ -789,6 +791,7 @@ export type SendMessageToTeamResult = {
   __typename?: 'SendMessageToTeamResult';
   message: Scalars['String']['output'];
   success: Scalars['Boolean']['output'];
+  teamId?: Maybe<Scalars['String']['output']>;
 };
 
 export type ServerSetting = {
@@ -1080,13 +1083,6 @@ export type DeleteAgentTeamDefinitionMutationVariables = Exact<{
 
 export type DeleteAgentTeamDefinitionMutation = { __typename?: 'Mutation', deleteAgentTeamDefinition: { __typename?: 'DeleteAgentTeamDefinitionResult', success: boolean, message: string } };
 
-export type CreateAgentTeamInstanceMutationVariables = Exact<{
-  input: CreateAgentTeamInstanceInput;
-}>;
-
-
-export type CreateAgentTeamInstanceMutation = { __typename?: 'Mutation', createAgentTeamInstance: { __typename?: 'CreateAgentTeamInstanceResult', success: boolean, message: string, teamId?: string | null } };
-
 export type TerminateAgentTeamInstanceMutationVariables = Exact<{
   id: Scalars['String']['input'];
 }>;
@@ -1099,7 +1095,7 @@ export type SendMessageToTeamMutationVariables = Exact<{
 }>;
 
 
-export type SendMessageToTeamMutation = { __typename?: 'Mutation', sendMessageToTeam: { __typename?: 'SendMessageToTeamResult', success: boolean, message: string } };
+export type SendMessageToTeamMutation = { __typename?: 'Mutation', sendMessageToTeam: { __typename?: 'SendMessageToTeamResult', success: boolean, message: string, teamId?: string | null } };
 
 export type WriteFileContentMutationVariables = Exact<{
   workspaceId: Scalars['String']['input'];
@@ -1741,37 +1737,6 @@ export function useDeleteAgentTeamDefinitionMutation(options: VueApolloComposabl
   return VueApolloComposable.useMutation<DeleteAgentTeamDefinitionMutation, DeleteAgentTeamDefinitionMutationVariables>(DeleteAgentTeamDefinitionDocument, options);
 }
 export type DeleteAgentTeamDefinitionMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<DeleteAgentTeamDefinitionMutation, DeleteAgentTeamDefinitionMutationVariables>;
-export const CreateAgentTeamInstanceDocument = gql`
-    mutation CreateAgentTeamInstance($input: CreateAgentTeamInstanceInput!) {
-  createAgentTeamInstance(input: $input) {
-    success
-    message
-    teamId
-  }
-}
-    `;
-
-/**
- * __useCreateAgentTeamInstanceMutation__
- *
- * To run a mutation, you first call `useCreateAgentTeamInstanceMutation` within a Vue component and pass it any options that fit your needs.
- * When your component renders, `useCreateAgentTeamInstanceMutation` returns an object that includes:
- * - A mutate function that you can call at any time to execute the mutation
- * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
- *
- * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
- *
- * @example
- * const { mutate, loading, error, onDone } = useCreateAgentTeamInstanceMutation({
- *   variables: {
- *     input: // value for 'input'
- *   },
- * });
- */
-export function useCreateAgentTeamInstanceMutation(options: VueApolloComposable.UseMutationOptions<CreateAgentTeamInstanceMutation, CreateAgentTeamInstanceMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<CreateAgentTeamInstanceMutation, CreateAgentTeamInstanceMutationVariables>> = {}) {
-  return VueApolloComposable.useMutation<CreateAgentTeamInstanceMutation, CreateAgentTeamInstanceMutationVariables>(CreateAgentTeamInstanceDocument, options);
-}
-export type CreateAgentTeamInstanceMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<CreateAgentTeamInstanceMutation, CreateAgentTeamInstanceMutationVariables>;
 export const TerminateAgentTeamInstanceDocument = gql`
     mutation TerminateAgentTeamInstance($id: String!) {
   terminateAgentTeamInstance(id: $id) {
@@ -1807,6 +1772,7 @@ export const SendMessageToTeamDocument = gql`
   sendMessageToTeam(input: $input) {
     success
     message
+    teamId
   }
 }
     `;

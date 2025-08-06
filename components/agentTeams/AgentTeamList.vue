@@ -33,7 +33,6 @@
         />
       </div>
 
-      <!-- This button is now on the card/detail view, but I'll add the modal here for completeness -->
       <TeamLaunchConfigModal 
         v-if="teamToLaunch"
         :show="isLaunchModalOpen"
@@ -78,9 +77,10 @@ const handleRunTeam = (teamDef: AgentTeamDefinition) => {
   isLaunchModalOpen.value = true;
 };
 
-// This is now handled on the detail page, but the logic is the same.
-const onLaunchSuccess = (teamId: string) => {
-  console.log(`Team launched with ID: ${teamId}, navigating...`);
+const onLaunchSuccess = () => {
+  isLaunchModalOpen.value = false;
+  teamToLaunch.value = null;
+  // Navigate to the main workspace view. The correct profile will be active.
   router.push('/workspace');
 };
 </script>
