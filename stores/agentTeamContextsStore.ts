@@ -1,14 +1,19 @@
 import { defineStore } from 'pinia';
 import { useSelectedLaunchProfileStore } from './selectedLaunchProfileStore';
-import { useAgentTeamLaunchProfileStore } from './agentTeamLaunchProfileStore';
-import { useAgentTeamRunStore } from './agentTeamRunStore';
-import { AgentOperationalPhase } from '~/generated/graphql';
-
-import { AgentRunState } from '~/types/agent/AgentRunState';
 import { AgentContext } from '~/types/agent/AgentContext';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
-import type { Conversation } from '~/types/conversation';
-import type { TeamLaunchProfile } from '~/types/TeamLaunchProfile';
+import type { TeamMemberConfigInput } from '~/generated/graphql';
+
+/**
+ * @interface ResolvedTeamLaunchProfile
+ * @description Represents the live, resolved state for an active team profile.
+ * It holds the actual workspace IDs and other settings that all instances will share.
+ * This is an ephemeral state that exists only while a profile is active.
+ */
+export interface ResolvedTeamLaunchProfile {
+  profileId: string;
+  resolvedMemberConfigs: TeamMemberConfigInput[];
+}
 
 /**
  * @interface ProfileTeamState
@@ -24,7 +29,8 @@ interface ProfileTeamState {
  * @description The root state, organizing team states by their parent launch profile ID.
  */
 interface AgentTeamContextsState {
-  teamsByLaunchProfile: Map<string, ProfileTeamState>; // launchProfileId -> ProfileTeamState
+  teamsByLaunchProfile: Map<string, ProfileTeamState>;
+  activeResolvedProfile: ResolvedTeamLaunchProfile | null;
 }
 
 // Helper to create initial state for a new profile.
@@ -37,6 +43,7 @@ const createDefaultProfileState = (): ProfileTeamState => ({
 export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
   state: (): AgentTeamContextsState => ({
     teamsByLaunchProfile: new Map(),
+    activeResolvedProfile: null,
   }),
 
   getters: {
@@ -145,53 +152,10 @@ export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
       return this.teamsByLaunchProfile.get(selectedProfileId)!;
     },
 
-    /**
-     * @action createTemporaryTeamContext
-     * @description Creates a new, local-only team context from a launch profile.
-     */
-    createTemporaryTeamContext(profile: TeamLaunchProfile) {
-      const profileState = this._getOrCreateCurrentProfileState();
-      const tempId = `temp-team-${Date.now()}`;
-
-      const members = new Map<string, AgentContext>();
-      const agentNodes = profile.teamDefinition.nodes.filter(n => n.referenceType === 'AGENT');
-
-      for (const memberNode of agentNodes) {
-        const override = profile.memberOverrides.find(ov => ov.memberName === memberNode.memberName);
-        const conversation: Conversation = {
-          id: `${tempId}::${memberNode.memberName}`,
-          messages: [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-
-        const agentState = new AgentRunState(memberNode.memberName, conversation);
-        const agentContext = new AgentContext(
-          {
-            launchProfileId: profile.id,
-            workspaceId: null, // This will be resolved at runtime
-            llmModelName: override?.llmModelName || profile.globalConfig.llmModelName,
-            autoExecuteTools: override?.autoExecuteTools ?? profile.globalConfig.autoExecuteTools,
-            parseToolCalls: true,
-          },
-          agentState
-        );
-        members.set(memberNode.memberName, agentContext);
-      }
-
-      const newTeamContext: AgentTeamContext = {
-        teamId: tempId,
-        launchProfile: profile,
-        members: members,
-        focusedMemberName: profile.teamDefinition.coordinatorMemberName,
-        currentPhase: AgentOperationalPhase.Uninitialized,
-        isSubscribed: false,
-        unsubscribe: undefined,
-      };
-
-      this.addTeamContext(newTeamContext);
+    setActiveResolvedProfile(profile: ResolvedTeamLaunchProfile | null) {
+      this.activeResolvedProfile = profile;
     },
-
+    
     promoteTemporaryTeamId(temporaryId: string, permanentId: string) {
         const teamContext = this.getTeamContextById(temporaryId);
         if (!teamContext) {
@@ -205,59 +169,45 @@ export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
             return;
         }
 
-        // Update the context object itself
         teamContext.teamId = permanentId;
-        // Also update conversation IDs for each member
         teamContext.members.forEach(member => {
           member.state.conversation.id = `${permanentId}::${member.state.agentId}`;
         });
         
-        // Update the map key
         profileState.activeTeams.delete(temporaryId);
         profileState.activeTeams.set(permanentId, teamContext);
         
-        // Update selection if it was the selected one
         if (profileState.selectedTeamId === temporaryId) {
             profileState.selectedTeamId = permanentId;
         }
     },
     
-    /**
-     * @action addTeamContext
-     * @description Adds a fully-formed team context to the current profile's state.
-     */
     addTeamContext(context: AgentTeamContext) {
       const profileState = this._getOrCreateCurrentProfileState();
       profileState.activeTeams.set(context.teamId, context);
-      // Automatically select the new team instance
       profileState.selectedTeamId = context.teamId;
     },
 
-    /**
-     * @action removeTeamContext
-     * @description Removes a team instance from the store.
-     */
     removeTeamContext(teamIdToRemove: string) {
       const profileState = this._getOrCreateCurrentProfileState();
       const teamToRemove = profileState.activeTeams.get(teamIdToRemove);
       
       if (teamToRemove) {
-        // Unsubscribe from backend events
         teamToRemove.unsubscribe?.();
         profileState.activeTeams.delete(teamIdToRemove);
 
-        // If the removed team was selected, select another one
         if (profileState.selectedTeamId === teamIdToRemove) {
           const openTeams = Array.from(profileState.activeTeams.values());
           profileState.selectedTeamId = openTeams.length > 0 ? openTeams[openTeams.length - 1].teamId : null;
         }
+
+        // If this was the last instance, clear the active resolved profile
+        if (profileState.activeTeams.size === 0) {
+          this.activeResolvedProfile = null;
+        }
       }
     },
 
-    /**
-     * @action setSelectedTeamId
-     * @description Sets the currently selected team instance for the active profile.
-     */
     setSelectedTeamId(teamId: string) {
       const profileState = this._getOrCreateCurrentProfileState();
       if (profileState.activeTeams.has(teamId)) {
@@ -265,10 +215,6 @@ export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
       }
     },
     
-    /**
-     * @action setFocusedMember
-     * @description Sets the focused member within the active team instance.
-     */
     setFocusedMember(memberName: string) {
       if (this.activeTeamContext && this.activeTeamContext.members.has(memberName)) {
         this.activeTeamContext.focusedMemberName = memberName;

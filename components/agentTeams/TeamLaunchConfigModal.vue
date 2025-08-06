@@ -167,7 +167,7 @@ import type { AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
-import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
+import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
 import type { TeamLaunchProfile, WorkspaceLaunchConfig, TeamMemberConfigOverride } from '~/types/TeamLaunchProfile';
 import WorkspaceConfigForm from '~/components/workspace/WorkspaceConfigForm.vue';
 
@@ -181,9 +181,9 @@ const emit = defineEmits(['close', 'success']);
 const llmStore = useLLMProviderConfigStore();
 const workspaceStore = useWorkspaceStore();
 const teamProfileStore = useAgentTeamLaunchProfileStore();
-const teamContextsStore = useAgentTeamContextsStore();
+const teamRunStore = useAgentTeamRunStore();
 
-const isSubmitting = ref(false); // Local state for button, distinct from runStore.isLaunching
+const isSubmitting = computed(() => teamRunStore.isLaunching);
 const isInitialized = ref(false);
 
 const uiState = reactive({
@@ -228,7 +228,7 @@ const setMemberWorkspaceMode = (memberName: string, mode: 'default' | 'none' | '
   const override = getMemberOverride(memberName);
   if (mode === 'default') {
     delete override.workspaceConfig;
-    uiState.editingWorkspaceForAgent = null; // Auto-collapse
+    uiState.editingWorkspaceForAgent = null;
     return;
   }
   
@@ -267,7 +267,6 @@ const initializeFormState = () => {
       memberOverrides[ov.memberName] = JSON.parse(JSON.stringify(ov));
     });
   } else {
-    // Default for new launch
     globalConfig.llmModelName = llmStore.models.length > 0 ? llmStore.models[0] : '';
     globalConfig.workspaceConfig = { mode: 'none' };
     globalConfig.autoExecuteTools = true;
@@ -292,7 +291,7 @@ const formatWorkspaceConfig = (config: WorkspaceLaunchConfig): string => {
         detail = `(.../${pathParts.pop() || '..'})`;
       } else if (typeName === 'ssh_remote' && params.host && typeof params.host === 'string') {
         detail = `(${params.host})`;
-      } else if (typeName && params.image && typeof params.image === 'string') { // Common for docker-like
+      } else if (typeName && params.image && typeof params.image === 'string') {
         detail = `(${params.image.split(':')[0]})`;
       }
 
@@ -307,9 +306,6 @@ watch(() => props.show, async (isVisible) => {
     await Promise.all([
       llmStore.fetchProvidersWithModels(),
       workspaceStore.fetchAvailableWorkspaceTypes(),
-      // Ensure workspaces are loaded. Assuming a fetch method exists.
-      // If not, this might need to be adjusted.
-      // For now, we assume the getter `allWorkspaces` is populated elsewhere.
     ]);
     initializeFormState();
     isInitialized.value = true;
@@ -338,30 +334,18 @@ watch(() => globalConfig.workspaceConfig.mode, (newMode) => {
 });
 
 const handleLaunch = async () => {
-  isSubmitting.value = true;
-  try {
-    // 1. Create the persistent launch profile.
-    const newPersistentProfile = teamProfileStore.createLaunchProfile(props.teamDefinition, {
-      name: `${props.teamDefinition.name} - ${new Date().toLocaleTimeString()}`,
-      globalConfig: JSON.parse(JSON.stringify(globalConfig)),
-      memberOverrides: JSON.parse(JSON.stringify(Object.values(memberOverrides).filter(ov => Object.keys(ov).length > 1))),
-    });
+  const newPersistentProfile = teamProfileStore.createLaunchProfile(props.teamDefinition, {
+    name: `${props.teamDefinition.name} - ${new Date().toLocaleTimeString()}`,
+    globalConfig: JSON.parse(JSON.stringify(globalConfig)),
+    memberOverrides: JSON.parse(JSON.stringify(Object.values(memberOverrides).filter(ov => Object.keys(ov).length > 1))),
+  });
 
-    // 2. Set the newly created profile as the active one.
-    teamProfileStore.setActiveLaunchProfile(newPersistentProfile.id);
+  teamProfileStore.setActiveLaunchProfile(newPersistentProfile.id);
 
-    // 3. Create the temporary local context for the UI. This will now succeed.
-    teamContextsStore.createTemporaryTeamContext(newPersistentProfile);
-    
-    emit('success');
-    closeModal();
-
-  } catch (error: any) {
-    console.error("Error setting up local team context:", error);
-    alert(`An unexpected error occurred: ${error.message}`);
-  } finally {
-    isSubmitting.value = false;
-  }
+  await teamRunStore.activateTeamProfile(newPersistentProfile);
+  
+  emit('success');
+  closeModal();
 };
 
 const closeModal = () => {

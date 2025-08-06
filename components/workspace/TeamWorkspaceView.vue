@@ -35,20 +35,23 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
+import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
+import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import TeamStatusDisplay from '~/components/workspace/TeamStatusDisplay.vue';
 import AgentTeamEventMonitorTabs from '~/components/workspace/AgentTeamEventMonitorTabs.vue';
 import AgentTeamEventMonitor from '~/components/workspace/AgentTeamEventMonitor.vue';
 import WorkspaceHeaderActions from '~/components/workspace/WorkspaceHeaderActions.vue';
 
-const teamContextsStore = useAgentTeamContextsStore();
 const teamLaunchProfileStore = useAgentTeamLaunchProfileStore();
+const teamRunStore = useAgentTeamRunStore();
+const teamContextsStore = useAgentTeamContextsStore();
 
 const activeLaunchProfile = computed(() => teamLaunchProfileStore.activeLaunchProfile);
 const activeTeamContext = computed(() => teamContextsStore.activeTeamContext);
 
 const createNewTeamInstance = () => {
-  teamContextsStore.createNewTeamContext();
+  // Call the simple, stateless action to create a new instance based on the active environment
+  teamRunStore.createNewTeamInstance();
 };
 </script>

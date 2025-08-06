@@ -9,11 +9,19 @@ import type {
   AgentTeamResponseSubscriptionVariables,
   ContextFileType,
   TeamMemberConfigInput,
+  AgentOperationalPhase,
 } from '~/generated/graphql';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { processAgentTeamResponseEvent } from '~/services/agentTeamResponseProcessor';
 import { useWorkspaceStore } from '~/stores/workspace';
-import type { TeamLaunchProfile, WorkspaceLaunchConfig } from '~/types/TeamLaunchProfile';
+import type { TeamLaunchProfile, WorkspaceLaunchConfig, TeamMemberConfigOverride } from '~/types/TeamLaunchProfile';
+import { AgentContext } from '~/types/agent/AgentContext';
+import { AgentRunState } from '~/types/agent/AgentRunState';
+import type { Conversation } from '~/types/conversation';
+import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
+import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
+import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
+import type { AgentTeamDefinition } from './agentTeamDefinitionStore';
 
 export const useAgentTeamRunStore = defineStore('agentTeamRun', {
   state: () => ({
@@ -21,6 +29,92 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
   }),
 
   actions: {
+    /**
+     * @action activateTeamProfile
+     * @description The primary entry point for launching a team. It resolves the environment
+     * (workspaces), stores it as a session, and creates the first instance.
+     */
+    async activateTeamProfile(profile: TeamLaunchProfile) {
+      this.isLaunching = true;
+      try {
+        const teamContextsStore = useAgentTeamContextsStore();
+        
+        // Step 1: Resolve all workspace IDs by creating new ones where necessary.
+        const resolvedMemberConfigs = await this._resolveMemberConfigs(profile);
+
+        // Step 2: Store this resolved configuration as the active resolved profile.
+        teamContextsStore.setActiveResolvedProfile({
+          profileId: profile.id,
+          resolvedMemberConfigs: resolvedMemberConfigs,
+        });
+
+        // Step 3: Create the first UI instance for this new session.
+        await this.createNewTeamInstance();
+
+      } catch(error: any) {
+        console.error("Failed to activate team profile:", error);
+        alert(`Failed to activate team profile: ${error.message}`);
+        // Clear session on failure
+        useAgentTeamContextsStore().setActiveResolvedProfile(null);
+      } finally {
+        this.isLaunching = false;
+      }
+    },
+
+    /**
+     * @action createNewTeamInstance
+     * @description Creates a new UI instance (tab) for the *currently active* resolved profile.
+     * This function is now simple and stateless.
+     */
+    async createNewTeamInstance() {
+      const teamContextsStore = useAgentTeamContextsStore();
+      const activeResolvedProfile = teamContextsStore.activeResolvedProfile;
+      const teamProfileStore = useAgentTeamLaunchProfileStore();
+
+      if (!activeResolvedProfile) {
+        throw new Error("Cannot create team instance: No active resolved profile found.");
+      }
+      const profile = teamProfileStore.profiles[activeResolvedProfile.profileId];
+      if (!profile) {
+        throw new Error(`Cannot create instance: Profile with ID ${activeResolvedProfile.profileId} not found.`);
+      }
+
+      const tempId = `temp-team-${Date.now()}`;
+      const members = new Map<string, AgentContext>();
+
+      for (const configForMember of activeResolvedProfile.resolvedMemberConfigs) {
+        const conversation: Conversation = {
+          id: `${tempId}::${configForMember.memberName}`,
+          messages: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        const agentState = new AgentRunState(configForMember.memberName, conversation);
+        const agentConfig: AgentRunConfig = {
+          launchProfileId: profile.id,
+          workspaceId: configForMember.workspaceId,
+          llmModelName: configForMember.llmModelName,
+          autoExecuteTools: configForMember.autoExecuteTools,
+          parseToolCalls: true,
+        };
+        
+        const agentContext = new AgentContext(agentConfig, agentState);
+        members.set(configForMember.memberName, agentContext);
+      }
+      
+      const newTeamContext: AgentTeamContext = {
+        teamId: tempId,
+        launchProfile: profile,
+        members: members,
+        focusedMemberName: profile.teamDefinition.coordinatorMemberName,
+        currentPhase: 'UNINITIALIZED' as AgentOperationalPhase,
+        isSubscribed: false,
+        unsubscribe: undefined,
+      };
+      
+      teamContextsStore.addTeamContext(newTeamContext);
+    },
+
     subscribeToTeamResponse(teamId: string) {
       const teamContextsStore = useAgentTeamContextsStore();
       const { onResult, onError, stop } = useSubscription<AgentTeamResponseSubscriptionType, AgentTeamResponseSubscriptionVariables>(
@@ -32,7 +126,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
           teamContext.isSubscribed = true;
           teamContext.unsubscribe = stop;
       } else {
-        console.warn(`Could not find team context for ID ${teamId} immediately after creation to attach subscription.`);
+        console.warn(`Could not find team context for ID ${teamId} to attach subscription.`);
       }
 
       onResult(({ data }) => {
@@ -55,23 +149,18 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       const teamContextsStore = useAgentTeamContextsStore();
       teamContextsStore.removeTeamContext(teamId);
       
-      // Do not try to terminate a temporary instance on the backend
-      if (teamId.startsWith('temp-')) {
-        return;
-      }
+      if (teamId.startsWith('temp-')) return;
 
       try {
         const { mutate: terminateTeam } = useMutation(TerminateAgentTeamInstance);
         await terminateTeam({ id: teamId });
-        console.log(`Terminated team ${teamId} successfully.`);
       } catch (error) {
         console.error(`Error terminating team ${teamId} on backend:`, error);
       }
     },
     
     async terminateActiveTeam() {
-      const teamContextsStore = useAgentTeamContextsStore();
-      const activeTeam = teamContextsStore.activeTeamContext;
+      const activeTeam = useAgentTeamContextsStore().activeTeamContext;
       if (activeTeam) {
         await this.terminateTeamInstance(activeTeam.teamId);
       }
@@ -82,11 +171,8 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       const focusedMember = teamContextsStore.focusedMemberContext;
       const activeTeam = teamContextsStore.activeTeamContext;
 
-      if (!focusedMember || !activeTeam) {
-        throw new Error("No focused team member or active team to send message to.");
-      }
+      if (!focusedMember || !activeTeam) throw new Error("No active context.");
 
-      // Add user message to local conversation immediately
       focusedMember.state.conversation.messages.push({
         type: 'user',
         text: text,
@@ -103,28 +189,22 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
 
         if (isTemporary) {
           this.isLaunching = true;
-          const profile = activeTeam.launchProfile;
-          const memberConfigs = await this._resolveMemberConfigs(profile);
+          const memberConfigs = teamContextsStore.activeResolvedProfile?.resolvedMemberConfigs;
+          if (!memberConfigs) throw new Error("Active resolved profile with configs not found for launch.");
           
           variables = {
             input: {
-              userInput: {
-                content: text,
-                contextFiles: contextPaths.map(cf => ({ path: cf.path, type: cf.type.toUpperCase() as ContextFileType })),
-              },
+              userInput: { content: text, contextFiles: contextPaths.map(cf => ({ path: cf.path, type: cf.type.toUpperCase() as ContextFileType })) },
               teamId: null,
               targetNodeName: focusedMember.state.agentId,
-              teamDefinitionId: profile.teamDefinition.id,
+              teamDefinitionId: activeTeam.launchProfile.teamDefinition.id,
               memberConfigs: memberConfigs,
             }
           };
         } else {
           variables = {
             input: {
-              userInput: {
-                content: text,
-                contextFiles: contextPaths.map(cf => ({ path: cf.path, type: cf.type.toUpperCase() as ContextFileType })),
-              },
+              userInput: { content: text, contextFiles: contextPaths.map(cf => ({ path: cf.path, type: cf.type.toUpperCase() as ContextFileType })) },
               teamId: activeTeam.teamId,
               targetNodeName: focusedMember.state.agentId,
             }
@@ -135,7 +215,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
         const permanentId = result?.data?.sendMessageToTeam?.teamId;
 
         if (!result?.data?.sendMessageToTeam?.success || !permanentId) {
-          throw new Error(result?.data?.sendMessageToTeam?.message || 'Failed to send message to team.');
+          throw new Error(result?.data?.sendMessageToTeam?.message || 'Failed to send message.');
         }
 
         if (isTemporary) {
@@ -153,13 +233,11 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       }
     },
     
-    // --- Private Helper Methods ---
-
     async _resolveMemberConfigs(profile: TeamLaunchProfile): Promise<TeamMemberConfigInput[]> {
       const globalWorkspaceId = await this._resolveWorkspaceId(profile.globalConfig.workspaceConfig, "Team Default");
       const agentNodes = profile.teamDefinition.nodes.filter(n => n.referenceType === 'AGENT');
       
-      const memberConfigs: TeamMemberConfigInput[] = await Promise.all(
+      return Promise.all(
         agentNodes.map(async (memberNode) => {
           const override = profile.memberOverrides.find(ov => ov.memberName === memberNode.memberName);
           const effectiveWsConfig = override?.workspaceConfig || profile.globalConfig.workspaceConfig;
@@ -179,7 +257,6 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
           };
         })
       );
-      return memberConfigs;
     },
 
     async _resolveWorkspaceId(config: WorkspaceLaunchConfig, forItemName: string): Promise<string | null> {
@@ -187,13 +264,10 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       if (config.mode === 'none') return null;
       if (config.mode === 'existing') return config.existingWorkspaceId || null;
       if (config.mode === 'new' && config.newWorkspaceConfig) {
-        if (!config.newWorkspaceConfig.typeName) {
-          throw new Error(`Workspace type for "${forItemName}" is not selected.`);
-        }
+        if (!config.newWorkspaceConfig.typeName) throw new Error(`Workspace type for "${forItemName}" not selected.`);
         try {
           return await workspaceStore.createWorkspace(config.newWorkspaceConfig.typeName, config.newWorkspaceConfig.params);
         } catch (e: any) {
-          console.error(`Failed to create workspace for ${forItemName}:`, e);
           throw new Error(`Failed to create workspace for "${forItemName}": ${e.message}`);
         }
       }
