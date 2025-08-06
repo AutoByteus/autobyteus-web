@@ -216,8 +216,16 @@ export const useAgentContextsStore = defineStore('agentContexts', {
 
         if (agentContext) {
             agentContext.state.promoteTemporaryId(permanentId);
-            profileState.activeAgents.set(permanentId, agentContext);
-            profileState.activeAgents.delete(temporaryId);
+            
+            const newActiveAgents = new Map<string, AgentContext>();
+            for (const [key, value] of profileState.activeAgents.entries()) {
+                if (key === temporaryId) {
+                    newActiveAgents.set(permanentId, value);
+                } else {
+                    newActiveAgents.set(key, value);
+                }
+            }
+            profileState.activeAgents = newActiveAgents;
 
             if (profileState.selectedAgentId === temporaryId) {
                 profileState.selectedAgentId = permanentId;

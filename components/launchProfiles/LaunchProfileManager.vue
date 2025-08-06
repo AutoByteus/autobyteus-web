@@ -156,7 +156,7 @@
     />
 
     <!-- Reactivate Agent Profile Dialog -->
-    <ReactivateProfileDialog
+    <ReactivateAgentProfileDialog
       :show="showReactivateDialog"
       :launch-profile="profileToReactivate"
       @confirm="handleReactivateConfirm"
@@ -178,19 +178,38 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-import { useAgentLaunchProfileStore, type AgentLaunchProfile } from '~/stores/agentLaunchProfileStore';
+import { useAgentLaunchProfileStore, type AgentLaunchProfile, LAUNCH_PROFILE_STORAGE_KEY } from '~/stores/agentLaunchProfileStore';
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
+import { useWorkspaceStore } from '~/stores/workspace';
 import AgentDeleteConfirmDialog from '~/components/agents/AgentDeleteConfirmDialog.vue';
-import ReactivateProfileDialog from '~/components/agents/ReactivateProfileDialog.vue';
+import ReactivateAgentProfileDialog from '~/components/launchProfiles/ReactivateAgentProfileDialog.vue';
 import TeamLaunchConfigModal from '~/components/agentTeams/TeamLaunchConfigModal.vue';
-import TeamLaunchProfileCard from '~/components/agents/TeamLaunchProfileCard.vue';
+import TeamLaunchProfileCard from '~/components/launchProfiles/TeamLaunchProfileCard.vue';
 import type { TeamLaunchProfile } from '~/types/TeamLaunchProfile';
 
 const agentProfileStore = useAgentLaunchProfileStore();
 const teamProfileStore = useAgentTeamLaunchProfileStore();
 const teamContextsStore = useAgentTeamContextsStore();
+const workspaceStore = useWorkspaceStore();
 const router = useRouter();
+
+onMounted(() => {
+  console.log('LaunchProfileManager mounted, loading and partitioning profiles...');
+  
+  // Load agent profiles and partition them into active/inactive
+  try {
+    const storedAgentProfiles = localStorage.getItem(LAUNCH_PROFILE_STORAGE_KEY);
+    const allAgentProfiles = storedAgentProfiles ? JSON.parse(storedAgentProfiles) : {};
+    agentProfileStore.partitionLaunchProfiles(allAgentProfiles, workspaceStore.allWorkspaceIds);
+  } catch (e) {
+    console.error("Failed to load and partition agent launch profiles:", e);
+    agentProfileStore.partitionLaunchProfiles({}, []);
+  }
+
+  // Load team profiles and partition them
+  teamProfileStore.loadLaunchProfiles();
+});
 
 // --- Agent Profile State ---
 const activeAgentProfiles = computed(() => agentProfileStore.activeLaunchProfileList);

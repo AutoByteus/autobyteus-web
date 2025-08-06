@@ -174,8 +174,15 @@ export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
           member.state.conversation.id = `${permanentId}::${member.state.agentId}`;
         });
         
-        profileState.activeTeams.delete(temporaryId);
-        profileState.activeTeams.set(permanentId, teamContext);
+        const newActiveTeams = new Map<string, AgentTeamContext>();
+        for (const [key, value] of profileState.activeTeams.entries()) {
+            if (key === temporaryId) {
+                newActiveTeams.set(permanentId, value);
+            } else {
+                newActiveTeams.set(key, value);
+            }
+        }
+        profileState.activeTeams = newActiveTeams;
         
         if (profileState.selectedTeamId === temporaryId) {
             profileState.selectedTeamId = permanentId;

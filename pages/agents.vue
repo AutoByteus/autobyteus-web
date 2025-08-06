@@ -66,7 +66,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import LaunchProfileManager from '~/components/agents/LaunchProfileManager.vue';
+import LaunchProfileManager from '~/components/launchProfiles/LaunchProfileManager.vue';
 // Local Agent Components
 import AgentList from '~/components/agents/AgentList.vue';
 import AgentDetail from '~/components/agents/AgentDetail.vue';

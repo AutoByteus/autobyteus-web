@@ -5,7 +5,7 @@
         
         <!-- Header -->
         <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg leading-6 font-medium text-gray-900">Reactivate Launch Profile</h3>
+          <h3 class="text-lg leading-6 font-medium text-gray-900">Reactivate Agent Launch Profile</h3>
           <p class="mt-1 text-sm text-gray-500">Choose how to reactivate the profile for agent: <span class="font-semibold">{{ launchProfile?.agentDefinition.name }}</span></p>
         </div>
 
@@ -18,7 +18,6 @@
               @click="selectedOption = 'recreate'"
               :class="['p-4 border-2 rounded-lg cursor-pointer transition-all', selectedOption === 'recreate' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:border-gray-400']"
             >
-              <!-- UPDATED: Removed icon and flex classes for left alignment -->
               <h4 class="font-semibold text-gray-800">
                 Re-create Workspace
               </h4>
@@ -50,9 +49,8 @@
               ]"
               @click="!isAttachDisabled && (selectedOption = 'attach')"
             >
-              <!-- UPDATED: Removed icon and flex classes for left alignment -->
               <h4 class="font-semibold text-gray-800">
-                Attach to Existing
+                Attach to Existing Workspace
               </h4>
               <p class="text-sm text-gray-600 mt-2">Link this profile to a currently active workspace.</p>
               
@@ -126,7 +124,7 @@ import type { AgentLaunchProfile } from '~/stores/agentLaunchProfileStore';
 import type { WorkspaceInfo } from '~/stores/workspace';
 
 const props = defineProps<{  show: boolean;
-  launchProfile: AgentLaunchProfile | null; // Renamed from session
+  launchProfile: AgentLaunchProfile | null;
 }>();
 
 const emit = defineEmits<{  (e: 'cancel'): void;
@@ -194,7 +192,7 @@ watch(() => props.show, (newVal) => {
       if (recommendedWorkspaceId.value) {
         selectedWorkspaceId.value = recommendedWorkspaceId.value;
       } else if (activeWorkspaces.value.length > 0) {
-        selectedWorkspaceId.value = activeWorkspaces.value.workspaceId;
+        selectedWorkspaceId.value = activeWorkspaces.value[0].workspaceId;
       } else {
         selectedWorkspaceId.value = '';
       }
