@@ -56,8 +56,7 @@ export const useAgentRunStore = defineStore('agentRun', {
         state.conversation.parseToolCalls = config.parseToolCalls;
       }
 
-      // ** THE FIX IS HERE **
-      // Instead of calling a store action, mutate the context directly.
+      // Add the user message to the conversation
       currentAgent.state.conversation.messages.push({
         type: 'user',
         text: currentAgent.requirement,

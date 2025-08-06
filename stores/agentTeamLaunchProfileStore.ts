@@ -1,26 +1,27 @@
 import { defineStore } from 'pinia';
 import { v4 as uuidv4 } from 'uuid';
 import type { AgentTeamDefinition } from './agentTeamDefinitionStore';
-import type { TeamLaunchProfile } from '~/types/TeamLaunchProfile';
-import type { TeamMemberConfigInput } from '~/generated/graphql';
+import type { TeamLaunchProfile, TeamMemberConfigOverride } from '~/types/TeamLaunchProfile';
 import { useSelectedLaunchProfileStore } from './selectedLaunchProfileStore';
 
-interface TeamLaunchProfileState {
+interface AgentTeamLaunchProfileState {
   profiles: Record<string, TeamLaunchProfile>;
 }
 
 export const AGENT_TEAM_LAUNCH_PROFILE_STORAGE_KEY = 'autobyteus-agent-team-launch-profiles';
 
 export const useAgentTeamLaunchProfileStore = defineStore('agentTeamLaunchProfile', {
-  state: (): TeamLaunchProfileState => ({
+  state: (): AgentTeamLaunchProfileState => ({
     profiles: {},
   }),
 
   actions: {
     loadLaunchProfiles() {
       try {
+        if (typeof window === 'undefined') return;
         const storedProfiles = localStorage.getItem(AGENT_TEAM_LAUNCH_PROFILE_STORAGE_KEY);
         if (storedProfiles) {
+          // TODO: Add validation/migration logic here in the future
           this.profiles = JSON.parse(storedProfiles);
         }
       } catch (error) {
@@ -31,6 +32,7 @@ export const useAgentTeamLaunchProfileStore = defineStore('agentTeamLaunchProfil
 
     saveLaunchProfiles() {
       try {
+        if (typeof window === 'undefined') return;
         localStorage.setItem(AGENT_TEAM_LAUNCH_PROFILE_STORAGE_KEY, JSON.stringify(this.profiles));
       } catch (error) {
         console.error("Failed to save team launch profiles to localStorage", error);
@@ -39,19 +41,20 @@ export const useAgentTeamLaunchProfileStore = defineStore('agentTeamLaunchProfil
 
     createLaunchProfile(
       teamDefinition: AgentTeamDefinition,
-      config: {
-        globalLlmModelName: string;
-        globalWorkspaceId: string | null;
-        memberConfigs: TeamMemberConfigInput[];
+      launchConfig: {
+        name: string;
+        globalConfig: TeamLaunchProfile['globalConfig'];
+        memberOverrides: TeamMemberConfigOverride[];
       }
     ): TeamLaunchProfile {
       const profileId = uuidv4();
       const newProfile: TeamLaunchProfile = {
         id: profileId,
-        teamDefinition,
-        name: teamDefinition.name,
+        name: launchConfig.name || teamDefinition.name,
         createdAt: new Date().toISOString(),
-        teamConfig: config,
+        teamDefinition: JSON.parse(JSON.stringify(teamDefinition)), // Storing a deep copy snapshot
+        globalConfig: JSON.parse(JSON.stringify(launchConfig.globalConfig)),
+        memberOverrides: JSON.parse(JSON.stringify(launchConfig.memberOverrides)),
       };
 
       this.profiles[profileId] = newProfile;
@@ -66,7 +69,8 @@ export const useAgentTeamLaunchProfileStore = defineStore('agentTeamLaunchProfil
         this.saveLaunchProfiles();
       }
 
-      if (selectedLaunchProfileStore.selectedProfileId === profileId) {
+      // If the deleted profile was the active one, clear the selection.
+      if (selectedLaunchProfileStore.selectedProfileId === profileId && selectedLaunchProfileStore.selectedProfileType === 'team') {
         selectedLaunchProfileStore.clearSelection();
       }
     },
@@ -74,7 +78,7 @@ export const useAgentTeamLaunchProfileStore = defineStore('agentTeamLaunchProfil
     setActiveLaunchProfile(profileId: string) {
       const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
       
-      if (selectedLaunchProfileStore.selectedProfileId === profileId) {
+      if (selectedLaunchProfileStore.selectedProfileId === profileId && selectedLaunchProfileStore.selectedProfileType === 'team') {
         return; // Avoid unnecessary re-selection
       }
 

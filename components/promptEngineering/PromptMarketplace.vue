@@ -377,7 +377,7 @@ const { canonicalModels: availableModels } = storeToRefs(llmStore);
 const showDeleteConfirm = ref(false);
 const promptToDelete = ref<string | null>(null);
 const selectedModelFilter = ref('');
-const groupingOption = ref('nameAndCategory'); // Default to Name & Category grouping
+const groupingOption = ref('category'); // Default to Category grouping
 const viewMode = ref('grid'); // 'grid' or 'compact'
 
 // Comparison mode state
