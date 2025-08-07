@@ -172,7 +172,7 @@ export const useAgentContextsStore = defineStore('agentContexts', {
       const newAgentContext = new AgentContext(agentConfig, agentState);
 
       profileState.activeAgents.set(tempId, newAgentContext);
-      profileState.selectedAgentId = tempId;
+      this.setSelectedAgentId(tempId);
     },
 
     createContextForExistingAgent(agentId: string) {
@@ -204,7 +204,7 @@ export const useAgentContextsStore = defineStore('agentContexts', {
       const newAgentContext = new AgentContext(agentConfig, agentState);
 
       profileState.activeAgents.set(agentId, newAgentContext);
-      profileState.selectedAgentId = agentId;
+      this.setSelectedAgentId(agentId);
     },
     
     /**

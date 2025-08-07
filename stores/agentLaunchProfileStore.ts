@@ -174,12 +174,8 @@ export const useAgentLaunchProfileStore = defineStore('agentLaunchProfile', {
         return;
       }
       
-      if (selectedLaunchProfileStore.selectedProfileId === profileId && !attachToAgentId) return;
-
-      // This is the main change: update the central store instead of a local state property.
       selectedLaunchProfileStore.selectProfile(profileId, 'agent');
       
-      // The rest of the logic remains here for coherence, as requested.
       const agentRunStore = useAgentRunStore();
       agentRunStore.ensureAgentForLaunchProfile(profileId, attachToAgentId);
     },
