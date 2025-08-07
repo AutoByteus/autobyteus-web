@@ -16,13 +16,15 @@ interface LLMProviderConfig {
 }
 
 interface ModelInfo {
-  name: string
-  canonicalName: string
+  modelIdentifier: string;
+  name: string;
+  value: string;
+  canonicalName: string;
 }
 
 interface ProviderWithModels {
-  provider: string
-  models: ModelInfo[]
+  provider: string;
+  models: ModelInfo[];
 }
 
 export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
@@ -37,7 +39,7 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
       return state.providersWithModels.map(p => p.provider);
     },
     models(state): string[] {
-      return state.providersWithModels.flatMap(p => p.models.map(m => m.name));
+      return state.providersWithModels.flatMap(p => p.models.map(m => m.modelIdentifier));
     },
     providersWithModelsForSelection(state): ProviderWithModels[] {
       return state.providersWithModels.filter(p => p.models && p.models.length > 0);
@@ -61,13 +63,13 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
     },
   },
   actions: {
-    getProviderForModel(modelName: string): LLMProvider | null {
-      if (!modelName || !this.providersWithModels) {
+    getProviderForModel(modelIdentifier: string): LLMProvider | null {
+      if (!modelIdentifier || !this.providersWithModels) {
         return null;
       }
     
       for (const providerGroup of this.providersWithModels) {
-        if (providerGroup.models.some(m => m.name === modelName)) {
+        if (providerGroup.models.some(m => m.modelIdentifier === modelIdentifier)) {
           const providerKey = providerGroup.provider.toUpperCase() as keyof typeof LLMProviderEnum;
           if (Object.values(LLMProviderEnum).includes(providerKey as LLMProvider)) {
             return providerKey as LLMProvider;
@@ -76,6 +78,26 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
       }
       
       return null; // Model not found in any provider list
+    },
+    
+    getModelValue(modelIdentifier: string): string | null {
+      for (const providerGroup of this.providersWithModels) {
+        const model = providerGroup.models.find(m => m.modelIdentifier === modelIdentifier);
+        if (model) {
+          return model.value;
+        }
+      }
+      return null;
+    },
+    
+    getModelIdentifierByValue(value: string): string | null {
+      for (const providerGroup of this.providersWithModels) {
+        const model = providerGroup.models.find(m => m.value === value);
+        if (model) {
+          return model.modelIdentifier;
+        }
+      }
+      return null;
     },
 
     async fetchProvidersWithModels() {

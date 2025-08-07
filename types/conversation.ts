@@ -39,7 +39,7 @@ export interface Conversation {
   // This is used for sending the first message to create a new agent instance.
   agentDefinitionId?: string;
   // This is set on the first turn and persists for the conversation.
-  llmModelName?: string;
+  llmModelIdentifier?: string;
   // This is set on the first turn and persists for the conversation.
   parseToolCalls?: boolean;
 }

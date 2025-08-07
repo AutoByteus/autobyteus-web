@@ -7,6 +7,7 @@ import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import type { Conversation, Message, ContextFilePath, AIMessage } from '~/types/conversation';
 import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
 import { ParserContext } from '~/utils/aiResponseParser/stateMachine/ParserContext';
+import { useLLMProviderConfigStore } from './llmProviderConfig';
 
 /**
  * @interface ProfileAgentState
@@ -162,7 +163,7 @@ export const useAgentContextsStore = defineStore('agentContexts', {
       const agentConfig: AgentRunConfig = {
         launchProfileId: activeLaunchProfile.id,
         workspaceId: activeLaunchProfile.workspaceId,
-        llmModelName: '', // User will select this
+        llmModelIdentifier: '', // User will select this
         autoExecuteTools: false,
         parseToolCalls: true,
       };
@@ -194,7 +195,7 @@ export const useAgentContextsStore = defineStore('agentContexts', {
       const agentConfig: AgentRunConfig = {
         launchProfileId: activeLaunchProfile.id,
         workspaceId: activeLaunchProfile.workspaceId,
-        llmModelName: '', // This should ideally come from the agent instance info
+        llmModelIdentifier: '', // This should ideally come from the agent instance info
         autoExecuteTools: false,
         parseToolCalls: true,
       };
@@ -288,11 +289,11 @@ export const useAgentContextsStore = defineStore('agentContexts', {
     
       const profileState = this._getOrCreateCurrentProfileState();
       const tempId = `temp-hist-${Date.now()}`;
-    
+      
       const agentConfig: AgentRunConfig = {
         launchProfileId: activeLaunchProfile.id,
         workspaceId: activeLaunchProfile.workspaceId,
-        llmModelName: historicalConversationData.llmModelName || '',
+        llmModelIdentifier: historicalConversationData.llmModelIdentifier || '',
         autoExecuteTools: false,
         parseToolCalls: historicalConversationData.parseToolCalls ?? true,
       };

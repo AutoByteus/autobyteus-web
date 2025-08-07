@@ -37,7 +37,7 @@ const createMockAgentContext = (): AgentContext => {
   const agentConfig: AgentRunConfig = {
     launchProfileId: 'lp-1',
     workspaceId: 'ws-1',
-    llmModelName: 'test-model',
+    llmModelIdentifier: 'test-model',
     autoExecuteTools: false,
     parseToolCalls: true,
   };

@@ -93,7 +93,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
         const agentConfig: AgentRunConfig = {
           launchProfileId: profile.id,
           workspaceId: configForMember.workspaceId,
-          llmModelName: configForMember.llmModelName,
+          llmModelIdentifier: configForMember.llmModelIdentifier,
           autoExecuteTools: configForMember.autoExecuteTools,
           parseToolCalls: true,
         };
@@ -251,7 +251,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
 
           return {
             memberName: memberNode.memberName,
-            llmModelName: override?.llmModelName || profile.globalConfig.llmModelName,
+            llmModelIdentifier: override?.llmModelIdentifier || profile.globalConfig.llmModelIdentifier,
             workspaceId: finalWorkspaceId,
             autoExecuteTools: override?.autoExecuteTools ?? profile.globalConfig.autoExecuteTools,
           };

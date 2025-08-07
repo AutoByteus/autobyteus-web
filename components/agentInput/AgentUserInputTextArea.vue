@@ -96,10 +96,10 @@ const isSearching = ref(false);
 
 // Computed properties for v-model binding to the store
 const selectedModel = computed({
-  get: () => activeContextStore.activeConfig?.llmModelName ?? null,
+  get: () => activeContextStore.activeConfig?.llmModelIdentifier ?? null,
   set: (value: string | null) => {
     if (value !== null) {
-      activeContextStore.updateConfig({ llmModelName: value });
+      activeContextStore.updateConfig({ llmModelIdentifier: value });
     }
   }
 });

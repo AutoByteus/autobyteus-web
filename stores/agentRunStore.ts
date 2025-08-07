@@ -47,12 +47,12 @@ export const useAgentRunStore = defineStore('agentRun', {
       const agentId = state.agentId;
       const isNewAgent = agentId.startsWith('temp-');
 
-      if (isNewAgent && !config.llmModelName) {
+      if (isNewAgent && !config.llmModelIdentifier) {
         throw new Error("Please select a model for the first message.");
       }
 
       if (isNewAgent) {
-        state.conversation.llmModelName = config.llmModelName;
+        state.conversation.llmModelIdentifier = config.llmModelIdentifier;
         state.conversation.parseToolCalls = config.parseToolCalls;
       }
 
@@ -79,7 +79,7 @@ export const useAgentRunStore = defineStore('agentRun', {
             agentId: isNewAgent ? null : agentId,
             agentDefinitionId: state.conversation.agentDefinitionId,
             workspaceId: config.workspaceId,
-            llmModelName: config.llmModelName,
+            llmModelIdentifier: config.llmModelIdentifier,
             autoExecuteTools: config.autoExecuteTools,
           }
         });

@@ -399,7 +399,12 @@ export type Model = {
 export type ModelDetail = {
   __typename?: 'ModelDetail';
   canonicalName: Scalars['String']['output'];
+  hostUrl?: Maybe<Scalars['String']['output']>;
+  modelIdentifier: Scalars['String']['output'];
   name: Scalars['String']['output'];
+  provider: Scalars['String']['output'];
+  runtime: Scalars['String']['output'];
+  value: Scalars['String']['output'];
 };
 
 export type Mutation = {
@@ -767,7 +772,7 @@ export type SendAgentUserInputInput = {
   agentDefinitionId?: InputMaybe<Scalars['String']['input']>;
   agentId?: InputMaybe<Scalars['String']['input']>;
   autoExecuteTools?: InputMaybe<Scalars['Boolean']['input']>;
-  llmModelName?: InputMaybe<Scalars['String']['input']>;
+  llmModelIdentifier?: InputMaybe<Scalars['String']['input']>;
   userInput: AgentUserInput;
   workspaceId?: InputMaybe<Scalars['String']['input']>;
 };
@@ -889,7 +894,7 @@ export type TeamMember = {
 
 export type TeamMemberConfigInput = {
   autoExecuteTools: Scalars['Boolean']['input'];
-  llmModelName: Scalars['String']['input'];
+  llmModelIdentifier: Scalars['String']['input'];
   memberName: Scalars['String']['input'];
   workspaceId?: InputMaybe<Scalars['String']['input']>;
 };
@@ -1279,7 +1284,7 @@ export type GetLlmProviderApiKeyQuery = { __typename?: 'Query', getLlmProviderAp
 export type GetAvailableLlmProvidersWithModelsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAvailableLlmProvidersWithModelsQuery = { __typename?: 'Query', availableLlmProvidersWithModels: Array<{ __typename?: 'ProviderWithModels', provider: string, models: Array<{ __typename?: 'ModelDetail', name: string, canonicalName: string }> }> };
+export type GetAvailableLlmProvidersWithModelsQuery = { __typename?: 'Query', availableLlmProvidersWithModels: Array<{ __typename?: 'ProviderWithModels', provider: string, models: Array<{ __typename?: 'ModelDetail', modelIdentifier: string, name: string, value: string, canonicalName: string }> }> };
 
 export type GetMcpServersQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -2653,7 +2658,9 @@ export const GetAvailableLlmProvidersWithModelsDocument = gql`
   availableLlmProvidersWithModels {
     provider
     models {
+      modelIdentifier
       name
+      value
       canonicalName
     }
   }

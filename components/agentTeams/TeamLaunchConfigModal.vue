@@ -29,9 +29,9 @@
               <div v-if="uiState.isGlobalConfigExpanded" class="mt-4 p-4 border rounded-md bg-white space-y-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700">Default LLM Model</label>
-                  <select v-model="globalConfig.llmModelName" class="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                  <select v-model="globalConfig.llmModelIdentifier" class="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
                     <optgroup v-for="group in llmStore.providersWithModelsForSelection" :key="group.provider" :label="group.provider">
-                      <option v-for="model in group.models" :key="model.name" :value="model.name">{{ model.name }}</option>
+                      <option v-for="model in group.models" :key="model.modelIdentifier" :value="model.modelIdentifier">{{ model.modelIdentifier }}</option>
                     </optgroup>
                   </select>
                 </div>
@@ -85,10 +85,10 @@
                       <tr class="align-top">
                         <td class="px-4 py-3 font-medium text-sm text-gray-900">{{ member.memberName }}</td>
                         <td class="px-4 py-3">
-                          <select v-model="getMemberOverride(member.memberName).llmModelName" class="block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
-                            <option :value="undefined">Default: {{ globalConfig.llmModelName }}</option>
+                          <select v-model="getMemberOverride(member.memberName).llmModelIdentifier" class="block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                            <option :value="undefined">Default: {{ globalConfig.llmModelIdentifier }}</option>
                              <optgroup v-for="group in llmStore.providersWithModelsForSelection" :key="group.provider" :label="group.provider">
-                              <option v-for="model in group.models" :key="model.name" :value="model.name">{{ model.name }}</option>
+                              <option v-for="model in group.models" :key="model.modelIdentifier" :value="model.modelIdentifier">{{ model.modelIdentifier }}</option>
                             </optgroup>
                           </select>
                         </td>
@@ -192,7 +192,7 @@ const uiState = reactive({
 });
 
 const globalConfig = reactive<TeamLaunchProfile['globalConfig']>({
-  llmModelName: '',
+  llmModelIdentifier: '',
   workspaceConfig: { mode: 'none' },
   autoExecuteTools: true,
   parseToolCalls: true,
@@ -267,7 +267,8 @@ const initializeFormState = () => {
       memberOverrides[ov.memberName] = JSON.parse(JSON.stringify(ov));
     });
   } else {
-    globalConfig.llmModelName = llmStore.models.length > 0 ? llmStore.models[0] : '';
+    // Reset to a blank state. Defaults will be populated after data is fetched.
+    globalConfig.llmModelIdentifier = '';
     globalConfig.workspaceConfig = { mode: 'none' };
     globalConfig.autoExecuteTools = true;
     globalConfig.parseToolCalls = true;
@@ -303,11 +304,19 @@ const formatWorkspaceConfig = (config: WorkspaceLaunchConfig): string => {
 watch(() => props.show, async (isVisible) => {
   if (isVisible) {
     isInitialized.value = false;
+    initializeFormState(); // Reset/load form state first
+
     await Promise.all([
       llmStore.fetchProvidersWithModels(),
       workspaceStore.fetchAvailableWorkspaceTypes(),
     ]);
-    initializeFormState();
+
+    // If no model is set (either new profile or incomplete existing one),
+    // default to the first available model for a better user experience.
+    if (!globalConfig.llmModelIdentifier && llmStore.models.length > 0) {
+      globalConfig.llmModelIdentifier = llmStore.models[0];
+    }
+
     isInitialized.value = true;
   }
 }, { immediate: true });

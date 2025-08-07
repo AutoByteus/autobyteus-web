@@ -11,7 +11,9 @@ export const GET_AVAILABLE_LLM_PROVIDERS_WITH_MODELS = gql`
     availableLlmProvidersWithModels {
       provider
       models {
+        modelIdentifier
         name
+        value
         canonicalName
       }
     }

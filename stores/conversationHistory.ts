@@ -128,7 +128,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
         }),
         createdAt: agentConversation.createdAt,
         updatedAt: agentConversation.createdAt,
-        llmModelName: agentConversation.llmModel || undefined,
+        llmModelIdentifier: agentConversation.llmModel || undefined,
         parseToolCalls: true,
         agentDefinitionId: agentConversation.agentDefinitionId,
       };

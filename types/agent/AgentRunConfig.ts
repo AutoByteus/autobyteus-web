@@ -1,7 +1,7 @@
 export interface AgentRunConfig {
   launchProfileId: string;
   workspaceId: string | null;
-  llmModelName: string;
+  llmModelIdentifier: string;
   autoExecuteTools: boolean;
   parseToolCalls: boolean;
 }

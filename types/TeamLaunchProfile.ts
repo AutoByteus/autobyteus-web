@@ -23,7 +23,7 @@ export interface WorkspaceLaunchConfig {
  */
 export interface TeamMemberConfigOverride {
   memberName: string;
-  llmModelName?: string;
+  llmModelIdentifier?: string;
   workspaceConfig?: WorkspaceLaunchConfig;
   autoExecuteTools?: boolean;
   parseToolCalls?: boolean;
@@ -41,7 +41,7 @@ export interface TeamLaunchProfile {
 
   // Global/Default settings applicable to all members unless specifically overridden.
   globalConfig: {
-    llmModelName: string;
+    llmModelIdentifier: string;
     workspaceConfig: WorkspaceLaunchConfig;
     autoExecuteTools: boolean;
     parseToolCalls: boolean;

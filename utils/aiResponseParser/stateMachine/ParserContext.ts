@@ -47,7 +47,7 @@ export class ParserContext {
     this.agentRunState = agentContext.state;
     this.parseToolCalls = agentContext.parseToolCalls;
     
-    const provider = useLLMProviderConfigStore().getProviderForModel(agentContext.config.llmModelName);
+    const provider = useLLMProviderConfigStore().getProviderForModel(agentContext.config.llmModelIdentifier);
     this.strategy = getToolParsingStrategy(provider!);
   }
 
