@@ -37,7 +37,13 @@
     </aside>
 
     <!-- Main Content Area -->
-    <main class="flex-1 overflow-y-auto">
+    <main v-if="loading" class="flex-1 overflow-y-auto flex items-center justify-center">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+        <p class="mt-4 text-lg text-gray-600">Preparing Agent Manager...</p>
+      </div>
+    </main>
+    <main v-else class="flex-1 overflow-y-auto">
       <!-- Local Agent Views -->
       <AgentList v-if="currentView === 'list'" @navigate="handleNavigation" />
       <AgentCreate v-else-if="currentView === 'create'" @navigate="handleNavigation" />
@@ -64,9 +70,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkspaceStore } from '~/stores/workspace';
+import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
+import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
 import LaunchProfileManager from '~/components/launchProfiles/LaunchProfileManager.vue';
 // Local Agent Components
 import AgentList from '~/components/agents/AgentList.vue';
@@ -83,10 +91,26 @@ import AgentTeamEdit from '~/components/agentTeams/AgentTeamEdit.vue';
 const route = useRoute();
 const router = useRouter();
 const workspaceStore = useWorkspaceStore();
+const agentDefStore = useAgentDefinitionStore();
+const agentTeamDefStore = useAgentTeamDefinitionStore();
 
-onMounted(() => {
-  // Pre-fetch workspaces to improve modal load times.
-  workspaceStore.fetchAllWorkspaces();
+const loading = ref(true);
+
+onMounted(async () => {
+  loading.value = true;
+  try {
+    // Pre-fetch all essential data for the agents section concurrently.
+    await Promise.all([
+      workspaceStore.fetchAllWorkspaces(),
+      agentDefStore.fetchAllAgentDefinitions(),
+      agentTeamDefStore.fetchAllAgentTeamDefinitions(),
+    ]);
+  } catch (error) {
+    console.error("Failed to fetch initial data for agents page:", error);
+    // Optionally show an error message to the user
+  } finally {
+    loading.value = false;
+  }
 });
 
 type View = 
