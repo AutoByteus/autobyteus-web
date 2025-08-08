@@ -298,7 +298,11 @@ const getEffectiveWorkspaceConfig = (memberName: string): WorkspaceLaunchConfig 
 
 const formatLlmButtonLabel = (memberName: string): string => {
     const model = getMemberOverride(memberName).llmModelIdentifier;
-    return model || 'Default';
+    if (model) {
+      return model;
+    }
+    const defaultModel = globalConfig.llmModelIdentifier;
+    return `Default: ${defaultModel || 'Not Set'}`;
 };
 
 const formatWorkspaceButtonLabel = (memberName: string): string => {

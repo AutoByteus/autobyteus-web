@@ -25,15 +25,12 @@
             </div>
             <div class="flex space-x-2">
               <button @click="openLaunchModal" class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition-colors flex items-center">
-                <span class="block i-heroicons-play-20-solid w-5 h-5 mr-2"></span>
                 Run Team
               </button>
               <button @click="$emit('navigate', { view: 'team-edit', id: teamDef.id })" class="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-md hover:bg-gray-200 transition-colors flex items-center">
-                <span class="block i-heroicons-pencil-square-20-solid w-5 h-5 mr-2"></span>
                 Edit
               </button>
               <button @click="handleDelete(teamDef.id)" class="px-4 py-2 bg-red-50 text-red-700 font-semibold rounded-md hover:bg-red-100 transition-colors flex items-center">
-                <span class="block i-heroicons-trash-20-solid w-5 h-5 mr-2"></span>
                 Delete
               </button>
             </div>
@@ -52,7 +49,7 @@
               <div v-for="node in teamDef.nodes" :key="node.memberName" class="border border-gray-200 rounded-lg p-4 bg-gray-50">
                 <div class="flex items-center justify-between">
                   <h3 class="text-base font-bold flex items-center" :class="node.referenceType === 'AGENT' ? 'text-blue-800' : 'text-purple-800'">
-                    <span :class="['w-2 h-2 rounded-full mr-2', node.referenceType === 'AGENT' ? 'bg-blue-500' : 'bg-purple-500']"></span>
+                    <span :class="['w-2 h-2 rounded-full mr-3', node.referenceType === 'AGENT' ? 'bg-blue-500' : 'bg-purple-500']"></span>
                     {{ node.memberName }}
                     <span v-if="node.memberName === teamDef.coordinatorMemberName" class="ml-3 text-xs font-bold text-yellow-800 bg-yellow-200 px-2 py-0.5 rounded-full">
                       COORDINATOR
@@ -62,19 +59,19 @@
                     {{ node.referenceType }}
                   </span>
                 </div>
-                <div class="mt-3 pl-4 border-l-2 border-gray-200 ml-1 space-y-2">
+                <div class="mt-4 pl-5 space-y-3">
                   <div>
                     <p class="text-xs font-semibold text-gray-500">{{ node.referenceType === 'AGENT' ? 'Agent' : 'Team' }}</p>
-                    <p class="text-sm text-gray-700">{{ getBlueprintName(node.referenceType, node.referenceId) }}</p>
+                    <p class="text-sm text-gray-700 mt-1">{{ getBlueprintName(node.referenceType, node.referenceId) }}</p>
                   </div>
                   <div>
                     <p class="text-xs font-semibold text-gray-500">Dependencies</p>
                     <div v-if="node.dependencies && node.dependencies.length" class="flex flex-wrap gap-2 mt-1">
-                      <span v-for="dep in node.dependencies" :key="dep" class="text-sm font-mono bg-gray-200 text-gray-800 px-2 py-1 rounded-md">
+                      <span v-for="dep in node.dependencies" :key="dep" class="text-sm bg-gray-200 text-gray-700 px-2 py-1 rounded">
                         {{ dep }}
                       </span>
                     </div>
-                    <p v-else class="text-sm text-gray-500 italic">None</p>
+                    <p v-else class="text-sm text-gray-500 italic mt-1">None</p>
                   </div>
                 </div>
               </div>
