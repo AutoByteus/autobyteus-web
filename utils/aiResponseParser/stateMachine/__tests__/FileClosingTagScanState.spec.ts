@@ -1,3 +1,4 @@
+path="autobyteus-web/utils/aiResponseParser/stateMachine/__tests__/FileClosingTagScanState.spec.ts">
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { FileClosingTagScanState } from '../FileClosingTagScanState';
@@ -21,7 +22,7 @@ const createMockAgentContext = (segments: AIResponseSegment[]): AgentContext => 
   const lastAIMessage: AIMessage = { type: 'ai', text: '', timestamp: new Date(), chunks: [], segments, isComplete: false, parserInstance: null as any };
   conversation.messages.push(lastAIMessage);
   const agentState = new AgentRunState('test-conv-id', conversation);
-  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelName: 'test-model', autoExecuteTools: false, parseToolCalls: true };
+  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelIdentifier: 'test-model', autoExecuteTools: false, parseToolCalls: true };
   return new AgentContext(agentConfig, agentState);
 };
 

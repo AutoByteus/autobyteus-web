@@ -18,8 +18,8 @@ vi.mock('~/utils/toolUtils', () => ({
 
 vi.mock('~/stores/llmProviderConfig', () => ({
   useLLMProviderConfigStore: vi.fn(() => ({
-    getProviderForModel: (modelName: string) => {
-      if (modelName === 'openai-model') return LLMProvider.OPENAI;
+    getProviderForModel: (llmModelIdentifier: string) => {
+      if (llmModelIdentifier === 'openai-model') return LLMProvider.OPENAI;
       return LLMProvider.DEFAULT;
     },
   })),
@@ -33,7 +33,7 @@ const createMockAgentContext = (segments: AIResponseSegment[], parseToolCalls: b
   const agentConfig: AgentRunConfig = {
     launchProfileId: 'lp-1',
     workspaceId: null,
-    llmModelName: 'openai-model',
+    llmModelIdentifier: 'openai-model',
     autoExecuteTools: false,
     parseToolCalls: parseToolCalls,
   };

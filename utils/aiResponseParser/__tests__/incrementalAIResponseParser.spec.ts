@@ -24,9 +24,9 @@ vi.mock('~/utils/toolUtils', () => ({
 
 vi.mock('~/stores/llmProviderConfig', () => ({
   useLLMProviderConfigStore: vi.fn(() => ({
-    getProviderForModel: (modelName: string) => {
-      if (modelName === 'anthropic') return LLMProvider.ANTHROPIC;
-      if (modelName === 'openai') return LLMProvider.OPENAI;
+    getProviderForModel: (llmModelIdentifier: string) => {
+      if (llmModelIdentifier === 'anthropic') return LLMProvider.ANTHROPIC;
+      if (llmModelIdentifier === 'openai') return LLMProvider.OPENAI;
       return LLMProvider.DEEPSEEK;
     },
   })),
@@ -34,7 +34,7 @@ vi.mock('~/stores/llmProviderConfig', () => ({
 
 const createMockAgentContext = (
   segments: AIResponseSegment[],
-  modelName: string,
+  llmModelIdentifier: string,
   parseToolCalls: boolean,
   convId: string
 ): AgentContext => {
@@ -54,7 +54,7 @@ const createMockAgentContext = (
   const agentState = new AgentRunState(convId, conversation);
   const agentConfig: AgentRunConfig = {
     launchProfileId: 'test-profile', workspaceId: null,
-    llmModelName: modelName, autoExecuteTools: false, parseToolCalls: parseToolCalls,
+    llmModelIdentifier: llmModelIdentifier, autoExecuteTools: false, parseToolCalls: parseToolCalls,
   };
 
   return new AgentContext(agentConfig, agentState);
@@ -69,8 +69,8 @@ describe('IncrementalAIResponseParser with Strategies', () => {
   });
 
   const createParser = (provider: LLMProvider, parseToolCalls: boolean): IncrementalAIResponseParser => {
-    const modelName = provider === LLMProvider.ANTHROPIC ? 'anthropic' : 'openai';
-    const agentContext = createMockAgentContext(segments, modelName, parseToolCalls, `test-conv-${Date.now()}`);
+    const llmModelIdentifier = provider === LLMProvider.ANTHROPIC ? 'anthropic' : 'openai';
+    const agentContext = createMockAgentContext(segments, llmModelIdentifier, parseToolCalls, `test-conv-${Date.now()}`);
     const parserContext = new ParserContext(agentContext);
     return new IncrementalAIResponseParser(parserContext);
   };

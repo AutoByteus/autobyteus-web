@@ -18,9 +18,9 @@ vi.mock('~/utils/toolUtils', () => ({
 
 vi.mock('~/stores/llmProviderConfig', () => ({
   useLLMProviderConfigStore: vi.fn(() => ({
-    getProviderForModel: (modelName: string) => {
-      if (modelName === 'anthropic') return LLMProvider.ANTHROPIC;
-      if (modelName === 'openai') return LLMProvider.OPENAI;
+    getProviderForModel: (llmModelIdentifier: string) => {
+      if (llmModelIdentifier === 'anthropic') return LLMProvider.ANTHROPIC;
+      if (llmModelIdentifier === 'openai') return LLMProvider.OPENAI;
       return LLMProvider.DEFAULT;
     },
   })),
@@ -28,14 +28,14 @@ vi.mock('~/stores/llmProviderConfig', () => ({
 
 const createMockAgentContext = (
   segments: AIResponseSegment[],
-  modelName: string,
+  llmModelIdentifier: string,
   parseToolCalls: boolean
 ): AgentContext => {
   const conversation: Conversation = { id: 'test-conv-id', messages: [], createdAt: '', updatedAt: '' };
   const lastAIMessage: AIMessage = { type: 'ai', text: '', timestamp: new Date(), chunks: [], segments, isComplete: false, parserInstance: null as any };
   conversation.messages.push(lastAIMessage);
   const agentState = new AgentRunState('test-conv-id', conversation);
-  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelName: modelName, autoExecuteTools: false, parseToolCalls };
+  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelIdentifier, autoExecuteTools: false, parseToolCalls };
   return new AgentContext(agentConfig, agentState);
 };
 
