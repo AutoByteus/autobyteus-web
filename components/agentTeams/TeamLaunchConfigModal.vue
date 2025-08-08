@@ -28,24 +28,14 @@
               </button>
               <div v-if="uiState.isGlobalConfigExpanded" class="mt-4 p-4 border rounded-md bg-white space-y-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700">Default LLM Model</label>
-                  <button type="button" @click="uiState.isGlobalLlmEditorOpen = !uiState.isGlobalLlmEditorOpen" class="mt-1 w-full text-left px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 hover:border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
-                    {{ globalConfig.llmModelIdentifier || 'Select a default model...' }}
-                  </button>
-                  <div v-if="uiState.isGlobalLlmEditorOpen" class="mt-2 border rounded-md p-2 bg-gray-50 max-h-96 overflow-y-auto">
-                    <input type="text" v-model="uiState.globalLlmSearch" placeholder="Search models..." class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sticky top-0" />
-                    <div class="mt-2">
-                       <div v-if="filteredLlmOptions.length === 0" class="p-3 text-sm text-center text-gray-500">No models found.</div>
-                       <div v-for="group in filteredLlmOptions" :key="group.label" class="py-1">
-                          <div class="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ group.label }}</div>
-                          <ul>
-                            <li v-for="item in group.items" :key="item.id" @click="selectGlobalLlm(item.id)" class="pl-6 pr-3 py-2 text-sm text-gray-800 cursor-pointer hover:bg-blue-100">
-                              {{ item.name }}
-                            </li>
-                          </ul>
-                       </div>
-                    </div>
-                  </div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Default LLM Model</label>
+                  <InlineSearchableGroupedList
+                    v-model="globalConfig.llmModelIdentifier"
+                    :options="llmGroupedOptions"
+                    placeholder="Select a default model..."
+                    search-placeholder="Search models..."
+                    :button-class="'w-full text-left px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 hover:border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50'"
+                  />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Default Workspace</label>
@@ -98,29 +88,27 @@
                         <td class="px-4 py-3 font-medium text-sm text-gray-900">{{ member.memberName }}</td>
                         <td class="px-4 py-3">
                            <button
-                            type="button"
-                            @click="toggleOverrideEditor(member.memberName, 'llm')"
-                            class="w-full flex items-center justify-between text-left font-mono text-xs p-2 rounded-md transition-colors"
-                            :class="getLlmDisplayClass(member.memberName)"
-                          >
-                            <span class="truncate">{{ formatLlmConfig(member.memberName) }}</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" :class="['w-4 h-4 transition-transform', { 'rotate-180': isOverrideEditorOpen(member.memberName, 'llm') }]">
-                              <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
-                            </svg>
-                          </button>
+                              type="button"
+                              @click="toggleOverrideEditor(member.memberName, 'llm')"
+                              class="w-full flex items-start justify-between text-left text-sm p-2 rounded-md transition-colors bg-gray-100 text-gray-800 hover:bg-gray-200"
+                            >
+                              <span>{{ formatLlmButtonLabel(member.memberName) }}</span>
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" :class="['w-4 h-4 transition-transform flex-shrink-0 ml-2', { 'rotate-180': isOverrideEditorOpen(member.memberName, 'llm') }]">
+                                <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
                         </td>
                         <td class="px-4 py-3">
-                          <button
-                            type="button"
-                            @click="toggleOverrideEditor(member.memberName, 'workspace')"
-                            class="w-full flex items-center justify-between text-left font-mono text-xs p-2 rounded-md transition-colors"
-                            :class="getWorkspaceDisplayClass(member.memberName)"
-                          >
-                            <span class="truncate">{{ formatWorkspaceConfig(getEffectiveWorkspaceConfig(member.memberName)) }}</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" :class="['w-4 h-4 transition-transform', { 'rotate-180': isOverrideEditorOpen(member.memberName, 'workspace') }]">
-                              <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
-                            </svg>
-                          </button>
+                           <button
+                              type="button"
+                              @click="toggleOverrideEditor(member.memberName, 'workspace')"
+                              class="w-full flex items-start justify-between text-left text-sm p-2 rounded-md transition-colors bg-gray-100 text-gray-800 hover:bg-gray-200"
+                            >
+                              <span>{{ formatWorkspaceButtonLabel(member.memberName) }}</span>
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" :class="['w-4 h-4 transition-transform flex-shrink-0 ml-2', { 'rotate-180': isOverrideEditorOpen(member.memberName, 'workspace') }]">
+                                <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
                         </td>
                       </tr>
                       <tr v-if="isOverrideEditorOpen(member.memberName, 'llm')">
@@ -203,9 +191,9 @@ import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
 import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
-import type { TeamLaunchProfile, WorkspaceLaunchConfig, TeamMemberConfigOverride } from '~/types/TeamLaunchProfile';
+import type { TeamLaunchProfile, WorkspaceLaunchConfig, TeamMemberConfigOverride, GroupedOption } from '~/types/TeamLaunchProfile';
 import WorkspaceConfigForm from '~/components/workspace/WorkspaceConfigForm.vue';
-import type { GroupedOption } from '~/components/agentTeams/SearchableGroupedSelect.vue';
+import InlineSearchableGroupedList from '~/components/agentTeams/InlineSearchableGroupedList.vue';
 
 const props = defineProps<{  show: boolean;
   teamDefinition: AgentTeamDefinition;
@@ -226,8 +214,6 @@ const DEFAULT_OPTION_ID = '---use-default---';
 
 const uiState = reactive({
   isGlobalConfigExpanded: true,
-  isGlobalLlmEditorOpen: false,
-  globalLlmSearch: '',
   agentLlmSearch: '',
   editingAgentOverride: null as { memberName: string; type: 'llm' | 'workspace' } | null,
 });
@@ -253,7 +239,7 @@ const llmGroupedOptions = computed((): GroupedOption[] => {
       if (!seenIdentifiers.has(model.modelIdentifier)) {
         uniqueModels.push({
           id: model.modelIdentifier,
-          name: model.modelIdentifier, // Display the identifier
+          name: model.modelIdentifier,
         });
         seenIdentifiers.add(model.modelIdentifier);
       }
@@ -264,16 +250,6 @@ const llmGroupedOptions = computed((): GroupedOption[] => {
       items: uniqueModels,
     };
   });
-});
-
-const filteredLlmOptions = computed(() => {
-    const options = llmGroupedOptions.value;
-    if (!uiState.globalLlmSearch) return options;
-    const searchLower = uiState.globalLlmSearch.toLowerCase();
-    return options.map(group => ({
-        ...group,
-        items: group.items.filter(item => item.name.toLowerCase().includes(searchLower))
-    })).filter(group => group.items.length > 0);
 });
 
 const overrideLlmGroupedOptions = computed((): GroupedOption[] => {
@@ -298,15 +274,9 @@ const filteredOverrideLlmOptions = computed(() => {
     })).filter(group => group.items.length > 0);
 });
 
-const selectGlobalLlm = (modelId: string) => {
-    globalConfig.llmModelIdentifier = modelId;
-    uiState.isGlobalLlmEditorOpen = false;
-    uiState.globalLlmSearch = '';
-};
-
-const selectAgentLlm = (memberName: string, modelId: string) => {
+const selectAgentLlm = (memberName: string, modelId: string | null) => {
     const override = getMemberOverride(memberName);
-    if (modelId === DEFAULT_OPTION_ID) {
+    if (modelId === DEFAULT_OPTION_ID || modelId === null) {
         override.llmModelIdentifier = undefined;
     } else {
         override.llmModelIdentifier = modelId;
@@ -326,12 +296,41 @@ const getEffectiveWorkspaceConfig = (memberName: string): WorkspaceLaunchConfig 
   return getMemberOverride(memberName).workspaceConfig || globalConfig.workspaceConfig;
 };
 
-const getLlmDisplayClass = (memberName: string) => {
-  return 'bg-gray-100 text-gray-800 hover:bg-opacity-80';
+const formatLlmButtonLabel = (memberName: string): string => {
+    const model = getMemberOverride(memberName).llmModelIdentifier;
+    return model || 'Default';
 };
 
-const getWorkspaceDisplayClass = (memberName: string) => {
-  return 'bg-gray-100 text-gray-800 hover:bg-opacity-80';
+const formatWorkspaceButtonLabel = (memberName: string): string => {
+    const config = getEffectiveWorkspaceConfig(memberName);
+    const isDefault = !getMemberOverride(memberName).workspaceConfig;
+    return formatWorkspaceConfig(config, isDefault);
+};
+
+const formatWorkspaceConfig = (config: WorkspaceLaunchConfig, isDefault: boolean = false): string => {
+  const prefix = isDefault ? 'Default: ' : '';
+  switch (config.mode) {
+    case 'none': return `${prefix}No Workspace`;
+    case 'existing':
+      const ws = workspaceStore.allWorkspaces.find(w => w.workspaceId === config.existingWorkspaceId);
+      return `${prefix}Existing: ${ws?.name || 'Select...'}`;
+    case 'new':
+      const typeName = config.newWorkspaceConfig?.typeName;
+      const params = config.newWorkspaceConfig?.params || {};
+      let detail = '';
+
+      if (typeName === 'local_workspace' && params.root_path && typeof params.root_path === 'string') {
+        const pathParts = params.root_path.replace(/\\/g, '/').split('/').filter(Boolean);
+        detail = `(.../${pathParts.pop() || '..'})`;
+      } else if (typeName === 'ssh_remote' && params.host && typeof params.host === 'string') {
+        detail = `(${params.host})`;
+      } else if (typeName && params.image && typeof params.image === 'string') {
+        detail = `(${params.image.split(':')[0]})`;
+      }
+
+      return `${prefix}New: ${typeName || 'Select...'} ${detail}`;
+    default: return 'Select...';
+  }
 };
 
 const toggleOverrideEditor = (memberName: string, type: 'llm' | 'workspace') => {
@@ -346,25 +345,12 @@ const isOverrideEditorOpen = (memberName: string, type: 'llm' | 'workspace') => 
     return uiState.editingAgentOverride?.memberName === memberName && uiState.editingAgentOverride?.type === type;
 }
 
-const formatLlmConfig = (memberName: string): string => {
-    const model = getMemberOverride(memberName).llmModelIdentifier;
-    if (model) {
-        return model;
-    }
-    return `Default`;
-};
-
-
 const setMemberWorkspaceMode = (memberName: string, mode: 'default' | 'none' | 'existing' | 'new') => {
   const override = getMemberOverride(memberName);
   if (mode === 'default') {
     delete override.workspaceConfig;
-    uiState.editingAgentOverride = null;
+    toggleOverrideEditor(memberName, 'workspace'); // Close editor
     return;
-  }
-  
-  if (mode === 'none' || (mode === 'existing' && workspaceStore.allWorkspaces.length > 0)) {
-     uiState.editingAgentOverride = null;
   }
   
   if (!override.workspaceConfig || override.workspaceConfig.mode !== mode) {
@@ -390,10 +376,7 @@ const setMemberWorkspaceMode = (memberName: string, mode: 'default' | 'none' | '
 const initializeFormState = () => {
   uiState.isGlobalConfigExpanded = true;
   uiState.editingAgentOverride = null;
-  uiState.isGlobalLlmEditorOpen = false;
-  uiState.globalLlmSearch = '';
-  uiState.agentLlmSearch = '';
-
+  
   if (props.existingProfile) {
     Object.assign(globalConfig, JSON.parse(JSON.stringify(props.existingProfile.globalConfig)));
     Object.keys(memberOverrides).forEach(key => delete memberOverrides[key]);
@@ -410,43 +393,17 @@ const initializeFormState = () => {
   }
 };
 
-const formatWorkspaceConfig = (config: WorkspaceLaunchConfig): string => {
-  switch (config.mode) {
-    case 'none': return 'None';
-    case 'existing':
-      const ws = workspaceStore.allWorkspaces.find(w => w.workspaceId === config.existingWorkspaceId);
-      return `Existing: ${ws?.name || 'Select...'}`;
-    case 'new':
-      const typeName = config.newWorkspaceConfig?.typeName;
-      const params = config.newWorkspaceConfig?.params || {};
-      let detail = '';
-
-      if (typeName === 'local_workspace' && params.root_path && typeof params.root_path === 'string') {
-        const pathParts = params.root_path.replace(/\\/g, '/').split('/').filter(Boolean);
-        detail = `(.../${pathParts.pop() || '..'})`;
-      } else if (typeName === 'ssh_remote' && params.host && typeof params.host === 'string') {
-        detail = `(${params.host})`;
-      } else if (typeName && params.image && typeof params.image === 'string') {
-        detail = `(${params.image.split(':')[0]})`;
-      }
-
-      return `New: ${typeName || 'Select...'} ${detail}`;
-    default: return 'Use Team Default';
-  }
-};
 
 watch(() => props.show, async (isVisible) => {
   if (isVisible) {
     isInitialized.value = false;
-    initializeFormState(); // Reset/load form state first
+    initializeFormState(); 
 
     await Promise.all([
       llmStore.fetchProvidersWithModels(),
       workspaceStore.fetchAvailableWorkspaceTypes(),
     ]);
 
-    // If no model is set (either new profile or incomplete existing one),
-    // default to the first available model for a better user experience.
     if (!globalConfig.llmModelIdentifier && llmStore.models.length > 0) {
       globalConfig.llmModelIdentifier = llmStore.models[0];
     }

@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
 import { useMutation, useQuery } from '@vue/apollo-composable'
 import { CreateWorkspace } from '~/graphql/mutations/workspace_mutations'
-import { GetAvailableWorkspaceDefinitions } from '~/graphql/queries/workspace_queries'
+import { GetAvailableWorkspaceDefinitions, GetAllWorkspaces } from '~/graphql/queries/workspace_queries'
 import type {
   CreateWorkspaceMutation,
   CreateWorkspaceMutationVariables,
-  GetAvailableWorkspaceDefinitionsQuery
+  GetAvailableWorkspaceDefinitionsQuery,
+  GetAllWorkspacesQuery,
 } from '~/generated/graphql'
 import { TreeNode, convertJsonToTreeNode } from '~/utils/fileExplorer/TreeNode'
 import { createNodeIdToNodeDictionary, handleFileSystemChange } from '~/utils/fileExplorer/fileUtils'
@@ -42,6 +43,7 @@ interface WorkspaceState {
   availableWorkspaceTypes: WorkspaceType[];
   loading: boolean;
   error: any;
+  workspacesFetched: boolean;
 }
 
 export const useWorkspaceStore = defineStore('workspace', {
@@ -50,6 +52,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     availableWorkspaceTypes: [],
     loading: false,
     error: null,
+    workspacesFetched: false,
   }),
   actions: {    
     async createWorkspace(workspaceTypeName: string, config: Record<string, any>): Promise<string> {
@@ -95,34 +98,73 @@ export const useWorkspaceStore = defineStore('workspace', {
       }
     },
     async fetchAvailableWorkspaceTypes() {
-      if (this.availableWorkspaceTypes.length > 0) return; // Avoid refetching
+      if (this.availableWorkspaceTypes.length > 0) return Promise.resolve();
       this.loading = true;
       this.error = null;
       const { onResult, onError } = useQuery<GetAvailableWorkspaceDefinitionsQuery>(GetAvailableWorkspaceDefinitions, null, { fetchPolicy: 'network-only' });
 
-      onResult(result => {
-        if (result.data) {
-          this.availableWorkspaceTypes = result.data.availableWorkspaceDefinitions.map(def => ({
-            name: def.workspaceTypeName,
-            description: def.description,
-            config_schema: {
-              parameters: def.configSchema.map(param => ({
-                name: param.name,
-                param_type: param.type,
-                description: param.description,
-                required: param.required,
-                default_value: param.defaultValue,
-              }))
-            }
-          }));
-        }
-        this.loading = false;
-      });
+      return new Promise<void>((resolve, reject) => {
+        onResult(result => {
+          if (result.data) {
+            this.availableWorkspaceTypes = result.data.availableWorkspaceDefinitions.map(def => ({
+              name: def.workspaceTypeName,
+              description: def.description,
+              config_schema: {
+                parameters: def.configSchema.map(param => ({
+                  name: param.name,
+                  param_type: param.type,
+                  description: param.description,
+                  required: param.required,
+                  default_value: param.defaultValue,
+                }))
+              }
+            }));
+          }
+          this.loading = false;
+          resolve();
+        });
 
-      onError(error => {
-        console.error("Failed to fetch available workspace types:", error);
-        this.error = error;
-        this.loading = false;
+        onError(error => {
+          console.error("Failed to fetch available workspace types:", error);
+          this.error = error;
+          this.loading = false;
+          reject(error);
+        });
+      });
+    },
+    async fetchAllWorkspaces() {
+      if (this.workspacesFetched) return Promise.resolve();
+      this.loading = true;
+      this.error = null;
+      const { onResult, onError } = useQuery<GetAllWorkspacesQuery>(GetAllWorkspaces, null, { fetchPolicy: 'network-only' });
+
+      return new Promise<void>((resolve, reject) => {
+          onResult(result => {
+              if (result.data) {
+                  result.data.workspaces.forEach(ws => {
+                      const treeNode = convertJsonToTreeNode(ws.fileExplorer);
+                      const nodeIdToNode = createNodeIdToNodeDictionary(treeNode);
+                      this.workspaces[ws.workspaceId] = {
+                          workspaceId: ws.workspaceId,
+                          name: ws.name,
+                          fileExplorer: treeNode,
+                          nodeIdToNode: nodeIdToNode,
+                          workspaceTypeName: ws.workspaceTypeName,
+                          workspaceConfig: ws.config,
+                      };
+                  });
+                  this.workspacesFetched = true;
+              }
+              this.loading = false;
+              resolve();
+          });
+
+          onError(error => {
+              console.error("Failed to fetch all workspaces:", error);
+              this.error = error;
+              this.loading = false;
+              reject(error);
+          });
       });
     },
     handleFileSystemChange(workspaceId: string, event: FileSystemChangeEvent) {

@@ -1,6 +1,14 @@
 import type { AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
 
 /**
+ * A generic structure for a group of selectable options.
+ */
+export interface GroupedOption {
+  label: string;
+  items: { id: string; name: string }[];
+}
+
+/**
  * A reusable structure to define how a workspace should be configured for launch.
  * It can be a new workspace, an existing one, or none at all.
  */

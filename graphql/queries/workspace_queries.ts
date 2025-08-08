@@ -16,4 +16,14 @@ export const GetAvailableWorkspaceDefinitions = gql`
   }
 `
 
-// REMOVED: GetAllWorkspaces query is no longer used.
+export const GetAllWorkspaces = gql`
+  query GetAllWorkspaces {
+    workspaces {
+      workspaceId
+      name
+      workspaceTypeName
+      config
+      fileExplorer
+    }
+  }
+`

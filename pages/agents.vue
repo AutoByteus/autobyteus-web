@@ -64,8 +64,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useWorkspaceStore } from '~/stores/workspace';
 import LaunchProfileManager from '~/components/launchProfiles/LaunchProfileManager.vue';
 // Local Agent Components
 import AgentList from '~/components/agents/AgentList.vue';
@@ -81,6 +82,12 @@ import AgentTeamEdit from '~/components/agentTeams/AgentTeamEdit.vue';
 
 const route = useRoute();
 const router = useRouter();
+const workspaceStore = useWorkspaceStore();
+
+onMounted(() => {
+  // Pre-fetch workspaces to improve modal load times.
+  workspaceStore.fetchAllWorkspaces();
+});
 
 type View = 
   'list' | 'detail' | 'create' | 'edit' | 

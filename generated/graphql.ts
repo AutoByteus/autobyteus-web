@@ -683,6 +683,7 @@ export type Query = {
   toolsGroupedByCategory: Array<ToolCategoryGroup>;
   totalCostInPeriod: Scalars['Float']['output'];
   usageStatisticsInPeriod: Array<UsageStatistics>;
+  workspaces: Array<WorkspaceInfo>;
 };
 
 
@@ -1350,6 +1351,11 @@ export type GetAvailableWorkspaceDefinitionsQueryVariables = Exact<{ [key: strin
 
 
 export type GetAvailableWorkspaceDefinitionsQuery = { __typename?: 'Query', availableWorkspaceDefinitions: Array<{ __typename?: 'WorkspaceDefinition', workspaceTypeName: string, description: string, configSchema: Array<{ __typename?: 'ParameterDefinition', name: string, type: ParameterType, description: string, required: boolean, defaultValue?: any | null }> }> };
+
+export type GetAllWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetAllWorkspacesQuery = { __typename?: 'Query', workspaces: Array<{ __typename?: 'WorkspaceInfo', workspaceId: string, name: string, workspaceTypeName: string, config: any, fileExplorer?: any | null }> };
 
 export type NestedTeamEventFragment = { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentOperationalPhaseTransitionData', newPhase: AgentOperationalPhase, oldPhase?: AgentOperationalPhase | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamPhaseTransitionData', newPhase: AgentTeamOperationalPhase, oldPhase?: AgentTeamOperationalPhase | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload' } };
 
@@ -3059,6 +3065,37 @@ export function useGetAvailableWorkspaceDefinitionsLazyQuery(options: VueApolloC
   return VueApolloComposable.useLazyQuery<GetAvailableWorkspaceDefinitionsQuery, GetAvailableWorkspaceDefinitionsQueryVariables>(GetAvailableWorkspaceDefinitionsDocument, {}, options);
 }
 export type GetAvailableWorkspaceDefinitionsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAvailableWorkspaceDefinitionsQuery, GetAvailableWorkspaceDefinitionsQueryVariables>;
+export const GetAllWorkspacesDocument = gql`
+    query GetAllWorkspaces {
+  workspaces {
+    workspaceId
+    name
+    workspaceTypeName
+    config
+    fileExplorer
+  }
+}
+    `;
+
+/**
+ * __useGetAllWorkspacesQuery__
+ *
+ * To run a query within a Vue component, call `useGetAllWorkspacesQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetAllWorkspacesQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetAllWorkspacesQuery();
+ */
+export function useGetAllWorkspacesQuery(options: VueApolloComposable.UseQueryOptions<GetAllWorkspacesQuery, GetAllWorkspacesQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetAllWorkspacesQuery, GetAllWorkspacesQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetAllWorkspacesQuery, GetAllWorkspacesQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetAllWorkspacesQuery, GetAllWorkspacesQueryVariables>(GetAllWorkspacesDocument, {}, options);
+}
+export function useGetAllWorkspacesLazyQuery(options: VueApolloComposable.UseQueryOptions<GetAllWorkspacesQuery, GetAllWorkspacesQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetAllWorkspacesQuery, GetAllWorkspacesQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetAllWorkspacesQuery, GetAllWorkspacesQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetAllWorkspacesQuery, GetAllWorkspacesQueryVariables>(GetAllWorkspacesDocument, {}, options);
+}
+export type GetAllWorkspacesQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAllWorkspacesQuery, GetAllWorkspacesQueryVariables>;
 export const AgentTeamResponseDocument = gql`
     subscription AgentTeamResponse($teamId: String!) {
   agentTeamResponse(teamId: $teamId) {
