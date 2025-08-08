@@ -1,10 +1,9 @@
-path="autobyteus-web/utils/aiResponseParser/stateMachine/__tests__/FileClosingTagScanState.spec.ts">
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { FileClosingTagScanState } from '../FileClosingTagScanState';
 import { FileContentReadingState } from '../FileContentReadingState';
 import { TextState } from '../TextState';
-import { ParserContext, FileParsingStatus } from '../ParserContext';
+import { ParserContext } from '../ParserContext';
 import type { AIResponseSegment } from '../../types';
 import { AgentRunState } from '~/types/agent/AgentRunState';
 import type { Conversation, AIMessage } from '~/types/conversation';
@@ -36,13 +35,10 @@ describe('FileClosingTagScanState', () => {
     const agentContext = createMockAgentContext(segments);
     context = new ParserContext(agentContext);
     context.startFileSegment('src/components/App.vue');
-    // REFACTOR: Set up the dedicated file parsing status object for tests.
-    context.fileParsingStatus = new FileParsingStatus();
-    context.fileParsingStatus.nestingLevel = 1; // Assume we are inside a file
     context.currentState = new FileClosingTagScanState(context);
   });
 
-  it('should detect the closing tag and end the file segment when nesting level is 1', () => {
+  it('should detect the closing tag and end the file segment', () => {
     // Set up the tag buffer with '<' before the buffer
     context.fileClosingBuffer = '<';
     context.buffer = '/file>';
@@ -58,52 +54,27 @@ describe('FileClosingTagScanState', () => {
       },
     ]);
     expect(context.currentState).toBeInstanceOf(TextState);
-    expect(context.fileParsingStatus).toBeNull();
   });
 
-  it('should treat a closing tag as content if nesting level is greater than 1', () => {
-    context.fileParsingStatus!.nestingLevel = 2; // We are in a nested file
-    context.fileClosingBuffer = '<';
-    context.buffer = '/file>';
-    context.pos = 0;
-    context.currentState.run();
-
-    // The tag is appended to content, and we are back in reading state
-    expect(context.currentState).toBeInstanceOf(FileContentReadingState);
-    // Nesting level is decremented
-    expect(context.fileParsingStatus!.nestingLevel).toBe(1);
-    // The tag is part of the content
-    const fileSegment = segments[0] as any;
-    expect(fileSegment.originalContent).toBe('</file>');
-  });
-
-  it('should treat a nested opening file tag as content and increment nesting level', () => {
-    context.fileClosingBuffer = '<';
-    context.buffer = 'file path="nested.txt">content</file>'; // Full tag in buffer
-    context.pos = 0;
-    context.currentState.run();
-
-    expect(context.currentState).toBeInstanceOf(FileContentReadingState);
-    // Nesting level is incremented
-    expect(context.fileParsingStatus!.nestingLevel).toBe(2);
-    // The tag is part of the content
-    const fileSegment = segments[0] as any;
-    expect(fileSegment.originalContent).toBe('<file path="nested.txt">');
-    // Check that remaining buffer is processed by next state
-    expect(context.buffer.substring(context.pos)).toBe('content</file>');
-  });
-
-  it('should revert to FileContentReadingState if not a file tag', () => {
+  it('should revert to FileContentReadingState if not a closing tag', () => {
     // Set up the tag buffer with '<' before the buffer
     context.fileClosingBuffer = '<';
-    context.buffer = 'not-a-file-tag>';
+    context.buffer = 'notclosingtag console.log("still file content")';
     context.pos = 0;
     context.currentState.run();
 
-    // The state should revert and append the buffer as content
+    // Call run again to process the remaining buffer
+    context.currentState.run();
+
+    expect(segments).toEqual([
+      {
+        type: 'file',
+        path: 'src/components/App.vue',
+        originalContent: '<notclosingtag console.log("still file content")',
+        language: 'vue'
+      },
+    ]);
     expect(context.currentState).toBeInstanceOf(FileContentReadingState);
-    const fileSegment = segments[0] as any;
-    expect(fileSegment.originalContent).toBe('<not-a-file-tag>');
   });
 
   it('should handle partial matches and wait for more data', () => {
@@ -114,8 +85,13 @@ describe('FileClosingTagScanState', () => {
     context.currentState.run();
     // Still possible closing tag
     expect(context.currentState.stateType).toBe('FILE_CLOSING_TAG_SCAN_STATE');
-    // Original segment is unchanged
-    const fileSegment = segments[0] as any;
-    expect(fileSegment.originalContent).toBe('');
+    expect(segments).toEqual([
+      {
+        type: 'file',
+        path: 'src/components/App.vue',
+        originalContent: '',
+        language: 'vue'
+      },
+    ]);
   });
 });

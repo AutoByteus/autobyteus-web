@@ -1,7 +1,7 @@
 import { BaseState, ParserStateType } from './State';
 import { TextState } from './TextState';
 import { FileContentReadingState } from './FileContentReadingState';
-import { ParserContext, FileParsingStatus } from './ParserContext';
+import { ParserContext } from './ParserContext';
 
 export class FileOpeningTagParsingState extends BaseState {
   stateType = ParserStateType.FILE_OPENING_TAG_PARSING_STATE;
@@ -23,9 +23,6 @@ export class FileOpeningTagParsingState extends BaseState {
           const pathMatch = tag.match(/path=['"]([^'"]+)['"]/);
           if (pathMatch) {
             this.context.startFileSegment(pathMatch[1]);
-            // REFACTOR: Initialize the dedicated file parsing status object.
-            this.context.fileParsingStatus = new FileParsingStatus();
-            this.context.fileParsingStatus.nestingLevel = 1;
             return true;
           }
           return false;
