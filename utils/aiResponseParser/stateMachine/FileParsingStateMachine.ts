@@ -4,8 +4,8 @@ import type { ParserContext } from './ParserContext';
 enum InternalFileState {
   PARSING_OPENING_TAG,
   READING_CONTENT,
-  SCANNING_CLOSING_TAG_START,
-  SCANNING_CLOSING_TAG_BODY,
+  // The SCANNING_TAG state handles potential nested <file> or closing </file> tags.
+  SCANNING_TAG,
   COMPLETE,
   INVALID,
 }
@@ -13,14 +13,16 @@ enum InternalFileState {
 /**
  * A self-contained state machine responsible for the entire lifecycle of parsing a <file> block.
  * It is instantiated and driven by the main `FileParsingState`.
- * This class encapsulates all the logic that was previously spread across
- * FileOpeningTagParsingState, FileContentReadingState, and FileClosingTagScanState.
+ * This class now supports nested <file> tags by using a nesting level counter.
  */
 export class FileParsingStateMachine {
   private internalState: InternalFileState = InternalFileState.PARSING_OPENING_TAG;
   private openingTagBuffer: string = '';
-  private closingTagBuffer: string = '';
-  private readonly closingTag = '</file>';
+  private tagScanBuffer: string = '';
+  private nestingLevel: number = 1; // Start at 1 for the initial file tag.
+
+  private readonly possibleOpeningFileTag = '<file';
+  private readonly closingFileTag = '</file>';
 
   constructor(private context: ParserContext) {}
 
@@ -33,11 +35,8 @@ export class FileParsingStateMachine {
         case InternalFileState.READING_CONTENT:
           this.runReadContent();
           break;
-        case InternalFileState.SCANNING_CLOSING_TAG_START:
-          this.runScanClosingTagStart();
-          break;
-        case InternalFileState.SCANNING_CLOSING_TAG_BODY:
-          this.runScanClosingTagBody();
+        case InternalFileState.SCANNING_TAG:
+          this.runScanTag();
           break;
       }
     }
@@ -63,7 +62,10 @@ export class FileParsingStateMachine {
     this.context.advance();
 
     if (char === '>') {
-      const pathMatch = this.openingTagBuffer.match(/path=['"]([^'"]+)['"]/);
+      // The opening tag is now complete inside `openingTagBuffer`.
+      // It includes attributes up to and including the closing '>'.
+      // e.g., ' path="a.js">' or ' no_path="true">'
+      const pathMatch = this.openingTagBuffer.match(/\s+path=['"]([^'"]+)['"]/);
       if (pathMatch && pathMatch[1]) {
         this.context.startFileSegment(pathMatch[1]);
         this.internalState = InternalFileState.READING_CONTENT;
@@ -72,7 +74,7 @@ export class FileParsingStateMachine {
           this.context.advance();
         }
       } else {
-        // Malformed tag, invalidate.
+        // Malformed tag (missing or invalid path), invalidate.
         this.internalState = InternalFileState.INVALID;
       }
     }
@@ -81,42 +83,57 @@ export class FileParsingStateMachine {
   private runReadContent(): void {
     const char = this.context.peekChar()!;
     if (char === '<') {
-      this.internalState = InternalFileState.SCANNING_CLOSING_TAG_START;
+      this.internalState = InternalFileState.SCANNING_TAG;
+      this.tagScanBuffer = '<';
+      this.context.advance();
     } else {
       this.context.appendToFileSegment(char);
       this.context.advance();
     }
   }
-
-  private runScanClosingTagStart(): void {
+  
+  private runScanTag(): void {
     const char = this.context.peekChar()!;
-    if (char === '<') {
-      this.closingTagBuffer = '<';
-      this.context.advance();
-      this.internalState = InternalFileState.SCANNING_CLOSING_TAG_BODY;
-    } else {
-      // False alarm, it wasn't a tag. Go back to reading content.
-      this.internalState = InternalFileState.READING_CONTENT;
-    }
-  }
-
-  private runScanClosingTagBody(): void {
-    const char = this.context.peekChar()!;
-    this.closingTagBuffer += char;
+    this.tagScanBuffer += char;
     this.context.advance();
-
-    if (this.closingTag.startsWith(this.closingTagBuffer)) {
-      if (this.closingTagBuffer === this.closingTag) {
-        // Success! We found the closing tag.
+    
+    // Check for nested opening tag <file ... >
+    if (this.tagScanBuffer.startsWith(this.possibleOpeningFileTag)) {
+      if (char === '>') {
+        this.nestingLevel++;
+        this.context.appendToFileSegment(this.tagScanBuffer);
+        this.tagScanBuffer = '';
+        this.internalState = InternalFileState.READING_CONTENT;
+      }
+      // If not '>', we continue scanning the nested opening tag.
+      return;
+    }
+    
+    // Check for closing tag </file>
+    if (this.tagScanBuffer === this.closingFileTag) {
+      this.nestingLevel--;
+      if (this.nestingLevel === 0) {
+        // This is the closing tag for our main file.
         this.context.endFileSegment();
         this.internalState = InternalFileState.COMPLETE;
+      } else {
+        // This is a closing tag for a nested file. Treat as text.
+        this.context.appendToFileSegment(this.tagScanBuffer);
+        this.tagScanBuffer = '';
+        this.internalState = InternalFileState.READING_CONTENT;
       }
-      // Otherwise, it's a partial match, so we continue.
-    } else {
-      // It's not the closing tag. Revert the buffer and go back to reading content.
-      this.context.appendToFileSegment(this.closingTagBuffer);
-      this.closingTagBuffer = '';
+      return;
+    }
+    
+    // If the buffer can no longer become a file or closing tag, revert to text.
+    const couldBeOpening = this.possibleOpeningFileTag.startsWith(this.tagScanBuffer);
+    const couldBeClosing = this.closingFileTag.startsWith(this.tagScanBuffer);
+    
+    if (!couldBeOpening && !couldBeClosing) {
+      this.context.appendToFileSegment(this.tagScanBuffer);
+      this.tagScanBuffer = '';
       this.internalState = InternalFileState.READING_CONTENT;
     }
+    // Otherwise, it's a partial match of a known tag, so we continue scanning.
   }
 }

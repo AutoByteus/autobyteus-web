@@ -77,7 +77,7 @@ describe('FileParsingStateMachine', () => {
     expect(machine.getFinalTagBuffer()).toBe('<file no_path="true">');
   });
 
-  it('should treat content containing "<" not part of a closing tag as text', () => {
+  it('should treat content containing "<" not part of a file tag as text', () => {
     const input = ' path="a.txt">const x = 1 < 2;</file>';
     const machine = runMachine(input);
 
@@ -108,5 +108,67 @@ describe('FileParsingStateMachine', () => {
     runMachine(input);
     const fileSegment = segments[0] as FileSegment;
     expect(fileSegment.originalContent).toBe('def main():\n  pass\n');
+  });
+
+  describe('Nested File Tags', () => {
+    it('should correctly parse a file with a single nested file tag', () => {
+      const nestedContent = 'console.log("nested");';
+      const nestedFile = `<file path="b.js">${nestedContent}</file>`;
+      const outerContent = `console.log("outer");\n${nestedFile}\nconsole.log("more outer");`;
+      const input = ` path="a.js">${outerContent}</file>...rest`;
+
+      const machine = runMachine(input);
+
+      expect(machine.isComplete()).toBe(true);
+      expect(machine.wasSuccessful()).toBe(true);
+      expect(segments.length).toBe(1);
+      const fileSegment = segments[0] as FileSegment;
+      expect(fileSegment.path).toBe('a.js');
+      expect(fileSegment.originalContent).toBe(outerContent);
+      expect(context.substring(context.getPosition())).toBe('...rest');
+    });
+
+    it('should correctly parse a file with two levels of nesting', () => {
+      const innermostFile = `<file path="c.js">level 3</file>`;
+      const nestedFile = `<file path="b.js">level 2\n${innermostFile}\nend level 2</file>`;
+      const outerContent = `level 1\n${nestedFile}\nend level 1`;
+      const input = ` path="a.js">${outerContent}</file>`;
+
+      runMachine(input);
+
+      expect(segments.length).toBe(1);
+      const fileSegment = segments[0] as FileSegment;
+      expect(fileSegment.path).toBe('a.js');
+      expect(fileSegment.originalContent).toBe(outerContent);
+    });
+
+    it('should treat a nested empty file tag as content', () => {
+      const input = ` path="a.js">Outer<file path="b.js"></file>Outer</file>`;
+      runMachine(input);
+
+      expect(segments.length).toBe(1);
+      const fileSegment = segments[0] as FileSegment;
+      expect(fileSegment.originalContent).toBe('Outer<file path="b.js"></file>Outer');
+    });
+
+    it('should not complete if the stream ends mid-nesting', () => {
+      const input = ` path="a.js">Outer<file path="b.js">Inner`; // Missing closing tags for both
+      const machine = runMachine(input);
+
+      expect(machine.isComplete()).toBe(false);
+      expect(segments.length).toBe(1);
+      const fileSegment = segments[0] as FileSegment;
+      expect(fileSegment.originalContent).toBe('Outer<file path="b.js">Inner');
+    });
+
+    it('should not complete if the outer closing tag is missing', () => {
+      const input = ` path="a.js">Outer<file path="b.js">Inner</file>`; // Missing outer closing tag
+      const machine = runMachine(input);
+
+      expect(machine.isComplete()).toBe(false);
+      expect(segments.length).toBe(1);
+      const fileSegment = segments[0] as FileSegment;
+      expect(fileSegment.originalContent).toBe('Outer<file path="b.js">Inner</file>');
+    });
   });
 });

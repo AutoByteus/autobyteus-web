@@ -222,4 +222,53 @@ describe('IncrementalAIResponseParser with Strategies', () => {
       }
     ]);
   });
+
+  it('should correctly parse a single chunk containing mixed content', () => {
+    const parser = createParser(LLMProvider.ANTHROPIC, true);
+    
+    const singleChunk = 'Here is some initial text. ' +
+                      '<tool name="test_tool"><arguments><arg name="p1">v1</arg></arguments></tool>' +
+                      ' Followed by more text and a file.' +
+                      '<file path="/example.txt">File content here.</file>' +
+                      ' And some final text.';
+
+    parser.processChunks([singleChunk]);
+    parser.finalize();
+
+    expect(segments).toEqual([
+      { type: 'text', content: 'Here is some initial text. ' },
+      expect.objectContaining({
+        type: 'tool_call',
+        toolName: 'test_tool',
+        arguments: { p1: 'v1' },
+      }),
+      { type: 'text', content: ' Followed by more text and a file.' },
+      expect.objectContaining({
+        type: 'file',
+        path: '/example.txt',
+        originalContent: 'File content here.',
+      }),
+      { type: 'text', content: ' And some final text.' },
+    ]);
+  });
+
+  it('should correctly parse a single chunk with nested file tags', () => {
+    const parser = createParser(LLMProvider.ANTHROPIC, true);
+    const innerFileContent = 'Content of inner file.';
+    const outerFileContent = `Content of outer file, which includes a nested file: <file path="inner.txt">${innerFileContent}</file> More outer content.`;
+    const singleChunk = `Initial text. <file path="outer.txt">${outerFileContent}</file> Final text.`;
+
+    parser.processChunks([singleChunk]);
+    parser.finalize();
+
+    expect(segments).toEqual([
+      { type: 'text', content: 'Initial text. ' },
+      expect.objectContaining({
+        type: 'file',
+        path: 'outer.txt',
+        originalContent: outerFileContent,
+      }),
+      { type: 'text', content: ' Final text.' },
+    ]);
+  });
 });
