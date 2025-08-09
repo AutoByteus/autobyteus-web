@@ -8,16 +8,14 @@ import type { AgentRunState } from '~/types/agent/AgentRunState';
 import type { AgentContext } from '~/types/agent/AgentContext';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import { getToolParsingStrategy } from '../strategyProvider';
+import { StreamScanner } from './StreamScanner';
 
 type CurrentSegment = FileSegment | AIResponseTextSegment | ThinkSegment | ToolCallSegment | null;
 
 export class ParserContext {
   public segments: AIResponseSegment[];
-  public buffer: string = '';
-  public pos: number = 0;
+  private scanner: StreamScanner;
   
-  public tagBuffer: string = '';
-  public fileClosingBuffer: string = '';
   public currentSegment: CurrentSegment = null;
 
   public readonly strategy: ToolParsingStrategy;
@@ -33,11 +31,16 @@ export class ParserContext {
     }
 
     this.segments = lastAiMsg.segments;
+    this.scanner = new StreamScanner();
     this.agentRunState = agentContext.state;
     this.parseToolCalls = agentContext.parseToolCalls;
     
     const provider = useLLMProviderConfigStore().getProviderForModel(agentContext.config.llmModelIdentifier);
     this.strategy = getToolParsingStrategy(provider!);
+  }
+  
+  append(text: string): void {
+    this.scanner.append(text);
   }
 
   set currentState(state: State) {
@@ -174,7 +177,6 @@ export class ParserContext {
                   logs: [],
                   result: null,
                   error: null,
-                  // FIX: Carry over the raw content to the finalized segment
                   rawJsonContent: parsingSegment.rawJsonContent,
               };
               this.segments.splice(parsingSegmentIndex + i, 0, toolCallSegment);
@@ -197,19 +199,33 @@ export class ParserContext {
       this.currentSegment = null;
   }
 
+  // --- Stream Navigation Methods (delegating to StreamScanner) ---
+
   advance(): void {
-    this.pos++;
+    this.scanner.advance();
   }
 
   advanceBy(count: number): void {
-    this.pos += count;
+    this.scanner.advanceBy(count);
   }
 
   hasMoreChars(): boolean {
-    return this.pos < this.buffer.length;
+    return this.scanner.hasMoreChars();
   }
 
   peekChar(): string | undefined {
-    return this.buffer[this.pos];
+    return this.scanner.peek();
+  }
+
+  getPosition(): number {
+    return this.scanner.getPosition();
+  }
+
+  setPosition(position: number): void {
+    this.scanner.setPosition(position);
+  }
+
+  substring(start: number, end?: number): string {
+    return this.scanner.substring(start, end);
   }
 }

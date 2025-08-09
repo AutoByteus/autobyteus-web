@@ -21,7 +21,7 @@ export class StateMachine {
   }
 
   appendChunks(chunks: string[]): void {
-    this.parserContext.buffer += chunks.join('');
+    this.parserContext.append(chunks.join(''));
   }
 
   getSegments() {

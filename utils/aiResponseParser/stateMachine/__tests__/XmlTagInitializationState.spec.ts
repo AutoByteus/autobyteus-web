@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { XmlTagInitializationState } from '../XmlTagInitializationState';
-import { FileOpeningTagParsingState } from '../FileOpeningTagParsingState';
+import { FileParsingState } from '../FileParsingState';
 import { ToolParsingState } from '../ToolParsingState';
 import { TextState } from '../TextState';
 import { ParserContext } from '../ParserContext';
@@ -11,6 +11,7 @@ import { AgentRunState } from '~/types/agent/AgentRunState';
 import type { Conversation, AIMessage } from '~/types/conversation';
 import { AgentContext } from '~/types/agent/AgentContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
+import { StreamScanner } from '../StreamScanner';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: () => 'mock_id'
@@ -35,51 +36,34 @@ describe('XmlTagInitializationState', () => {
   let segments: AIResponseSegment[];
   let context: ParserContext;
 
+  function runMachine(input: string, parseToolCalls: boolean = true) {
+    const agentContext = createMockAgentContext(segments, parseToolCalls);
+    context = new ParserContext(agentContext);
+    // @ts-ignore
+    context.scanner = new StreamScanner(input);
+    context.currentState = new TextState(context);
+    context.currentState.run(); // Find '<' and transition to XmlTagInitializationState
+    context.currentState.run(); // Run XmlTagInitializationState
+  }
+
   beforeEach(() => {
     setActivePinia(createPinia());
+    segments = [];
   });
 
-  it('should transition to FileOpeningTagParsingState for known tag <file', () => {
-    segments = [];
-    const agentContext = createMockAgentContext(segments, true);
-    context = new ParserContext(agentContext);
-    context.buffer = '<file path="test.txt">';
-    context.pos = 0;
-    context.currentState = new TextState(context);
-    context.currentState.run();
-    
-    expect(context.currentState.stateType).toBe(ParserStateType.XML_TAG_INITIALIZATION_STATE);
-    context.currentState.run();
-    expect(context.currentState.stateType).toBe(ParserStateType.FILE_OPENING_TAG_PARSING_STATE);
+  it('should transition to FileParsingState for known tag <file', () => {
+    runMachine('<file path="test.txt">');
+    expect(context.currentState.stateType).toBe(ParserStateType.FILE_PARSING_STATE);
   });
   
   it('should transition to ToolParsingState when <tool is recognized and parsing is enabled', () => {
-    segments = [];
-    const agentContext = createMockAgentContext(segments, true);
-    context = new ParserContext(agentContext);
-    context.buffer = '<tool name="test">';
-    context.pos = 0;
-    context.currentState = new TextState(context);
-    context.currentState.run();
-
-    expect(context.currentState.stateType).toBe(ParserStateType.XML_TAG_INITIALIZATION_STATE);
-    context.currentState.run();
+    runMachine('<tool name="test">');
     expect(context.currentState.stateType).toBe(ParserStateType.TOOL_PARSING_STATE);
   });
 
   it('should revert to TextState when <tool is recognized but parsing is disabled', () => {
-    segments = [];
-    const agentContext = createMockAgentContext(segments, false);
-    context = new ParserContext(agentContext);
-    context.buffer = '<tool name="test">';
-    context.pos = 0;
-    context.currentState = new TextState(context);
-    context.currentState.run();
-
-    expect(context.currentState.stateType).toBe(ParserStateType.XML_TAG_INITIALIZATION_STATE);
-    context.currentState.run();
+    runMachine('<tool name="test">', false);
     expect(context.currentState.stateType).toBe(ParserStateType.TEXT_STATE);
-    
     context.currentState.run();
     expect(segments).toEqual([
         { type: 'text', content: '<tool name="test">' }
@@ -87,18 +71,8 @@ describe('XmlTagInitializationState', () => {
   });
 
   it('should revert to TextState for an unrecognized tag', () => {
-    segments = [];
-    const agentContext = createMockAgentContext(segments, true);
-    context = new ParserContext(agentContext);
-    context.buffer = '<unknown-tag>';
-    context.pos = 0;
-    context.currentState = new TextState(context);
-    context.currentState.run();
-    
-    expect(context.currentState.stateType).toBe(ParserStateType.XML_TAG_INITIALIZATION_STATE);
-    context.currentState.run();
+    runMachine('<unknown-tag>');
     expect(context.currentState.stateType).toBe(ParserStateType.TEXT_STATE);
-    
     context.currentState.run();
     expect(segments).toEqual([
         { type: 'text', content: '<unknown-tag>' }
@@ -106,17 +80,16 @@ describe('XmlTagInitializationState', () => {
   });
   
   it('should wait for more characters for a partial match', () => {
-    segments = [];
     const agentContext = createMockAgentContext(segments, true);
     context = new ParserContext(agentContext);
-    context.buffer = '<to';
-    context.pos = 0;
+    // @ts-ignore
+    context.scanner = new StreamScanner('<to');
     context.currentState = new TextState(context);
-    context.currentState.run();
-
+    context.currentState.run(); // TextState finds '<'    
     expect(context.currentState.stateType).toBe(ParserStateType.XML_TAG_INITIALIZATION_STATE);
-    context.currentState.run();
+    context.currentState.run(); // XmlTagInitializationState runs on 'to'
     expect(context.currentState.stateType).toBe(ParserStateType.XML_TAG_INITIALIZATION_STATE);
-    expect(context.tagBuffer).toBe('<to');
+    // @ts-ignore - Check internal buffer of the state
+    expect(context.currentState.tagBuffer).toBe('<to');
   });
 });

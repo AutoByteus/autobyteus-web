@@ -11,21 +11,17 @@ export class TextState extends BaseState {
   }
 
   run(): void {
-    const buffer = this.context.buffer;
-    let currentPos = this.context.pos;
+    const startPos = this.context.getPosition();
 
-    while (currentPos < buffer.length) {
-      const char = buffer[currentPos];
+    while (this.context.hasMoreChars()) {
+      const char = this.context.peekChar();
 
-      // Simplified: Only trigger on '<' for XML or '{' for JSON.
       if (char === '<' || char === '{') {
-        const text = buffer.substring(this.context.pos, currentPos);
+        const text = this.context.substring(startPos, this.context.getPosition());
         this.context.appendTextSegment(text);
         
-        // Set the context position TO the boundary character, but DON'T consume it.
-        // The next state is responsible for consuming its own signature.
-        this.context.pos = currentPos;
-
+        // The current position is on the boundary character. The next state
+        // is responsible for consuming it. We just transition.
         if (char === '<') {
           this.context.transitionTo(new XmlTagInitializationState(this.context));
         } else { // '{'
@@ -34,14 +30,13 @@ export class TextState extends BaseState {
         return;
       }
       
-      currentPos++;
+      this.context.advance();
     }
 
     // If loop completes, the rest of the buffer is text
-    const text = buffer.substring(this.context.pos);
+    const text = this.context.substring(startPos);
     if (text) {
       this.context.appendTextSegment(text);
-      this.context.pos = buffer.length;
     }
   }
 }

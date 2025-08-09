@@ -35,7 +35,7 @@ export class JsonInitializationState extends BaseState {
         // We found a match. The signature buffer now contains the full signature.
         // We must rewind the position so the ToolParsingState can start fresh
         // from the beginning of the signature.
-        this.context.pos -= this.signatureBuffer.length;
+        this.context.setPosition(this.context.getPosition() - this.signatureBuffer.length);
         this.context.transitionTo(new ToolParsingState(this.context, this.signatureBuffer));
         return;
       }
