@@ -9,15 +9,29 @@ import type { Conversation, AIMessage } from '~/types/conversation';
 import { AgentContext } from '~/types/agent/AgentContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 
+// Helper for creating deterministic JSON strings for mock invocation IDs
+const deterministicJsonStringify = (value: any): string => {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(deterministicJsonStringify).join(',')}]`;
+  }
+  const keys = Object.keys(value).sort();
+  const pairs = keys.map(key => {
+    const k = JSON.stringify(key);
+    const v = deterministicJsonStringify(value[key]);
+    return `${k}:${v}`;
+  });
+  return `{${pairs.join(',')}}`;
+};
+
 // Mock the toolUtils to have a predictable invocation ID
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
-    // FIX: Sort keys before stringifying to ensure deterministic IDs
-    const sortedArgs = Object.keys(args).sort().reduce((acc, key) => {
-      acc[key] = args[key];
-      return acc;
-    }, {} as Record<string, any>);
-    const argString = JSON.stringify(sortedArgs);
+    const argString = deterministicJsonStringify(args);
+    // The agent run state appends a counter, which we can mock here as _0
+    // e.g. call_base_tool1_{"a":1}_0
     return `call_base_${toolName}_${argString}`;
   }
 }));
@@ -126,6 +140,74 @@ describe('IncrementalAIResponseParser with Strategies', () => {
         },
         status: 'parsed',
         invocationId: 'call_base_file_reader_{"path":"/test.txt"}_0'
+      })
+    ]);
+  });
+
+  it('should handle nested JSON in tool call arguments for OpenAI (stringified)', () => {
+    const parser = createParser(LLMProvider.OPENAI, true);
+
+    const chunks = [
+      '{"tool_calls": [{',
+      '"function": {',
+      '"name": "complex_tool",',
+      '"arguments": "{\\"config\\":{\\"type\\":\\"special\\",\\"retries\\":3},\\"data\\":[1,2,3]}"',
+      '}}]}',
+    ];
+    parser.processChunks(chunks);
+    parser.finalize();
+
+    expect(segments).toEqual([
+      expect.objectContaining({
+        type: 'tool_call',
+        toolName: 'complex_tool',
+        arguments: {
+          config: {
+            type: 'special',
+            retries: 3
+          },
+          data: [1, 2, 3]
+        },
+        status: 'parsed',
+        invocationId: 'call_base_complex_tool_{"config":{"retries":3,"type":"special"},"data":[1,2,3]}_0'
+      })
+    ]);
+  });
+
+  it('should handle nested JSON in tool call arguments for OpenAI (direct object)', () => {
+    const parser = createParser(LLMProvider.OPENAI, true);
+
+    const chunks = [
+      '{"tool_calls": [{',
+      '"function": {',
+      '"name": "direct_complex_tool",',
+      '"arguments": {',
+      '  "config": {',
+      '    "type": "direct",',
+      '    "retries": 5',
+      '  },',
+      '  "data": [',
+      '    "a", "b"',
+      '  ]',
+      '}',
+      '}}]}',
+    ];
+    parser.processChunks(chunks);
+    parser.finalize();
+
+    expect(segments).toEqual([
+      expect.objectContaining({
+        type: 'tool_call',
+        toolName: 'direct_complex_tool',
+        arguments: {
+          config: {
+            type: 'direct',
+            retries: 5
+          },
+          data: ["a", "b"]
+        },
+        status: 'parsed',
+        invocationId: 'call_base_direct_complex_tool_{"config":{"retries":5,"type":"direct"},"data":["a","b"]}_0'
       })
     ]);
   });
