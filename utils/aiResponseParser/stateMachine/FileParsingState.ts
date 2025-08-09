@@ -1,47 +1,41 @@
 /* autobyteus-web/utils/aiResponseParser/stateMachine/FileParsingState.ts */
 import { BaseState, ParserStateType } from './State';
 import { TextState } from './TextState';
-import type { IFileSubState } from './sub_state_machines/file_parsing/types';
-import { FileOpeningTagState } from './sub_state_machines/file_parsing/FileOpeningTagState';
+import { FileParsingStateMachine } from './FileParsingStateMachine';
 import type { ParserContext } from './ParserContext';
 
 /**
  * A state in the main state machine that delegates the work of parsing a <file> block
- * to a dedicated, hierarchical sub-state-machine.
+ * to a dedicated, self-contained FileParsingStateMachine.
  * This follows the Composite State design pattern.
  */
 export class FileParsingState extends BaseState {
   stateType = ParserStateType.FILE_PARSING_STATE;
-  private currentSubState: IFileSubState | null;
+  private fileStateMachine: FileParsingStateMachine;
 
   constructor(context: ParserContext) {
     super(context);
-    // Initialize the sub-state-machine
-    this.currentSubState = new FileOpeningTagState();
+    this.fileStateMachine = new FileParsingStateMachine(this.context);
   }
 
   run(): void {
-    while (this.currentSubState && this.context.hasMoreChars()) {
-      this.currentSubState = this.currentSubState.run(this.context);
-    }
+    // Run the sub-state machine until it's done or needs more data.
+    this.fileStateMachine.run();
 
-    if (!this.currentSubState) {
-      // The sub-machine has completed. Transition the main FSM back to TextState.
+    if (this.fileStateMachine.isComplete()) {
+      if (!this.fileStateMachine.wasSuccessful()) {
+        // The file tag was malformed. Revert the buffered tag content to a text segment.
+        const revertedText = this.fileStateMachine.getFinalTagBuffer();
+        this.context.appendTextSegment(revertedText);
+      }
+      // Whether successful or not, transition back to TextState to continue parsing.
       this.context.transitionTo(new TextState(this.context));
     }
   }
 
   finalize(): void {
-    // If the stream ends mid-file, we might have a partial buffer in the sub-state.
-    if (this.currentSubState) {
-        // This is a partial completion. We check if the sub-state was FileContentState,
-        // in which case any parsed content is already in the segment.
-        // If it was another sub-state (like closing tag scan), we might need to
-        // revert its buffer to the last file segment.
-        const leftoverBuffer = this.currentSubState.getFinalBuffer();
-        if (leftoverBuffer) {
-            this.context.appendToFileSegment(leftoverBuffer);
-        }
-    }
+    // If the stream ends mid-file, we just leave the partial file segment as-is.
+    // The FileParsingStateMachine doesn't have a complex finalization logic, as any
+    // content it has processed has already been appended to the current file segment.
   }
 }
