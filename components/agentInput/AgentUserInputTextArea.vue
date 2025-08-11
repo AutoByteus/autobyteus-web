@@ -12,6 +12,8 @@
         @keydown="handleKeyDown"
         @blur="handleBlur"
         :disabled="!activeContextStore.activeAgentContext"
+        @dragover.prevent
+        @drop.prevent="handleDrop"
       ></textarea>
     </div>
 
@@ -78,6 +80,8 @@ import { useActiveContextStore } from '~/stores/activeContextStore';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import AudioRecorder from '~/components/AudioRecorder.vue';
 import GroupedSelect from '~/components/agentInput/GroupedSelect.vue';
+import { getFilePathsFromFolder } from '~/utils/fileExplorer/fileUtils';
+import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
 
 // Initialize stores
 const activeContextStore = useActiveContextStore();
@@ -226,6 +230,50 @@ const handleSend = async () => {
 
 const handleSearchContext = async () => {
   console.log('Search Context button clicked, but functionality is not yet implemented.');
+};
+
+const handleDrop = (event: DragEvent) => {
+  if (!textarea.value || !activeContextStore.activeAgentContext) return;
+
+  let filePaths: string[] = [];
+  const dragData = event.dataTransfer?.getData('application/json');
+
+  if (dragData) {
+    try {
+      const droppedNode: TreeNode = JSON.parse(dragData);
+      // This utility function extracts file paths from a dragged node from the internal file explorer.
+      filePaths = getFilePathsFromFolder(droppedNode);
+    } catch (error) {
+      console.error('Failed to parse dropped node data:', error);
+    }
+  } else if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+    // For files from the OS, browser security prevents access to the full file path.
+    // Only the filename is available.
+    filePaths = Array.from(event.dataTransfer.files).map(file => file.name);
+  }
+
+  if (filePaths.length > 0) {
+    const textToInsert = filePaths.join(', ');
+    const start = textarea.value.selectionStart;
+    const end = textarea.value.selectionEnd;
+    
+    // Construct the new text with the file path(s) inserted at the cursor.
+    const newText = internalRequirement.value.substring(0, start) + textToInsert + internalRequirement.value.substring(end);
+    internalRequirement.value = newText;
+
+    // Trigger update logic to ensure state is synced and UI is adjusted.
+    nextTick(adjustTextareaHeight);
+    debouncedUpdateStore(internalRequirement.value);
+
+    // Set cursor position after the newly inserted text.
+    nextTick(() => {
+      if (textarea.value) {
+        const newCursorPos = start + textToInsert.length;
+        textarea.value.focus();
+        textarea.value.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    });
+  }
 };
 
 const handleKeyDown = (event: KeyboardEvent) => {
