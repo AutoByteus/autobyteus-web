@@ -11,20 +11,33 @@
             <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
             <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
             <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
+            <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deliverables</th>
             <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Depends On</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 bg-white">
           <tr v-for="task in sortedTasks" :key="task.taskId">
-            <td class="px-4 py-3 whitespace-nowrap">
+            <td class="px-4 py-3 whitespace-nowrap align-top">
               <span class="flex items-center text-xs font-medium">
-                <span :class="statusVisuals(task.taskId).colorClass" class="w-2.5 h-2.5 rounded-full mr-2"></span>
+                <span :class="statusVisuals(task.taskId).colorClass" class="w-2.5 h-2.5 rounded-full mr-2 flex-shrink-0 mt-1"></span>
                 {{ statusVisuals(task.taskId).text }}
               </span>
             </td>
-            <td class="px-4 py-3 text-sm text-gray-800 font-medium" :title="task.description">{{ task.taskName }}</td>
-            <td class="px-4 py-3 text-sm text-gray-600">{{ task.assigneeName }}</td>
-            <td class="px-4 py-3 text-sm text-gray-600 font-mono">{{ task.dependencies.length > 0 ? getTaskNames(task.dependencies).join(', ') : '–' }}</td>
+            <td class="px-4 py-3 text-sm text-gray-800 font-medium align-top" :title="task.description">{{ task.taskName }}</td>
+            <td class="px-4 py-3 text-sm text-gray-600 align-top">{{ task.assigneeName }}</td>
+            <td class="px-4 py-3 text-sm text-gray-600 align-top">
+              <div v-if="task.fileDeliverables && task.fileDeliverables.length > 0">
+                <div v-for="deliverable in task.fileDeliverables" :key="deliverable.filePath" class="mb-2 last:mb-0">
+                  <div class="flex items-center font-medium text-gray-800">
+                    <span class="i-heroicons-document-20-solid w-4 h-4 mr-1.5 text-gray-500 flex-shrink-0"></span>
+                    <span class="truncate" :title="deliverable.filePath">{{ deliverable.filePath }}</span>
+                  </div>
+                  <p class="pl-5 text-xs text-gray-500 italic mt-0.5" :title="deliverable.summary">{{ deliverable.summary }}</p>
+                </div>
+              </div>
+              <span v-else class="text-gray-400">--</span>
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-600 font-mono align-top">{{ task.dependencies.length > 0 ? getTaskNames(task.dependencies).join(', ') : '–' }}</td>
           </tr>
         </tbody>
       </table>
@@ -33,6 +46,7 @@
 </template>
 
 <script setup lang="ts">
+// file: autobyteus-web/components/workspace/TaskBoardDisplay.vue
 import { computed } from 'vue';
 import type { Task, TaskStatus } from '~/types/taskManagement';
 

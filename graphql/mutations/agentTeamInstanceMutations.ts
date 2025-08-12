@@ -1,4 +1,14 @@
-import { gql } from 'graphql-tag';
+import { gql } from 'graphql-tag'
+
+export const CreateAgentTeamInstance = gql`
+  mutation CreateAgentTeamInstance($input: CreateAgentTeamInstanceInput!) {
+    createAgentTeamInstance(input: $input) {
+      success
+      message
+      teamId
+    }
+  }
+`
 
 export const TerminateAgentTeamInstance = gql`
   mutation TerminateAgentTeamInstance($id: String!) {
@@ -7,7 +17,7 @@ export const TerminateAgentTeamInstance = gql`
       message
     }
   }
-`;
+`
 
 export const SendMessageToTeam = gql`
   mutation SendMessageToTeam($input: SendMessageToTeamInput!) {
@@ -17,4 +27,4 @@ export const SendMessageToTeam = gql`
       teamId
     }
   }
-`;
+`

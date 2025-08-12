@@ -10,6 +10,7 @@ import type {
   ContextFileType,
   TeamMemberConfigInput,
   AgentOperationalPhase,
+  TaskNotificationModeEnum,
 } from '~/generated/graphql';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { processAgentTeamResponseEvent } from '~/services/agentTeamResponseProcessor';
@@ -188,6 +189,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       
       try {
         let variables: SendMessageToTeamMutationVariables;
+        const taskNotificationMode = activeTeam.launchProfile.globalConfig.taskNotificationMode as TaskNotificationModeEnum;
 
         if (isTemporary) {
           this.isLaunching = true;
@@ -201,6 +203,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
               targetNodeName: focusedMember.state.agentId,
               teamDefinitionId: activeTeam.launchProfile.teamDefinition.id,
               memberConfigs: memberConfigs,
+              taskNotificationMode: taskNotificationMode,
             }
           };
         } else {

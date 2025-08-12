@@ -1,3 +1,11 @@
+// file: autobyteus-web/types/taskManagement.ts
+export interface FileDeliverable {
+  filePath: string;
+  summary: string;
+  authorAgentName: string;
+  timestamp: string; // ISO string from GraphQL
+}
+
 export enum TaskStatus {
   NOT_STARTED = "not_started",
   IN_PROGRESS = "in_progress",
@@ -12,5 +20,5 @@ export interface Task {
   assigneeName: string;
   description: string;
   dependencies: string[];
-  producedArtifactIds: string[];
+  fileDeliverables: FileDeliverable[];
 }

@@ -1,3 +1,4 @@
+// file: autobyteus-web/graphql/subscriptions/agentTeamResponseSubscription.ts
 import { gql } from 'graphql-tag';
 
 // This is a fragment that helps in recursively defining the subscription
@@ -91,6 +92,12 @@ const nestedTeamEventFragment = gql`
             assigneeName
             description
             dependencies
+            fileDeliverables {
+              filePath
+              summary
+              authorAgentName
+              timestamp
+            }
           }
         }
       }
@@ -100,6 +107,12 @@ const nestedTeamEventFragment = gql`
         taskId
         newStatus
         agentName
+        deliverables {
+          filePath
+          summary
+          authorAgentName
+          timestamp
+        }
       }
     }
   }

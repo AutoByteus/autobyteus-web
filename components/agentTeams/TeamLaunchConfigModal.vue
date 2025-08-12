@@ -1,3 +1,4 @@
+# file: autobyteus-web/components/agentTeams/TeamLaunchConfigModal.vue
 <template>
   <Teleport to="body">
     <div v-if="show" @click.self="closeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -63,6 +64,25 @@
                         <div v-if="globalConfig.workspaceConfig.mode === 'new'" class="mt-2">
                           <WorkspaceConfigForm v-model="globalConfig.workspaceConfig.newWorkspaceConfig" />
                         </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Task Notification Mode</label>
+                  <div class="space-y-2">
+                    <label class="flex items-center space-x-3 p-3 border rounded-md cursor-pointer" :class="globalConfig.taskNotificationMode === 'AGENT_MANUAL_NOTIFICATION' ? 'bg-indigo-50 border-indigo-400' : 'bg-white'">
+                      <input type="radio" v-model="globalConfig.taskNotificationMode" value="AGENT_MANUAL_NOTIFICATION" class="form-radio" />
+                      <div>
+                        <span class="font-medium">Agent Manual</span>
+                        <p class="text-xs text-gray-500">The coordinator agent is responsible for telling other agents to start tasks.</p>
+                      </div>
+                    </label>
+                    <label class="flex items-center space-x-3 p-3 border rounded-md cursor-pointer" :class="globalConfig.taskNotificationMode === 'SYSTEM_EVENT_DRIVEN' ? 'bg-indigo-50 border-indigo-400' : 'bg-white'">
+                      <input type="radio" v-model="globalConfig.taskNotificationMode" value="SYSTEM_EVENT_DRIVEN" class="form-radio" />
+                      <div>
+                        <span class="font-medium">System Event-Driven</span>
+                        <p class="text-xs text-gray-500">The system automatically notifies agents when their tasks are ready to start.</p>
                       </div>
                     </label>
                   </div>
@@ -223,6 +243,7 @@ const globalConfig = reactive<TeamLaunchProfile['globalConfig']>({
   workspaceConfig: { mode: 'none' },
   autoExecuteTools: true,
   parseToolCalls: true,
+  taskNotificationMode: 'AGENT_MANUAL_NOTIFICATION',
 });
 const memberOverrides = reactive<Record<string, TeamMemberConfigOverride>>({});
 
@@ -383,17 +404,21 @@ const initializeFormState = () => {
   
   if (props.existingProfile) {
     Object.assign(globalConfig, JSON.parse(JSON.stringify(props.existingProfile.globalConfig)));
-    Object.keys(memberOverrides).forEach(key => delete memberOverrides[key]);
-    props.existingProfile.memberOverrides.forEach(ov => {
-      memberOverrides[ov.memberName] = JSON.parse(JSON.stringify(ov));
-    });
   } else {
     // Reset to a blank state. Defaults will be populated after data is fetched.
     globalConfig.llmModelIdentifier = '';
     globalConfig.workspaceConfig = { mode: 'none' };
     globalConfig.autoExecuteTools = true;
     globalConfig.parseToolCalls = true;
-    Object.keys(memberOverrides).forEach(key => delete memberOverrides[key]);
+    globalConfig.taskNotificationMode = 'AGENT_MANUAL_NOTIFICATION';
+  }
+
+  // Clear and repopulate overrides
+  Object.keys(memberOverrides).forEach(key => delete memberOverrides[key]);
+  if (props.existingProfile?.memberOverrides) {
+    props.existingProfile.memberOverrides.forEach(ov => {
+      memberOverrides[ov.memberName] = JSON.parse(JSON.stringify(ov));
+    });
   }
 };
 
