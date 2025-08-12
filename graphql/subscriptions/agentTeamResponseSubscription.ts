@@ -79,6 +79,28 @@ const nestedTeamEventFragment = gql`
           }
         }
       }
+      ... on GraphQLTaskPlanPublishedEvent {
+        teamId
+        planId
+        plan {
+          planId
+          overallGoal
+          tasks {
+            taskId
+            taskName
+            assigneeName
+            description
+            dependencies
+          }
+        }
+      }
+      ... on GraphQLTaskStatusUpdatedEvent {
+        teamId
+        planId
+        taskId
+        newStatus
+        agentName
+      }
     }
   }
 `;

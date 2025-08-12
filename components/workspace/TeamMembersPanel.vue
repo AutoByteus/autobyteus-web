@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full bg-gray-50 text-gray-800">
+  <div class="flex flex-col bg-gray-50 text-gray-800 rounded-lg border border-gray-200 overflow-hidden">
     <!-- Header -->
     <div class="p-4 border-b border-gray-200 flex-shrink-0">
       <h3 class="text-base font-semibold text-gray-900">Team Members</h3>

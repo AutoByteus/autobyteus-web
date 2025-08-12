@@ -106,10 +106,12 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
         teamId: tempId,
         launchProfile: profile,
         members: members,
-        focusedMemberName: profile.teamDefinition.coordinatorMemberName,
+        focusedMemberName: profile.teamDefinition.coordinatorMemberName, // Default to coordinator
         currentPhase: 'UNINITIALIZED' as AgentOperationalPhase,
         isSubscribed: false,
         unsubscribe: undefined,
+        taskPlan: null,
+        taskStatuses: null,
       };
       
       teamContextsStore.addTeamContext(newTeamContext);

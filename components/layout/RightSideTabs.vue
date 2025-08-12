@@ -9,7 +9,7 @@
     <!-- Tab Content -->
     <div class="flex-grow overflow-auto relative mt-[-1px]">
       <div v-if="activeTab === 'teamMembers'" class="h-full">
-        <TeamMembersPanel />
+        <TeamOverviewPanel />
       </div>
       <div v-if="activeTab === 'terminal'" class="h-full">
         <Terminal />
@@ -25,7 +25,7 @@
 import { ref, computed, watch } from 'vue';
 import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
 import TabList from '~/components/tabs/TabList.vue';
-import TeamMembersPanel from '~/components/workspace/TeamMembersPanel.vue';
+import TeamOverviewPanel from '~/components/workspace/TeamOverviewPanel.vue';
 import Terminal from '~/components/workspace/Terminal.vue';
 import VncViewer from '~/components/workspace/VncViewer.vue';
 

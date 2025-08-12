@@ -6,6 +6,7 @@ import type {
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import { processAgentResponseEvent } from '~/services/agentResponseProcessor';
 import { handleTeamPhaseTransition } from './agentTeamResponseHandlers/teamStatusHandler';
+import { handleTaskPlanPublished, handleTaskStatusUpdated } from './agentTeamResponseHandlers/taskBoardHandler';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 
 /**
@@ -14,9 +15,10 @@ import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
  */
 export function processAgentTeamResponseEvent(event: GraphQLAgentTeamStreamEvent): void {
   const teamContextsStore = useAgentTeamContextsStore();
-  const teamContext = teamContextsStore.activeTeamContext;
+  // Find the context from any profile, not just the active one.
+  const teamContext = teamContextsStore.getTeamContextById(event.teamId);
 
-  if (!teamContext || teamContext.teamId !== event.teamId) {
+  if (!teamContext) {
     console.warn(`Received event for an unknown or inactive team with ID: ${event.teamId}. Ignoring.`);
     return;
   }
@@ -34,6 +36,14 @@ export function processAgentTeamResponseEvent(event: GraphQLAgentTeamStreamEvent
 
     case 'GraphQLSubTeamEventRebroadcastPayload':
       handleSubTeamEventRebroadcast(data, teamContext);
+      break;
+    
+    case 'GraphQLTaskPlanPublishedEvent':
+      handleTaskPlanPublished(data, teamContext);
+      break;
+
+    case 'GraphQLTaskStatusUpdatedEvent':
+      handleTaskStatusUpdated(data, teamContext);
       break;
 
     default:

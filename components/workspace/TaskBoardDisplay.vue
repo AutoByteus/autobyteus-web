@@ -1,0 +1,73 @@
+<template>
+  <div class="p-4 bg-white rounded-lg border border-gray-200 h-full">
+    <h3 class="text-base font-semibold text-gray-900 mb-3">Task Board</h3>
+    <div v-if="!tasks || tasks.length === 0" class="text-center text-sm text-gray-500 py-8 px-4 bg-gray-100 rounded-lg">
+      No task plan has been published yet.
+    </div>
+    <div v-else class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+            <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
+            <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Depends On</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 bg-white">
+          <tr v-for="task in sortedTasks" :key="task.taskId">
+            <td class="px-4 py-3 whitespace-nowrap">
+              <span class="flex items-center text-xs font-medium">
+                <span :class="statusVisuals(task.taskId).colorClass" class="w-2.5 h-2.5 rounded-full mr-2"></span>
+                {{ statusVisuals(task.taskId).text }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-800 font-medium" :title="task.description">{{ task.taskName }}</td>
+            <td class="px-4 py-3 text-sm text-gray-600">{{ task.assigneeName }}</td>
+            <td class="px-4 py-3 text-sm text-gray-600 font-mono">{{ task.dependencies.length > 0 ? getTaskNames(task.dependencies).join(', ') : '–' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue';
+import type { Task, TaskStatus } from '~/types/taskManagement';
+
+const props = defineProps<{
+  tasks: Task[] | null;
+  statuses: Record<string, TaskStatus> | null;
+}>();
+
+const idToNameMap = computed(() => {
+  if (!props.tasks) return {};
+  return props.tasks.reduce((acc, task) => {
+    acc[task.taskId] = task.taskName;
+    return acc;
+  }, {} as Record<string, string>);
+});
+
+const sortedTasks = computed(() => {
+  if (!props.tasks) return [];
+  return [...props.tasks].sort((a, b) => a.taskName.localeCompare(b.taskName));
+});
+
+const getTaskNames = (taskIds: string[]) => {
+  return taskIds.map(id => idToNameMap.value[id] || id.slice(0, 8));
+};
+
+const statusVisuals = (taskId: string) => {
+  const status = props.statuses?.[taskId] || 'not_started';
+  switch (status) {
+    case 'completed': return { text: 'Completed', colorClass: 'bg-green-500' };
+    case 'in_progress': return { text: 'In Progress', colorClass: 'bg-blue-500' };
+    case 'failed': return { text: 'Failed', colorClass: 'bg-red-500' };
+    case 'blocked': return { text: 'Blocked', colorClass: 'bg-yellow-500' };
+    case 'not_started':
+    default:
+      return { text: 'Not Started', colorClass: 'bg-gray-400' };
+  }
+};
+</script>
