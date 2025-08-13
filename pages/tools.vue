@@ -44,7 +44,7 @@
           @add="showAddServerForm"
           @edit="showEditServerForm"
           @delete="requestDeleteServer"
-          @bulk-import="isBulkImportVisible = true"
+          @bulk-import="showBulkImportView"
           @discover-tools="discoverTools"
           @view-tools="viewToolsForServer"
         />
@@ -56,6 +56,15 @@
           :server="selectedServer"
           @cancel="handleNavigation('mcp-servers')"
           @save="handleServerSave"
+          @show-toast="handleShowToast"
+        />
+      </div>
+
+      <!-- MCP Bulk Import View -->
+      <div v-else-if="activeView === 'mcp-bulk-import'">
+        <McpBulkImportView
+          @cancel="handleNavigation('mcp-servers')"
+          @save-complete="handleNavigation('mcp-servers')"
           @show-toast="handleShowToast"
         />
       </div>
@@ -83,11 +92,6 @@
       @close="isToolDetailVisible = false"
     />
 
-    <McpBulkImportModal 
-        :show="isBulkImportVisible" 
-        @close="isBulkImportVisible = false"
-    />
-
     <ToolsConfirmationModal 
         :show="isDeleteConfirmVisible"
         title="Delete MCP Server"
@@ -111,10 +115,10 @@ import ToolList from '~/components/tools/ToolList.vue';
 import ToolDetailsModal from '~/components/tools/ToolDetailsModal.vue';
 import McpServerList from '~/components/tools/McpServerList.vue';
 import McpServerFormModal from '~/components/tools/McpServerFormModal.vue';
+import McpBulkImportView from '~/components/tools/McpBulkImportView.vue';
 import ToolsFilter from '~/components/tools/ToolsFilter.vue';
 import ToastContainer from '~/components/common/ToastContainer.vue';
 import ToolsConfirmationModal from '~/components/tools/ToolsConfirmationModal.vue';
-import McpBulkImportModal from '~/components/tools/McpBulkImportModal.vue';
 
 const store = useToolManagementStore();
 const { addToast } = useToasts();
@@ -123,7 +127,6 @@ const { addToast } = useToasts();
 const activeView = ref('local-tools');
 const isToolDetailVisible = ref(false);
 const isDeleteConfirmVisible = ref(false);
-const isBulkImportVisible = ref(false);
 const selectedTool = ref<Tool | null>(null);
 const selectedServer = ref<McpServer | null>(null);
 const serverToDeleteId = ref<string | null>(null);
@@ -197,6 +200,10 @@ const showAddServerForm = () => {
 const showEditServerForm = (server: McpServer) => {
   selectedServer.value = server;
   activeView.value = 'mcp-form';
+};
+
+const showBulkImportView = () => {
+  activeView.value = 'mcp-bulk-import';
 };
 
 const viewToolsForServer = (serverId: string) => {
