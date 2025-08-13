@@ -1,9 +1,10 @@
-import { gql } from 'graphql-tag'
+import { gql } from 'graphql-tag';
 
 export const CONFIGURE_MCP_SERVER = gql`
   mutation ConfigureMcpServer($input: McpServerInput!) {
     configureMcpServer(input: $input) {
       savedConfig {
+        __typename
         ... on StdioMcpServerConfig {
           serverId
           transportType
@@ -26,7 +27,7 @@ export const CONFIGURE_MCP_SERVER = gql`
       }
     }
   }
-`
+`;
 
 export const DELETE_MCP_SERVER = gql`
   mutation DeleteMcpServer($serverId: String!) {
@@ -35,4 +36,40 @@ export const DELETE_MCP_SERVER = gql`
       message
     }
   }
-`
+`;
+
+export const DISCOVER_AND_REGISTER_MCP_SERVER_TOOLS = gql`
+  mutation DiscoverAndRegisterMcpServerTools($serverId: String!) {
+    discoverAndRegisterMcpServerTools(serverId: $serverId) {
+      success
+      message
+      discoveredTools {
+        name
+        description
+        origin
+        category
+        argumentSchema {
+          parameters {
+            name
+            paramType
+            description
+            required
+            defaultValue
+            enumValues
+          }
+        }
+      }
+    }
+  }
+`;
+
+export const IMPORT_MCP_SERVER_CONFIGS = gql`
+    mutation ImportMcpServerConfigs($jsonString: String!) {
+        importMcpServerConfigs(jsonString: $jsonString) {
+            success
+            message
+            importedCount
+            failedCount
+        }
+    }
+`;

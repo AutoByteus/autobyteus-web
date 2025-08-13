@@ -137,7 +137,6 @@ export type CommandExecutionResult = {
 
 export type ConfigureMcpServerResult = {
   __typename?: 'ConfigureMcpServerResult';
-  discoveredTools: Array<ToolDefinitionDetail>;
   savedConfig: McpServerConfigUnion;
 };
 
@@ -243,6 +242,13 @@ export type DeletePromptInput = {
 
 export type DeletePromptResult = {
   __typename?: 'DeletePromptResult';
+  message: Scalars['String']['output'];
+  success: Scalars['Boolean']['output'];
+};
+
+export type DiscoverAndRegisterMcpServerToolsResult = {
+  __typename?: 'DiscoverAndRegisterMcpServerToolsResult';
+  discoveredTools: Array<ToolDefinitionDetail>;
   message: Scalars['String']['output'];
   success: Scalars['Boolean']['output'];
 };
@@ -400,6 +406,14 @@ export type GraphQlToolInvocationAutoExecutingData = {
   toolName?: Maybe<Scalars['String']['output']>;
 };
 
+export type ImportMcpServerConfigsResult = {
+  __typename?: 'ImportMcpServerConfigsResult';
+  failedCount: Scalars['Int']['output'];
+  importedCount: Scalars['Int']['output'];
+  message: Scalars['String']['output'];
+  success: Scalars['Boolean']['output'];
+};
+
 export type MarkActivePromptInput = {
   id: Scalars['String']['input'];
 };
@@ -473,7 +487,9 @@ export type Mutation = {
   deleteFileOrFolder: Scalars['String']['output'];
   deleteMcpServer: DeleteMcpServerResult;
   deletePrompt: DeletePromptResult;
+  discoverAndRegisterMcpServerTools: DiscoverAndRegisterMcpServerToolsResult;
   executeBashCommands: CommandExecutionResult;
+  importMcpServerConfigs: ImportMcpServerConfigsResult;
   markActivePrompt: Prompt;
   moveFileOrFolder: Scalars['String']['output'];
   reloadLlmModels: Scalars['String']['output'];
@@ -565,9 +581,19 @@ export type MutationDeletePromptArgs = {
 };
 
 
+export type MutationDiscoverAndRegisterMcpServerToolsArgs = {
+  serverId: Scalars['String']['input'];
+};
+
+
 export type MutationExecuteBashCommandsArgs = {
   command: Scalars['String']['input'];
   workspaceId: Scalars['String']['input'];
+};
+
+
+export type MutationImportMcpServerConfigsArgs = {
+  jsonString: Scalars['String']['input'];
 };
 
 
@@ -1237,7 +1263,7 @@ export type ConfigureMcpServerMutationVariables = Exact<{
 }>;
 
 
-export type ConfigureMcpServerMutation = { __typename?: 'Mutation', configureMcpServer: { __typename?: 'ConfigureMcpServerResult', savedConfig: { __typename?: 'StdioMcpServerConfig', serverId: string, transportType: McpTransportTypeEnum, enabled: boolean, toolNamePrefix?: string | null, command: string, args?: Array<string> | null, env?: any | null, cwd?: string | null } | { __typename?: 'StreamableHttpMcpServerConfig', serverId: string, transportType: McpTransportTypeEnum, enabled: boolean, toolNamePrefix?: string | null, url: string, token?: string | null, headers?: any | null } } };
+export type ConfigureMcpServerMutation = { __typename?: 'Mutation', configureMcpServer: { __typename?: 'ConfigureMcpServerResult', savedConfig: { __typename: 'StdioMcpServerConfig', serverId: string, transportType: McpTransportTypeEnum, enabled: boolean, toolNamePrefix?: string | null, command: string, args?: Array<string> | null, env?: any | null, cwd?: string | null } | { __typename: 'StreamableHttpMcpServerConfig', serverId: string, transportType: McpTransportTypeEnum, enabled: boolean, toolNamePrefix?: string | null, url: string, token?: string | null, headers?: any | null } } };
 
 export type DeleteMcpServerMutationVariables = Exact<{
   serverId: Scalars['String']['input'];
@@ -1245,6 +1271,20 @@ export type DeleteMcpServerMutationVariables = Exact<{
 
 
 export type DeleteMcpServerMutation = { __typename?: 'Mutation', deleteMcpServer: { __typename?: 'DeleteMcpServerResult', success: boolean, message: string } };
+
+export type DiscoverAndRegisterMcpServerToolsMutationVariables = Exact<{
+  serverId: Scalars['String']['input'];
+}>;
+
+
+export type DiscoverAndRegisterMcpServerToolsMutation = { __typename?: 'Mutation', discoverAndRegisterMcpServerTools: { __typename?: 'DiscoverAndRegisterMcpServerToolsResult', success: boolean, message: string, discoveredTools: Array<{ __typename?: 'ToolDefinitionDetail', name: string, description: string, origin: ToolOriginEnum, category: string, argumentSchema?: { __typename?: 'ToolArgumentSchema', parameters: Array<{ __typename?: 'ToolParameterDefinition', name: string, paramType: ToolParameterTypeEnum, description: string, required: boolean, defaultValue?: string | null, enumValues?: Array<string> | null }> } | null }> } };
+
+export type ImportMcpServerConfigsMutationVariables = Exact<{
+  jsonString: Scalars['String']['input'];
+}>;
+
+
+export type ImportMcpServerConfigsMutation = { __typename?: 'Mutation', importMcpServerConfigs: { __typename?: 'ImportMcpServerConfigsResult', success: boolean, message: string, importedCount: number, failedCount: number } };
 
 export type CreatePromptMutationVariables = Exact<{
   input: CreatePromptInput;
@@ -2161,6 +2201,7 @@ export const ConfigureMcpServerDocument = gql`
     mutation ConfigureMcpServer($input: McpServerInput!) {
   configureMcpServer(input: $input) {
     savedConfig {
+      __typename
       ... on StdioMcpServerConfig {
         serverId
         transportType
@@ -2236,6 +2277,84 @@ export function useDeleteMcpServerMutation(options: VueApolloComposable.UseMutat
   return VueApolloComposable.useMutation<DeleteMcpServerMutation, DeleteMcpServerMutationVariables>(DeleteMcpServerDocument, options);
 }
 export type DeleteMcpServerMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<DeleteMcpServerMutation, DeleteMcpServerMutationVariables>;
+export const DiscoverAndRegisterMcpServerToolsDocument = gql`
+    mutation DiscoverAndRegisterMcpServerTools($serverId: String!) {
+  discoverAndRegisterMcpServerTools(serverId: $serverId) {
+    success
+    message
+    discoveredTools {
+      name
+      description
+      origin
+      category
+      argumentSchema {
+        parameters {
+          name
+          paramType
+          description
+          required
+          defaultValue
+          enumValues
+        }
+      }
+    }
+  }
+}
+    `;
+
+/**
+ * __useDiscoverAndRegisterMcpServerToolsMutation__
+ *
+ * To run a mutation, you first call `useDiscoverAndRegisterMcpServerToolsMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useDiscoverAndRegisterMcpServerToolsMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useDiscoverAndRegisterMcpServerToolsMutation({
+ *   variables: {
+ *     serverId: // value for 'serverId'
+ *   },
+ * });
+ */
+export function useDiscoverAndRegisterMcpServerToolsMutation(options: VueApolloComposable.UseMutationOptions<DiscoverAndRegisterMcpServerToolsMutation, DiscoverAndRegisterMcpServerToolsMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<DiscoverAndRegisterMcpServerToolsMutation, DiscoverAndRegisterMcpServerToolsMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<DiscoverAndRegisterMcpServerToolsMutation, DiscoverAndRegisterMcpServerToolsMutationVariables>(DiscoverAndRegisterMcpServerToolsDocument, options);
+}
+export type DiscoverAndRegisterMcpServerToolsMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<DiscoverAndRegisterMcpServerToolsMutation, DiscoverAndRegisterMcpServerToolsMutationVariables>;
+export const ImportMcpServerConfigsDocument = gql`
+    mutation ImportMcpServerConfigs($jsonString: String!) {
+  importMcpServerConfigs(jsonString: $jsonString) {
+    success
+    message
+    importedCount
+    failedCount
+  }
+}
+    `;
+
+/**
+ * __useImportMcpServerConfigsMutation__
+ *
+ * To run a mutation, you first call `useImportMcpServerConfigsMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useImportMcpServerConfigsMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useImportMcpServerConfigsMutation({
+ *   variables: {
+ *     jsonString: // value for 'jsonString'
+ *   },
+ * });
+ */
+export function useImportMcpServerConfigsMutation(options: VueApolloComposable.UseMutationOptions<ImportMcpServerConfigsMutation, ImportMcpServerConfigsMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<ImportMcpServerConfigsMutation, ImportMcpServerConfigsMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<ImportMcpServerConfigsMutation, ImportMcpServerConfigsMutationVariables>(ImportMcpServerConfigsDocument, options);
+}
+export type ImportMcpServerConfigsMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<ImportMcpServerConfigsMutation, ImportMcpServerConfigsMutationVariables>;
 export const CreatePromptDocument = gql`
     mutation CreatePrompt($input: CreatePromptInput!) {
   createPrompt(input: $input) {

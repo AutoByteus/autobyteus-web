@@ -43,7 +43,9 @@
           :loading="store.getLoading && activeView.startsWith('mcp-')"
           @add="showAddServerForm"
           @edit="showEditServerForm"
-          @delete="confirmDeleteServer"
+          @delete="requestDeleteServer"
+          @bulk-import="isBulkImportVisible = true"
+          @discover-tools="discoverTools"
           @view-tools="viewToolsForServer"
         />
       </div>
@@ -54,6 +56,7 @@
           :server="selectedServer"
           @cancel="handleNavigation('mcp-servers')"
           @save="handleServerSave"
+          @show-toast="handleShowToast"
         />
       </div>
 
@@ -71,11 +74,28 @@
       </div>
     </main>
 
-    <!-- Modals -->
+    <!-- Modals & Notifications -->
+    <ToastContainer />
+
     <ToolDetailsModal
       :show="isToolDetailVisible"
       :tool="selectedTool"
       @close="isToolDetailVisible = false"
+    />
+
+    <McpBulkImportModal 
+        :show="isBulkImportVisible" 
+        @close="isBulkImportVisible = false"
+    />
+
+    <ToolsConfirmationModal 
+        :show="isDeleteConfirmVisible"
+        title="Delete MCP Server"
+        :message="`Are you sure you want to delete the server '<strong>${serverToDeleteId}</strong>'?<br>This action cannot be undone.`"
+        confirm-button-text="Delete"
+        variant="danger"
+        @confirm="executeDeleteServer"
+        @cancel="cancelDeleteServer"
     />
   </div>
 </template>
@@ -84,6 +104,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useToolManagementStore } from '~/stores/toolManagementStore';
 import type { Tool, McpServer, ToolCategoryGroup } from '~/stores/toolManagementStore';
+import { useToasts, type ToastType } from '~/composables/useToasts';
 
 import ToolsSidebar from '~/components/tools/ToolsSidebar.vue';
 import ToolList from '~/components/tools/ToolList.vue';
@@ -91,14 +112,21 @@ import ToolDetailsModal from '~/components/tools/ToolDetailsModal.vue';
 import McpServerList from '~/components/tools/McpServerList.vue';
 import McpServerFormModal from '~/components/tools/McpServerFormModal.vue';
 import ToolsFilter from '~/components/tools/ToolsFilter.vue';
+import ToastContainer from '~/components/common/ToastContainer.vue';
+import ToolsConfirmationModal from '~/components/tools/ToolsConfirmationModal.vue';
+import McpBulkImportModal from '~/components/tools/McpBulkImportModal.vue';
 
 const store = useToolManagementStore();
+const { addToast } = useToasts();
 
 // --- State ---
 const activeView = ref('local-tools');
 const isToolDetailVisible = ref(false);
+const isDeleteConfirmVisible = ref(false);
+const isBulkImportVisible = ref(false);
 const selectedTool = ref<Tool | null>(null);
 const selectedServer = ref<McpServer | null>(null);
+const serverToDeleteId = ref<string | null>(null);
 const searchQuery = ref('');
 const selectedCategory = ref('All Categories');
 
@@ -117,39 +145,24 @@ const localToolCategories = computed(() => {
 
 const filteredLocalToolsByCategory = computed(() => {
   let groups = store.getLocalToolsByCategory;
-
-  // 1. Filter by category
   if (selectedCategory.value !== 'All Categories') {
     groups = groups.filter(group => group.categoryName === selectedCategory.value);
   }
-
-  // 2. Filter by search query
-  if (!searchQuery.value) {
-    return groups;
-  }
+  if (!searchQuery.value) return groups;
   const query = searchQuery.value.toLowerCase();
-  
   return groups.reduce((acc: ToolCategoryGroup[], group) => {
     const filteredTools = group.tools.filter(tool => 
-      tool.name.toLowerCase().includes(query) || 
-      tool.description.toLowerCase().includes(query)
+      tool.name.toLowerCase().includes(query) || tool.description.toLowerCase().includes(query)
     );
-
-    if (filteredTools.length > 0) {
-      acc.push({ ...group, tools: filteredTools });
-    }
+    if (filteredTools.length > 0) acc.push({ ...group, tools: filteredTools });
     return acc;
   }, []);
 });
 
 const filteredMcpServers = computed(() => {
-  if (!searchQuery.value) {
-    return store.getMcpServers;
-  }
+  if (!searchQuery.value) return store.getMcpServers;
   const query = searchQuery.value.toLowerCase();
-  return store.getMcpServers.filter(server => 
-    server.serverId.toLowerCase().includes(query)
-  );
+  return store.getMcpServers.filter(server => server.serverId.toLowerCase().includes(query));
 });
 
 // --- Lifecycle ---
@@ -161,13 +174,14 @@ onMounted(() => {
 // --- Methods ---
 const handleNavigation = (view: string) => {
   activeView.value = view;
-  searchQuery.value = ''; // Reset search when changing views
-  selectedCategory.value = 'All Categories'; // Reset category filter
-  if (view === 'local-tools') {
-    store.fetchLocalToolsGroupedByCategory();
-  } else if (view === 'mcp-servers') {
-    store.fetchMcpServers();
-  }
+  searchQuery.value = '';
+  selectedCategory.value = 'All Categories';
+  if (view === 'local-tools') store.fetchLocalToolsGroupedByCategory();
+  else if (view === 'mcp-servers') store.fetchMcpServers();
+};
+
+const handleShowToast = (payload: { message: string, type: ToastType }) => {
+  addToast(payload.message, payload.type);
 };
 
 const showToolDetails = (tool: Tool) => {
@@ -194,16 +208,42 @@ const handleServerSave = () => {
   activeView.value = 'mcp-servers';
 };
 
-const confirmDeleteServer = async (serverId: string) => {
-  if (confirm(`Are you sure you want to delete the server "${serverId}"? This cannot be undone.`)) {
+const requestDeleteServer = (serverId: string) => {
+  serverToDeleteId.value = serverId;
+  isDeleteConfirmVisible.value = true;
+};
+
+const cancelDeleteServer = () => {
+  serverToDeleteId.value = null;
+  isDeleteConfirmVisible.value = false;
+};
+
+const executeDeleteServer = async () => {
+  if (serverToDeleteId.value) {
     try {
-      await store.deleteMcpServer(serverId);
-      alert(`Server ${serverId} deleted successfully.`);
+      await store.deleteMcpServer(serverToDeleteId.value);
+      addToast(`Server '${serverToDeleteId.value}' deleted successfully.`, 'success');
     } catch(e: any) {
-      alert(`Failed to delete server: ${e.message}`);
+      addToast(`Failed to delete server: ${e.message}`, 'error');
+    } finally {
+      cancelDeleteServer();
     }
   }
 };
+
+const discoverTools = async (serverId: string) => {
+    try {
+        const result = await store.discoverAndRegisterMcpServerTools(serverId);
+        if (result.success) {
+            addToast(`Successfully discovered ${result.discoveredTools.length} tools for ${serverId}.`, 'success');
+        } else {
+            addToast(`Failed to discover tools for ${serverId}: ${result.message}`, 'error');
+        }
+    } catch(e: any) {
+        addToast(`An unexpected error occurred: ${e.message}`, 'error');
+    }
+};
+
 </script>
 
 <style>

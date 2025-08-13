@@ -2,7 +2,12 @@ import { defineStore } from 'pinia';
 import { useQuery, useMutation } from '@vue/apollo-composable';
 import { GET_TOOLS, GET_TOOLS_GROUPED_BY_CATEGORY } from '~/graphql/queries/toolQueries';
 import { GET_MCP_SERVERS, PREVIEW_MCP_SERVER_TOOLS } from '~/graphql/queries/mcpServerQueries';
-import { CONFIGURE_MCP_SERVER, DELETE_MCP_SERVER } from '~/graphql/mutations/mcpServerMutations';
+import { 
+  CONFIGURE_MCP_SERVER, 
+  DELETE_MCP_SERVER,
+  DISCOVER_AND_REGISTER_MCP_SERVER_TOOLS,
+  IMPORT_MCP_SERVER_CONFIGS
+} from '~/graphql/mutations/mcpServerMutations';
 
 // --- Interfaces ---
 
@@ -227,6 +232,7 @@ export const useToolManagementStore = defineStore('toolManagement', {
             const response = await mutate({ input });
             if (response?.data?.configureMcpServer) {
                 await this.fetchMcpServers();
+                // We no longer expect discovered_tools here
                 return response.data.configureMcpServer;
             }
             throw new Error('Failed to configure MCP server: No data returned');
@@ -246,13 +252,56 @@ export const useToolManagementStore = defineStore('toolManagement', {
         const response = await mutate({ serverId });
         
         if (response?.data?.deleteMcpServer) {
-          // Refetch the server list on successful deletion
           if (response.data.deleteMcpServer.success) {
             await this.fetchMcpServers();
           }
           return response.data.deleteMcpServer;
         }
         throw new Error('Failed to delete MCP server: No data returned');
+      } catch (e) {
+        this.error = e;
+        throw e;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async discoverAndRegisterMcpServerTools(serverId: string) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const { mutate } = useMutation(DISCOVER_AND_REGISTER_MCP_SERVER_TOOLS);
+        const response = await mutate({ serverId });
+        if (response?.data?.discoverAndRegisterMcpServerTools) {
+          if (response.data.discoverAndRegisterMcpServerTools.success) {
+            // On success, refresh the tools for this server
+            await this.fetchToolsForServer(serverId);
+          }
+          // Return the full result so the UI can show messages
+          return response.data.discoverAndRegisterMcpServerTools;
+        }
+        throw new Error('Failed to discover tools: No data returned');
+      } catch (e) {
+        this.error = e;
+        throw e;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async importMcpServerConfigs(jsonString: string) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const { mutate } = useMutation(IMPORT_MCP_SERVER_CONFIGS);
+        const response = await mutate({ jsonString });
+        if (response?.data?.importMcpServerConfigs) {
+          if (response.data.importMcpServerConfigs.success) {
+            await this.fetchMcpServers();
+          }
+          return response.data.importMcpServerConfigs;
+        }
+        throw new Error('Failed to import configs: No data returned');
       } catch (e) {
         this.error = e;
         throw e;
