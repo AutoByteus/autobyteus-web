@@ -17,9 +17,10 @@
         <label for="bulk-json-input" class="block text-base font-medium text-gray-700">JSON Configuration</label>
         <p class="text-sm text-gray-500">The JSON must have a top-level `mcpServers` key containing an object of server configurations.</p>
         <textarea 
-          id="bulk-json-input" 
+          id="bulk-json-input"
+          ref="textareaRef"
           v-model="jsonString" 
-          class="mt-2 font-mono block w-full shadow-sm text-sm border-gray-300 rounded-md p-2 h-96"
+          class="mt-2 font-mono block w-full shadow-sm text-sm border-gray-300 rounded-md p-2 min-h-[40rem] resize-none overflow-hidden"
           :placeholder="placeholderJson"
         ></textarea>
       </div>
@@ -43,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch, onMounted, nextTick } from 'vue';
 import { useToolManagementStore } from '~/stores/toolManagementStore';
 import { type ToastType } from '~/composables/useToasts';
 
@@ -51,6 +52,7 @@ const emit = defineEmits(['cancel', 'save-complete', 'show-toast']);
 const store = useToolManagementStore();
 
 const jsonString = ref('');
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
 const placeholderJson = `{
   "mcpServers": {
@@ -65,14 +67,50 @@ const placeholderJson = `{
   }
 }`;
 
+const autoResize = () => {
+  const el = textareaRef.value;
+  if (el) {
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }
+};
+
+onMounted(() => {
+  nextTick(autoResize);
+});
+
+watch(jsonString, () => {
+  nextTick(autoResize);
+});
+
 const runImport = async () => {
     try {
         const result = await store.importMcpServerConfigs(jsonString.value);
+        
+        let toastType: ToastType = 'error'; // Default to error
+        
+        // The backend now correctly sets `success` to false if any imports fail.
+        // We can provide more nuanced feedback based on the counts.
+        if (result.success) { // This means failed_count is 0
+            toastType = 'success';
+        } else {
+            if (result.imported_count > 0) {
+                // Partial success: some imported, some failed.
+                toastType = 'info';
+            } else {
+                // Total failure: none imported, some failed.
+                toastType = 'error';
+            }
+        }
+
         emit('show-toast', { 
             message: result.message, 
-            type: result.success ? 'success' : 'error' as ToastType 
+            type: toastType 
         });
-        if (result.success) {
+
+        // On any kind of success (partial or full), emit the save-complete event.
+        // The parent view is responsible for listening to this and performing navigation.
+        if (result.imported_count > 0) {
             emit('save-complete');
         }
     } catch (e: any) {

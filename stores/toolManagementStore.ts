@@ -296,7 +296,8 @@ export const useToolManagementStore = defineStore('toolManagement', {
         const { mutate } = useMutation(IMPORT_MCP_SERVER_CONFIGS);
         const response = await mutate({ jsonString });
         if (response?.data?.importMcpServerConfigs) {
-          if (response.data.importMcpServerConfigs.success) {
+          // Refresh the list of servers if at least one was successfully imported.
+          if (response.data.importMcpServerConfigs.imported_count > 0) {
             await this.fetchMcpServers();
           }
           return response.data.importMcpServerConfigs;
