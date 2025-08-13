@@ -29,6 +29,10 @@
             :conversation-id="agentId"
           />
         </template>
+        <SystemTaskNotificationSegment
+          v-else-if="segment.type === 'system_task_notification'"
+          :segment="segment"
+        />
       </template>
     </div>
   </div>
@@ -41,6 +45,7 @@ import FileContentSegment from '~/components/conversation/segments/FileContentSe
 import ThinkSegment from '~/components/conversation/segments/ThinkSegment.vue';
 import ToolCallSegment from '~/components/conversation/segments/ToolCallSegment.vue';
 import FileWriterSegment from '~/components/conversation/segments/FileWriterSegment.vue';
+import SystemTaskNotificationSegment from '~/components/conversation/segments/SystemTaskNotificationSegment.vue'; // NEW
 
 const props = defineProps<{  message: AIMessage;
   agentId: string;

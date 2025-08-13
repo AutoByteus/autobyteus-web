@@ -1,7 +1,8 @@
 <template>
   <div class="file-writer-segment my-4 border rounded-lg shadow-md" :class="statusClass">
-    <!-- Header: Tool Name, Path, and Status -->
+    <!-- Header: Tool Name, Status, and Approval Buttons -->
     <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-t-md border-b border-gray-200 dark:border-gray-600">
+      <!-- Left side: Status Icon and Tool Name -->
       <div class="flex items-center space-x-2 overflow-hidden">
         <div class="status-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">
           <component :is="statusIcon" class="h-5 w-5" :class="statusIconClass" />
@@ -9,15 +10,58 @@
         <span class="font-mono text-sm font-semibold text-gray-800 dark:text-gray-200">
           Tool: {{ segment.toolName }}
         </span>
-        <span class="font-mono text-sm text-gray-500 dark:text-gray-400 truncate" :title="segment.arguments.path">
-          {{ segment.arguments.path }}
-        </span>
+      </div>
+      
+      <!-- Right side: Approval Buttons -->
+      <div v-if="segment.status === 'awaiting-approval'" class="flex items-center justify-end space-x-2">
+        <button @click="onDeny" class="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors">Deny</button>
+        <button @click="onApprove" class="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors">Approve</button>
       </div>
     </div>
 
-    <!-- Content: File Display -->
-    <div class="bg-white dark:bg-gray-800 p-1">
-      <FileDisplay 
+    <!-- Sub-header for file content, with expand/collapse button -->
+    <div class="flex items-center bg-gray-50 dark:bg-gray-700/50 p-2 border-b border-gray-200 dark:border-gray-600">
+        <button
+          @click="toggleExpand"
+          class="mr-2 p-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors focus:outline-none"
+          :aria-expanded="isExpanded"
+          aria-label="Toggle file content"
+        >
+          <svg
+            class="w-4 h-4 transform transition-transform text-gray-600 dark:text-gray-400"
+            :class="{ 'rotate-90': isExpanded }"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </button>
+        <span class="font-mono text-sm text-gray-700 dark:text-gray-300 truncate" :title="segment.arguments.path">
+          File: {{ segment.arguments.path }}
+        </span>
+    </div>
+
+    <!-- Collapsed content preview -->
+    <div
+      v-if="!isExpanded && segment.arguments.content"
+      class="p-2 bg-gray-50 dark:bg-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+      @click="toggleExpand"
+    >
+      <div class="preview-content">
+        <code class="text-sm font-mono text-gray-600 dark:text-gray-400">{{ contentPreview }}</code>
+      </div>
+    </div>
+    
+    <!-- Full content when expanded -->
+    <div v-else class="bg-white dark:bg-gray-800">
+       <FileDisplay 
         v-if="segment.arguments.path && segment.arguments.content"
         :path="segment.arguments.path" 
         :content="segment.arguments.content" 
@@ -27,20 +71,14 @@
       </div>
     </div>
 
-    <!-- Controls & Details (Logs, Errors, etc.) -->
-    <div class="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-b-lg">
-      <!-- Approval Buttons -->
-      <div v-if="segment.status === 'awaiting-approval'" class="flex items-center justify-end space-x-2 mb-3">
-        <button @click="onDeny" class="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors">Deny</button>
-        <button @click="onApprove" class="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors">Approve</button>
-      </div>
-      
+    <!-- Logs & Error Details -->
+    <div class="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-b-lg border-t border-gray-200 dark:border-gray-600">
       <!-- Logs -->
       <div v-if="segment.logs.length > 0" class="logs-section mb-3">
         <details>
           <summary class="cursor-pointer text-xs font-semibold text-gray-600 dark:text-gray-300">Logs ({{ segment.logs.length }})</summary>
           <div class="mt-2 p-2 bg-gray-900 text-white font-mono text-xs rounded overflow-auto max-h-48">
-            <p v-for="(log, index) in segment.logs" :key="index">{{ log }}</p>
+            <pre class="whitespace-pre-wrap"><code>{{ segment.logs.join('\n') }}</code></pre>
           </div>
         </details>
       </div>
@@ -57,17 +95,34 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h } from 'vue';
+import { computed, h, ref } from 'vue';
 import type { ToolCallSegment } from '~/utils/aiResponseParser/types';
 import { useAgentRunStore } from '~/stores/agentRunStore';
 import FileDisplay from '~/components/conversation/segments/renderer/FileDisplay.vue';
 import { BeakerIcon, CheckCircleIcon, ClockIcon, CodeBracketIcon, ExclamationCircleIcon, HandRaisedIcon, XCircleIcon } from '@heroicons/vue/24/solid';
 
-const props = defineProps<{  segment: ToolCallSegment;
+const props = defineProps<{
+  segment: ToolCallSegment;
   conversationId: string; // This is the agentId
 }>();
 
 const agentRunStore = useAgentRunStore();
+
+// --- State for expand/collapse functionality ---
+const isExpanded = ref(false);
+
+const toggleExpand = () => {
+  isExpanded.value = !isExpanded.value;
+};
+
+const contentPreview = computed(() => {
+  const content = props.segment.arguments.content || '';
+  if (!content) return 'No content to display.';
+  const lines = content.split('\n');
+  const preview = lines.slice(0, 5).join('\n');
+  return lines.length > 5 ? preview + '\n...' : preview;
+});
+// --- End expand/collapse state ---
 
 const statusStyles = {
     parsed: { class: 'border-gray-300 dark:border-gray-600', icon: CodeBracketIcon, iconClass: 'text-gray-400' },
@@ -96,5 +151,13 @@ const onDeny = () => {
 pre {
   white-space: pre-wrap;
   word-wrap: break-word;
+}
+.preview-content {
+  max-height: 7.5em; /* ≈5 lines */
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  line-height: 1.5;
 }
 </style>

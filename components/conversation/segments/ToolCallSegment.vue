@@ -57,7 +57,7 @@
       <details>
         <summary class="cursor-pointer text-xs font-semibold text-gray-600 dark:text-gray-300">Logs ({{ segment.logs.length }})</summary>
         <div class="mt-2 p-2 bg-gray-900 text-white font-mono text-xs rounded overflow-auto max-h-48">
-          <p v-for="(log, index) in segment.logs" :key="index">{{ log }}</p>
+          <pre class="whitespace-pre-wrap"><code>{{ segment.logs.join('\n') }}</code></pre>
         </div>
       </details>
     </div>
@@ -85,7 +85,8 @@ import { computed } from 'vue';
 import type { ToolCallSegment } from '~/utils/aiResponseParser/types';
 import { useAgentRunStore } from '~/stores/agentRunStore';
 
-const props = defineProps<{  segment: ToolCallSegment;
+const props = defineProps<{
+  segment: ToolCallSegment;
   conversationId: string; // This is the agentId
 }>();
 

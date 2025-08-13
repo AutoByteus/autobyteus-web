@@ -77,6 +77,12 @@ const nestedTeamEventFragment = gql`
               toolName
               arguments
             }
+            # --- START: ADDED FRAGMENT ---
+            ... on GraphQLSystemTaskNotificationData {
+              senderId
+              content
+            }
+            # --- END: ADDED FRAGMENT ---
           }
         }
       }

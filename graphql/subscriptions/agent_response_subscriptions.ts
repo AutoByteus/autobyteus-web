@@ -62,6 +62,10 @@ export const AgentResponseSubscription = gql`
           toolName
           arguments
         }
+        ... on GraphQLSystemTaskNotificationData {
+          senderId
+          content
+        }
       }
     }
   }

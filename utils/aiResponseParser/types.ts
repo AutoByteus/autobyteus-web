@@ -38,11 +38,19 @@ export interface ToolCallSegment {
   rawJsonContent?: string; // Buffer for streaming raw JSON
 }
 
+// NEW SEGMENT TYPE
+export interface SystemTaskNotificationSegment {
+  type: 'system_task_notification';
+  senderId: string;
+  content: string;
+}
+
 export type AIResponseSegment = 
   | AIResponseTextSegment 
   | FileSegment 
   | ThinkSegment
-  | ToolCallSegment;
+  | ToolCallSegment
+  | SystemTaskNotificationSegment; // NEW
 
 export interface ParsedAIResponse {
   segments: AIResponseSegment[];

@@ -11,7 +11,7 @@ import { ParserContext } from '~/utils/aiResponseParser/stateMachine/ParserConte
  * @param agentContext The full context for the agent run.
  * @returns The active AIMessage.
  */
-function findOrCreateAIMessage(agentContext: AgentContext): AIMessage {
+export function findOrCreateAIMessage(agentContext: AgentContext): AIMessage {
   let lastMessage = agentContext.lastAIMessage;
 
   if (!lastMessage || lastMessage.isComplete) {
@@ -54,7 +54,7 @@ function updateThinkSegment(message: AIMessage, reasoningChunk: string): void {
 
   if (!thinkSegment) {
     thinkSegment = { type: 'think', content: '' };
-    message.segments.unshift(thinkSegment); // Place at the beginning for prominent display.
+    message.segments.push(thinkSegment); // FIX: Changed from unshift to push for chronological order.
   }
 
   thinkSegment.content += reasoningChunk;
