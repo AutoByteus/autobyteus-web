@@ -55,7 +55,7 @@
         <McpServerFormModal
           :server="selectedServer"
           @cancel="handleNavigation('mcp-servers')"
-          @save="handleServerSave"
+          @save-complete="handleServerSave"
           @show-toast="handleShowToast"
         />
       </div>
@@ -77,6 +77,8 @@
           :loading="store.getLoading && activeView === `mcp-tools-${currentServerId}`"
           :source="currentServerId!"
           show-back-button
+          empty-icon="i-heroicons-puzzle-piece-20-solid"
+          empty-message="No tools registered for this server. Try syncing tools."
           @back="handleNavigation('mcp-servers')"
           @details="showToolDetails"
         />
@@ -211,8 +213,12 @@ const viewToolsForServer = (serverId: string) => {
   store.fetchToolsForServer(serverId);
 };
 
-const handleServerSave = () => {
-  activeView.value = 'mcp-servers';
+const handleServerSave = (payload: { serverId: string; didSync: boolean }) => {
+  if (payload.didSync) {
+    viewToolsForServer(payload.serverId);
+  } else {
+    handleNavigation('mcp-servers');
+  }
 };
 
 const requestDeleteServer = (serverId: string) => {
@@ -228,8 +234,8 @@ const cancelDeleteServer = () => {
 const executeDeleteServer = async () => {
   if (serverToDeleteId.value) {
     try {
-      await store.deleteMcpServer(serverToDeleteId.value);
-      addToast(`Server '${serverToDeleteId.value}' deleted successfully.`, 'success');
+      const result = await store.deleteMcpServer(serverToDeleteId.value);
+      addToast(result.message, result.success ? 'success' : 'error');
     } catch(e: any) {
       addToast(`Failed to delete server: ${e.message}`, 'error');
     } finally {
@@ -239,12 +245,12 @@ const executeDeleteServer = async () => {
 };
 
 const discoverTools = async (serverId: string) => {
+    addToast(`Syncing tools for '${serverId}'...`, 'info');
     try {
         const result = await store.discoverAndRegisterMcpServerTools(serverId);
+        addToast(result.message, result.success ? 'success' : 'error');
         if (result.success) {
-            addToast(`Successfully discovered ${result.discoveredTools.length} tools for ${serverId}.`, 'success');
-        } else {
-            addToast(`Failed to discover tools for ${serverId}: ${result.message}`, 'error');
+            viewToolsForServer(serverId);
         }
     } catch(e: any) {
         addToast(`An unexpected error occurred: ${e.message}`, 'error');

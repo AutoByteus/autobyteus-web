@@ -66,7 +66,8 @@
           class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-cyan-700 bg-cyan-100 hover:bg-cyan-200"
           title="Discover and register tools for this server"
         >
-          <span class="i-heroicons-sparkles-20-solid w-4 h-4"></span>
+          <span class="i-heroicons-sparkles-20-solid w-4 h-4 mr-1.5"></span>
+          Sync Tools
         </button>
         <button
           @click.stop="$emit('edit', server)"

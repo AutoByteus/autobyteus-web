@@ -24,7 +24,8 @@
               class="flex w-full items-center justify-start px-4 py-2 rounded-md transition-colors duration-200 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"
               :class="{ 'bg-indigo-100 text-indigo-700 font-semibold': activePage.startsWith('mcp-') }"
             >
-              <span class="i-heroicons-server-20-solid w-5 h-5 mr-3"></span>
+              <span v-if="isMcpSubView" class="i-heroicons-arrow-left-20-solid w-5 h-5 mr-3"></span>
+              <span v-else class="i-heroicons-server-20-solid w-5 h-5 mr-3"></span>
               <span class="text-left">Mcp Servers</span>
             </button>
           </li>
@@ -35,7 +36,9 @@
 </template>
 
 <script setup lang="ts">
-defineProps({
+import { computed } from 'vue';
+
+const props = defineProps({
   activePage: {
     type: String,
     required: true
@@ -43,4 +46,10 @@ defineProps({
 });
 
 defineEmits(['navigate']);
+
+const isMcpSubView = computed(() => {
+  return props.activePage.startsWith('mcp-tools-') || 
+         props.activePage === 'mcp-form' || 
+         props.activePage === 'mcp-bulk-import';
+});
 </script>

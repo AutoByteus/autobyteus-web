@@ -5,7 +5,7 @@
       <div class="flex items-center space-x-2">
         <button
           @click="$emit('bulk-import')"
-          class="inline-flex items-center px-4 py-2 border border-dashed border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
         >
           <span class="i-heroicons-document-arrow-down-20-solid w-4 h-4 mr-1"></span>
           Bulk Import

@@ -2,10 +2,10 @@
   <div class="bg-white rounded-lg border p-6 h-full flex flex-col">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6 pb-4 border-b">
-      <div class="flex items-center">
-         <button @click="$emit('cancel')" class="flex items-center text-gray-600 hover:text-gray-900 transition-colors">
-          <span class="i-heroicons-arrow-left-20-solid w-5 h-5 mr-2"></span>
-          Back to MCP Servers
+      <div>
+         <button @click="$emit('cancel')" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+          <span class="i-heroicons-arrow-left-20-solid w-5 h-5 mr-2 -ml-1"></span>
+          Back
         </button>
       </div>
       <h1 class="text-xl font-semibold text-gray-800">Bulk Import MCP Servers</h1>
@@ -108,9 +108,10 @@ const runImport = async () => {
             type: toastType 
         });
 
-        // On any kind of success (partial or full), emit the save-complete event.
-        // The parent view is responsible for listening to this and performing navigation.
-        if (result.imported_count > 0) {
+        // If the operation was successful (even with 0 imports) or a partial success (some imported),
+        // emit the save-complete event. The parent view is responsible for listening to this and performing navigation.
+        // This ensures the user is returned to the server list on any non-failure state.
+        if (result.success || result.imported_count > 0) {
             emit('save-complete');
         }
     } catch (e: any) {

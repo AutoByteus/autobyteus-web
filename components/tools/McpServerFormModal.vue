@@ -150,7 +150,12 @@
     </div>
     
     <!-- Footer -->
-    <div class="p-6 bg-gray-50 border-t flex justify-end">
+    <div class="p-6 bg-gray-50 border-t flex justify-between items-center">
+      <div class="flex items-center">
+          <input id="sync-on-save" v-model="syncOnSave" type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+          <label for="sync-on-save" class="ml-2 block text-sm text-gray-900">Discover & register tools on save</label>
+      </div>
+
       <div class="flex items-center space-x-4">
         <button @click="runPreview" :disabled="store.getLoading" class="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-green-300 text-base font-semibold">
           <span v-if="store.getLoading" class="i-heroicons-arrow-path-20-solid w-5 h-5 animate-spin mr-2"></span>
@@ -179,7 +184,7 @@ const props = defineProps<{
   server: McpServer | null;
 }>();
 
-const emit = defineEmits(['cancel', 'save', 'show-toast']);
+const emit = defineEmits(['cancel', 'save-complete', 'show-toast']);
 
 const store = useToolManagementStore();
 
@@ -206,6 +211,7 @@ const createFreshForm = () => ({
 const form = reactive(createFreshForm());
 const envList = ref<EnvItem[]>([]);
 const argList = ref<ArgItem[]>([]);
+const syncOnSave = ref(true);
 
 // --- Tabs and JSON input ---
 const activeTab = ref('form');
@@ -444,11 +450,24 @@ const save = async () => {
   }
   
   try {
+    // --- SAVE ---
     await store.configureMcpServer(payload);
     emit('show-toast', { message: `Server '${payload.serverId}' saved successfully.`, type: 'success' as ToastType });
-    emit('save');
-  } catch (e: any) {
-    emit('show-toast', { message: `Failed to save server: ${e.message}`, type: 'error' as ToastType });
+    
+    // --- SYNC (if requested) ---
+    if (syncOnSave.value) {
+      try {
+        const syncResult = await store.discoverAndRegisterMcpServerTools(payload.serverId);
+        emit('show-toast', { message: syncResult.message, type: syncResult.success ? 'success' : 'error' });
+      } catch (syncError: any) {
+        emit('show-toast', { message: `Config saved, but tool sync failed: ${syncError.message}`, type: 'error' as ToastType });
+      }
+    }
+    
+    emit('save-complete', { serverId: payload.serverId, didSync: syncOnSave.value });
+
+  } catch (saveError: any) {
+    emit('show-toast', { message: `Failed to save server: ${saveError.message}`, type: 'error' as ToastType });
   }
 };
 
