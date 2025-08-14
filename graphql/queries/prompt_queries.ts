@@ -1,8 +1,8 @@
 import gql from 'graphql-tag';
 
 export const GET_PROMPTS = gql`
-  query GetPrompts {
-    activePrompts {
+  query GetPrompts($isActive: Boolean) {
+    prompts(isActive: $isActive) {
       id
       name
       category
@@ -11,7 +11,10 @@ export const GET_PROMPTS = gql`
       suitableForModels
       version
       createdAt
+      updatedAt
       parentPromptId
+      isActive
+      isForAgentTeam
     }
   }
 `;
@@ -29,6 +32,8 @@ export const GET_PROMPT_BY_ID = gql`
       createdAt
       updatedAt
       parentPromptId
+      isActive
+      isForAgentTeam
     }
   }
 `;

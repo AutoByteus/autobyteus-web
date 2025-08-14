@@ -59,7 +59,7 @@ const panelStore = useLaunchProfilePanelOverlayStore();
 const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
 
 const agentProfiles = computed(() => agentProfileStore.activeLaunchProfileList);
-const teamProfiles = computed(() => teamProfileStore.allLaunchProfiles);
+const teamProfiles = computed(() => teamProfileStore.activeLaunchProfiles);
 
 const selectAgentProfile = (profileId: string) => {
   agentProfileStore.setActiveLaunchProfile(profileId);

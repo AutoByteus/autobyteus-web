@@ -728,7 +728,6 @@ export type ProviderWithModels = {
 
 export type Query = {
   __typename?: 'Query';
-  activePrompts: Array<Prompt>;
   agentDefinition?: Maybe<AgentDefinition>;
   agentDefinitions: Array<AgentDefinition>;
   agentInstance?: Maybe<AgentInstance>;
@@ -754,6 +753,7 @@ export type Query = {
   previewMcpServerTools: Array<ToolDefinitionDetail>;
   promptDetails?: Maybe<Prompt>;
   promptDetailsByNameAndCategory?: Maybe<PromptDetails>;
+  prompts: Array<Prompt>;
   searchFiles: Array<Scalars['String']['output']>;
   tools: Array<ToolDefinitionDetail>;
   toolsGroupedByCategory: Array<ToolCategoryGroup>;
@@ -814,6 +814,11 @@ export type QueryPromptDetailsArgs = {
 export type QueryPromptDetailsByNameAndCategoryArgs = {
   category: Scalars['String']['input'];
   name: Scalars['String']['input'];
+};
+
+
+export type QueryPromptsArgs = {
+  isActive?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 
@@ -1307,6 +1312,13 @@ export type AddNewPromptRevisionMutationVariables = Exact<{
 
 export type AddNewPromptRevisionMutation = { __typename?: 'Mutation', addNewPromptRevision: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } };
 
+export type MarkActivePromptMutationVariables = Exact<{
+  input: MarkActivePromptInput;
+}>;
+
+
+export type MarkActivePromptMutation = { __typename?: 'Mutation', markActivePrompt: { __typename?: 'Prompt', id: string, isActive: boolean } };
+
 export type SyncPromptsMutationVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -1411,17 +1423,19 @@ export type PreviewMcpServerToolsQueryVariables = Exact<{
 
 export type PreviewMcpServerToolsQuery = { __typename?: 'Query', previewMcpServerTools: Array<{ __typename?: 'ToolDefinitionDetail', name: string, description: string }> };
 
-export type GetPromptsQueryVariables = Exact<{ [key: string]: never; }>;
+export type GetPromptsQueryVariables = Exact<{
+  isActive?: InputMaybe<Scalars['Boolean']['input']>;
+}>;
 
 
-export type GetPromptsQuery = { __typename?: 'Query', activePrompts: Array<{ __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null }> };
+export type GetPromptsQuery = { __typename?: 'Query', prompts: Array<{ __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean }> };
 
 export type GetPromptByIdQueryVariables = Exact<{
   id: Scalars['String']['input'];
 }>;
 
 
-export type GetPromptByIdQuery = { __typename?: 'Query', promptDetails?: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null } | null };
+export type GetPromptByIdQuery = { __typename?: 'Query', promptDetails?: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } | null };
 
 export type GetPromptDetailsByNameAndCategoryQueryVariables = Exact<{
   category: Scalars['String']['input'];
@@ -2473,6 +2487,36 @@ export function useAddNewPromptRevisionMutation(options: VueApolloComposable.Use
   return VueApolloComposable.useMutation<AddNewPromptRevisionMutation, AddNewPromptRevisionMutationVariables>(AddNewPromptRevisionDocument, options);
 }
 export type AddNewPromptRevisionMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<AddNewPromptRevisionMutation, AddNewPromptRevisionMutationVariables>;
+export const MarkActivePromptDocument = gql`
+    mutation MarkActivePrompt($input: MarkActivePromptInput!) {
+  markActivePrompt(input: $input) {
+    id
+    isActive
+  }
+}
+    `;
+
+/**
+ * __useMarkActivePromptMutation__
+ *
+ * To run a mutation, you first call `useMarkActivePromptMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useMarkActivePromptMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useMarkActivePromptMutation({
+ *   variables: {
+ *     input: // value for 'input'
+ *   },
+ * });
+ */
+export function useMarkActivePromptMutation(options: VueApolloComposable.UseMutationOptions<MarkActivePromptMutation, MarkActivePromptMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<MarkActivePromptMutation, MarkActivePromptMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<MarkActivePromptMutation, MarkActivePromptMutationVariables>(MarkActivePromptDocument, options);
+}
+export type MarkActivePromptMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<MarkActivePromptMutation, MarkActivePromptMutationVariables>;
 export const SyncPromptsDocument = gql`
     mutation SyncPrompts {
   syncPrompts {
@@ -3030,8 +3074,8 @@ export function usePreviewMcpServerToolsLazyQuery(variables?: PreviewMcpServerTo
 }
 export type PreviewMcpServerToolsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<PreviewMcpServerToolsQuery, PreviewMcpServerToolsQueryVariables>;
 export const GetPromptsDocument = gql`
-    query GetPrompts {
-  activePrompts {
+    query GetPrompts($isActive: Boolean) {
+  prompts(isActive: $isActive) {
     id
     name
     category
@@ -3040,7 +3084,10 @@ export const GetPromptsDocument = gql`
     suitableForModels
     version
     createdAt
+    updatedAt
     parentPromptId
+    isActive
+    isForAgentTeam
   }
 }
     `;
@@ -3052,16 +3099,19 @@ export const GetPromptsDocument = gql`
  * When your component renders, `useGetPromptsQuery` returns an object from Apollo Client that contains result, loading and error properties
  * you can use to render your UI.
  *
+ * @param variables that will be passed into the query
  * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
  *
  * @example
- * const { result, loading, error } = useGetPromptsQuery();
+ * const { result, loading, error } = useGetPromptsQuery({
+ *   isActive: // value for 'isActive'
+ * });
  */
-export function useGetPromptsQuery(options: VueApolloComposable.UseQueryOptions<GetPromptsQuery, GetPromptsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetPromptsQuery, GetPromptsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetPromptsQuery, GetPromptsQueryVariables>> = {}) {
-  return VueApolloComposable.useQuery<GetPromptsQuery, GetPromptsQueryVariables>(GetPromptsDocument, {}, options);
+export function useGetPromptsQuery(variables: GetPromptsQueryVariables | VueCompositionApi.Ref<GetPromptsQueryVariables> | ReactiveFunction<GetPromptsQueryVariables> = {}, options: VueApolloComposable.UseQueryOptions<GetPromptsQuery, GetPromptsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetPromptsQuery, GetPromptsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetPromptsQuery, GetPromptsQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetPromptsQuery, GetPromptsQueryVariables>(GetPromptsDocument, variables, options);
 }
-export function useGetPromptsLazyQuery(options: VueApolloComposable.UseQueryOptions<GetPromptsQuery, GetPromptsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetPromptsQuery, GetPromptsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetPromptsQuery, GetPromptsQueryVariables>> = {}) {
-  return VueApolloComposable.useLazyQuery<GetPromptsQuery, GetPromptsQueryVariables>(GetPromptsDocument, {}, options);
+export function useGetPromptsLazyQuery(variables: GetPromptsQueryVariables | VueCompositionApi.Ref<GetPromptsQueryVariables> | ReactiveFunction<GetPromptsQueryVariables> = {}, options: VueApolloComposable.UseQueryOptions<GetPromptsQuery, GetPromptsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetPromptsQuery, GetPromptsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetPromptsQuery, GetPromptsQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetPromptsQuery, GetPromptsQueryVariables>(GetPromptsDocument, variables, options);
 }
 export type GetPromptsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetPromptsQuery, GetPromptsQueryVariables>;
 export const GetPromptByIdDocument = gql`
@@ -3077,6 +3127,8 @@ export const GetPromptByIdDocument = gql`
     createdAt
     updatedAt
     parentPromptId
+    isActive
+    isForAgentTeam
   }
 }
     `;

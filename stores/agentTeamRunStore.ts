@@ -31,19 +31,63 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
 
   actions: {
     /**
-     * @action activateTeamProfile
-     * @description The primary entry point for launching a team. It resolves the environment
-     * (workspaces), stores it as a session, and creates the first instance.
+     * @action createAndLaunchTeam
+     * @description Creates a new TeamLaunchProfile and then launches it. This is for the "Creation Flow".
      */
-    async activateTeamProfile(profile: TeamLaunchProfile) {
+    async createAndLaunchTeam(
+      launchConfig: {
+        teamDefinition: AgentTeamDefinition,
+        name: string;
+        globalConfig: TeamLaunchProfile['globalConfig'];
+        memberOverrides: TeamMemberConfigOverride[];
+      }
+    ) {
+      this.isLaunching = true;
+      try {
+        const teamProfileStore = useAgentTeamLaunchProfileStore();
+
+        // 1. Create and persist the new launch profile
+        const newProfile = teamProfileStore.createLaunchProfile(
+          launchConfig.teamDefinition,
+          {
+            name: launchConfig.name,
+            globalConfig: launchConfig.globalConfig,
+            memberOverrides: launchConfig.memberOverrides
+          }
+        );
+
+        // 2. Delegate to the 'launchExistingTeam' action to perform the actual launch
+        await this.launchExistingTeam(newProfile.id);
+
+      } catch (error: any) {
+        console.error("Failed to create and launch team:", error);
+        alert(`Failed to create and launch team: ${error.message}`);
+      } finally {
+        this.isLaunching = false;
+      }
+    },
+
+    /**
+     * @action launchExistingTeam
+     * @description Launches a team from an existing profile ID. This is for the "Reactivation Flow".
+     */
+    async launchExistingTeam(profileId: string) {
       this.isLaunching = true;
       try {
         const teamContextsStore = useAgentTeamContextsStore();
+        const teamProfileStore = useAgentTeamLaunchProfileStore();
+        const profile = teamProfileStore.profiles[profileId];
+        if (!profile) {
+          throw new Error(`Cannot launch team: Profile with ID ${profileId} not found.`);
+        }
+
+        // Set this as the active profile in the UI
+        teamProfileStore.setActiveLaunchProfile(profileId);
         
         // Step 1: Resolve all workspace IDs by creating new ones where necessary.
         const resolvedMemberConfigs = await this._resolveMemberConfigs(profile);
 
-        // Step 2: Store this resolved configuration as the active resolved profile.
+        // Step 2: Store this resolved configuration as the active resolved profile for this session.
         teamContextsStore.setActiveResolvedProfile({
           profileId: profile.id,
           resolvedMemberConfigs: resolvedMemberConfigs,
@@ -53,8 +97,8 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
         await this.createNewTeamInstance();
 
       } catch(error: any) {
-        console.error("Failed to activate team profile:", error);
-        alert(`Failed to activate team profile: ${error.message}`);
+        console.error("Failed to launch existing team profile:", error);
+        alert(`Failed to launch team: ${error.message}`);
         // Clear session on failure
         useAgentTeamContextsStore().setActiveResolvedProfile(null);
       } finally {
@@ -65,7 +109,6 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
     /**
      * @action createNewTeamInstance
      * @description Creates a new UI instance (tab) for the *currently active* resolved profile.
-     * This function is now simple and stateless.
      */
     async createNewTeamInstance() {
       const teamContextsStore = useAgentTeamContextsStore();

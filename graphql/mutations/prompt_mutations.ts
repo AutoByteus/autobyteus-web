@@ -55,6 +55,15 @@ export const ADD_NEW_PROMPT_REVISION = gql`
   }
 `;
 
+export const MARK_ACTIVE_PROMPT = gql`
+  mutation MarkActivePrompt($input: MarkActivePromptInput!) {
+    markActivePrompt(input: $input) {
+      id
+      isActive
+    }
+  }
+`;
+
 export const SYNC_PROMPTS = gql`
   mutation SyncPrompts {
     syncPrompts {

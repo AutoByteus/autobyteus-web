@@ -50,16 +50,34 @@ export function handleToolInvocationAutoExecuting(
 }
 
 function parseResultFromLog(logEntry: string): any | null {
-    const match = logEntry.match(/\[(?:APPROVED_TOOL_RESULT|TOOL_RESULT_DIRECT)\]\s*([\s\S]*)/);
-    if (match && match[1]) {
-        try {
-            // Attempt to parse the captured group as JSON
-            return JSON.parse(match[1]);
-        } catch (e) {
-            // If it fails, it might be a simple string result. Return the captured string.
-            return match[1].trim();
+    // New check for TOOL_RESULT_SUCCESS_PROCESSED, which is a definitive success marker.
+    if (logEntry.startsWith('[TOOL_RESULT_SUCCESS_PROCESSED]')) {
+        const resultMatch = logEntry.match(/Result:\s*([\s\S]*)$/);
+        if (resultMatch && typeof resultMatch[1] === 'string') {
+            const resultString = resultMatch[1].trim();
+            try {
+                // Attempt to parse the result as JSON
+                return JSON.parse(resultString);
+            } catch (e) {
+                // If not JSON, return the raw string result
+                return resultString;
+            }
         }
     }
+
+    // Existing check for APPROVED_TOOL_RESULT and TOOL_RESULT_DIRECT
+    const directResultMatch = logEntry.match(/\[(?:APPROVED_TOOL_RESULT|TOOL_RESULT_DIRECT)\]\s*([\s\S]*)/);
+    if (directResultMatch && typeof directResultMatch[1] === 'string') {
+        const resultString = directResultMatch[1].trim();
+        try {
+            // Attempt to parse the captured group as JSON
+            return JSON.parse(resultString);
+        } catch (e) {
+            // If it fails, it might be a simple string result.
+            return resultString;
+        }
+    }
+
     return null;
 }
 

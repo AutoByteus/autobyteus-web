@@ -68,6 +68,18 @@
                     </label>
                   </div>
                 </div>
+                <div class="pt-4 border-t">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Default Auto-Execute Tools</label>
+                  <div class="space-y-2">
+                    <label class="flex items-start space-x-3 p-3 border rounded-md cursor-pointer" :class="globalConfig.autoExecuteTools ? 'bg-indigo-50 border-indigo-400' : 'bg-white'">
+                      <input type="checkbox" v-model="globalConfig.autoExecuteTools" class="form-checkbox h-5 w-5 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 mt-1" />
+                      <div>
+                        <span class="font-medium">Enabled</span>
+                        <p class="text-xs text-gray-500">Allow agents to execute tools without manual confirmation. This sets the initial value for all agents below.</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Task Notification Mode</label>
                   <div class="space-y-2">
@@ -93,46 +105,56 @@
             <!-- Agent-Specific Overrides Section -->
             <div>
               <h4 class="font-medium text-gray-800">Agent-Specific Overrides</h4>
-              <div class="mt-2 border rounded-lg overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
+              <div class="mt-2 border rounded-lg overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-200 table-fixed">
                   <thead class="bg-gray-50">
                     <tr>
-                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Agent</th>
-                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">LLM</th>
-                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Workspace</th>
+                      <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-1/5">Agent</th>
+                      <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-3/10">LLM</th>
+                      <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-3/10">Workspace</th>
+                      <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-1/5">Auto-Exec Tools</th>
                     </tr>
                   </thead>
                   <tbody class="bg-white divide-y divide-gray-200">
                     <template v-for="member in agentMembers" :key="member.memberName">
                       <tr class="align-top">
-                        <td class="px-4 py-3 font-medium text-sm text-gray-900">{{ member.memberName }}</td>
-                        <td class="px-4 py-3">
+                        <td class="px-3 py-3 font-medium text-sm text-gray-900 truncate">{{ member.memberName }}</td>
+                        <td class="px-3 py-3">
                            <button
                               type="button"
                               @click="toggleOverrideEditor(member.memberName, 'llm')"
                               class="w-full flex items-start justify-between text-left text-sm p-2 rounded-md transition-colors bg-gray-100 text-gray-800 hover:bg-gray-200"
                             >
-                              <span>{{ formatLlmButtonLabel(member.memberName) }}</span>
+                              <span class="break-words">{{ formatLlmButtonLabel(member.memberName) }}</span>
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" :class="['w-4 h-4 transition-transform flex-shrink-0 ml-2', { 'rotate-180': isOverrideEditorOpen(member.memberName, 'llm') }]">
                                 <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
                               </svg>
                             </button>
                         </td>
-                        <td class="px-4 py-3">
+                        <td class="px-3 py-3">
                            <button
                               type="button"
                               @click="toggleOverrideEditor(member.memberName, 'workspace')"
                               class="w-full flex items-start justify-between text-left text-sm p-2 rounded-md transition-colors bg-gray-100 text-gray-800 hover:bg-gray-200"
                             >
-                              <span>{{ formatWorkspaceButtonLabel(member.memberName) }}</span>
+                              <span class="break-words">{{ formatWorkspaceButtonLabel(member.memberName) }}</span>
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" :class="['w-4 h-4 transition-transform flex-shrink-0 ml-2', { 'rotate-180': isOverrideEditorOpen(member.memberName, 'workspace') }]">
                                 <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
                               </svg>
                             </button>
                         </td>
+                        <td class="px-3 py-3">
+                            <button
+                                type="button"
+                                @click="toggleAutoExecuteState(member.memberName)"
+                                :class="getAutoExecuteButtonState(member.memberName).classes"
+                            >
+                                {{ getAutoExecuteButtonState(member.memberName).text }}
+                            </button>
+                        </td>
                       </tr>
                       <tr v-if="isOverrideEditorOpen(member.memberName, 'llm')">
-                        <td colspan="3" class="p-3 bg-gray-50">
+                        <td colspan="4" class="p-3 bg-gray-50">
                           <div class="border rounded-md p-2 bg-white max-h-80 overflow-y-auto">
                               <input type="text" v-model="uiState.agentLlmSearch" placeholder="Search models..." class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sticky top-0 z-10" />
                               <div class="mt-2">
@@ -150,7 +172,7 @@
                         </td>
                       </tr>
                       <tr v-if="isOverrideEditorOpen(member.memberName, 'workspace')">
-                        <td colspan="3" class="p-4 bg-gray-50">
+                        <td colspan="4" class="p-4 bg-gray-50">
                            <div class="space-y-2">
                               <label class="flex items-center space-x-3 p-3 border rounded-md cursor-pointer bg-white">
                                 <input type="radio" :name="`${member.memberName}-ws-mode`" :checked="!getMemberOverride(member.memberName).workspaceConfig" @change="setMemberWorkspaceMode(member.memberName, 'default')" class="form-radio" />
@@ -205,17 +227,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, reactive } from 'vue';
+import { ref, computed, watch, reactive, onUpdated, onBeforeUpdate } from 'vue';
 import type { AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import { useWorkspaceStore } from '~/stores/workspace';
-import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
 import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
 import type { TeamLaunchProfile, WorkspaceLaunchConfig, TeamMemberConfigOverride, GroupedOption } from '~/types/TeamLaunchProfile';
 import WorkspaceConfigForm from '~/components/workspace/WorkspaceConfigForm.vue';
 import InlineSearchableGroupedList from '~/components/agentTeams/InlineSearchableGroupedList.vue';
 
-const props = defineProps<{  show: boolean;
+const props = defineProps<{
+  show: boolean;
   teamDefinition: AgentTeamDefinition;
   existingProfile?: TeamLaunchProfile | null;
 }>();
@@ -224,11 +246,11 @@ const emit = defineEmits(['close', 'success']);
 
 const llmStore = useLLMProviderConfigStore();
 const workspaceStore = useWorkspaceStore();
-const teamProfileStore = useAgentTeamLaunchProfileStore();
 const teamRunStore = useAgentTeamRunStore();
 
 const isSubmitting = computed(() => teamRunStore.isLaunching);
 const isInitialized = ref(false);
+let initialConfigSnapshot: string | null = null;
 
 const DEFAULT_OPTION_ID = '---use-default---';
 
@@ -248,6 +270,17 @@ const globalConfig = reactive<TeamLaunchProfile['globalConfig']>({
 const memberOverrides = reactive<Record<string, TeamMemberConfigOverride>>({});
 
 const agentMembers = computed(() => props.teamDefinition.nodes.filter(node => node.referenceType === 'AGENT'));
+
+const hasChanges = computed(() => {
+  if (!props.existingProfile || !initialConfigSnapshot) {
+    return false;
+  }
+  const currentConfig = {
+    globalConfig: globalConfig,
+    memberOverrides: Object.values(memberOverrides).filter(ov => Object.keys(ov).length > 1),
+  };
+  return JSON.stringify(currentConfig) !== initialConfigSnapshot;
+});
 
 const llmGroupedOptions = computed((): GroupedOption[] => {
   if (!llmStore.providersWithModelsForSelection) return [];
@@ -298,7 +331,7 @@ const filteredOverrideLlmOptions = computed(() => {
 const selectAgentLlm = (memberName: string, modelId: string | null) => {
     const override = getMemberOverride(memberName);
     if (modelId === DEFAULT_OPTION_ID || modelId === null) {
-        override.llmModelIdentifier = undefined;
+        delete override.llmModelIdentifier;
     } else {
         override.llmModelIdentifier = modelId;
     }
@@ -397,6 +430,24 @@ const setMemberWorkspaceMode = (memberName: string, mode: 'default' | 'none' | '
   }
 };
 
+// --- Logic for Auto-Execute Button ---
+const toggleAutoExecuteState = (memberName: string) => {
+  const override = getMemberOverride(memberName);
+  override.autoExecuteTools = !override.autoExecuteTools;
+};
+
+const getAutoExecuteButtonState = (memberName: string): { text: string; classes: string } => {
+  const isEnabled = getMemberOverride(memberName).autoExecuteTools;
+  const baseClasses = 'w-full text-sm font-medium py-1.5 px-3 rounded-md transition-all shadow-sm border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 hover:shadow-md hover:-translate-y-px';
+
+  if (isEnabled) {
+    return { text: 'On', classes: `${baseClasses} bg-indigo-100 text-indigo-800 border-indigo-300 hover:bg-indigo-200 focus-visible:ring-indigo-500` };
+  } else {
+    return { text: 'Off', classes: `${baseClasses} bg-white text-gray-700 border-gray-300 hover:bg-gray-50 focus-visible:ring-indigo-500` };
+  }
+};
+// --- End Logic for Auto-Execute Button ---
+
 
 const initializeFormState = () => {
   uiState.isGlobalConfigExpanded = true;
@@ -404,28 +455,51 @@ const initializeFormState = () => {
   
   if (props.existingProfile) {
     Object.assign(globalConfig, JSON.parse(JSON.stringify(props.existingProfile.globalConfig)));
+    initialConfigSnapshot = JSON.stringify({
+      globalConfig: props.existingProfile.globalConfig,
+      memberOverrides: props.existingProfile.memberOverrides || [],
+    });
   } else {
-    // Reset to a blank state. Defaults will be populated after data is fetched.
     globalConfig.llmModelIdentifier = '';
     globalConfig.workspaceConfig = { mode: 'none' };
     globalConfig.autoExecuteTools = true;
     globalConfig.parseToolCalls = true;
     globalConfig.taskNotificationMode = 'AGENT_MANUAL_NOTIFICATION';
+    initialConfigSnapshot = null;
   }
 
-  // Clear and repopulate overrides
+  // Clear and repopulate overrides, ensuring every agent has an explicit autoExecuteTools value
   Object.keys(memberOverrides).forEach(key => delete memberOverrides[key]);
-  if (props.existingProfile?.memberOverrides) {
-    props.existingProfile.memberOverrides.forEach(ov => {
-      memberOverrides[ov.memberName] = JSON.parse(JSON.stringify(ov));
-    });
-  }
+  agentMembers.value.forEach(member => {
+    const existingOverride = props.existingProfile?.memberOverrides?.find(ov => ov.memberName === member.memberName);
+    const newOverride = getMemberOverride(member.memberName);
+
+    if (existingOverride) {
+      Object.assign(newOverride, JSON.parse(JSON.stringify(existingOverride)));
+    }
+    
+    // Ensure autoExecuteTools is explicitly set
+    if (newOverride.autoExecuteTools === undefined) {
+      newOverride.autoExecuteTools = globalConfig.autoExecuteTools;
+    }
+  });
 };
 
 
 watch(() => props.show, async (isVisible) => {
   if (isVisible) {
     isInitialized.value = false;
+    // Initialize global config first
+    if (props.existingProfile) {
+      Object.assign(globalConfig, JSON.parse(JSON.stringify(props.existingProfile.globalConfig)));
+    } else {
+      globalConfig.llmModelIdentifier = '';
+      globalConfig.workspaceConfig = { mode: 'none' };
+      globalConfig.autoExecuteTools = true;
+      globalConfig.parseToolCalls = true;
+      globalConfig.taskNotificationMode = 'AGENT_MANUAL_NOTIFICATION';
+    }
+    
     initializeFormState(); 
 
     await Promise.all([
@@ -436,6 +510,9 @@ watch(() => props.show, async (isVisible) => {
     if (!globalConfig.llmModelIdentifier && llmStore.models.length > 0) {
       globalConfig.llmModelIdentifier = llmStore.models[0];
     }
+    
+    // Re-run initialization to ensure agent overrides are set based on fetched/finalized global config
+    initializeFormState();
 
     isInitialized.value = true;
   }
@@ -463,18 +540,28 @@ watch(() => globalConfig.workspaceConfig.mode, (newMode) => {
 });
 
 const handleLaunch = async () => {
-  const newPersistentProfile = teamProfileStore.createLaunchProfile(props.teamDefinition, {
-    name: `${props.teamDefinition.name} - ${new Date().toLocaleTimeString()}`,
-    globalConfig: JSON.parse(JSON.stringify(globalConfig)),
-    memberOverrides: JSON.parse(JSON.stringify(Object.values(memberOverrides).filter(ov => Object.keys(ov).length > 1))),
-  });
-
-  teamProfileStore.setActiveLaunchProfile(newPersistentProfile.id);
-
-  await teamRunStore.activateTeamProfile(newPersistentProfile);
-  
-  emit('success');
-  closeModal();
+  try {
+    if (props.existingProfile && !hasChanges.value) {
+      // Reactivation Flow (No Changes)
+      await teamRunStore.launchExistingTeam(props.existingProfile.id);
+    } else {
+      // Creation Flow (New or Modified Profile)
+      const launchConfigPayload = {
+        teamDefinition: props.teamDefinition,
+        name: props.existingProfile 
+          ? `${props.existingProfile.name} (v${new Date().getTime().toString().slice(-4)})` 
+          : `${props.teamDefinition.name} Launch - ${new Date().toLocaleDateString()}`,
+        globalConfig: JSON.parse(JSON.stringify(globalConfig)),
+        memberOverrides: JSON.parse(JSON.stringify(Object.values(memberOverrides).filter(ov => Object.keys(ov).length > 1))),
+      };
+      await teamRunStore.createAndLaunchTeam(launchConfigPayload);
+    }
+    
+    emit('success');
+  } catch(error) {
+    console.error("Launch failed from modal:", error);
+    // The alert is already handled in the store, no need to show another one.
+  }
 };
 
 const closeModal = () => {

@@ -5,7 +5,7 @@
   >
     <!-- Hover delete button -->
     <button 
-      v-if="showDeleteButton"
+      v-if="showDeleteButton && !isSelectionMode"
       @click.stop="$emit('delete', prompt.id)"
       class="absolute top-2 right-2 p-2 rounded-full bg-white shadow opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-50 text-red-600"
       title="Delete prompt"
@@ -16,42 +16,63 @@
     </button>
 
     <div 
-      class="p-6 cursor-pointer" 
+      class="p-6 cursor-pointer flex items-start gap-4" 
       @click="$emit('select', prompt.id)"
     >
-      <!-- Card Header -->
-      <div class="flex items-start gap-2 mb-3">
-        <h3 class="text-lg font-medium text-gray-900 flex-grow truncate">{{ prompt.name }}</h3>
-        <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600 whitespace-nowrap">
-          v{{ prompt.version }}
-        </span>
+      <!-- Checkbox for comparison selection -->
+      <div v-if="isSelectionMode" class="pt-1">
+        <input 
+          type="checkbox" 
+          :id="`compare-select-${prompt.id}`"
+          :checked="isPromptSelectedForCompare"
+          @click.stop
+          @change.stop="$emit('toggle-compare-selection')"
+          class="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+        />
       </div>
 
-      <!-- Card Body -->
-      <div class="mb-3">
-        <p v-if="prompt.description" class="text-sm text-gray-700 line-clamp-2 mb-2">
-          {{ prompt.description }}
-        </p>
-        <div class="bg-gray-50 rounded p-3 mt-2">
-          <p class="text-sm text-gray-600 font-mono line-clamp-3">{{ prompt.promptContent }}</p>
+      <!-- Main card content -->
+      <div class="flex-grow">
+        <!-- Card Header -->
+        <div class="flex items-start gap-2 mb-3">
+          <h3 class="text-lg font-medium text-gray-900 flex-grow truncate">{{ prompt.name }}</h3>
+          <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600 whitespace-nowrap">
+            v{{ prompt.version }}
+          </span>
+          <span 
+            class="px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap"
+            :class="prompt.isActive ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'"
+          >
+            {{ prompt.isActive ? 'Active' : 'Inactive' }}
+          </span>
         </div>
-      </div>
-      
-      <!-- Card Footer with Enhanced Model Display -->
-      <div class="mt-3">
-        <!-- Model compatibility badges -->
-        <div v-if="prompt.suitableForModels" class="mb-2 flex flex-wrap gap-1">
-          <ModelBadge
-            v-for="model in modelList"
-            :key="model"
-            :model="model"
-            size="small"
-          />
+
+        <!-- Card Body -->
+        <div class="mb-3">
+          <p v-if="prompt.description" class="text-sm text-gray-700 line-clamp-2 mb-2">
+            {{ prompt.description }}
+          </p>
+          <div class="bg-gray-50 rounded p-3 mt-2">
+            <p class="text-sm text-gray-600 font-mono line-clamp-3">{{ prompt.promptContent }}</p>
+          </div>
         </div>
         
-        <!-- Date info -->
-        <div class="flex justify-between items-center text-xs text-gray-500">
-          <span>{{ formatDate(prompt.createdAt) }}</span>
+        <!-- Card Footer with Enhanced Model Display -->
+        <div class="mt-3">
+          <!-- Model compatibility badges -->
+          <div v-if="prompt.suitableForModels" class="mb-2 flex flex-wrap gap-1">
+            <ModelBadge
+              v-for="model in modelList"
+              :key="model"
+              :model="model"
+              size="small"
+            />
+          </div>
+          
+          <!-- Date info -->
+          <div class="flex justify-between items-center text-xs text-gray-500">
+            <span>{{ formatDate(prompt.createdAt) }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -72,15 +93,21 @@ interface Prompt {
   version: number;
   createdAt: string;
   parentPromptId?: string | null;
+  isActive: boolean;
 }
 
-const props = defineProps<{  prompt: Prompt;
+const props = defineProps<{
+  prompt: Prompt;
   isSelected: boolean;
   showDeleteButton?: boolean;
+  isSelectionMode?: boolean;
+  isPromptSelectedForCompare?: boolean;
 }>();
 
-const emit = defineEmits<{  (e: 'select', id: string): void;
+const emit = defineEmits<{
+  (e: 'select', id: string): void;
   (e: 'delete', id: string): void;
+  (e: 'toggle-compare-selection'): void;
 }>();
 
 // Parse models into a list for display

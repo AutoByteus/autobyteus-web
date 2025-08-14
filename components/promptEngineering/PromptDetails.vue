@@ -37,9 +37,16 @@
           </template>
 
           <!-- View Mode Actions -->
-          <template v-else>
+          <template v-else-if="prompt">
             <button
-              v-if="prompt"
+              v-if="!prompt.isActive"
+              @click="setActivePrompt"
+              :disabled="isSaving"
+              class="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400"
+            >
+              Set as Active
+            </button>
+             <button
               @click="startEditing"
               class="flex items-center px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
@@ -49,7 +56,6 @@
               Edit
             </button>
             <button
-              v-if="prompt"
               @click="copyPrompt"
               class="flex items-center px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
@@ -90,16 +96,27 @@
       <!-- Details content - Single container with improved layout -->
       <div v-else-if="prompt" class="bg-white rounded-lg border p-6">
         <!-- Title and metadata (not editable) -->
-        <h1 class="text-2xl font-bold text-gray-900 mb-2">{{ prompt.name }}</h1>
-        <div class="flex items-center gap-2 mb-6">
-          <span class="inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
-            {{ prompt.category }}
-          </span>
-          <span class="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
-            v{{ prompt.version }}
-          </span>
-          <span class="text-sm text-gray-500">Created {{ formatDate(prompt.createdAt) }}</span>
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900 mb-2">{{ prompt.name }}</h1>
+                <div class="flex items-center gap-4 mb-6">
+                <span class="inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
+                    {{ prompt.category }}
+                </span>
+                <span class="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
+                    v{{ prompt.version }}
+                </span>
+                <span 
+                    class="px-2 py-1 text-xs font-medium rounded-full"
+                    :class="prompt.isActive ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'"
+                >
+                    {{ prompt.isActive ? 'Active' : 'Inactive' }}
+                </span>
+                <span class="text-sm text-gray-500">Created {{ formatDate(prompt.createdAt) }}</span>
+                </div>
+            </div>
         </div>
+
 
         <!-- Model compatibility -->
         <div class="mb-6">
@@ -145,14 +162,42 @@
           >{{ prompt.promptContent }}</pre>
         </div>
 
-        <!-- Related prompts section (hidden in edit mode) -->
-        <div v-if="relatedPrompts.length > 0 && !isEditing" class="mt-8 pt-6 border-t">
-           <!-- ... existing related prompts logic ... -->
-        </div>
-
-        <!-- Parent prompt (hidden in edit mode) -->
-        <div v-if="prompt.parentPromptId && !isEditing" class="mt-8 pt-6 border-t">
-          <!-- ... existing parent prompt logic ... -->
+        <!-- Version History section (replaces related prompts) -->
+        <div v-if="relatedPrompts.length > 1 && !isEditing" class="mt-8 pt-6 border-t">
+           <h2 class="text-lg font-semibold text-gray-900 mb-3">Version History</h2>
+            <ul class="border rounded-md divide-y">
+              <li 
+                v-for="related in relatedPrompts" 
+                :key="related.id"
+                class="p-3 flex justify-between items-center"
+                :class="{'bg-blue-50': related.id === prompt.id}"
+              >
+                <div>
+                  <span class="font-medium">Version {{ related.version }}</span>
+                  <span 
+                    class="ml-3 px-2 py-0.5 text-xs font-medium rounded-full"
+                    :class="related.isActive ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'"
+                  >{{ related.isActive ? 'Active' : 'Inactive' }}</span>
+                   <span class="text-sm text-gray-500 ml-4">Created on {{ formatDate(related.createdAt) }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                   <button 
+                      v-if="related.id !== prompt.id"
+                      @click="compareWithPrompt(related.id)"
+                      class="px-3 py-1 text-sm text-blue-600 border border-blue-200 rounded-md hover:bg-blue-100"
+                    >
+                      Compare
+                    </button>
+                    <button 
+                      v-if="related.id !== prompt.id"
+                      @click="viewRelatedPrompt(related.id)"
+                      class="px-3 py-1 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+                    >
+                      View
+                    </button>
+                </div>
+              </li>
+            </ul>
         </div>
       </div>
     </div>
@@ -222,7 +267,10 @@ async function saveChanges() {
       formData.suitableForModels.join(', ')
     );
     // Update local prompt data with the response from the store
-    prompt.value = { ...prompt.value, ...updatedPrompt };
+    if (updatedPrompt) {
+      prompt.value = { ...prompt.value, ...updatedPrompt };
+      await loadRelatedPrompts();
+    }
     isEditing.value = false;
   } catch (err) {
     console.error("Failed to update prompt:", err);
@@ -232,10 +280,22 @@ async function saveChanges() {
   }
 }
 
-const showParent = ref(false);
-const parentPrompt = ref<any>(null);
-const parentLoading = ref(false);
-const parentError = ref('');
+async function setActivePrompt() {
+  if (!prompt.value || prompt.value.isActive) return;
+  isSaving.value = true; // Use same saving flag to disable buttons
+  try {
+    const activatedPrompt = await promptStore.setActivePrompt(prompt.value.id);
+    // After success, the store will refetch all prompts. We should also update the local view.
+    if (activatedPrompt) {
+      prompt.value = { ...prompt.value, isActive: true };
+      await loadRelatedPrompts(); // Reload related to update their active status too
+    }
+  } catch (err) {
+    console.error("Failed to set prompt as active:", err);
+  } finally {
+    isSaving.value = false;
+  }
+}
 
 // Comparison mode state
 const comparisonMode = ref(false);
@@ -247,20 +307,21 @@ const modelList = computed(() => {
   return prompt.value.suitableForModels.split(',').map((model: string) => model.trim()).filter(Boolean);
 });
 
-function parseModelList(modelsString: string) {
-  if (!modelsString) return [];
-  return modelsString.split(',').map(model => model.trim()).filter(Boolean);
-}
-
 async function loadPrompt() {
   loading.value = true;
   isEditing.value = false; // Ensure we are not in edit mode when a new prompt loads
   error.value = '';
   try {
     const fetchedPrompt = await promptStore.fetchPromptById(props.promptId);
-    prompt.value = fetchedPrompt; // Use a different variable name here
+    prompt.value = fetchedPrompt; 
     if (prompt.value) {
+      // If the main prompts list isn't populated, fetch it
+      if (promptStore.getPrompts.length === 0) {
+        await promptStore.fetchPrompts();
+      }
       await loadRelatedPrompts();
+    } else {
+      error.value = "Prompt not found.";
     }
   } catch (e: any) {
     error.value = e.message;
@@ -276,24 +337,11 @@ async function loadRelatedPrompts() {
     const allPrompts = promptStore.getPrompts;
     relatedPrompts.value = allPrompts.filter(p => 
       p.name === prompt.value.name && 
-      p.category === prompt.value.category
-    );
+      p.category === prompt.value.category &&
+      p.suitableForModels === prompt.value.suitableForModels
+    ).sort((a, b) => b.version - a.version); // Sort by version descending
   } catch (e: any) {
     console.error('Failed to load related prompts:', e);
-  }
-}
-
-async function toggleParentPrompt() {
-  showParent.value = !showParent.value;
-  if (showParent.value && prompt.value?.parentPromptId && !parentPrompt.value) {
-    parentLoading.value = true;
-    try {
-      parentPrompt.value = await promptStore.fetchPromptById(prompt.value.parentPromptId);
-    } catch (e: any) {
-      parentError.value = e.message;
-    } finally {
-      parentLoading.value = false;
-    }
   }
 }
 
@@ -302,6 +350,7 @@ function copyPrompt() {
     navigator.clipboard
       .writeText(prompt.value.promptContent)
       .then(() => {
+        // Simple toast notification
         const element = document.createElement('div');
         element.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg';
         element.textContent = 'Prompt copied to clipboard!';

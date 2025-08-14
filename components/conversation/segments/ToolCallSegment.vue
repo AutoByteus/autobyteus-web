@@ -42,7 +42,7 @@
     <div v-if="segment.toolName && segment.status !== 'parsing'" class="arguments-section p-3 bg-gray-50 dark:bg-gray-800 rounded mb-3">
       <details>
         <summary class="cursor-pointer text-xs font-semibold text-gray-600 dark:text-gray-300">Arguments</summary>
-        <pre class="mt-2 text-xs text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 p-2 rounded overflow-auto"><code>{{ JSON.stringify(segment.arguments, null, 2) }}</code></pre>
+        <pre class="mt-2 text-xs text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 p-2 rounded overflow-auto whitespace-pre-wrap"><code>{{ prettyArguments }}</code></pre>
       </details>
     </div>
 
@@ -57,7 +57,7 @@
       <details>
         <summary class="cursor-pointer text-xs font-semibold text-gray-600 dark:text-gray-300">Logs ({{ segment.logs.length }})</summary>
         <div class="mt-2 p-2 bg-gray-900 text-white font-mono text-xs rounded overflow-auto max-h-48">
-          <pre class="whitespace-pre-wrap"><code>{{ segment.logs.join('\n') }}</code></pre>
+          <pre class="whitespace-pre-wrap"><code>{{ formattedLogs }}</code></pre>
         </div>
       </details>
     </div>
@@ -66,7 +66,7 @@
     <div v-if="segment.status === 'success' && segment.result" class="result-section mb-3">
        <details open>
         <summary class="cursor-pointer text-xs font-semibold text-green-700 dark:text-green-400">Result</summary>
-        <pre class="mt-2 text-xs text-green-800 dark:text-green-200 bg-green-50 dark:bg-gray-800 p-2 rounded overflow-auto"><code>{{ JSON.stringify(segment.result, null, 2) }}</code></pre>
+        <pre class="mt-2 text-xs text-green-800 dark:text-green-200 bg-green-50 dark:bg-gray-800 p-2 rounded overflow-auto whitespace-pre-wrap"><code>{{ prettyResult }}</code></pre>
       </details>
     </div>
 
@@ -74,7 +74,7 @@
     <div v-if="segment.status === 'error' && segment.error" class="error-section mb-3">
        <details open>
         <summary class="cursor-pointer text-xs font-semibold text-red-700 dark:text-red-400">Error</summary>
-        <pre class="mt-2 text-xs text-red-800 dark:text-red-200 bg-red-50 dark:bg-gray-800 p-2 rounded overflow-auto whitespace-pre-wrap"><code>{{ segment.error }}</code></pre>
+        <pre class="mt-2 text-xs text-red-800 dark:text-red-200 bg-red-50 dark:bg-gray-800 p-2 rounded overflow-auto whitespace-pre-wrap"><code>{{ prettyError }}</code></pre>
       </details>
     </div>
   </div>
@@ -92,6 +92,38 @@ const props = defineProps<{
 
 const agentRunStore = useAgentRunStore();
 
+/**
+ * Pretty-prints a value. If the value is a string that represents a JSON object or array,
+ * it is parsed and then stringified with indentation. Otherwise, it is handled as a plain string or object.
+ * This function also un-escapes newline and quote characters within strings to ensure they are rendered correctly in the UI.
+ * @param value The value to pretty-print.
+ * @returns A formatted string ready for display in a `<pre>` tag.
+ */
+function prettyPrintJsonString(value: any): string {
+  let stringified: string;
+  if (typeof value === 'string') {
+    try {
+      // If the string is a JSON string, parse and re-stringify it prettily.
+      const data = JSON.parse(value);
+      stringified = JSON.stringify(data, null, 2);
+    } catch (e) {
+      // Not a valid JSON string, use the string as is.
+      stringified = value;
+    }
+  } else if (value !== undefined) {
+    // If it's not a string (e.g., an object), stringify it.
+    // JSON.stringify will handle null correctly.
+    stringified = JSON.stringify(value, null, 2);
+  } else {
+    return 'undefined';
+  }
+
+  // Un-escape newlines and quotes to render them correctly in <pre> tags.
+  // JSON.stringify escapes \n as \\n, and " as \\".
+  // We want to revert that for display to improve readability.
+  return stringified.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+}
+
 const statusClass = computed(() => {
   switch (props.segment.status) {
     case 'parsing': return 'border-dashed border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-800';
@@ -104,6 +136,16 @@ const statusClass = computed(() => {
     default: return 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800';
   }
 });
+
+const prettyArguments = computed(() => prettyPrintJsonString(props.segment.arguments));
+
+const formattedLogs = computed(() => {
+  return props.segment.logs.map(log => prettyPrintJsonString(log)).join('\n');
+});
+
+const prettyResult = computed(() => prettyPrintJsonString(props.segment.result));
+
+const prettyError = computed(() => prettyPrintJsonString(props.segment.error));
 
 const onApprove = () => {
   agentRunStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, true);

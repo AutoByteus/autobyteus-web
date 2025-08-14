@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { useQuery, useMutation } from '@vue/apollo-composable';
 import { GET_PROMPTS, GET_PROMPT_BY_ID } from '~/graphql/queries/prompt_queries';
-import { CREATE_PROMPT, UPDATE_PROMPT, ADD_NEW_PROMPT_REVISION, SYNC_PROMPTS, DELETE_PROMPT } from '~/graphql/mutations/prompt_mutations';
+import { CREATE_PROMPT, UPDATE_PROMPT, ADD_NEW_PROMPT_REVISION, SYNC_PROMPTS, DELETE_PROMPT, MARK_ACTIVE_PROMPT } from '~/graphql/mutations/prompt_mutations';
 import { useAgentDefinitionOptionsStore } from '~/stores/agentDefinitionOptionsStore';
 
 interface Prompt {
@@ -54,21 +54,21 @@ export const usePromptStore = defineStore('prompt', {
   }),
 
   actions: {
-    async fetchActivePrompts() {
+    async fetchPrompts(isActive: boolean | null = null) {
       this.loading = true;
       this.error = '';
 
       try {
-        const { onResult, onError } = useQuery(GET_PROMPTS, null, {
+        const { onResult, onError } = useQuery(GET_PROMPTS, { isActive }, {
           fetchPolicy: 'network-only',
         });
 
         return new Promise<Prompt[]>((resolve, reject) => {
           onResult((result) => {
-            if (result.data?.activePrompts) {
-              this.prompts = result.data.activePrompts;
+            if (result.data?.prompts) {
+              this.prompts = result.data.prompts;
               this.loading = false;
-              resolve(result.data.activePrompts);
+              resolve(result.data.prompts);
             }
           });
 
@@ -99,6 +99,7 @@ export const usePromptStore = defineStore('prompt', {
         return new Promise<Prompt | null>((resolve, reject) => {
           onResult((result) => {
             this.loading = false;
+            // The query returns `promptDetails`, not `prompt`.
             if (result.data?.promptDetails) {
               this.selectedPrompt = result.data.promptDetails;
               resolve(result.data.promptDetails);
@@ -135,7 +136,7 @@ export const usePromptStore = defineStore('prompt', {
         });
 
         if (response?.data?.createPrompt) {
-          await this.fetchActivePrompts();
+          await this.fetchPrompts(); // Fetch all prompts after creation
           useAgentDefinitionOptionsStore().invalidateCache();
           return response.data.createPrompt;
         }
@@ -160,7 +161,7 @@ export const usePromptStore = defineStore('prompt', {
         });
 
         if (response?.data?.updatePrompt) {
-          await this.fetchActivePrompts();
+          await this.fetchPrompts(); // Fetch all prompts after update
           useAgentDefinitionOptionsStore().invalidateCache();
           return response.data.updatePrompt;
         }
@@ -182,10 +183,26 @@ export const usePromptStore = defineStore('prompt', {
         });
 
         if (response?.data?.addNewPromptRevision) {
-          await this.fetchActivePrompts();
+          await this.fetchPrompts(); // Fetch all prompts after adding revision
           return response.data.addNewPromptRevision;
         }
         throw new Error('Failed to add new prompt revision: No data returned');
+      } catch (e: any) {
+        this.error = e.message;
+        throw e;
+      }
+    },
+    
+    async setActivePrompt(promptId: string) {
+      try {
+        const { mutate } = useMutation(MARK_ACTIVE_PROMPT);
+        const response = await mutate({ input: { id: promptId } });
+
+        if (response?.data?.markActivePrompt) {
+          await this.fetchPrompts(); // Refresh the entire list to show status changes
+          return response.data.markActivePrompt;
+        }
+        throw new Error('Failed to mark prompt as active: No data returned');
       } catch (e: any) {
         this.error = e.message;
         throw e;
@@ -204,9 +221,8 @@ export const usePromptStore = defineStore('prompt', {
         if (response?.data?.syncPrompts) {
           this.syncResult = response.data.syncPrompts;
           
-          // If sync was successful, refresh the prompts list
           if (this.syncResult.success) {
-            await this.fetchActivePrompts();
+            await this.fetchPrompts(); // Fetch all prompts after sync
             useAgentDefinitionOptionsStore().invalidateCache();
           }
           
@@ -235,9 +251,8 @@ export const usePromptStore = defineStore('prompt', {
         if (response?.data?.deletePrompt) {
           this.deleteResult = response.data.deletePrompt;
           
-          // If deletion was successful, refresh the prompts list
           if (this.deleteResult.success) {
-            await this.fetchActivePrompts();
+            await this.fetchPrompts(); // Fetch all prompts after deletion
             useAgentDefinitionOptionsStore().invalidateCache();
           }
           
@@ -275,7 +290,7 @@ export const usePromptStore = defineStore('prompt', {
     getError: (state): string => state.error,
     getSelectedPrompt: (state): Prompt | null => state.selectedPrompt,
     isSyncing: (state): boolean => state.syncing,
-    getSyncResult: (state): SyncResult | null => state.getSyncResult,
+    getSyncResult: (state): SyncResult | null => state.syncResult,
     getDeleteResult: (state): DeleteResult | null => state.deleteResult,
   },
 });
