@@ -179,32 +179,35 @@ const refreshModels = async () => {
 
 onMounted(async () => {
   try {
-    await store.fetchProvidersWithModels()
+    await store.fetchProvidersWithModels();
     
-    // Load existing configurations
-    for (const provider of providers.value) {
+    // Load existing configurations in parallel
+    const keyFetchPromises = providers.value.map(async (provider) => {
       try {
-        const apiKey = await store.getLLMProviderApiKey(provider)
+        const apiKey = await store.getLLMProviderApiKey(provider);
         // Check specifically for non-empty strings to determine if configured
         if (apiKey && typeof apiKey === 'string' && apiKey.trim() !== '') {
-          providerConfigs.value[provider] = { apiKey: '********' }
+          providerConfigs.value[provider] = { apiKey: '********' };
         } else {
           // Ensure provider exists in providerConfigs but without apiKey property
-          providerConfigs.value[provider] = {}
+          providerConfigs.value[provider] = {};
         }
       } catch (error) {
-        console.error(`Failed to load API key for ${provider}:`, error)
+        console.error(`Failed to load API key for ${provider}:`, error);
         // Ensure provider exists in providerConfigs but without apiKey property
-        providerConfigs.value[provider] = {}
+        providerConfigs.value[provider] = {};
       }
-    }
+    });
+
+    await Promise.all(keyFetchPromises);
+
   } catch (error) {
-    console.error('Failed to load providers or models:', error)
-    showNotification('Failed to load providers and models', 'error')
+    console.error('Failed to load providers or models:', error);
+    showNotification('Failed to load providers and models', 'error');
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-})
+});
 
 const toggleApiKeyVisibility = () => {
   showApiKey.value = !showApiKey.value

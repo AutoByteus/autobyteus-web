@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { useMutation, useQuery } from '@vue/apollo-composable'
+import { useMutation, useApolloClient } from '@vue/apollo-composable'
 import { 
   GET_LLM_PROVIDER_API_KEY, 
   GET_AVAILABLE_LLM_PROVIDERS_WITH_MODELS
@@ -102,29 +102,27 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
 
     async fetchProvidersWithModels() {
       this.isLoadingModels = true;
-      const { onResult, onError } = useQuery(GET_AVAILABLE_LLM_PROVIDERS_WITH_MODELS, null, {
-        fetchPolicy: 'network-only' // Force network fetch, bypassing cache
-      });
+      const { client } = useApolloClient();
 
-      return new Promise((resolve, reject) => {
-        onResult(({ data }) => {
-          this.isLoadingModels = false;
-          if (data?.availableLlmProvidersWithModels) {
-            this.providersWithModels = data.availableLlmProvidersWithModels;
-            resolve(this.providersWithModels);
-          } else {
-            this.providersWithModels = [];
-            resolve([]);
-          }
+      try {
+        const { data } = await client.query({
+          query: GET_AVAILABLE_LLM_PROVIDERS_WITH_MODELS,
+          fetchPolicy: 'network-only' // Force network fetch, bypassing cache
         });
-        
-        onError((error) => {
-          this.isLoadingModels = false;
-          console.error('Failed to fetch providers and models:', error);
+
+        if (data?.availableLlmProvidersWithModels) {
+          this.providersWithModels = data.availableLlmProvidersWithModels;
+        } else {
           this.providersWithModels = [];
-          reject(error);
-        });
-      });
+        }
+        return this.providersWithModels;
+      } catch (error) {
+        console.error('Failed to fetch providers and models:', error);
+        this.providersWithModels = [];
+        throw error;
+      } finally {
+        this.isLoadingModels = false;
+      }
     },
 
     async reloadModels() {
@@ -179,32 +177,31 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
     },
 
     async getLLMProviderApiKey(provider: string) {
-      const { onResult, onError } = useQuery(GET_LLM_PROVIDER_API_KEY, {
-        provider,
-      })
+      const { client } = useApolloClient();
       
-      return new Promise((resolve, reject) => {
-        onResult(({ data }) => {
-          if (data && data.getLlmProviderApiKey) {
-            const apiKey = data.getLlmProviderApiKey
-            if (!this.providerConfigs[provider]) {
-              this.providerConfigs[provider] = {}
-            }
-            this.providerConfigs[provider].apiKey = apiKey
-            resolve(apiKey)
-          } else {
-            if (this.providerConfigs[provider]) {
-              delete this.providerConfigs[provider].apiKey
-            }
-            resolve('')
+      try {
+        const { data } = await client.query({
+          query: GET_LLM_PROVIDER_API_KEY,
+          variables: { provider },
+        });
+
+        if (data && data.getLlmProviderApiKey) {
+          const apiKey = data.getLlmProviderApiKey;
+          if (!this.providerConfigs[provider]) {
+            this.providerConfigs[provider] = {};
           }
-        })
-        
-        onError((error) => {
-          console.error('Failed to get provider API key:', error)
-          reject(error)
-        })
-      })
+          this.providerConfigs[provider].apiKey = apiKey;
+          return apiKey;
+        } else {
+          if (this.providerConfigs[provider]) {
+            delete this.providerConfigs[provider].apiKey;
+          }
+          return '';
+        }
+      } catch (error) {
+        console.error(`Failed to get provider API key for ${provider}:`, error);
+        throw error;
+      }
     }
   }
 })
