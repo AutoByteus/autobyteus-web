@@ -546,11 +546,24 @@ const handleLaunch = async () => {
       await teamRunStore.launchExistingTeam(props.existingProfile.id);
     } else {
       // Creation Flow (New or Modified Profile)
+      const getBaseName = (profile?: TeamLaunchProfile | null, definition?: AgentTeamDefinition): string => {
+        const nameSource = profile ? profile.name : (definition ? definition.name : 'Untitled');
+        return nameSource.split(' - ')[0];
+      };
+
+      const today = new Date();
+      const day = String(today.getDate());
+      const month = String(today.getMonth() + 1);
+      const year = today.getFullYear();
+      const formattedDate = `${day}.${month}.${year}`;
+      const newVersion = `v${today.getTime().toString().slice(-4)}`;
+
+      const baseName = getBaseName(props.existingProfile, props.teamDefinition);
+      const newProfileName = `${baseName} - ${formattedDate} (${newVersion})`;
+
       const launchConfigPayload = {
         teamDefinition: props.teamDefinition,
-        name: props.existingProfile 
-          ? `${props.existingProfile.name} (v${new Date().getTime().toString().slice(-4)})` 
-          : `${props.teamDefinition.name} Launch - ${new Date().toLocaleDateString()}`,
+        name: newProfileName,
         globalConfig: JSON.parse(JSON.stringify(globalConfig)),
         memberOverrides: JSON.parse(JSON.stringify(Object.values(memberOverrides).filter(ov => Object.keys(ov).length > 1))),
       };
