@@ -22,7 +22,6 @@ export class GeminiToolParsingStrategy implements ToolParsingStrategy {
     checkSignature(buffer: string): SignatureMatch {
         const noSpaceBuffer = buffer.replace(/\s/g, '');
         
-        // A valid tool call MUST start with '{' or '['.
         const startsWithObject = noSpaceBuffer.startsWith('{');
         const startsWithArray = noSpaceBuffer.startsWith('[');
 
@@ -31,23 +30,13 @@ export class GeminiToolParsingStrategy implements ToolParsingStrategy {
         }
 
         if (startsWithObject) {
-            // If the buffer is a prefix of our known good signature, it's a partial match.
-            if (this.objSignature.startsWith(noSpaceBuffer)) {
-                return 'partial';
-            }
-            // If our signature is a prefix of the buffer, it's a definite match.
-            if (noSpaceBuffer.startsWith(this.objSignature)) {
-                return 'match';
-            }
+            if (noSpaceBuffer.startsWith(this.objSignature)) return 'match';
+            if (this.objSignature.startsWith(noSpaceBuffer)) return 'partial';
         }
         
         if (startsWithArray) {
-            if (this.arrSignature.startsWith(noSpaceBuffer)) {
-                return 'partial';
-            }
-            if (noSpaceBuffer.startsWith(this.arrSignature)) {
-                return 'match';
-            }
+            if (noSpaceBuffer.startsWith(this.arrSignature)) return 'match';
+            if (this.arrSignature.startsWith(noSpaceBuffer)) return 'partial';
         }
 
         // If the buffer has deviated from any known good signature, it's a no_match.

@@ -41,6 +41,7 @@ vi.mock('~/stores/llmProviderConfig', () => ({
     getProviderForModel: (llmModelIdentifier: string) => {
       if (llmModelIdentifier === 'anthropic') return LLMProvider.ANTHROPIC;
       if (llmModelIdentifier === 'openai') return LLMProvider.OPENAI;
+      if (llmModelIdentifier === 'gemini') return LLMProvider.GEMINI;
       return LLMProvider.DEEPSEEK;
     },
   })),
@@ -83,7 +84,11 @@ describe('IncrementalAIResponseParser with Strategies', () => {
   });
 
   const createParser = (provider: LLMProvider, parseToolCalls: boolean): IncrementalAIResponseParser => {
-    const llmModelIdentifier = provider === LLMProvider.ANTHROPIC ? 'anthropic' : 'openai';
+    let llmModelIdentifier = 'default';
+    if (provider === LLMProvider.ANTHROPIC) llmModelIdentifier = 'anthropic';
+    else if (provider === LLMProvider.OPENAI) llmModelIdentifier = 'openai';
+    else if (provider === LLMProvider.GEMINI) llmModelIdentifier = 'gemini';
+
     const agentContext = createMockAgentContext(segments, llmModelIdentifier, parseToolCalls, `test-conv-${Date.now()}`);
     const parserContext = new ParserContext(agentContext);
     return new IncrementalAIResponseParser(parserContext);
@@ -141,6 +146,61 @@ describe('IncrementalAIResponseParser with Strategies', () => {
         status: 'parsed',
         invocationId: 'call_base_file_reader_{"path":"/test.txt"}_0'
       })
+    ]);
+  });
+
+  it('should parse a complete Gemini JSON tool_call array using the GeminiToolParsingStrategy', () => {
+    const parser = createParser(LLMProvider.GEMINI, true);
+    const chunks = [
+      'Some text first ',
+      '[',
+      '{',
+      '"name": "ListAvailableTools",',
+      '"args": {}',
+      '}]',
+      ' some text after.'
+    ];
+    parser.processChunks(chunks);
+    parser.finalize();
+
+    expect(segments).toEqual([
+        { type: 'text', content: 'Some text first ' },
+        expect.objectContaining({
+          type: 'tool_call',
+          toolName: 'ListAvailableTools',
+          arguments: {},
+          status: 'parsed',
+          invocationId: 'call_base_ListAvailableTools_{}_0'
+        }),
+        { type: 'text', content: ' some text after.' }
+    ]);
+  });
+
+  it('should parse multiple Gemini tool calls from a single JSON array', () => {
+    const parser = createParser(LLMProvider.GEMINI, true);
+    const chunks = [
+      '[',
+      '{"name": "tool_one", "args": {"p": 1}},',
+      '{"name": "tool_two", "args": {"q": 2}}',
+      ']'
+    ];
+    parser.processChunks(chunks);
+    parser.finalize();
+
+    expect(segments).toEqual([
+        expect.objectContaining({
+          type: 'tool_call',
+          toolName: 'tool_one',
+          arguments: { p: 1 },
+          invocationId: 'call_base_tool_one_{"p":1}_0'
+        }),
+        expect.objectContaining({
+          type: 'tool_call',
+          toolName: 'tool_two',
+          arguments: { q: 2 },
+          // FIX: The counter for a new, unique tool call should start at 0.
+          invocationId: 'call_base_tool_two_{"q":2}_0'
+        })
     ]);
   });
 
