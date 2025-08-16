@@ -1,9 +1,19 @@
 <template>
-  <div class="flex flex-col bg-gray-50 text-gray-800 rounded-lg border border-gray-200 overflow-hidden">
+  <div class="flex flex-col bg-gray-50 text-gray-800 h-full">
     <!-- Header -->
-    <div class="p-4 border-b border-gray-200 flex-shrink-0">
-      <h3 class="text-base font-semibold text-gray-900">Team Members</h3>
-      <p v-if="teamName" class="text-sm text-gray-500 truncate" :title="teamName">{{ teamName }}</p>
+    <div class="p-4 flex-shrink-0 flex items-center justify-between">
+      <div>
+        <h3 class="text-base font-semibold text-gray-900">Team Members</h3>
+        <p v-if="teamName" class="text-sm text-gray-500 truncate" :title="teamName">{{ teamName }}</p>
+      </div>
+      <button
+        @click="promptTerminateTeam"
+        :disabled="isTeamInstanceTemporary"
+        class="px-4 py-2 bg-red-100 text-red-700 font-semibold text-sm rounded-md border border-red-200 shadow-sm hover:bg-red-600 hover:text-white hover:border-red-600 hover:shadow transform transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+        title="Terminate Team"
+      >
+        Terminate
+      </button>
     </div>
 
     <!-- Member List -->
@@ -30,18 +40,6 @@
           <AgentStatusDisplay :phase="member.state.currentPhase" />
         </div>
       </div>
-    </div>
-
-    <!-- Footer Actions -->
-    <div class="p-4 border-t border-gray-200 flex-shrink-0">
-      <button
-        @click="promptTerminateTeam"
-        :disabled="isTeamInstanceTemporary"
-        class="w-full flex items-center justify-center px-4 py-2 bg-red-600 text-white font-semibold text-sm rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <span class="i-heroicons-stop-circle-20-solid w-5 h-5 mr-2"></span>
-        Terminate Team
-      </button>
     </div>
     
     <!-- Delete Confirmation Dialog -->
