@@ -1,5 +1,5 @@
 import { IncrementalAIResponseParser } from '../incrementalAIResponseParser';
-import type { AIResponseSegment } from '../types';
+import type { AIResponseSegment, ToolCallSegment } from '../types';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { LLMProvider } from '~/types/llm';
@@ -412,5 +412,54 @@ describe('IncrementalAIResponseParser with Strategies', () => {
       }),
       { type: 'text', content: ' Final text.' },
     ]);
+  });
+
+  it('should correctly parse a complex real-world Gemini response with multiple tool calls and nested escaped JSON', () => {
+    const parser = createParser(LLMProvider.GEMINI, true);
+
+    const realCaseChunk = `You have hit upon the most important part of this entire process. Thank you for the clarification. You are exactly right. My previous example's "Final Output" was merely a status report. It confirmed the action but did *not* serve as a functional new working memory. If that were the only context passed to the next LLM turn, the continuity would be broken. The final output of the Memory Manager must *be* the new, distilled working memory itself—a concise but potent summary of the current state, allowing the primary agent to continue the task seamlessly. I will revise the prompt one last time to make this distinction crystal clear, specifically in the final output of the example. This ensures the agent produces a useful context, not just a confirmation message. ### Final, Corrected System Prompt (V4) ---
+**Role and Goal:** You are the Memory Manager, a sophisticated AI agent that emulates the human brain's **Central Executive** for memory. Your primary goal is to manage the "working memory" (the ongoing conversation history) to prevent cognitive overload while building a rich, organized long-term memory. You differentiate between factual knowledge (Semantic Memory) and the narrative of events (Episodic Memory). **Core Responsibilities:** 1. **Monitor Working Memory:** Continuously assess the conversation history. When it becomes too long or a task is completed, you must initiate memory consolidation.
+2. **Consolidate Memories:** Process the working memory to extract semantic facts and episodic narratives.
+3. **Manage Long-Term Memory:** Use your file system tools to maintain a structured long-term memory store.
+4. **Formulate New Working Memory:** Your final output is the new, compressed working memory for the primary agent. **It is not just a status update; it IS the new context.** It must contain the most critical information and decisions from the recent interaction, phrased to allow the conversation to continue seamlessly.
+5. **Contextual Retrieval:** When information is requested, intelligently search and load data from your memory stores back into the working context. ---
+### **Detailed Example of Operation** You MUST follow this pattern precisely. **-- INPUT (Working Memory / Conversation History) --**
+\`\`\`json
+[ { "role": "user", "content": "Okay, let's get started. I need to set up a new project. The project name is 'Apollo'. We'll be using Python for the backend and the database will be PostgreSQL." }, { "role": "assistant", "content": "Understood. Project 'Apollo', Python backend, PostgreSQL database. Do you have the connection string for the database yet?" }, { "role": "user", "content": "Yes, it's 'postgresql://user:password@host:port/dbname'. Please make sure to store that securely. Also, for this project, I always prefer to use the 'black' formatter for code styling." }
+]
+\`\`\` **-- AGENT'S ACTIONS (Tool Calls) --**
+\`\`\`json
+[ { "name": "FileWriter", "args": { "path": "/memory/semantic_memory.json", "content": "{\\n \\"project_name\\": \\"Apollo\\",\\n \\"backend_language\\": \\"Python\\",\\n \\"database_type\\": \\"PostgreSQL\\",\\n \\"database_connection_string\\": \\"postgresql://user:password@host:port/dbname\\",\\n \\"user_preference_code_formatter\\": \\"black\\"\\n}" } }, { "name": "FileWriter", "args": { "path": "/memory/episodes/apollo_project_setup.txt", "content": "The user initiated the setup for a new project named 'Apollo'. We established the core technologies: Python for the backend and a PostgreSQL database. The user provided the database connection string and stated a preference for using the 'black' code formatter." } }
+]
+\`\`\` **-- FINAL OUTPUT (The New Working Memory) --** **Project 'Apollo' has been initialized with a Python backend and PostgreSQL database. The database connection string and user preference for the 'black' code formatter have been noted and stored securely. Ready for the next task.** --- With this perfected prompt, the final step is to create the prompt and then assemble the agent. **Step 1: Create the final prompt.** [ { "name": "CreatePrompt", "args": { "name": "MemoryManager-Prompt-V4", "category": "CognitiveAgents", "prompt_content": "Role and Goal:\\n\\nYou are the Memory Manager, a sophisticated AI agent that emulates the human brain's **Central Executive** for memory. Your primary goal is to manage the \\"working memory\\" (the ongoing conversation history) to prevent cognitive overload while building a rich, organized long-term memory. You differentiate between factual knowledge (Semantic Memory) and the narrative of events (Episodic Memory).\\n\\nCore Responsibilities:\\n\\n1. **Monitor Working Memory:** Continuously assess the conversation history. When it becomes too long or a task is completed, you must initiate memory consolidation.\\n2. **Consolidate Memories:** Process the working memory to extract semantic facts and episodic narratives.\\n3. **Manage Long-Term Memory:** Use your file system tools to maintain a structured long-term memory store.\\n4. **Formulate New Working Memory:** Your final output is the new, compressed working memory for the primary agent. **It is not just a status update; it IS the new context.** It must contain the most critical information and decisions from the recent interaction, phrased to allow the conversation to continue seamlessly.\\n5. **Contextual Retrieval:** When information is requested, intelligently search and load data from your memory stores back into the working context.\\n\\n---\\n### **Detailed Example of Operation**\\n\\nYou MUST follow this pattern precisely.\\n\\n**-- INPUT (Working Memory / Conversation History) --**\\n\`\`\`json\\n[\\n { \\"role\\": \\"user\\", \\"content\\": \\"Okay, let's get started. I need to set up a new project. The project name is 'Apollo'. We'll be using Python for the backend and the database will be PostgreSQL.\\" },\\n { \\"role\\": \\"assistant\\", \\"content\\": \\"Understood. Project 'Apollo', Python backend, PostgreSQL database. Do you have the connection string for the database yet?\\" },\\n { \\"role\\": \\"user\\", \\"content\\": \\"Yes, it's 'postgresql://user:password@host:port/dbname'. Please make sure to store that securely. Also, for this project, I always prefer to use the 'black' formatter for code styling.\\" }\\n]\\n\`\`\`\\n\\n**-- AGENT'S ACTIONS (Tool Calls) --**\\n\`\`\`json\\n[\\n {\\n \\"name\\": \\"FileWriter\\",\\n \\"args\\": { \\"path\\": \\"/memory/semantic_memory.json\\", \\"content\\": \\"{\\\\n \\\\\\"project_name\\\\\\": \\\\\\"Apollo\\\\\\",\\\\n \\\\\\"backend_language\\\\\\": \\\\\\"Python\\\\\\",\\\\n \\\\\\"database_type\\\\\\": \\\\\\"PostgreSQL\\\\\\",\\\\n \\\\\\"database_connection_string\\\\\\": \\\\\\"postgresql://user:password@host:port/dbname\\\\\\",\\\\n \\\\\\"user_preference_code_formatter\\\\\\": \\\\\\"black\\\\\\"\\\\n}\\" }\\n },\\n {\\n \\"name\\": \\"FileWriter\\",\\n \\"args\\": { \\"path\\": \\"/memory/episodes/apollo_project_setup.txt\\", \\"content\\": \\"The user initiated the setup for a new project named 'Apollo'. We established the core technologies: Python for the backend and a PostgreSQL database. The user provided the database connection string and stated a preference for using the 'black' code formatter.\\" }\\n }\\n]\\n\`\`\`\\n\\n**-- FINAL OUTPUT (The New Working Memory) --**\\n\\n**Project 'Apollo' has been initialized with a Python backend and PostgreSQL database. The database connection string and user preference for the 'black' code formatter have been noted and stored securely. Ready for the next task.**\\n\\n---" } }
+] **Step 2: Assemble the final Agent Definition.** I will now formally create the "MemoryManager" agent, linking the prompt we've just perfected with the tools we identified earlier (\`FileWriter\`, \`FileReader\`, \`BashExecutor\`). [ { "name": "CreateAgentDefinition", "args": { "name": "MemoryManager", "role": "Cognitive Memory Manager", "description": "An agent that emulates human working memory by consolidating conversation history into semantic (facts) and episodic (narrative) long-term storage, and formulating a concise new working memory.", "system_prompt_category": "CognitiveAgents", "system_prompt_name": "MemoryManager-Prompt-V4", "tool_names": "FileWriter,FileReader,BashExecutor" } }
+]`;
+
+    parser.processChunks([realCaseChunk]);
+    parser.finalize();
+
+    const toolCalls = segments.filter(s => s.type === 'tool_call');
+    expect(toolCalls.length).toBe(4);
+
+    expect(segments).toEqual([
+      expect.objectContaining({ type: 'text' }),
+      expect.objectContaining({ type: 'tool_call', toolName: 'FileWriter' }),
+      expect.objectContaining({ type: 'tool_call', toolName: 'FileWriter' }),
+      expect.objectContaining({ type: 'text' }),
+      expect.objectContaining({ type: 'tool_call', toolName: 'CreatePrompt' }),
+      expect.objectContaining({ type: 'text' }),
+      expect.objectContaining({ type: 'tool_call', toolName: 'CreateAgentDefinition' }),
+    ]);
+
+    const createPromptCall = toolCalls.find(s => (s as ToolCallSegment).toolName === 'CreatePrompt') as ToolCallSegment;
+    expect(createPromptCall).toBeDefined();
+    expect(createPromptCall.arguments.name).toBe('MemoryManager-Prompt-V4');
+    expect(createPromptCall.arguments.prompt_content).toContain("You are the Memory Manager");
+    expect(createPromptCall.arguments.prompt_content).toContain('{\\n \\"project_name\\": \\"Apollo\\"');
+
+    const createAgentCall = toolCalls.find(s => (s as ToolCallSegment).toolName === 'CreateAgentDefinition') as ToolCallSegment;
+    expect(createAgentCall).toBeDefined();
+    expect(createAgentCall.arguments.name).toBe('MemoryManager');
+    expect(createAgentCall.arguments.tool_names).toBe('FileWriter,FileReader,BashExecutor');
   });
 });
