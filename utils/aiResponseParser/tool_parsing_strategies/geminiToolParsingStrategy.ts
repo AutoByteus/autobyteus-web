@@ -3,50 +3,62 @@ import type { ParserContext } from '../stateMachine/ParserContext';
 import type { ToolInvocation } from '~/types/tool-invocation';
 
 /**
- * Corresponds to the simplified backend `GeminiJsonToolUsageParser`.
- * Handles a single JSON object with "name" and "args".
+ * Corresponds to the backend `GeminiJsonToolUsageParser`.
+ * Handles a single JSON object with "name" and "args", or a JSON array
+ * of such objects.
  */
 export class GeminiToolParsingStrategy implements ToolParsingStrategy {
-    readonly signature = '{"name":';
+    // A nominal signature. The checkSignature method does the real work.
+    readonly signature = '{'; 
     private braceCount = 0;
     private inString = false;
     private isEscaped = false;
     private isDone = false;
     private rawJsonBuffer = '';
 
+    private readonly objSignature = '{"name":';
+    private readonly arrSignature = '[{"name":';
+
     checkSignature(buffer: string): SignatureMatch {
         const noSpaceBuffer = buffer.replace(/\s/g, '');
         
-        // A valid tool call MUST be a JSON object starting with '{'.
-        if (!noSpaceBuffer.startsWith('{')) {
+        // A valid tool call MUST start with '{' or '['.
+        const startsWithObject = noSpaceBuffer.startsWith('{');
+        const startsWithArray = noSpaceBuffer.startsWith('[');
+
+        if (!startsWithObject && !startsWithArray) {
             return 'no_match';
         }
 
-        // To be a potential match, the buffer must be a prefix of our signature,
-        // OR our signature must be a prefix of the buffer.
-        // If neither is true, the buffer has already deviated.
-        if (this.signature.startsWith(noSpaceBuffer)) {
-            // The buffer is a valid prefix of the signature.
-            return noSpaceBuffer.length === this.signature.length ? 'match' : 'partial';
-        }
-
-        if (noSpaceBuffer.startsWith(this.signature)) {
-            // The signature is a prefix of the buffer, which means it's a match.
-            return 'match';
+        if (startsWithObject) {
+            // If the buffer is a prefix of our known good signature, it's a partial match.
+            if (this.objSignature.startsWith(noSpaceBuffer)) {
+                return 'partial';
+            }
+            // If our signature is a prefix of the buffer, it's a definite match.
+            if (noSpaceBuffer.startsWith(this.objSignature)) {
+                return 'match';
+            }
         }
         
-        // Example: buffer is `{"args":...}`. It starts with `{` but `this.signature`
-        // does not start with it, and it does not start with `this.signature`.
-        // This means it has deviated from the expected format.
+        if (startsWithArray) {
+            if (this.arrSignature.startsWith(noSpaceBuffer)) {
+                return 'partial';
+            }
+            if (noSpaceBuffer.startsWith(this.arrSignature)) {
+                return 'match';
+            }
+        }
+
+        // If the buffer has deviated from any known good signature, it's a no_match.
+        // This handles cases like `{"args":...}` immediately.
         return 'no_match';
     }
 
     startSegment(context: ParserContext, signatureBuffer: string): void {
-        // Reset state for a new parsing session
         this.isDone = false;
         this.inString = false;
         this.isEscaped = false;
-
         context.startJsonToolCallSegment();
         this.rawJsonBuffer = signatureBuffer;
         context.appendToCurrentToolRawJson(signatureBuffer);
@@ -70,14 +82,13 @@ export class GeminiToolParsingStrategy implements ToolParsingStrategy {
                 this.inString = true;
                 this.isEscaped = false;
             }
-            else if (char === '{') this.braceCount++;
-            else if (char === '}') this.braceCount--;
+            else if (char === '{' || char === '[') this.braceCount++;
+            else if (char === '}' || char === ']') this.braceCount--;
         }
 
-        // The JSON is complete when we've returned to a zero brace count.
         if (!this.inString && this.braceCount === 0 && this.rawJsonBuffer.trim().length > 1) {
             const trimmed = this.rawJsonBuffer.trim();
-             if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+             if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
                 this.isDone = true;
             }
         }
@@ -101,20 +112,21 @@ export class GeminiToolParsingStrategy implements ToolParsingStrategy {
             return [];
         }
 
-        if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-            return [];
-        }
-            
-        const toolName = data.name;
-        if (typeof toolName !== 'string' || !toolName) {
-            return [];
-        }
+        const potentialToolCalls: any[] = Array.isArray(data) ? data : [data];
+        const invocations: ToolInvocation[] = [];
+        
+        for (const callData of potentialToolCalls) {
+            if (typeof callData !== 'object' || callData === null) continue;
 
-        const args = data.args;
-        if (typeof args !== 'object' || args === null || Array.isArray(args)) {
-            return [];
+            const toolName = callData.name;
+            if (typeof toolName !== 'string' || !toolName) continue;
+
+            const args = callData.args;
+            if (typeof args !== 'object' || args === null || Array.isArray(args)) continue;
+            
+            invocations.push({ name: toolName, arguments: args });
         }
         
-        return [{ name: toolName, arguments: args }];
+        return invocations;
     }
 }

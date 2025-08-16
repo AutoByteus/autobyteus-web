@@ -1,4 +1,3 @@
-# file: autobyteus-web/components/agentTeams/TeamLaunchConfigModal.vue
 <template>
   <Teleport to="body">
     <div v-if="show" @click.self="closeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -548,18 +547,26 @@ const handleLaunch = async () => {
       // Creation Flow (New or Modified Profile)
       const getBaseName = (profile?: TeamLaunchProfile | null, definition?: AgentTeamDefinition): string => {
         const nameSource = profile ? profile.name : (definition ? definition.name : 'Untitled');
-        return nameSource.split(' - ')[0];
+        // Find the first space followed by an opening parenthesis (for old format)
+        const versionIndex = nameSource.search(/\s\(/);
+        if (versionIndex !== -1) {
+          return nameSource.substring(0, versionIndex).trim();
+        }
+        // Fallback for old format with " - "
+        return nameSource.split(' - ')[0].trim();
       };
 
-      const today = new Date();
-      const day = String(today.getDate());
-      const month = String(today.getMonth() + 1);
-      const year = today.getFullYear();
-      const formattedDate = `${day}.${month}.${year}`;
-      const newVersion = `v${today.getTime().toString().slice(-4)}`;
-
       const baseName = getBaseName(props.existingProfile, props.teamDefinition);
-      const newProfileName = `${baseName} - ${formattedDate} (${newVersion})`;
+      
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const dateSuffix = `${year}-${month}-${day} ${hours}:${minutes}`;
+
+      const newProfileName = `${baseName} - ${dateSuffix}`;
 
       const launchConfigPayload = {
         teamDefinition: props.teamDefinition,

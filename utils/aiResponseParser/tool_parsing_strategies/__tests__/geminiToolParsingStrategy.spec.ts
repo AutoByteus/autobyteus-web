@@ -46,16 +46,23 @@ describe('GeminiToolParsingStrategy (Simplified)', () => {
     // --- Signature Checks ---
     it('checkSignature should return "no_match" for non-matching text', () => {
         expect(strategy.checkSignature('{"args":')).toBe('no_match');
-        expect(strategy.checkSignature('[{"name":')).toBe('no_match');
+        expect(strategy.checkSignature(' some text')).toBe('no_match');
     });
 
     it('checkSignature should return "partial" for an incomplete signature', () => {
         expect(strategy.checkSignature('{"na')).toBe('partial');
+        expect(strategy.checkSignature('[')).toBe('partial');
+        expect(strategy.checkSignature('[{"na')).toBe('partial');
     });
 
-    it('checkSignature should return "match" for a complete signature, ignoring whitespace', () => {
+    it('checkSignature should return "match" for a complete object signature, ignoring whitespace', () => {
         expect(strategy.checkSignature('  { "name" :')).toBe('match');
     });
+
+    it('checkSignature should return "match" for a complete array signature, ignoring whitespace', () => {
+        expect(strategy.checkSignature('  [ { "name" :')).toBe('match');
+    });
+
 
     // --- Full Stream Test ---
     it('should parse a complete tool call object received at once', () => {
@@ -80,6 +87,45 @@ describe('GeminiToolParsingStrategy (Simplified)', () => {
         expect(segment.rawJsonContent).toContain('Tokyo');
         expect(segment.invocationId).toBe('call_mock_get_weather_{"location":"Tokyo"}_0');
     });
+
+    it('should parse a real-world tool call wrapped in a list', () => {
+        const signatureBuffer = '[{"name":';
+        strategy.startSegment(context, signatureBuffer);
+
+        const contentStream = `"ListAvailableTools", "args": {}}]`;
+        for (const char of contentStream) {
+            strategy.processChar(char, context);
+        }
+        strategy.finalize(context);
+
+        expect(strategy.isComplete()).toBe(true);
+        expect(segments.length).toBe(1);
+        const segment = segments[0] as ToolCallSegment;
+        expect(segment.toolName).toBe('ListAvailableTools');
+        expect(segment.arguments).toEqual({});
+        expect(segment.status).toBe('parsed');
+    });
+
+    it('should parse a list containing multiple tool calls', () => {
+        const signatureBuffer = '[{"name":';
+        strategy.startSegment(context, signatureBuffer);
+
+        const contentStream = `"tool1", "args": {"p": 1}}, {"name": "tool2", "args": {"q": 2}}]`;
+        for (const char of contentStream) {
+            strategy.processChar(char, context);
+        }
+        strategy.finalize(context);
+
+        expect(strategy.isComplete()).toBe(true);
+        expect(segments.length).toBe(2);
+        const segment1 = segments[0] as ToolCallSegment;
+        const segment2 = segments[1] as ToolCallSegment;
+        expect(segment1.toolName).toBe('tool1');
+        expect(segment1.arguments).toEqual({ p: 1 });
+        expect(segment2.toolName).toBe('tool2');
+        expect(segment2.arguments).toEqual({ q: 2 });
+    });
+
 
     // --- Incremental Stream Test ---
     it('should parse a tool call object received in multiple chunks', () => {
@@ -188,12 +234,6 @@ describe('GeminiToolParsingStrategy (Simplified)', () => {
             expect(segments.length).toBe(1);
             expect(segments[0].type).toBe('text');
             expect((segments[0] as AIResponseTextSegment).content).toBe(stream);
-        });
-
-        it('should ignore a JSON array of tool calls', () => {
-            const stream = `[{"name": "tool1", "args":{}}]`;
-            const match = strategy.checkSignature(stream);
-            expect(match).toBe('no_match');
         });
     });
 });

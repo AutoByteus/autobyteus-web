@@ -16,7 +16,7 @@ export class TextState extends BaseState {
     while (this.context.hasMoreChars()) {
       const char = this.context.peekChar();
 
-      if (char === '<' || char === '{') {
+      if (char === '<' || char === '{' || char === '[') {
         const text = this.context.substring(startPos, this.context.getPosition());
         this.context.appendTextSegment(text);
         
@@ -24,7 +24,7 @@ export class TextState extends BaseState {
         // is responsible for consuming it. We just transition.
         if (char === '<') {
           this.context.transitionTo(new XmlTagInitializationState(this.context));
-        } else { // '{'
+        } else { // '{' or '['
           this.context.transitionTo(new JsonInitializationState(this.context));
         }
         return;
