@@ -64,7 +64,7 @@
     
     <!-- Result -->
     <div v-if="segment.status === 'success' && segment.result" class="result-section mb-3">
-       <details open>
+       <details>
         <summary class="cursor-pointer text-xs font-semibold text-green-700 dark:text-green-400">Result</summary>
         <pre class="mt-2 text-xs text-green-800 dark:text-green-200 bg-green-50 dark:bg-gray-800 p-2 rounded overflow-auto whitespace-pre-wrap"><code>{{ prettyResult }}</code></pre>
       </details>
