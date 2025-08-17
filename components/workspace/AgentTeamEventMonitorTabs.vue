@@ -22,8 +22,8 @@
             role="button"
             tabindex="0"
             class="ml-2 text-gray-500 hover:text-red-600 cursor-pointer"
-            @click.stop="promptCloseTeam(team.teamId)"
-            @keydown.enter.stop="promptCloseTeam(team.teamId)"
+            @click.stop="handleCloseTeam(team.teamId)"
+            @keydown.enter.stop="handleCloseTeam(team.teamId)"
             title="Terminate Team Instance"
           >
             &times;
@@ -80,6 +80,17 @@ const getTabTitle = (team: AgentTeamContext) => {
     return `New unsaved instance for profile: "${team.launchProfile.name}"`;
   }
   return `Team Instance ID: ${team.teamId}`;
+};
+
+const handleCloseTeam = (teamId: string) => {
+  if (teamId.startsWith('temp-')) {
+    // For temporary instances, close immediately without confirmation.
+    // The store action is safe because it won't send a terminate request for temp IDs.
+    teamRunStore.terminateTeamInstance(teamId);
+  } else {
+    // For permanent instances, show the confirmation dialog.
+    promptCloseTeam(teamId);
+  }
 };
 
 const promptCloseTeam = (teamId: string) => {

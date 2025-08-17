@@ -208,10 +208,8 @@ export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
           profileState.selectedTeamId = openTeams.length > 0 ? openTeams[openTeams.length - 1].teamId : null;
         }
 
-        // If this was the last instance, clear the active resolved profile
-        if (profileState.activeTeams.size === 0) {
-          this.activeResolvedProfile = null;
-        }
+        // The problematic block that cleared the session has been removed.
+        // The activeResolvedProfile will now persist until the user navigates away.
       }
     },
 

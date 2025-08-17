@@ -42,7 +42,10 @@
 
       <!-- Task Board Display Section -->
       <div class="flex-grow overflow-hidden min-h-0">
-        <TaskBoardDisplay />
+        <TaskBoardDisplay 
+          :tasks="activeTeamContext?.taskPlan" 
+          :statuses="activeTeamContext?.taskStatuses" 
+        />
       </div>
     </div>
   </div>
