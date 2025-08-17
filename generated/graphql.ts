@@ -793,6 +793,7 @@ export type QueryGetConversationHistoryArgs = {
   agentDefinitionId: Scalars['String']['input'];
   page?: Scalars['Int']['input'];
   pageSize?: Scalars['Int']['input'];
+  searchQuery?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1378,6 +1379,7 @@ export type GetConversationHistoryQueryVariables = Exact<{
   agentDefinitionId: Scalars['String']['input'];
   page?: InputMaybe<Scalars['Int']['input']>;
   pageSize?: InputMaybe<Scalars['Int']['input']>;
+  searchQuery?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 
@@ -2825,11 +2827,12 @@ export function useGetAgentTeamDefinitionsLazyQuery(options: VueApolloComposable
 }
 export type GetAgentTeamDefinitionsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAgentTeamDefinitionsQuery, GetAgentTeamDefinitionsQueryVariables>;
 export const GetConversationHistoryDocument = gql`
-    query GetConversationHistory($agentDefinitionId: String!, $page: Int, $pageSize: Int) {
+    query GetConversationHistory($agentDefinitionId: String!, $page: Int, $pageSize: Int, $searchQuery: String) {
   getConversationHistory(
     agentDefinitionId: $agentDefinitionId
     page: $page
     pageSize: $pageSize
+    searchQuery: $searchQuery
   ) {
     conversations {
       agentId
@@ -2868,6 +2871,7 @@ export const GetConversationHistoryDocument = gql`
  *   agentDefinitionId: // value for 'agentDefinitionId'
  *   page: // value for 'page'
  *   pageSize: // value for 'pageSize'
+ *   searchQuery: // value for 'searchQuery'
  * });
  */
 export function useGetConversationHistoryQuery(variables: GetConversationHistoryQueryVariables | VueCompositionApi.Ref<GetConversationHistoryQueryVariables> | ReactiveFunction<GetConversationHistoryQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetConversationHistoryQuery, GetConversationHistoryQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetConversationHistoryQuery, GetConversationHistoryQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetConversationHistoryQuery, GetConversationHistoryQueryVariables>> = {}) {

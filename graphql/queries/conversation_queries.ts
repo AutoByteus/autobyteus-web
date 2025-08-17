@@ -5,11 +5,13 @@ export const GET_CONVERSATION_HISTORY = gql`
     $agentDefinitionId: String!
     $page: Int
     $pageSize: Int
+    $searchQuery: String
   ) {
     getConversationHistory(
       agentDefinitionId: $agentDefinitionId
       page: $page
       pageSize: $pageSize
+      searchQuery: $searchQuery
     ) {
       conversations {
         agentId

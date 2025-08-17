@@ -12,6 +12,7 @@ interface ConversationHistoryState {
   totalPages: number;
   loading: boolean;
   error: string | null;
+  searchQuery: string; // New state for the search query
 }
 
 export const useConversationHistoryStore = defineStore('conversationHistory', {
@@ -23,6 +24,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
     totalPages: 1,
     loading: false,
     error: null,
+    searchQuery: '', // Initialize search query
   }),
   actions: {
     setAgentDefinitionId(agentDefinitionId: string) {
@@ -30,6 +32,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.currentPage = 1;
       this.conversations = [];
       this.totalPages = 1;
+      this.searchQuery = ''; // Reset search on new agent selection
       this.fetchConversationHistory();
     },
     async fetchConversationHistory(this: ConversationHistoryState, page: number = this.currentPage, pageSize: number = this.pageSize) {
@@ -45,8 +48,12 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
         agentDefinitionId: this.agentDefinitionId,
         page,
         pageSize,
+        searchQuery: this.searchQuery || null, // Pass search query to variables
       };
 
+      // `useQuery` should be called within a component's setup,
+      // but for stores, we can manage it this way.
+      // A better approach in a real app might be to refactor this into a composable.
       const { onResult, onError } = useQuery<GetConversationHistoryQuery, GetConversationHistoryQueryVariables>(
         GET_CONVERSATION_HISTORY,
         variables,
@@ -55,20 +62,35 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
         }
       );
 
-      onResult((result) => {
-        if (result.data?.getConversationHistory) {
-          const { conversations, totalPages, currentPage } = result.data.getConversationHistory;
-          this.conversations = conversations.map(conv => this.mapToConversation(conv));
-          this.totalPages = totalPages;
-          this.currentPage = currentPage;
-        }
-        this.loading = false;
-      });
+      return new Promise<void>((resolve) => {
+        onResult((result) => {
+          if (result.loading) return;
+          if (result.data?.getConversationHistory) {
+            const { conversations, totalPages, currentPage } = result.data.getConversationHistory;
+            this.conversations = conversations.map(conv => this.mapToConversation(conv));
+            this.totalPages = totalPages;
+            this.currentPage = currentPage;
+          }
+          this.loading = false;
+          resolve();
+        });
 
-      onError((error) => {
-        this.error = error.message || 'An error occurred while fetching conversation history.';
-        this.loading = false;
+        onError((error) => {
+          this.error = error.message || 'An error occurred while fetching conversation history.';
+          this.loading = false;
+          resolve(); // Resolve promise even on error
+        });
       });
+    },
+    async performSearch(query: string) {
+      this.searchQuery = query;
+      this.currentPage = 1; // Reset to first page for new search
+      await this.fetchConversationHistory();
+    },
+    async clearSearch() {
+      this.searchQuery = '';
+      this.currentPage = 1;
+      await this.fetchConversationHistory();
     },
     async nextPage() {
       if (this.currentPage < this.totalPages && this.agentDefinitionId) {
@@ -90,6 +112,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.totalPages = 1;
       this.loading = false;
       this.error = null;
+      this.searchQuery = '';
     },
     mapToConversation(agentConversation: GetConversationHistoryQuery['getConversationHistory']['conversations'][number]): Conversation {
       // This function performs a "lightweight" mapping.
