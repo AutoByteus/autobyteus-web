@@ -27,15 +27,27 @@ import type {
 import { useWorkspaceStore } from '~/stores/workspace'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
-import { findFileByPath } from '~/utils/fileExplorer/fileUtils'
+import { findFileByPath, determineFileType } from '~/utils/fileExplorer/fileUtils'
+
+// --- NEW TYPES FOR MULTI-CONTENT SUPPORT ---
+export type FileDataType = 'Text' | 'Image' | 'Audio' | 'Video' | 'Unsupported';
+
+export interface OpenFileState {
+  path: string;
+  type: FileDataType;
+  content: string | null; // For text files
+  url: string | null;     // For media files
+  isLoading: boolean;
+  error: string | null;
+}
+// ------------------------------------------
 
 interface WorkspaceFileExplorerState {
   openFolders: Record<string, boolean>;
-  openFiles: string[];
+  // REFACTORED: openFiles is now an array of objects
+  openFiles: OpenFileState[];
   activeFile: string | null;
-  fileContents: Record<string, string | null>;
-  contentLoading: Record<string, boolean>;
-  contentError: Record<string, string | null>;
+  
   applyChangeError: Record<string, Record<number, Record<string, string | null>>>;
   applyChangeLoading: Record<string, Record<number, Record<string, boolean>>>;
   appliedChanges: Record<string, Record<number, Record<string, boolean>>>;
@@ -62,9 +74,6 @@ const createDefaultWorkspaceFileExplorerState = (): WorkspaceFileExplorerState =
   openFolders: {},
   openFiles: [],
   activeFile: null,
-  fileContents: {},
-  contentLoading: {},
-  contentError: {},
   applyChangeError: {},
   applyChangeLoading: {},
   appliedChanges: {},
@@ -89,7 +98,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
   }),
 
   getters: {
-    // REFACTORED: This now derives its state from the active workspace.
     _currentWorkspaceFileExplorerState(state): WorkspaceFileExplorerState | null {
       const workspaceStore = useWorkspaceStore();
       const activeWorkspaceId = workspaceStore.activeWorkspace?.workspaceId;
@@ -103,23 +111,34 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     },
     getOpenFiles: (state): string[] => {
       const wsState = (state as any)._currentWorkspaceFileExplorerState;
-      return wsState ? wsState.openFiles : [];
+      return wsState ? wsState.openFiles.map(f => f.path) : [];
     },
     getActiveFile: (state): string | null => {
       const wsState = (state as any)._currentWorkspaceFileExplorerState;
       return wsState ? wsState.activeFile : null;
     },
+    getActiveFileData(state): OpenFileState | null {
+      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+      if (!wsState || !wsState.activeFile) return null;
+      return wsState.openFiles.find(f => f.path === wsState.activeFile) || null;
+    },
     getFileContent: (state) => (filePath: string): string | null => {
       const wsState = (state as any)._currentWorkspaceFileExplorerState;
-      return wsState ? wsState.fileContents[filePath] ?? null : null;
+      if (!wsState) return null;
+      const file = wsState.openFiles.find(f => f.path === filePath);
+      return file ? file.content : null;
     },
     isContentLoading: (state) => (filePath: string): boolean => {
       const wsState = (state as any)._currentWorkspaceFileExplorerState;
-      return wsState ? !!wsState.contentLoading[filePath] : false;
+      if (!wsState) return false;
+      const file = wsState.openFiles.find(f => f.path === filePath);
+      return file ? file.isLoading : false;
     },
     getContentError: (state) => (filePath: string): string | null => {
       const wsState = (state as any)._currentWorkspaceFileExplorerState;
-      return wsState ? wsState.contentError[filePath] || null : null;
+      if (!wsState) return null;
+      const file = wsState.openFiles.find(f => f.path === filePath);
+      return file ? file.error : null;
     },
     getSearchResults: (state): any[] => {
       const wsState = (state as any)._currentWorkspaceFileExplorerState;
@@ -136,7 +155,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
   },
 
   actions: {
-    // REFACTORED: This now gets the workspace ID from the active workspace.
     _getOrCreateCurrentWorkspaceState(): WorkspaceFileExplorerState {
       const workspaceStore = useWorkspaceStore();
       const activeWorkspaceId = workspaceStore.activeWorkspace?.workspaceId;
@@ -154,28 +172,75 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       wsState.openFolders[folderPath] = !wsState.openFolders[folderPath];
     },
 
-    async openFile(filePath: string) {
+    async openFile(pathOrUrl: string) {
+      console.log(`[FileExplorer] Opening file: ${pathOrUrl}`);
       const wsState = this._getOrCreateCurrentWorkspaceState();
-      if (!wsState.openFiles.includes(filePath)) {
-        wsState.openFiles.push(filePath);
-        // FIX: Do not await fetchFileContent.
-        // This allows the UI to update to the new activeFile immediately
-        // and show a loading state while the content is being fetched.
-        this.fetchFileContent(filePath);
+      
+      const existingFile = wsState.openFiles.find(f => f.path === pathOrUrl);
+
+      if (!existingFile) {
+        const workspaceStore = useWorkspaceStore();
+        const isExternalUrl = pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://');
+        const fileType = await determineFileType(pathOrUrl);
+        console.log(`[FileExplorer] Determined file type for "${pathOrUrl}": ${fileType}`);
+
+        // Create the initial state object with isLoading: true for all new files.
+        const newFileState: OpenFileState = {
+          path: pathOrUrl,
+          type: fileType,
+          content: null,
+          url: null,
+          isLoading: true,
+          error: null,
+        };
+
+        // **FIX:** Push the new state to the store's array *before* dispatching async actions.
+        wsState.openFiles.push(newFileState);
+        console.log('[FileExplorer] Pushed new initial file state:', JSON.parse(JSON.stringify(newFileState)));
+
+        // Now that the state is in the store, proceed with fetching content or setting URLs.
+        if (isExternalUrl) {
+          console.log(`[FileExplorer] Handling as an external URL.`);
+          newFileState.url = pathOrUrl;
+          newFileState.isLoading = false; // Update the state object (which is by reference)
+        } else { // It's a workspace-relative path
+          console.log(`[FileExplorer] Handling as a workspace path.`);
+          if (newFileState.type === 'Text') {
+            console.log(`[FileExplorer] Fetching text content for "${pathOrUrl}" via GraphQL.`);
+            // This action will now be able to find the newFileState in the openFiles array.
+            this.fetchFileContent(pathOrUrl);
+          } else if (['Image', 'Audio', 'Video'].includes(newFileState.type)) {
+            const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
+            if (workspaceId) {
+              const encodedFilePath = encodeURIComponent(pathOrUrl);
+              newFileState.url = `/rest/workspaces/${workspaceId}/content?path=${encodedFilePath}`;
+              newFileState.isLoading = false;
+              console.log(`[FileExplorer] Constructed media URL for "${pathOrUrl}": ${newFileState.url}`);
+            } else {
+              newFileState.error = "No active workspace to construct file URL.";
+              newFileState.isLoading = false;
+              console.error(`[FileExplorer] Cannot construct media URL: No active workspace.`);
+            }
+          } else {
+            console.warn(`[FileExplorer] Unsupported file type "${newFileState.type}" for "${pathOrUrl}".`);
+            newFileState.isLoading = false;
+          }
+        }
       }
-      wsState.activeFile = filePath;
+      
+      wsState.activeFile = pathOrUrl;
       const fileContentDisplayModeStore = useFileContentDisplayModeStore();
       fileContentDisplayModeStore.showFullscreen();
     },
 
     closeFile(filePath: string) {
       const wsState = this._getOrCreateCurrentWorkspaceState();
-      wsState.openFiles = wsState.openFiles.filter(file => file !== filePath);
-      delete wsState.fileContents[filePath];
-      delete wsState.contentLoading[filePath];
-      delete wsState.contentError[filePath];
+      wsState.openFiles = wsState.openFiles.filter(file => file.path !== filePath);
+
       if (wsState.activeFile === filePath) {
-        wsState.activeFile = wsState.openFiles[wsState.openFiles.length - 1] || null;
+        const lastOpenFile = wsState.openFiles[wsState.openFiles.length - 1];
+        wsState.activeFile = lastOpenFile ? lastOpenFile.path : null;
+        
         if (!wsState.activeFile) {
           const fileContentDisplayModeStore = useFileContentDisplayModeStore();
           fileContentDisplayModeStore.hide();
@@ -185,18 +250,18 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
 
     setActiveFile(filePath: string) {
       const wsState = this._getOrCreateCurrentWorkspaceState();
-      if (wsState.openFiles.includes(filePath)) {
+      if (wsState.openFiles.some(f => f.path === filePath)) {
         wsState.activeFile = filePath;
       }
     },
 
     async fetchFileContent(filePath: string) {
       const wsState = this._getOrCreateCurrentWorkspaceState();
-      // Use `in` operator to check if key exists, even if value is null
-      if (filePath in wsState.fileContents) return;
+      const file = wsState.openFiles.find(f => f.path === filePath);
+      if (!file || file.content !== null) return;
 
-      wsState.contentLoading[filePath] = true;
-      wsState.contentError[filePath] = null;
+      file.isLoading = true;
+      file.error = null;
 
       const workspaceStore = useWorkspaceStore();
       const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
@@ -210,28 +275,33 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         return new Promise((resolve, reject) => {
           onResult((result) => {
             if (result.data) {
-              // FIX: Defensively treat null content as an empty string.
               const content = result.data.fileContent ?? '';
-              wsState.fileContents[filePath] = content;
-              wsState.contentLoading[filePath] = false;
+              if (file) {
+                file.content = content;
+                file.isLoading = false;
+              }
               resolve(content);
             }
           });
 
           onError((error) => {
             console.error('Failed to fetch file content', error);
-            wsState.contentError[filePath] = error.message;
-            wsState.contentLoading[filePath] = false;
+            if (file) {
+              file.error = error.message;
+              file.isLoading = false;
+            }
             reject(error);
           });
         });
       } catch (error) {
-        wsState.contentError[filePath] = error instanceof Error ? error.message : 'Failed to fetch file content';
-        wsState.contentLoading[filePath] = false;
+        if (file) {
+          file.error = error instanceof Error ? error.message : 'Failed to fetch file content';
+          file.isLoading = false;
+        }
         throw error;
       }
     },
-
+    
     async writeBasicFileContent(workspaceId: string, filePath: string, content: string) {
       const wsState = this._getOrCreateCurrentWorkspaceState();
       wsState.basicFileChangeError[filePath] = null;
@@ -243,7 +313,10 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         const result = await mutate({ workspaceId, filePath, content });
         
         if (result?.data?.writeFileContent) {
-          wsState.fileContents[filePath] = content;
+          const file = wsState.openFiles.find(f => f.path === filePath);
+          if (file) {
+            file.content = content;
+          }
           const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.writeFileContent);
           const workspaceStore = useWorkspaceStore();
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
@@ -278,7 +351,10 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         const result = await mutate({ workspaceId, filePath, content });
         
         if (result?.data?.writeFileContent) {
-          wsState.fileContents[filePath] = content;
+          const file = wsState.openFiles.find(f => f.path === filePath);
+          if (file) {
+            file.content = content;
+          }
           const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.writeFileContent);
           const workspaceStore = useWorkspaceStore();
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
@@ -312,8 +388,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         const result = await mutate({ workspaceId, path: filePath });
 
         if (result?.data?.deleteFileOrFolder) {
-          if (wsState.openFiles.includes(filePath)) this.closeFile(filePath);
-          wsState.openFiles = wsState.openFiles.filter(file => !file.startsWith(filePath + '/'));
+          if (wsState.openFiles.some(f => f.path === filePath)) this.closeFile(filePath);
+          wsState.openFiles = wsState.openFiles.filter(file => !file.path.startsWith(filePath + '/'));
           
           const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.deleteFileOrFolder);
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
@@ -332,37 +408,33 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       const wsState = this._getOrCreateCurrentWorkspaceState();
       wsState.renameError[targetPath] = null;
       wsState.renameLoading[targetPath] = true;
-
+    
       const workspaceStore = useWorkspaceStore();
       const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
       if (!workspaceId) throw new Error("No active workspace session");
-
+    
       const { mutate } = useMutation<RenameFileOrFolderMutation, RenameFileOrFolderMutationVariables>(RenameFileOrFolder);
-
+    
       try {
         const result = await mutate({ workspaceId, targetPath, newName });
-
+    
         if (result?.data?.renameFileOrFolder) {
           const segments = targetPath.split('/');
           segments[segments.length - 1] = newName;
           const newPath = segments.join('/');
-
-          const index = wsState.openFiles.indexOf(targetPath);
-          if (index > -1) {
-            wsState.openFiles[index] = newPath;
+    
+          const file = wsState.openFiles.find(f => f.path === targetPath);
+          if (file) {
+            file.path = newPath;
           }
           if (wsState.activeFile === targetPath) {
             wsState.activeFile = newPath;
           }
-          if (wsState.fileContents[targetPath] !== undefined) {
-            wsState.fileContents[newPath] = wsState.fileContents[targetPath];
-            delete wsState.fileContents[targetPath];
-          }
-
+    
           const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.renameFileOrFolder);
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
         }
-
+    
         wsState.renameLoading[targetPath] = false;
         return result;
       } catch (err) {
@@ -372,41 +444,36 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         throw err;
       }
     },
-
+    
     async moveFileOrFolder(sourcePath: string, destinationPath: string) {
       const wsState = this._getOrCreateCurrentWorkspaceState();
       wsState.moveError[sourcePath] = null;
       wsState.moveLoading[sourcePath] = true;
-
+    
       const workspaceStore = useWorkspaceStore();
       const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
       if (!workspaceId) throw new Error("No active workspace session");
       
       const { mutate } = useMutation<MoveFileOrFolderMutation, MoveFileOrFolderMutationVariables>(MoveFileOrFolder);
-
+    
       try {
         const result = await mutate({ workspaceId, sourcePath, destinationPath });
-
+    
         if (result?.data?.moveFileOrFolder) {
-          if (wsState.openFiles.includes(sourcePath)) {
-            const newPath = destinationPath;
-            const index = wsState.openFiles.indexOf(sourcePath);
-            wsState.openFiles[index] = newPath;
-            if (wsState.activeFile === sourcePath) {
-              wsState.activeFile = newPath;
-            }
-            if (wsState.fileContents[sourcePath] !== undefined) {
-              wsState.fileContents[newPath] = wsState.fileContents[sourcePath];
-              delete wsState.fileContents[sourcePath];
-            }
+          const file = wsState.openFiles.find(f => f.path === sourcePath);
+          if (file) {
+            file.path = destinationPath;
           }
-
+          if (wsState.activeFile === sourcePath) {
+            wsState.activeFile = destinationPath;
+          }
+    
           const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.moveFileOrFolder);
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
         }
         wsState.moveLoading[sourcePath] = false;
         return result;
-
+    
       } catch (err) {
         console.error('Failed to move file/folder:', err);
         wsState.moveError[sourcePath] = err instanceof Error ? err.message : 'An unknown error occurred';
@@ -452,7 +519,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       wsState.searchError = null;
       
       if (!query.trim()) {
-        // When query is cleared, searchResults should be empty to show the file tree.
         wsState.searchResults = [];
         wsState.searchLoading = false;
         return;
@@ -475,7 +541,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
           onResult((result) => {
             if (result.data?.searchFiles) {
               const matchedPaths = result.data.searchFiles;
-              // Use findFileByPath to look up nodes from the main tree
               wsState.searchResults = matchedPaths.map(path => {
                 return findFileByPath(workspaceStore.currentWorkspaceTree?.children || [], path);
               }).filter((file): file is NonNullable<typeof file> => file !== null);

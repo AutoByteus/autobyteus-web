@@ -78,6 +78,7 @@ import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useActiveContextStore } from '~/stores/activeContextStore';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
+import { useServerStore } from '~/stores/serverStore';
 import AudioRecorder from '~/components/AudioRecorder.vue';
 import GroupedSelect from '~/components/agentInput/GroupedSelect.vue';
 import { getFilePathsFromFolder } from '~/utils/fileExplorer/fileUtils';
@@ -86,10 +87,12 @@ import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
 // Initialize stores
 const activeContextStore = useActiveContextStore();
 const llmProviderConfigStore = useLLMProviderConfigStore();
+const serverStore = useServerStore();
 
 // Store refs
 const { isSending, currentRequirement: storeCurrentRequirement } = storeToRefs(activeContextStore);
 const { isLoadingModels, providersWithModels } = storeToRefs(llmProviderConfigStore);
+const { isElectron } = storeToRefs(serverStore);
 
 // Local component state
 const internalRequirement = ref(''); // Local state for textarea
@@ -248,8 +251,14 @@ const handleDrop = (event: DragEvent) => {
     }
   } else if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
     // For files from the OS, browser security prevents access to the full file path.
-    // Only the filename is available.
-    filePaths = Array.from(event.dataTransfer.files).map(file => file.name);
+    // Only the filename is available. In Electron, the `path` property is available.
+    if (isElectron.value) {
+      // In Electron, we have access to the full native path.
+      filePaths = Array.from(event.dataTransfer.files).map(file => (file as any).path || file.name);
+    } else {
+      // In a standard browser, we only get the filename.
+      filePaths = Array.from(event.dataTransfer.files).map(file => file.name);
+    }
   }
 
   if (filePaths.length > 0) {

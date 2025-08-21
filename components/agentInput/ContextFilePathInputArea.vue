@@ -70,7 +70,8 @@
       <li
         v-for="(filePath, index) in contextFilePaths"
         :key="filePath.path"
-        class="bg-gray-100 p-2 rounded transition-colors duration-300 flex items-center justify-between"
+        class="bg-gray-100 p-2 rounded transition-colors duration-300 flex items-center justify-between cursor-pointer hover:bg-gray-200"
+        @click="handleContextFileClick(filePath)"
       >
         <div class="flex items-center space-x-2 flex-grow min-w-0">
           <i :class="['fas', getIconForFileType(filePath.type), 'text-gray-500 w-4 flex-shrink-0']"></i>
@@ -110,14 +111,20 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useActiveContextStore } from '~/stores/activeContextStore';
 import { useFileUploadStore } from '~/stores/fileUploadStore';
+import { useServerStore } from '~/stores/serverStore';
+import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { getFilePathsFromFolder, determineFileType } from '~/utils/fileExplorer/fileUtils';
 import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
 import type { ContextFilePath } from '~/types/conversation';
 
 const activeContextStore = useActiveContextStore();
 const fileUploadStore = useFileUploadStore();
+const serverStore = useServerStore();
+const fileExplorerStore = useFileExplorerStore();
+const { isElectron } = storeToRefs(serverStore);
 
 const contextFilePaths = computed(() => activeContextStore.currentContextPaths);
 const uploadingFiles = ref<string[]>([]);
@@ -143,6 +150,14 @@ const toggleContextList = () => {
   } else {
     isContextListExpanded.value = true;
   }
+};
+
+const handleContextFileClick = (filePath: ContextFilePath) => {
+  // Prevent opening file while it is still uploading
+  if (uploadingFiles.value.includes(filePath.path)) {
+    return;
+  }
+  fileExplorerStore.openFile(filePath.path);
 };
 
 const removeContextFilePath = (index: number) => {
@@ -218,6 +233,7 @@ const onFileDrop = async (event: DragEvent) => {
 
   const dragData = event.dataTransfer?.getData('application/json');
   if (dragData) {
+    // This handles drops from the internal file explorer
     const droppedNode: TreeNode = JSON.parse(dragData);
     const filePaths = getFilePathsFromFolder(droppedNode);
     for (const filePath of filePaths) {
@@ -227,8 +243,26 @@ const onFileDrop = async (event: DragEvent) => {
     if (filePaths.length > 0 && !isContextListExpanded.value) {
       isContextListExpanded.value = true;
     }
-  } else if (event.dataTransfer?.files) {
-    await processAndUploadFiles(Array.from(event.dataTransfer.files));
+  } else if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+    // This handles drops from the user's native operating system
+    if (isElectron.value) {
+      // In Electron, we get the full path and add it directly without uploading.
+      const files = Array.from(event.dataTransfer.files);
+      for (const file of files) {
+        // Electron enhances the File object with a 'path' property.
+        const nativePath = (file as any).path;
+        if (nativePath) {
+          const fileType = await determineFileType(nativePath);
+          activeContextStore.addContextFilePath({ path: nativePath, type: fileType });
+        }
+      }
+      if (files.length > 0 && !isContextListExpanded.value) {
+        isContextListExpanded.value = true;
+      }
+    } else {
+      // In a standard browser, we must upload the file.
+      await processAndUploadFiles(Array.from(event.dataTransfer.files));
+    }
   }
 };
 

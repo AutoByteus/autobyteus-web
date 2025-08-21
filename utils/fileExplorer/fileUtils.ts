@@ -16,7 +16,7 @@ export function getFilePathsFromFolder(node: TreeNode): string[] {
 
 export async function determineFileType(filePath: string): Promise<'Text' | 'Image' | 'Audio' | 'Video'> {
   const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
-  const audioExtensions = ['.mp3', '.wav', '.m4a', '.flac', '.ogg'];
+  const audioExtensions = ['.mp3', '.wav', '.m4a', '.flac', '.ogg', '.aac'];
   const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
   const lowercasePath = filePath.toLowerCase();
   

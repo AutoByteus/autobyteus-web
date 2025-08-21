@@ -146,6 +146,7 @@ export type ContextFilePathInput = {
 };
 
 export enum ContextFileType {
+  Audio = 'AUDIO',
   Csv = 'CSV',
   Docx = 'DOCX',
   Html = 'HTML',
@@ -158,6 +159,7 @@ export enum ContextFileType {
   Python = 'PYTHON',
   Text = 'TEXT',
   Unknown = 'UNKNOWN',
+  Video = 'VIDEO',
   Xlsx = 'XLSX',
   Xml = 'XML'
 }
