@@ -1,7 +1,7 @@
 import type { GraphQLAssistantChunkData, GraphQLAssistantCompleteResponseData } from '~/generated/graphql';
 import type { AIMessage, UserMessage } from '~/types/conversation';
 import type { AgentContext } from '~/types/agent/AgentContext';
-import type { ThinkSegment, AIResponseSegment } from '~/utils/aiResponseParser/types';
+import type { ThinkSegment, AIResponseSegment, MediaSegment } from '~/utils/aiResponseParser/types';
 import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
 import { ParserContext } from '~/utils/aiResponseParser/stateMachine/ParserContext';
 
@@ -61,6 +61,36 @@ function updateThinkSegment(message: AIMessage, reasoningChunk: string): void {
 }
 
 /**
+ * Finds or creates a media segment and appends URLs to it.
+ * This function ensures that consecutive media chunks of the same type are merged.
+ * @param message The AI message to modify.
+ * @param urls The array of media URLs from the event.
+ * @param mediaType The type of media ('image', 'audio', or 'video').
+ */
+function updateMediaSegment(message: AIMessage, urls: readonly string[], mediaType: 'image' | 'audio' | 'video'): void {
+  const lastSegment = message.segments.length > 0 ? message.segments[message.segments.length - 1] : null;
+  let mediaSegment: MediaSegment | null = null;
+
+  // Merge with the last segment only if it's a media segment of the same type.
+  if (lastSegment && lastSegment.type === 'media' && lastSegment.mediaType === mediaType) {
+    mediaSegment = lastSegment as MediaSegment;
+  }
+
+  if (!mediaSegment) {
+    mediaSegment = { type: 'media', mediaType, urls: [] };
+    message.segments.push(mediaSegment);
+  }
+  
+  // Add only new URLs to the segment to avoid duplicates from overlapping chunks.
+  for (const url of urls) {
+    if (!mediaSegment.urls.includes(url)) {
+      mediaSegment.urls.push(url);
+    }
+  }
+}
+
+
+/**
  * Processes a chunk of an assistant's response, updating the conversation state.
  * @param eventData The chunk data from the GraphQL subscription.
  * @param agentContext The full context for the agent run.
@@ -78,7 +108,18 @@ export function handleAssistantChunk(eventData: GraphQLAssistantChunkData, agent
     aiMessage.parserInstance.processChunks([eventData.content]);
   }
 
-  // 3. Handle finalization if the chunk is marked as complete.
+  // 3. Process media URLs.
+  if (eventData.imageUrls && eventData.imageUrls.length > 0) {
+    updateMediaSegment(aiMessage, eventData.imageUrls, 'image');
+  }
+  if (eventData.audioUrls && eventData.audioUrls.length > 0) {
+    updateMediaSegment(aiMessage, eventData.audioUrls, 'audio');
+  }
+  if (eventData.videoUrls && eventData.videoUrls.length > 0) {
+    updateMediaSegment(aiMessage, eventData.videoUrls, 'video');
+  }
+
+  // 4. Handle finalization if the chunk is marked as complete.
   if (eventData.isComplete) {
     aiMessage.isComplete = true;
     

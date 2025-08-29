@@ -36,6 +36,9 @@ const nestedTeamEventFragment = gql`
                 completionCost
                 totalCost
               }
+              imageUrls
+              audioUrls
+              videoUrls
             }
             ... on GraphQLAssistantCompleteResponseData {
               content

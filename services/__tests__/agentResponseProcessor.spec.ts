@@ -3,6 +3,7 @@ import { processAgentResponseEvent } from '../agentResponseProcessor';
 import * as assistantHandler from '../agentResponseHandlers/assistantResponseHandler';
 import * as toolCallHandler from '../agentResponseHandlers/toolCallHandler';
 import * as statusHandler from '../agentResponseHandlers/phaseTransitionHandler';
+import * as systemTaskHandler from '../agentResponseHandlers/systemTaskNotificationHandler'; // NEW IMPORT
 import { AgentContext } from '~/types/agent/AgentContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import { AgentRunState } from '~/types/agent/AgentRunState';
@@ -25,6 +26,11 @@ vi.mock('../agentResponseHandlers/phaseTransitionHandler', () => ({
   handleAgentPhaseTransition: vi.fn(),
 }));
 
+// NEW MOCK
+vi.mock('../agentResponseHandlers/systemTaskNotificationHandler', () => ({
+  handleSystemTaskNotification: vi.fn(),
+}));
+
 
 const createMockAgentContext = (): AgentContext => {
   const conversation: Conversation = {
@@ -40,6 +46,7 @@ const createMockAgentContext = (): AgentContext => {
     llmModelIdentifier: 'test-model',
     autoExecuteTools: false,
     parseToolCalls: true,
+    useXmlToolFormat: false, // FIX: Added missing property
   };
   return new AgentContext(agentConfig, agentState);
 };
@@ -75,6 +82,8 @@ describe('processAgentResponseEvent', () => {
     const eventData: AgentResponseSubscription['agentResponse']['data'] = {
       __typename: 'GraphQLToolInvocationApprovalRequestedData',
       invocationId: 'invoke-1',
+      toolName: 'test',
+      arguments: '{}',
     };
     processAgentResponseEvent(eventData, mockAgentContext);
     expect(toolCallHandler.handleToolInvocationApprovalRequested).toHaveBeenCalledWith(eventData, mockAgentContext);
@@ -84,6 +93,8 @@ describe('processAgentResponseEvent', () => {
     const eventData: AgentResponseSubscription['agentResponse']['data'] = {
       __typename: 'GraphQLToolInvocationAutoExecutingData',
       invocationId: 'invoke-2',
+      toolName: 'test',
+      arguments: '{}',
     };
     processAgentResponseEvent(eventData, mockAgentContext);
     expect(toolCallHandler.handleToolInvocationAutoExecuting).toHaveBeenCalledWith(eventData, mockAgentContext);
@@ -94,6 +105,7 @@ describe('processAgentResponseEvent', () => {
       __typename: 'GraphQLToolInteractionLogEntryData',
       toolInvocationId: 'invoke-3',
       logEntry: 'Executing tool...',
+      toolName: 'test',
     };
     processAgentResponseEvent(eventData, mockAgentContext);
     expect(toolCallHandler.handleToolInteractionLog).toHaveBeenCalledWith(eventData, mockAgentContext);
@@ -106,6 +118,17 @@ describe('processAgentResponseEvent', () => {
     };
     processAgentResponseEvent(eventData, mockAgentContext);
     expect(statusHandler.handleAgentPhaseTransition).toHaveBeenCalledWith(eventData, mockAgentContext);
+  });
+  
+  // NEW TEST CASE
+  it('should call handleSystemTaskNotification for GraphQLSystemTaskNotificationData', () => {
+    const eventData: AgentResponseSubscription['agentResponse']['data'] = {
+      __typename: 'GraphQLSystemTaskNotificationData',
+      senderId: 'system',
+      content: 'This is a notification',
+    };
+    processAgentResponseEvent(eventData, mockAgentContext);
+    expect(systemTaskHandler.handleSystemTaskNotification).toHaveBeenCalledWith(eventData, mockAgentContext);
   });
 
   it('should handle GraphQLErrorEventData without calling other handlers', () => {

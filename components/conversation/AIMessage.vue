@@ -33,6 +33,10 @@
           v-else-if="segment.type === 'system_task_notification'"
           :segment="segment"
         />
+        <MediaSegment
+          v-else-if="segment.type === 'media'"
+          :segment="segment"
+        />
       </template>
     </div>
   </div>
@@ -45,7 +49,8 @@ import FileContentSegment from '~/components/conversation/segments/FileContentSe
 import ThinkSegment from '~/components/conversation/segments/ThinkSegment.vue';
 import ToolCallSegment from '~/components/conversation/segments/ToolCallSegment.vue';
 import FileWriterSegment from '~/components/conversation/segments/FileWriterSegment.vue';
-import SystemTaskNotificationSegment from '~/components/conversation/segments/SystemTaskNotificationSegment.vue'; // NEW
+import SystemTaskNotificationSegment from '~/components/conversation/segments/SystemTaskNotificationSegment.vue';
+import MediaSegment from '~/components/conversation/segments/MediaSegment.vue'; // NEW
 
 const props = defineProps<{  message: AIMessage;
   agentId: string;
