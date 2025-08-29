@@ -197,6 +197,7 @@ export type CreateAgentTeamInstanceInput = {
   memberConfigs: Array<TeamMemberConfigInput>;
   taskNotificationMode?: InputMaybe<TaskNotificationModeEnum>;
   teamDefinitionId: Scalars['String']['input'];
+  useXmlToolFormat?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type CreateAgentTeamInstanceResult = {
@@ -858,6 +859,7 @@ export type SendAgentUserInputInput = {
   agentId?: InputMaybe<Scalars['String']['input']>;
   autoExecuteTools?: InputMaybe<Scalars['Boolean']['input']>;
   llmModelIdentifier?: InputMaybe<Scalars['String']['input']>;
+  useXmlToolFormat?: InputMaybe<Scalars['Boolean']['input']>;
   userInput: AgentUserInput;
   workspaceId?: InputMaybe<Scalars['String']['input']>;
 };
@@ -875,6 +877,7 @@ export type SendMessageToTeamInput = {
   taskNotificationMode?: InputMaybe<TaskNotificationModeEnum>;
   teamDefinitionId?: InputMaybe<Scalars['String']['input']>;
   teamId?: InputMaybe<Scalars['String']['input']>;
+  useXmlToolFormat?: InputMaybe<Scalars['Boolean']['input']>;
   userInput: AgentUserInput;
 };
 
@@ -1502,6 +1505,13 @@ export type AgentResponseSubscriptionVariables = Exact<{
 
 
 export type AgentResponseSubscription = { __typename?: 'Subscription', agentResponse: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentOperationalPhaseTransitionData', newPhase: AgentOperationalPhase, oldPhase?: AgentOperationalPhase | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } };
+
+export type FileSystemChangedSubscriptionVariables = Exact<{
+  workspaceId: Scalars['String']['input'];
+}>;
+
+
+export type FileSystemChangedSubscription = { __typename?: 'Subscription', fileSystemChanged: string };
 
 export const NestedTeamEventFragmentDoc = gql`
     fragment NestedTeamEvent on GraphQLAgentTeamStreamEvent {
@@ -3547,3 +3557,28 @@ export function useAgentResponseSubscription(variables: AgentResponseSubscriptio
   return VueApolloComposable.useSubscription<AgentResponseSubscription, AgentResponseSubscriptionVariables>(AgentResponseDocument, variables, options);
 }
 export type AgentResponseSubscriptionCompositionFunctionResult = VueApolloComposable.UseSubscriptionReturn<AgentResponseSubscription, AgentResponseSubscriptionVariables>;
+export const FileSystemChangedDocument = gql`
+    subscription FileSystemChanged($workspaceId: String!) {
+  fileSystemChanged(workspaceId: $workspaceId)
+}
+    `;
+
+/**
+ * __useFileSystemChangedSubscription__
+ *
+ * To run a query within a Vue component, call `useFileSystemChangedSubscription` and pass it any options that fit your needs.
+ * When your component renders, `useFileSystemChangedSubscription` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param variables that will be passed into the subscription
+ * @param options that will be passed into the subscription, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/subscription.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useFileSystemChangedSubscription({
+ *   workspaceId: // value for 'workspaceId'
+ * });
+ */
+export function useFileSystemChangedSubscription(variables: FileSystemChangedSubscriptionVariables | VueCompositionApi.Ref<FileSystemChangedSubscriptionVariables> | ReactiveFunction<FileSystemChangedSubscriptionVariables>, options: VueApolloComposable.UseSubscriptionOptions<FileSystemChangedSubscription, FileSystemChangedSubscriptionVariables> | VueCompositionApi.Ref<VueApolloComposable.UseSubscriptionOptions<FileSystemChangedSubscription, FileSystemChangedSubscriptionVariables>> | ReactiveFunction<VueApolloComposable.UseSubscriptionOptions<FileSystemChangedSubscription, FileSystemChangedSubscriptionVariables>> = {}) {
+  return VueApolloComposable.useSubscription<FileSystemChangedSubscription, FileSystemChangedSubscriptionVariables>(FileSystemChangedDocument, variables, options);
+}
+export type FileSystemChangedSubscriptionCompositionFunctionResult = VueApolloComposable.UseSubscriptionReturn<FileSystemChangedSubscription, FileSystemChangedSubscriptionVariables>;

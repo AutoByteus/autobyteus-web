@@ -45,12 +45,20 @@ export interface SystemTaskNotificationSegment {
   content: string;
 }
 
+// NEW MEDIA SEGMENT TYPE
+export interface MediaSegment {
+  type: 'media';
+  mediaType: 'image' | 'audio' | 'video';
+  urls: string[];
+}
+
 export type AIResponseSegment = 
   | AIResponseTextSegment 
   | FileSegment 
   | ThinkSegment
   | ToolCallSegment
-  | SystemTaskNotificationSegment; // NEW
+  | SystemTaskNotificationSegment
+  | MediaSegment; // ADDED
 
 export interface ParsedAIResponse {
   segments: AIResponseSegment[];

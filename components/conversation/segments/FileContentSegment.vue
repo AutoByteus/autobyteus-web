@@ -180,7 +180,7 @@ async function handleApply() {
       throw new Error("No active workspace selected. Cannot apply file changes.");
     }
 
-    await fileExplorerStore.writeFileContent(
+    await fileExplorerStore.applyFileChangeFromAIMessage(
       workspaceId,
       props.fileSegment.path,
       props.fileSegment.originalContent,

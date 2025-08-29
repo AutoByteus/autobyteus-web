@@ -44,18 +44,24 @@ export interface OpenFileState {
 
 interface WorkspaceFileExplorerState {
   openFolders: Record<string, boolean>;
-  // REFACTORED: openFiles is now an array of objects
   openFiles: OpenFileState[];
   activeFile: string | null;
   
+  // State for AI message "Apply" buttons
   applyChangeError: Record<string, Record<number, Record<string, string | null>>>;
   applyChangeLoading: Record<string, Record<number, Record<string, boolean>>>;
   appliedChanges: Record<string, Record<number, Record<string, boolean>>>;
+  
+  // State for file search
   searchResults: any[];
   searchLoading: boolean;
   searchError: string | null;
-  basicFileChangeError: Record<string, string | null>;
-  basicFileChangeLoading: Record<string, boolean>;
+  
+  // State for manual saves from the editor
+  saveContentError: Record<string, string | null>;
+  saveContentLoading: Record<string, boolean>;
+
+  // State for other file operations
   deleteError: Record<string, string | null>;
   deleteLoading: Record<string, boolean>;
   moveError: Record<string, string | null>;
@@ -80,8 +86,8 @@ const createDefaultWorkspaceFileExplorerState = (): WorkspaceFileExplorerState =
   searchResults: [],
   searchLoading: false,
   searchError: null,
-  basicFileChangeError: {},
-  basicFileChangeLoading: {},
+  saveContentError: {},
+  saveContentLoading: {},
   deleteError: {},
   deleteLoading: {},
   moveError: {},
@@ -152,6 +158,14 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       const wsState = (state as any)._currentWorkspaceFileExplorerState;
       return wsState ? wsState.searchError : null;
     },
+    isSaveContentLoading: (state) => (filePath: string): boolean => {
+      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+      return wsState?.saveContentLoading[filePath] || false;
+    },
+    getSaveContentError: (state) => (filePath: string): string | null => {
+      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+      return wsState?.saveContentError[filePath] || null;
+    },
   },
 
   actions: {
@@ -184,7 +198,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         const fileType = await determineFileType(pathOrUrl);
         console.log(`[FileExplorer] Determined file type for "${pathOrUrl}": ${fileType}`);
 
-        // Create the initial state object with isLoading: true for all new files.
         const newFileState: OpenFileState = {
           path: pathOrUrl,
           type: fileType,
@@ -193,21 +206,17 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
           isLoading: true,
           error: null,
         };
-
-        // **FIX:** Push the new state to the store's array *before* dispatching async actions.
         wsState.openFiles.push(newFileState);
         console.log('[FileExplorer] Pushed new initial file state:', JSON.parse(JSON.stringify(newFileState)));
 
-        // Now that the state is in the store, proceed with fetching content or setting URLs.
         if (isExternalUrl) {
           console.log(`[FileExplorer] Handling as an external URL.`);
           newFileState.url = pathOrUrl;
-          newFileState.isLoading = false; // Update the state object (which is by reference)
-        } else { // It's a workspace-relative path
+          newFileState.isLoading = false;
+        } else {
           console.log(`[FileExplorer] Handling as a workspace path.`);
           if (newFileState.type === 'Text') {
             console.log(`[FileExplorer] Fetching text content for "${pathOrUrl}" via GraphQL.`);
-            // This action will now be able to find the newFileState in the openFiles array.
             this.fetchFileContent(pathOrUrl);
           } else if (['Image', 'Audio', 'Video'].includes(newFileState.type)) {
             const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
@@ -302,17 +311,29 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
     
-    async writeBasicFileContent(workspaceId: string, filePath: string, content: string) {
+    invalidateFileContent(filePath: string) {
       const wsState = this._getOrCreateCurrentWorkspaceState();
-      wsState.basicFileChangeError[filePath] = null;
-      wsState.basicFileChangeLoading[filePath] = true;
+      const file = wsState.openFiles.find(f => f.path === filePath);
 
+      if (file && file.type === 'Text') {
+        file.content = null;
+        this.fetchFileContent(filePath);
+      }
+    },
+
+    /**
+     * Core private action for writing file content. Handles the GraphQL mutation and
+     * updates the primary state. It is called by public wrapper actions.
+     * @private
+     */
+    async _writeFileCore(workspaceId: string, filePath: string, content: string) {
       const { mutate } = useMutation<WriteFileContentMutation, WriteFileContentMutationVariables>(WriteFileContent);
-
+      
       try {
         const result = await mutate({ workspaceId, filePath, content });
-        
+      
         if (result?.data?.writeFileContent) {
+          const wsState = this._getOrCreateCurrentWorkspaceState();
           const file = wsState.openFiles.find(f => f.path === filePath);
           if (file) {
             file.content = content;
@@ -320,23 +341,48 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
           const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.writeFileContent);
           const workspaceStore = useWorkspaceStore();
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
+        } else if (result?.errors) {
+          throw new Error(result.errors.map(e => e.message).join(', '));
+        } else {
+          throw new Error('An unknown error occurred while writing the file.');
         }
-
-        wsState.basicFileChangeLoading[filePath] = false;
-        return result;
       } catch (err) {
-        console.error('Failed to write basic file content:', err);
-        wsState.basicFileChangeError[filePath] = err instanceof Error ? err.message : 'An unknown error occurred';
-        wsState.basicFileChangeLoading[filePath] = false;
+        console.error('Core file write operation failed:', err);
+        // Re-throw the error to be caught by the calling wrapper action
         throw err;
       }
     },
 
-    async writeFileContent(
+    /**
+     * Saves file content, typically initiated by a user from the file editor.
+     * Manages UI state for save indicators in the editor.
+     */
+    async saveFileContentFromEditor(workspaceId: string, filePath: string, content: string) {
+      const wsState = this._getOrCreateCurrentWorkspaceState();
+      wsState.saveContentError[filePath] = null;
+      wsState.saveContentLoading[filePath] = true;
+
+      try {
+        await this._writeFileCore(workspaceId, filePath, content);
+      } catch (err) {
+        wsState.saveContentError[filePath] = err instanceof Error ? err.message : 'An unknown error occurred';
+        // Let the component handle the error propagation if needed
+        throw err;
+      } finally {
+        wsState.saveContentLoading[filePath] = false;
+      }
+    },
+
+    /**
+     * Applies a file change that was proposed in an AI message.
+     * Manages the complex UI state related to a specific message segment.
+     */
+    async applyFileChangeFromAIMessage(
       workspaceId: string, filePath: string, content: string,
       conversationId: string, messageIndex: number
     ) {
       const wsState = this._getOrCreateCurrentWorkspaceState();
+      // Initialize nested state objects if they don't exist
       if (!wsState.applyChangeError[conversationId]) wsState.applyChangeError[conversationId] = {};
       if (!wsState.applyChangeError[conversationId][messageIndex]) wsState.applyChangeError[conversationId][messageIndex] = {};
       if (!wsState.applyChangeLoading[conversationId]) wsState.applyChangeLoading[conversationId] = {};
@@ -345,32 +391,18 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       wsState.applyChangeError[conversationId][messageIndex][filePath] = null;
       wsState.applyChangeLoading[conversationId][messageIndex][filePath] = true;
 
-      const { mutate } = useMutation<WriteFileContentMutation, WriteFileContentMutationVariables>(WriteFileContent);
-
       try {
-        const result = await mutate({ workspaceId, filePath, content });
+        await this._writeFileCore(workspaceId, filePath, content);
         
-        if (result?.data?.writeFileContent) {
-          const file = wsState.openFiles.find(f => f.path === filePath);
-          if (file) {
-            file.content = content;
-          }
-          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.writeFileContent);
-          const workspaceStore = useWorkspaceStore();
-          workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
-          
-          if (!wsState.appliedChanges[conversationId]) wsState.appliedChanges[conversationId] = {};
-          if (!wsState.appliedChanges[conversationId][messageIndex]) wsState.appliedChanges[conversationId][messageIndex] = {};
-          wsState.appliedChanges[conversationId][messageIndex][filePath] = true;
-        }
-
-        wsState.applyChangeLoading[conversationId][messageIndex][filePath] = false;
-        return result;
+        // On success, update the 'applied' status for this specific message segment
+        if (!wsState.appliedChanges[conversationId]) wsState.appliedChanges[conversationId] = {};
+        if (!wsState.appliedChanges[conversationId][messageIndex]) wsState.appliedChanges[conversationId][messageIndex] = {};
+        wsState.appliedChanges[conversationId][messageIndex][filePath] = true;
       } catch (err) {
-        console.error('Failed to write file content:', err);
         wsState.applyChangeError[conversationId][messageIndex][filePath] = err instanceof Error ? err.message : 'An unknown error occurred';
-        wsState.applyChangeLoading[conversationId][messageIndex][filePath] = false;
         throw err;
+      } finally {
+        wsState.applyChangeLoading[conversationId][messageIndex][filePath] = false;
       }
     },
     

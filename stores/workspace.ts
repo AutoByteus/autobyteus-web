@@ -1,12 +1,15 @@
 import { defineStore } from 'pinia'
-import { useMutation, useQuery } from '@vue/apollo-composable'
+import { useMutation, useQuery, useSubscription } from '@vue/apollo-composable'
 import { CreateWorkspace } from '~/graphql/mutations/workspace_mutations'
 import { GetAvailableWorkspaceDefinitions, GetAllWorkspaces } from '~/graphql/queries/workspace_queries'
+import { FileSystemChangedSubscription } from '~/graphql/subscriptions/fileSystemSubscription'
 import type {
   CreateWorkspaceMutation,
   CreateWorkspaceMutationVariables,
   GetAvailableWorkspaceDefinitionsQuery,
   GetAllWorkspacesQuery,
+  FileSystemChangedSubscription as FileSystemChangedSubscriptionResult,
+  FileSystemChangedSubscriptionVariables,
 } from '~/generated/graphql'
 import { TreeNode, convertJsonToTreeNode } from '~/utils/fileExplorer/TreeNode'
 import { createNodeIdToNodeDictionary, handleFileSystemChange } from '~/utils/fileExplorer/fileUtils'
@@ -14,6 +17,8 @@ import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
 import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
 import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
+import { useFileExplorerStore } from '~/stores/fileExplorer'
+import { watch } from 'vue'
 
 export interface WorkspaceType {
   name: string;
@@ -44,6 +49,7 @@ interface WorkspaceState {
   loading: boolean;
   error: any;
   workspacesFetched: boolean;
+  fileSystemSubscriptions: Map<string, () => void>;
 }
 
 export const useWorkspaceStore = defineStore('workspace', {
@@ -53,6 +59,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     loading: false,
     error: null,
     workspacesFetched: false,
+    fileSystemSubscriptions: new Map(),
   }),
   actions: {    
     async createWorkspace(workspaceTypeName: string, config: Record<string, any>): Promise<string> {
@@ -85,6 +92,10 @@ export const useWorkspaceStore = defineStore('workspace', {
             workspaceTypeName: workspaceTypeName,
             workspaceConfig: config,
           };
+          
+          // Subscribe to changes for the newly created workspace
+          this.subscribeToWorkspaceChanges(newWorkspace.workspaceId);
+
           return newWorkspace.workspaceId;
         } else {
           throw new Error('Failed to create workspace: No data returned.');
@@ -152,6 +163,8 @@ export const useWorkspaceStore = defineStore('workspace', {
                           workspaceTypeName: ws.workspaceTypeName,
                           workspaceConfig: ws.config,
                       };
+                      // Subscribe to changes for each fetched workspace
+                      this.subscribeToWorkspaceChanges(ws.workspaceId);
                   });
                   this.workspacesFetched = true;
               }
@@ -173,7 +186,67 @@ export const useWorkspaceStore = defineStore('workspace', {
         console.error(`Workspace with ID ${workspaceId} not found`);
         return;
       }
+      
       handleFileSystemChange(workspace.fileExplorer, workspace.nodeIdToNode, event);
+
+      const fileExplorerStore = useFileExplorerStore();
+      event.changes.forEach(change => {
+        if (change.type === 'modify') {
+          const node = workspace.nodeIdToNode[change.node_id];
+          if (node && node.is_file) {
+            fileExplorerStore.invalidateFileContent(node.path);
+          }
+        }
+      });
+    },
+
+    subscribeToWorkspaceChanges(workspaceId: string) {
+      // If already subscribed for this workspace, do nothing.
+      if (this.fileSystemSubscriptions.has(workspaceId)) {
+        return;
+      }
+
+      console.log(`Subscribing to file system changes for workspace: ${workspaceId}`);
+      const { onResult, onError, subscription } = useSubscription<FileSystemChangedSubscriptionResult, FileSystemChangedSubscriptionVariables>(
+        FileSystemChangedSubscription,
+        { workspaceId }
+      );
+      
+      onResult(result => {
+        if (result.data?.fileSystemChanged) {
+          try {
+            const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.fileSystemChanged);
+            console.log(`Received file system change for ${workspaceId}:`, changeEvent);
+            this.handleFileSystemChange(workspaceId, changeEvent);
+          } catch (e) {
+            console.error('Failed to parse file system change event:', e);
+          }
+        }
+      });
+
+      onError(error => {
+        console.error(`Subscription error for workspace ${workspaceId}:`, error);
+        // Clean up the subscription on error
+        if (this.fileSystemSubscriptions.has(workspaceId)) {
+          this.fileSystemSubscriptions.delete(workspaceId);
+        }
+      });
+      
+      if (subscription) {
+        // Store the subscription's unsubscribe method in the map
+        this.fileSystemSubscriptions.set(workspaceId, () => subscription.unsubscribe());
+      }
+    },
+
+    unsubscribeFromWorkspaceChanges(workspaceId: string) {
+      if (this.fileSystemSubscriptions.has(workspaceId)) {
+        const unsubscribe = this.fileSystemSubscriptions.get(workspaceId);
+        if (unsubscribe) {
+          unsubscribe();
+        }
+        this.fileSystemSubscriptions.delete(workspaceId);
+        console.log(`Unsubscribed from file system watcher for workspace: ${workspaceId}`);
+      }
     }
   },
   getters: {
@@ -205,4 +278,11 @@ export const useWorkspaceStore = defineStore('workspace', {
       return this.activeWorkspace ? this.activeWorkspace.fileExplorer : null;
     }
   }
-})
+});
+
+// The watcher plugin is no longer needed with this persistent subscription model.
+// Leaving the empty function here for now, but will remove the plugin file.
+export function initializeWorkspaceSubscriptionWatcher() {
+  // This function is no longer necessary as subscriptions are managed
+  // directly within the actions that load/create workspaces.
+}

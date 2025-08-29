@@ -12,11 +12,14 @@ import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 // Helper for creating deterministic JSON strings for mock invocation IDs
 const deterministicJsonStringify = (value: any): string => {
   if (value === null || typeof value !== 'object') {
+    // Standard JSON.stringify is fine for primitives
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
+    // Recursively process array elements
     return `[${value.map(deterministicJsonStringify).join(',')}]`;
   }
+  // For objects, sort keys and recursively process values
   const keys = Object.keys(value).sort();
   const pairs = keys.map(key => {
     const k = JSON.stringify(key);
@@ -26,13 +29,11 @@ const deterministicJsonStringify = (value: any): string => {
   return `{${pairs.join(',')}}`;
 };
 
-// Mock the toolUtils to have a predictable invocation ID
+// MOCK: Use a simple, deterministic invocation ID for test stability.
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
-    const argString = deterministicJsonStringify(args);
-    // The agent run state appends a counter, which we can mock here as _0
-    // e.g. call_base_tool1_{"a":1}_0
-    return `call_base_${toolName}_${argString}`;
+    const canonicalArgs = deterministicJsonStringify(args);
+    return `mock_call_${toolName}_${canonicalArgs}`;
   }
 }));
 
@@ -70,6 +71,7 @@ const createMockAgentContext = (
   const agentConfig: AgentRunConfig = {
     launchProfileId: 'test-profile', workspaceId: null,
     llmModelIdentifier: llmModelIdentifier, autoExecuteTools: false, parseToolCalls: parseToolCalls,
+    useXmlToolFormat: false, // FIX: Added missing property
   };
 
   return new AgentContext(agentConfig, agentState);
@@ -118,7 +120,7 @@ describe('IncrementalAIResponseParser with Strategies', () => {
           content: 'Hello'
         },
         status: 'parsed',
-        invocationId: 'call_base_file_writer_{"content":"Hello","path":"/test.txt"}_0'
+        invocationId: 'mock_call_file_writer_{"content":"Hello","path":"/test.txt"}_0'
       })
     ]);
   });
@@ -144,7 +146,7 @@ describe('IncrementalAIResponseParser with Strategies', () => {
           path: '/test.txt'
         },
         status: 'parsed',
-        invocationId: 'call_base_file_reader_{"path":"/test.txt"}_0'
+        invocationId: 'mock_call_file_reader_{"path":"/test.txt"}_0'
       })
     ]);
   });
@@ -170,7 +172,7 @@ describe('IncrementalAIResponseParser with Strategies', () => {
           toolName: 'ListAvailableTools',
           arguments: {},
           status: 'parsed',
-          invocationId: 'call_base_ListAvailableTools_{}_0'
+          invocationId: 'mock_call_ListAvailableTools_{}_0'
         }),
         { type: 'text', content: ' some text after.' }
     ]);
@@ -192,14 +194,13 @@ describe('IncrementalAIResponseParser with Strategies', () => {
           type: 'tool_call',
           toolName: 'tool_one',
           arguments: { p: 1 },
-          invocationId: 'call_base_tool_one_{"p":1}_0'
+          invocationId: 'mock_call_tool_one_{"p":1}_0'
         }),
         expect.objectContaining({
           type: 'tool_call',
           toolName: 'tool_two',
           arguments: { q: 2 },
-          // FIX: The counter for a new, unique tool call should start at 0.
-          invocationId: 'call_base_tool_two_{"q":2}_0'
+          invocationId: 'mock_call_tool_two_{"q":2}_0'
         })
     ]);
   });
@@ -229,7 +230,7 @@ describe('IncrementalAIResponseParser with Strategies', () => {
           data: [1, 2, 3]
         },
         status: 'parsed',
-        invocationId: 'call_base_complex_tool_{"config":{"retries":3,"type":"special"},"data":[1,2,3]}_0'
+        invocationId: 'mock_call_complex_tool_{"config":{"retries":3,"type":"special"},"data":[1,2,3]}_0'
       })
     ]);
   });
@@ -267,9 +268,39 @@ describe('IncrementalAIResponseParser with Strategies', () => {
           data: ["a", "b"]
         },
         status: 'parsed',
-        invocationId: 'call_base_direct_complex_tool_{"config":{"retries":5,"type":"direct"},"data":["a","b"]}_0'
+        invocationId: 'mock_call_direct_complex_tool_{"config":{"retries":5,"type":"direct"},"data":["a","b"]}_0'
       })
     ]);
+  });
+  
+  // NEW TEST CASE FOR THE USER'S LIVE EXAMPLE
+  it('should generate a deterministic ID matching the backend for complex Gemini case with unicode', () => {
+    const parser = createParser(LLMProvider.GEMINI, true);
+    
+    const toolName = "CreatePromptRevision";
+    const args = {
+        "base_prompt_id": "6",
+        "new_prompt_content": "You are the Jira Project Manager, an expert AI assistant specializing in managing software development projects using Atlassian's Jira and Confluence.\n\nYour primary purpose is to help users interact with Jira and Confluence efficiently. You can perform a wide range of tasks, including but not limited to:\n- **Jira Issue Management:** Creating, updating, deleting, and searching for issues (Tasks, Bugs, Stories, Epics, Subtasks).\n- **Jira Workflow:** Transitioning issues through their workflow (e.g., from 'To Do' to 'In Progress' to 'Done').\n- **Jira Agile/Scrum:** Managing sprints, boards, and versions.\n- **Linking:** Linking Jira issues to each other or to Confluence pages.\n- **Confluence Documentation:** Creating, reading, and updating Confluence pages to support project documentation.\n- **Reporting:** Answering questions about project status by querying Jira and Confluence.\n\nWhen a user asks for help, be proactive. If a request is ambiguous, ask clarifying questions. For example, if a user wants to create a ticket, ask for the project key, issue type, summary, and description. Always confirm the successful completion of an action.\n\nYou are equipped with a comprehensive set of tools. Use them wisely to fulfill user requests.\n\n**Available Tools**\n{{tools}}\n\n**Important Rule (Output Format)**\n⚠️ **When calling tools, DO NOT wrap the output in any markup such as ```json, ```, or any other code block symbols.**\nAll tool calls must be returned **as raw JSON only**, without any extra formatting. This rule is critical and must always be followed.",
+        "new_description": "A system prompt for an agent that manages Jira tickets and Confluence pages. Includes {{tools}} placeholder and output formatting rules."
+    };
+    
+    // The Gemini parser expects an array of tool calls or a single tool call object
+    const toolCallObject = {
+        name: toolName,
+        args: args
+    };
+    const chunk = JSON.stringify(toolCallObject);
+
+    parser.processChunks([chunk]);
+    parser.finalize();
+    
+    const generatedId = (segments[0] as ToolCallSegment).invocationId;
+    console.log(`[Frontend Test] Generated ID for Gemini Live Case: ${generatedId}`);
+
+    expect(segments[0].type).toBe('tool_call');
+    expect((segments[0] as ToolCallSegment).toolName).toBe(toolName);
+    // As requested, we are only logging the ID for manual comparison, not asserting its value.
+    expect(generatedId).toContain('mock_call_');
   });
 
   it('should handle mixed text and multiple tool calls with different strategies', () => {

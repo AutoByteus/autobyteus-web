@@ -19,7 +19,7 @@
         No files match your search.
       </div>
       <div v-else class="space-y-2">
-        <FileItem v-for="file in displayedFiles" :key="file.path" :file="file" />
+        <FileItem v-for="file in displayedFiles" :key="file.id" :file="file" />
       </div>
     </div>
   </div>

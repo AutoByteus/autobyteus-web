@@ -1,5 +1,5 @@
 import { TreeNode } from '~/utils/fileExplorer/TreeNode'
-import type { FileSystemChangeEvent, AddChange, DeleteChange, RenameChange, MoveChange } from '~/types/fileSystemChangeTypes'
+import type { FileSystemChangeEvent, AddChange, DeleteChange, RenameChange, MoveChange, ModifyChange } from '~/types/fileSystemChangeTypes'
 
 export function getFilePathsFromFolder(node: TreeNode): string[] {
   const filePaths: string[] = []
@@ -88,6 +88,9 @@ export function handleFileSystemChange(
         case 'move':
           handleMoveChange(nodeIdToNode, change)
           break
+        case 'modify':
+          handleModifyChange(nodeIdToNode, change)
+          break
         default:
           console.warn(`Unhandled change type: ${(change as { type: string }).type}`)
       }
@@ -171,6 +174,19 @@ function handleMoveChange(nodeIdToNode: Record<string, TreeNode>, change: MoveCh
   node.path = change.node.path
   
   newParent.addChild(node)
+}
+
+/**
+ * Handles a 'modify' event. This event signals a content change, not a structural
+ * tree change, so the tree itself doesn't need to be mutated. We explicitly
+ * handle it to prevent 'unhandled change type' warnings. State management stores
+ * are responsible for reacting to this event (e.g., by invalidating cached file content).
+ */
+function handleModifyChange(nodeIdToNode: Record<string, TreeNode>, change: ModifyChange): void {
+  if (!nodeIdToNode[change.node_id]) {
+    console.warn(`Received modify event for an unknown node with id ${change.node_id}`);
+  }
+  // No structural changes are needed for the tree on a content modification.
 }
 
 export function findFileByPath(nodes: TreeNode[], path: string): TreeNode | null {

@@ -9,7 +9,7 @@ export class JsonInitializationState extends BaseState {
 
   constructor(context: ParserContext) {
     super(context);
-    // The TextState found a '{' but did not consume it.
+    // The TextState found a '{' or '[' but did not consume it.
     // Per the "Cursor Rule", this state consumes the trigger it was created for.
     const triggerChar = this.context.peekChar()!;
     this.context.advance();
@@ -17,12 +17,9 @@ export class JsonInitializationState extends BaseState {
   }
 
   run(): void {
-    // FIX: If tool parsing is disabled, treat the trigger char as text and immediately revert.
-    if (!this.context.parseToolCalls) {
-      this.context.appendTextSegment(this.signatureBuffer);
-      this.context.transitionTo(new TextState(this.context));
-      return;
-    }
+    // This state determines if a JSON-like block is a tool call.
+    // It must respect the `parseToolCalls` flag from the context, just as its
+    // sibling XmlTagInitializationState does.
 
     while (this.context.hasMoreChars()) {
       const char = this.context.peekChar()!;
@@ -32,11 +29,17 @@ export class JsonInitializationState extends BaseState {
       const match = this.context.strategy.checkSignature(this.signatureBuffer);
 
       if (match === 'match') {
-        // We found a match. The signature buffer now contains the full signature.
-        // We must rewind the position so the ToolParsingState can start fresh
-        // from the beginning of the signature.
-        this.context.setPosition(this.context.getPosition() - this.signatureBuffer.length);
-        this.context.transitionTo(new ToolParsingState(this.context, this.signatureBuffer));
+        // We found a potential tool signature. Now, check if we should parse it.
+        if (this.context.parseToolCalls) {
+          // It's a match and parsing is enabled. Hand off to the tool parser.
+          // Rewind the position so ToolParsingState can consume the full signature.
+          this.context.setPosition(this.context.getPosition() - this.signatureBuffer.length);
+          this.context.transitionTo(new ToolParsingState(this.context, this.signatureBuffer));
+        } else {
+          // Parsing is disabled, so treat this as text and revert.
+          this.context.appendTextSegment(this.signatureBuffer);
+          this.context.transitionTo(new TextState(this.context));
+        }
         return;
       }
       

@@ -70,12 +70,12 @@
       <li
         v-for="(filePath, index) in contextFilePaths"
         :key="filePath.path"
-        class="bg-gray-100 p-2 rounded transition-colors duration-300 flex items-center justify-between cursor-pointer hover:bg-gray-200"
+        class="bg-gray-100 p-2 rounded transition-colors duration-300 flex items-center justify-between cursor-pointer hover:bg-gray-200 group"
         @click="handleContextFileClick(filePath)"
       >
         <div class="flex items-center space-x-2 flex-grow min-w-0">
           <i :class="['fas', getIconForFileType(filePath.type), 'text-gray-500 w-4 flex-shrink-0']"></i>
-          <span class="text-sm text-gray-600 truncate">
+          <span class="text-sm text-gray-600 truncate group-hover:underline">
             {{ filePath.path }}
           </span>
           <span v-if="uploadingFiles.includes(filePath.path)" class="text-xs text-blue-500 ml-auto flex-shrink-0">

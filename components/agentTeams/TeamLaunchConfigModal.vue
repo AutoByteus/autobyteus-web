@@ -98,6 +98,18 @@
                     </label>
                   </div>
                 </div>
+                <div class="pt-4 border-t">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Tool Parsing Format</label>
+                  <div class="space-y-2">
+                    <label class="flex items-start space-x-3 p-3 border rounded-md cursor-pointer" :class="globalConfig.useXmlToolFormat ? 'bg-indigo-50 border-indigo-400' : 'bg-white'">
+                      <input type="checkbox" v-model="globalConfig.useXmlToolFormat" class="form-checkbox h-5 w-5 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 mt-1" />
+                      <div>
+                        <span class="font-medium">Force XML Format</span>
+                        <p class="text-xs text-gray-500">Force all agents in the team to use the XML format for tool calls, overriding the provider's default (e.g., JSON).</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -265,6 +277,7 @@ const globalConfig = reactive<TeamLaunchProfile['globalConfig']>({
   autoExecuteTools: true,
   parseToolCalls: true,
   taskNotificationMode: 'AGENT_MANUAL_NOTIFICATION',
+  useXmlToolFormat: false,
 });
 const memberOverrides = reactive<Record<string, TeamMemberConfigOverride>>({});
 
@@ -464,6 +477,7 @@ const initializeFormState = () => {
     globalConfig.autoExecuteTools = true;
     globalConfig.parseToolCalls = true;
     globalConfig.taskNotificationMode = 'AGENT_MANUAL_NOTIFICATION';
+    globalConfig.useXmlToolFormat = false;
     initialConfigSnapshot = null;
   }
 
@@ -497,6 +511,7 @@ watch(() => props.show, async (isVisible) => {
       globalConfig.autoExecuteTools = true;
       globalConfig.parseToolCalls = true;
       globalConfig.taskNotificationMode = 'AGENT_MANUAL_NOTIFICATION';
+      globalConfig.useXmlToolFormat = false;
     }
     
     initializeFormState(); 

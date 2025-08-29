@@ -53,12 +53,12 @@
           @save="handleSave"
           class="h-full w-full"
         />
-        <!-- Save indicators for Text editor -->
-        <template v-if="activeFileData.type === 'Text'">
-          <div v-if="saveError" class="absolute bottom-2 left-2 text-red-600 bg-white px-2 py-1 rounded shadow">
-            {{ saveError }}
+        <!-- Save indicators for Text editor, now driven by the store -->
+        <template v-if="activeFileData.type === 'Text' && activeFile">
+          <div v-if="saveContentError" class="absolute bottom-2 left-2 text-red-600 bg-white px-2 py-1 rounded shadow">
+            {{ saveContentError }}
           </div>
-          <div v-if="isSaving" class="absolute bottom-2 right-2 text-gray-600 bg-white px-2 py-1 rounded shadow">
+          <div v-if="isSavingContent" class="absolute bottom-2 right-2 text-gray-600 bg-white px-2 py-1 rounded shadow">
             Saving...
           </div>
           <div v-if="showSaveSuccess" class="absolute bottom-2 right-2 text-green-600 bg-white px-2 py-1 rounded shadow">
@@ -104,20 +104,20 @@ const activeFile = computed(() => fileExplorerStore.getActiveFile)
 const activeFileData = computed(() => fileExplorerStore.getActiveFileData)
 
 const fileContent = ref<string | null>(null) // Local buffer for Monaco editor content
-const saveError = ref<string | null>(null)
-const isSaving = ref(false)
 const showSaveSuccess = ref(false)
 let saveSuccessTimeout: ReturnType<typeof setTimeout> | null = null
 
+// State for save indicators is now computed from the store
+const isSavingContent = computed(() => activeFile.value ? fileExplorerStore.isSaveContentLoading(activeFile.value) : false)
+const saveContentError = computed(() => activeFile.value ? fileExplorerStore.getSaveContentError(activeFile.value) : null)
+
+
 const getFileName = (filePath: string) => {
   try {
-    // This handles full URLs gracefully, extracting the last path segment.
     const url = new URL(filePath);
     const pathname = url.pathname;
-    // Decode URI component in case filename has encoded characters like %20 for space
     return decodeURIComponent(pathname.substring(pathname.lastIndexOf('/') + 1)) || filePath;
   } catch (e) {
-    // If it's not a valid URL (e.g., a relative workspace path), use the old logic.
     return filePath.split('/').pop() || filePath;
   }
 };
@@ -125,7 +125,6 @@ const setActiveFile = (filePath: string) => fileExplorerStore.setActiveFile(file
 const closeFile = (filePath: string) => fileExplorerStore.closeFile(filePath)
 const getFileLanguage = (filePath: string) => getLanguage(filePath)
 
-// Dynamically determine which component to render
 const activeViewerComponent = computed(() => {
   const type = activeFileData.value?.type;
   switch (type) {
@@ -137,7 +136,6 @@ const activeViewerComponent = computed(() => {
   }
 });
 
-// Compute props for the dynamic component
 const viewerProps = computed(() => {
   if (!activeFileData.value) return {};
   switch (activeFileData.value.type) {
@@ -157,13 +155,10 @@ const viewerProps = computed(() => {
   }
 });
 
-// Watch for changes in the active file's data from the store
 watch(activeFileData, (newVal) => {
   if (newVal?.type === 'Text') {
-    // When a text file is active, sync its content to our local buffer for Monaco
     fileContent.value = newVal.content;
   } else {
-    // For non-text files, clear the buffer
     fileContent.value = null;
   }
 }, { immediate: true, deep: true });
@@ -180,35 +175,26 @@ onBeforeUnmount(() => {
 })
 
 const handleSave = async () => {
-  if (!activeFile.value || fileContent.value === null) return;
+  if (!activeFile.value || fileContent.value === null || isSavingContent.value) return;
 
-  isSaving.value = true
-  saveError.value = null
-  
   try {
-    await saveChanges()
+    const workspaceId = workspaceStore.activeWorkspace?.workspaceId
+    if (!workspaceId) throw new Error('No workspace selected, cannot save file.')
+
+    await fileExplorerStore.saveFileContentFromEditor(
+      workspaceId, 
+      activeFile.value, 
+      fileContent.value
+    )
+    
+    // Show success indicator on successful save
     showSaveSuccess.value = true
     if (saveSuccessTimeout) clearTimeout(saveSuccessTimeout)
     saveSuccessTimeout = setTimeout(() => { showSaveSuccess.value = false }, 2000)
   } catch (error) {
-    saveError.value = error instanceof Error ? error.message : 'Failed to save changes'
-    setTimeout(() => { saveError.value = null }, 5000)
-  } finally {
-    isSaving.value = false
+    // The store now handles the error state, which is reflected in the `saveContentError` computed property.
+    console.error("Save operation failed:", error)
   }
-}
-
-async function saveChanges() {
-  if (!activeFile.value || fileContent.value === null) return
-  
-  const workspaceId = workspaceStore.activeWorkspace?.workspaceId
-  if (!workspaceId) throw new Error('No workspace selected, cannot save file.')
-  
-  await fileExplorerStore.writeBasicFileContent(
-    workspaceId, 
-    activeFile.value, 
-    fileContent.value
-  )
 }
 
 const handleKeydown = async (event: KeyboardEvent) => {
@@ -219,7 +205,6 @@ const handleKeydown = async (event: KeyboardEvent) => {
 </script>
 
 <style scoped>
-/* Scoped styles remain unchanged */
 .close-button {
   font-size: 18px;
 }

@@ -16,17 +16,19 @@ export class TextState extends BaseState {
     while (this.context.hasMoreChars()) {
       const char = this.context.peekChar();
 
-      if (char === '<' || char === '{' || char === '[') {
+      // Check for XML tag start, which is always active.
+      if (char === '<') {
         const text = this.context.substring(startPos, this.context.getPosition());
         this.context.appendTextSegment(text);
-        
-        // The current position is on the boundary character. The next state
-        // is responsible for consuming it. We just transition.
-        if (char === '<') {
-          this.context.transitionTo(new XmlTagInitializationState(this.context));
-        } else { // '{' or '['
-          this.context.transitionTo(new JsonInitializationState(this.context));
-        }
+        this.context.transitionTo(new XmlTagInitializationState(this.context));
+        return;
+      }
+      
+      // Conditionally check for JSON start characters only if parsing is enabled.
+      if (this.context.parseToolCalls && !this.context.useXmlToolFormat && (char === '{' || char === '[')) {
+        const text = this.context.substring(startPos, this.context.getPosition());
+        this.context.appendTextSegment(text);
+        this.context.transitionTo(new JsonInitializationState(this.context));
         return;
       }
       

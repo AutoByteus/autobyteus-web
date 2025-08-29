@@ -70,7 +70,7 @@
     <!-- Folder contents if open -->
     <transition name="folder">
       <div v-if="!file.is_file && isFolderOpen" class="children ml-4 mt-2">
-        <FileItem v-for="(child, index) in file.children" :key="`${child.path}-${index}`" :file="child"/>
+        <FileItem v-for="child in file.children" :key="child.id" :file="child"/>
       </div>
     </transition>
 

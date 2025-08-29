@@ -11,6 +11,7 @@ import type { Conversation, AIMessage } from '~/types/conversation';
 import { AgentContext } from '~/types/agent/AgentContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import { LLMProvider } from '~/types/llm';
+import { StreamScanner } from '../StreamScanner';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: () => 'mock_id'
@@ -36,6 +37,7 @@ const createMockAgentContext = (segments: AIResponseSegment[], parseToolCalls: b
     llmModelIdentifier: 'openai-model',
     autoExecuteTools: false,
     parseToolCalls: parseToolCalls,
+    useXmlToolFormat: false, // FIX: Added missing property
   };
   return new AgentContext(agentConfig, agentState);
 };
@@ -52,8 +54,8 @@ describe('JsonInitializationState', () => {
   it('should transition to ToolParsingState on a matching signature when parsing is enabled', () => {
     const agentContext = createMockAgentContext(segments, true);
     context = new ParserContext(agentContext);
-    context.buffer = '{"tool_calls": [{}]}';
-    context.pos = 0;
+    // @ts-ignore - Directly setting the scanner for test purposes
+    context.scanner = new StreamScanner('{"tool_calls": [{}]}');
     // The TextState would have found '{' and transitioned us, so we start from JsonInitializationState
     context.currentState = new JsonInitializationState(context);
     context.currentState.run();
@@ -63,8 +65,8 @@ describe('JsonInitializationState', () => {
   it('should transition back to TextState if signature does not match', () => {
     const agentContext = createMockAgentContext(segments, true);
     context = new ParserContext(agentContext);
-    context.buffer = '{"not_a_tool": "value"}';
-    context.pos = 0;
+    // @ts-ignore - Directly setting the scanner for test purposes
+    context.scanner = new StreamScanner('{"not_a_tool": "value"}');
     context.currentState = new JsonInitializationState(context);
     context.currentState.run();
 
@@ -77,8 +79,8 @@ describe('JsonInitializationState', () => {
   it('should revert to TextState if a tool signature matches but parsing is disabled', () => {
     const agentContext = createMockAgentContext(segments, false); // parsing disabled
     context = new ParserContext(agentContext);
-    context.buffer = '{"tool_calls": [{}]}'; // a valid JSON tool signature
-    context.pos = 0;
+    // @ts-ignore - Directly setting the scanner for test purposes
+    context.scanner = new StreamScanner('{"tool_calls": [{}]}'); // a valid JSON tool signature
     context.currentState = new JsonInitializationState(context);
     context.currentState.run();
 
@@ -90,12 +92,12 @@ describe('JsonInitializationState', () => {
   it('should wait for more characters for a partial match', () => {
     const agentContext = createMockAgentContext(segments, true);
     context = new ParserContext(agentContext);
-    context.buffer = '{"tool_c';
-    context.pos = 0;
+    // @ts-ignore - Directly setting the scanner for test purposes
+    context.scanner = new StreamScanner('{"tool_c');
     context.currentState = new JsonInitializationState(context);
     context.currentState.run();
 
     expect(context.currentState.stateType).toBe(ParserStateType.JSON_INITIALIZATION_STATE);
-    expect(context.pos).toBe(context.buffer.length);
+    expect(context.getPosition()).toBe(8);
   });
 });

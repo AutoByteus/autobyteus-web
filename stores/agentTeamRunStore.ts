@@ -22,7 +22,7 @@ import type { Conversation } from '~/types/conversation';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
-import type { AgentTeamDefinition } from './agentTeamDefinitionStore';
+import type { AgentTeamDefinition } from './agentDefinitionStore';
 
 export const useAgentTeamRunStore = defineStore('agentTeamRun', {
   state: () => ({
@@ -139,7 +139,8 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
           workspaceId: configForMember.workspaceId,
           llmModelIdentifier: configForMember.llmModelIdentifier,
           autoExecuteTools: configForMember.autoExecuteTools,
-          parseToolCalls: true,
+          parseToolCalls: true, // Team agents always parse tool calls for now
+          useXmlToolFormat: profile.globalConfig.useXmlToolFormat,
         };
         
         const agentContext = new AgentContext(agentConfig, agentState);
@@ -233,6 +234,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       try {
         let variables: SendMessageToTeamMutationVariables;
         const taskNotificationMode = activeTeam.launchProfile.globalConfig.taskNotificationMode as TaskNotificationModeEnum;
+        const useXmlToolFormat = activeTeam.launchProfile.globalConfig.useXmlToolFormat;
 
         if (isTemporary) {
           this.isLaunching = true;
@@ -247,6 +249,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
               teamDefinitionId: activeTeam.launchProfile.teamDefinition.id,
               memberConfigs: memberConfigs,
               taskNotificationMode: taskNotificationMode,
+              useXmlToolFormat: useXmlToolFormat,
             }
           };
         } else {

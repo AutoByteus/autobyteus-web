@@ -1,7 +1,7 @@
 import { TreeNode } from '~/utils/fileExplorer/TreeNode'
 
 export interface FileSystemChangeEvent {
-  changes: Array<AddChange | DeleteChange | RenameChange | MoveChange>
+  changes: Array<AddChange | DeleteChange | RenameChange | MoveChange | ModifyChange>
 }
 
 export interface AddChange {
@@ -27,4 +27,10 @@ export interface MoveChange {
   node: TreeNode
   old_parent_id: string
   new_parent_id: string
+}
+
+export interface ModifyChange {
+  type: 'modify'
+  node_id: string
+  parent_id: string
 }

@@ -166,6 +166,7 @@ export const useAgentContextsStore = defineStore('agentContexts', {
         llmModelIdentifier: '', // User will select this
         autoExecuteTools: false,
         parseToolCalls: true,
+        useXmlToolFormat: false,
       };
 
       const agentState = new AgentRunState(tempId, newConversation);
@@ -198,6 +199,7 @@ export const useAgentContextsStore = defineStore('agentContexts', {
         llmModelIdentifier: '', // This should ideally come from the agent instance info
         autoExecuteTools: false,
         parseToolCalls: true,
+        useXmlToolFormat: false,
       };
 
       const agentState = new AgentRunState(agentId, newConversation);
@@ -296,6 +298,7 @@ export const useAgentContextsStore = defineStore('agentContexts', {
         llmModelIdentifier: historicalConversationData.llmModelIdentifier || '',
         autoExecuteTools: false,
         parseToolCalls: historicalConversationData.parseToolCalls ?? true,
+        useXmlToolFormat: false, // Defaulting to false for historical conversations
       };
       
       const newAgentState = new AgentRunState(tempId, {

@@ -20,6 +20,7 @@ export class ParserContext {
 
   public readonly strategy: ToolParsingStrategy;
   public readonly parseToolCalls: boolean;
+  public readonly useXmlToolFormat: boolean;
   public readonly agentRunState: AgentRunState;
 
   private _currentState: State | null = null;
@@ -34,9 +35,10 @@ export class ParserContext {
     this.scanner = new StreamScanner();
     this.agentRunState = agentContext.state;
     this.parseToolCalls = agentContext.parseToolCalls;
+    this.useXmlToolFormat = agentContext.config.useXmlToolFormat;
     
     const provider = useLLMProviderConfigStore().getProviderForModel(agentContext.config.llmModelIdentifier);
-    this.strategy = getToolParsingStrategy(provider!);
+    this.strategy = getToolParsingStrategy(provider!, agentContext.config.useXmlToolFormat);
   }
   
   append(text: string): void {

@@ -7,13 +7,19 @@ import { DefaultJsonToolParsingStrategy } from './tool_parsing_strategies/defaul
 
 /**
  * Mirrors the backend ProviderAwareToolUsageParser logic to select the single,
- * correct tool parsing strategy based on the LLM provider.
+ * correct tool parsing strategy based on the LLM provider, with an override for XML.
  *
  * @param provider - The LLM provider being used.
+ * @param useXmlToolFormat - If true, forces the use of the XML strategy.
  * @returns The single ToolParsingStrategy instance to be used for the session.
  */
-export function getToolParsingStrategy(provider: LLMProvider): ToolParsingStrategy {
-    // If provider is Anthropic, it uses XML.
+export function getToolParsingStrategy(provider: LLMProvider, useXmlToolFormat: boolean = false): ToolParsingStrategy {
+    // First, check for the override flag. If it's true, always use XML.
+    if (useXmlToolFormat) {
+        return new XmlToolParsingStrategy();
+    }
+
+    // If provider is Anthropic, it uses XML by default.
     if (provider === LLMProvider.ANTHROPIC) {
         return new XmlToolParsingStrategy();
     }

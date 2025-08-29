@@ -9,6 +9,7 @@ import { AgentRunState } from '~/types/agent/AgentRunState';
 import type { Conversation, AIMessage } from '~/types/conversation';
 import { AgentContext } from '~/types/agent/AgentContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
+import { StreamScanner } from '../StreamScanner';
 
 // Mock the tool utils to prevent the sha256 error and make tests predictable.
 vi.mock('~/utils/toolUtils', () => ({
@@ -59,7 +60,7 @@ const createMockAgentContext = (segments: AIResponseSegment[]): AgentContext => 
   const lastAIMessage: AIMessage = { type: 'ai', text: '', timestamp: new Date(), chunks: [], segments, isComplete: false, parserInstance: null as any };
   conversation.messages.push(lastAIMessage);
   const agentState = new AgentRunState('test-conv-id', conversation);
-  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelIdentifier: 'test-model', autoExecuteTools: false, parseToolCalls: true };
+  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelIdentifier: 'test-model', autoExecuteTools: false, parseToolCalls: true, useXmlToolFormat: false };
   return new AgentContext(agentConfig, agentState);
 };
 
@@ -81,17 +82,17 @@ describe('ToolParsingState', () => {
   });
 
   it('should call strategy.startSegment upon construction and advance context', () => {
-    context.buffer = '{';
-    context.pos = 0;
+    // @ts-ignore - Directly setting the scanner for test purposes
+    context.scanner = new StreamScanner('{');
     state = new ToolParsingState(context, '{');
     expect(mockStrategy.startSegmentCalled).toBe(true);
     expect(segments[0]?.type).toBe('tool_call');
-    expect(context.pos).toBe(1);
+    expect(context.getPosition()).toBe(1);
   });
 
   it('should loop and call processChar for each character until the strategy is complete', () => {
-    context.buffer = '{abc;def';
-    context.pos = 0; 
+    // @ts-ignore - Directly setting the scanner for test purposes
+    context.scanner = new StreamScanner('{abc;def');
     
     state = new ToolParsingState(context, '{');
     state.run();
@@ -102,21 +103,21 @@ describe('ToolParsingState', () => {
   });
 
   it('should leave remaining characters in the buffer for the next state', () => {
-    context.buffer = '{abc;def';
-    context.pos = 0;
+    // @ts-ignore - Directly setting the scanner for test purposes
+    context.scanner = new StreamScanner('{abc;def');
     state = new ToolParsingState(context, '{');
 
     state.run();
 
-    expect(context.pos).toBe(5);
-    expect(context.buffer.substring(context.pos)).toBe('def');
+    expect(context.getPosition()).toBe(5);
+    expect(context.substring(context.getPosition())).toBe('def');
   });
   
   it('should handle when the strategy is completed by the signature buffer alone', () => {
     mockStrategy.isComplete = () => true;
 
-    context.buffer = ';more-text';
-    context.pos = 0;
+    // @ts-ignore - Directly setting the scanner for test purposes
+    context.scanner = new StreamScanner(';more-text');
     
     state = new ToolParsingState(context, ';');
     state.run();
@@ -124,7 +125,7 @@ describe('ToolParsingState', () => {
     expect(mockStrategy.processCharCalledWith).toEqual([]);
     expect(mockStrategy.finalizeCalled).toBe(true);
     expect(context.currentState).toBeInstanceOf(TextState);
-    expect(context.pos).toBe(1); 
-    expect(context.buffer.substring(context.pos)).toBe('more-text');
+    expect(context.getPosition()).toBe(1); 
+    expect(context.substring(context.getPosition())).toBe('more-text');
   });
 });

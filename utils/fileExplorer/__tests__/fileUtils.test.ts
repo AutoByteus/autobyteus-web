@@ -11,7 +11,8 @@ import type {
   FileSystemChangeEvent,
   AddChange,
   DeleteChange,
-  RenameChange
+  RenameChange,
+  ModifyChange
 } from '~/types/fileSystemChangeTypes'
 
 describe('fileUtils', () => {
@@ -148,6 +149,25 @@ describe('fileUtils', () => {
       expect(nodeIdToNode['file1-id'].name).toBe('renamedFile.txt')
       expect(nodeIdToNode['file1-id'].path).toBe('root/renamedFile.txt')
     })
+
+    it('should handle modify change without altering the tree', () => {
+      const originalTreeJson = JSON.stringify(rootNode); // Snapshot of tree before change
+
+      const modifyChange: ModifyChange = {
+        type: 'modify',
+        node_id: 'file1-id',
+        parent_id: 'root-id'
+      };
+      const event: FileSystemChangeEvent = { changes: [modifyChange] };
+
+      handleFileSystemChange(rootNode, nodeIdToNode, event);
+
+      const modifiedTreeJson = JSON.stringify(rootNode);
+      
+      // The tree structure and nodes should be identical.
+      expect(modifiedTreeJson).toEqual(originalTreeJson);
+      expect(nodeIdToNode['file1-id']).toBeDefined();
+    });
 
     it('should handle multiple changes', () => {
       const newFolder = new TreeNode('newFolder', 'root/newFolder', false, [], 'newFolder-id')
