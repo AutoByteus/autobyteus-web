@@ -27,6 +27,10 @@ export const GET_CONVERSATION_HISTORY = gql`
           originalMessage
           tokenCount
           cost
+          reasoning
+          imageUrls
+          audioUrls
+          videoUrls
         }
       }
       totalPages

@@ -303,9 +303,12 @@ export type GraphQlAssistantChunkData = {
 
 export type GraphQlAssistantCompleteResponseData = {
   __typename?: 'GraphQLAssistantCompleteResponseData';
+  audioUrls?: Maybe<Array<Scalars['String']['output']>>;
   content: Scalars['String']['output'];
+  imageUrls?: Maybe<Array<Scalars['String']['output']>>;
   reasoning?: Maybe<Scalars['String']['output']>;
   usage?: Maybe<GraphQlTokenUsage>;
+  videoUrls?: Maybe<Array<Scalars['String']['output']>>;
 };
 
 export type GraphQlErrorEventData = {
@@ -450,14 +453,18 @@ export enum McpTransportTypeEnum {
 
 export type Message = {
   __typename?: 'Message';
+  audioUrls?: Maybe<Array<Scalars['String']['output']>>;
   contextPaths?: Maybe<Array<Scalars['String']['output']>>;
   cost?: Maybe<Scalars['Float']['output']>;
+  imageUrls?: Maybe<Array<Scalars['String']['output']>>;
   message: Scalars['String']['output'];
   messageId?: Maybe<Scalars['String']['output']>;
   originalMessage?: Maybe<Scalars['String']['output']>;
+  reasoning?: Maybe<Scalars['String']['output']>;
   role: Scalars['String']['output'];
   timestamp: Scalars['String']['output'];
   tokenCount?: Maybe<Scalars['Int']['output']>;
+  videoUrls?: Maybe<Array<Scalars['String']['output']>>;
 };
 
 export type Model = {
@@ -1391,7 +1398,7 @@ export type GetConversationHistoryQueryVariables = Exact<{
 }>;
 
 
-export type GetConversationHistoryQuery = { __typename?: 'Query', getConversationHistory: { __typename?: 'ConversationHistory', totalPages: number, currentPage: number, conversations: Array<{ __typename?: 'AgentConversation', agentId: string, agentDefinitionId: string, createdAt: string, llmModel?: string | null, messages: Array<{ __typename?: 'Message', messageId?: string | null, role: string, message: string, timestamp: string, contextPaths?: Array<string> | null, originalMessage?: string | null, tokenCount?: number | null, cost?: number | null }> }> } };
+export type GetConversationHistoryQuery = { __typename?: 'Query', getConversationHistory: { __typename?: 'ConversationHistory', totalPages: number, currentPage: number, conversations: Array<{ __typename?: 'AgentConversation', agentId: string, agentDefinitionId: string, createdAt: string, llmModel?: string | null, messages: Array<{ __typename?: 'Message', messageId?: string | null, role: string, message: string, timestamp: string, contextPaths?: Array<string> | null, originalMessage?: string | null, tokenCount?: number | null, cost?: number | null, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null }> }> } };
 
 export type GetFileContentQueryVariables = Exact<{
   workspaceId: Scalars['String']['input'];
@@ -2866,6 +2873,10 @@ export const GetConversationHistoryDocument = gql`
         originalMessage
         tokenCount
         cost
+        reasoning
+        imageUrls
+        audioUrls
+        videoUrls
       }
     }
     totalPages

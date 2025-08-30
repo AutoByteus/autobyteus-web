@@ -144,7 +144,11 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
               isComplete: true,
               parserInstance: null as any, // No parser instance needed at this stage
               completionTokens: msg.tokenCount || undefined,
-              completionCost: msg.cost || undefined
+              completionCost: msg.cost || undefined,
+              reasoning: msg.reasoning,
+              imageUrls: msg.imageUrls,
+              audioUrls: msg.audioUrls,
+              videoUrls: msg.videoUrls
             };
             return aiMessage;
           }

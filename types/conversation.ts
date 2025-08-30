@@ -29,6 +29,10 @@ export interface AIMessage extends Message {
   parserInstance: IncrementalAIResponseParser;
   completionTokens?: number;
   completionCost?: number;
+  reasoning?: string | null;
+  imageUrls?: string[] | null;
+  audioUrls?: string[] | null;
+  videoUrls?: string[] | null;
 }
 
 export interface Conversation {
