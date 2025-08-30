@@ -51,6 +51,9 @@ const nestedTeamEventFragment = gql`
                 completionCost
                 totalCost
               }
+              imageUrls
+              audioUrls
+              videoUrls
             }
             ... on GraphQLToolInteractionLogEntryData {
               logEntry

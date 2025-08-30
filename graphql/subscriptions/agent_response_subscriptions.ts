@@ -36,6 +36,9 @@ export const AgentResponseSubscription = gql`
             completionCost
             totalCost
           }
+          imageUrls
+          audioUrls
+          videoUrls
         }
         ... on GraphQLToolInteractionLogEntryData {
           logEntry

@@ -92,6 +92,8 @@ function updateMediaSegment(message: AIMessage, urls: readonly string[], mediaTy
 
 /**
  * Processes a chunk of an assistant's response, updating the conversation state.
+ * This handler is now only responsible for text, reasoning, and finalization signals.
+ * Media URLs are handled by `handleAssistantCompleteResponse`.
  * @param eventData The chunk data from the GraphQL subscription.
  * @param agentContext The full context for the agent run.
  */
@@ -108,16 +110,7 @@ export function handleAssistantChunk(eventData: GraphQLAssistantChunkData, agent
     aiMessage.parserInstance.processChunks([eventData.content]);
   }
 
-  // 3. Process media URLs.
-  if (eventData.imageUrls && eventData.imageUrls.length > 0) {
-    updateMediaSegment(aiMessage, eventData.imageUrls, 'image');
-  }
-  if (eventData.audioUrls && eventData.audioUrls.length > 0) {
-    updateMediaSegment(aiMessage, eventData.audioUrls, 'audio');
-  }
-  if (eventData.videoUrls && eventData.videoUrls.length > 0) {
-    updateMediaSegment(aiMessage, eventData.videoUrls, 'video');
-  }
+  // 3. Media URL processing is REMOVED from the chunk handler.
 
   // 4. Handle finalization if the chunk is marked as complete.
   if (eventData.isComplete) {
@@ -142,8 +135,8 @@ export function handleAssistantChunk(eventData: GraphQLAssistantChunkData, agent
 }
 
 /**
- * Processes the final 'complete' event for an assistant's turn. This event primarily
- * provides the final token usage statistics.
+ * Processes the final 'complete' event for an assistant's turn. This event is now the
+ * single source of truth for final token usage AND media URLs.
  * @param eventData The complete response data from the GraphQL subscription.
  * @param agentContext The full context for the agent run.
  */
@@ -163,6 +156,19 @@ export function handleAssistantCompleteResponse(eventData: GraphQLAssistantCompl
 
   // Mark the message as complete.
   lastMessage.isComplete = true;
+
+  // --- NEW: Process all media URLs from the final response ---
+  if (eventData.imageUrls && eventData.imageUrls.length > 0) {
+    updateMediaSegment(lastMessage, eventData.imageUrls, 'image');
+  }
+  if (eventData.audioUrls && eventData.audioUrls.length > 0) {
+    updateMediaSegment(lastMessage, eventData.audioUrls, 'audio');
+  }
+  if (eventData.videoUrls && eventData.videoUrls.length > 0) {
+    updateMediaSegment(lastMessage, eventData.videoUrls, 'video');
+  }
+  // --- END NEW ---
+
 
   // Assign final token usage costs.
   if (eventData.usage) {

@@ -8,6 +8,7 @@ import type { Conversation, Message, ContextFilePath, AIMessage } from '~/types/
 import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
 import { ParserContext } from '~/utils/aiResponseParser/stateMachine/ParserContext';
 import { useLLMProviderConfigStore } from './llmProviderConfig';
+import type { MediaSegment } from '~/utils/aiResponseParser/types';
 
 /**
  * @interface ProfileAgentState
@@ -315,22 +316,40 @@ export const useAgentContextsStore = defineStore('agentContexts', {
         } else if (msg.type === 'ai') {
           const aiMessage: AIMessage = {
             ...(msg as AIMessage),
+            // Start with a fresh segments array, which will be populated.
             segments: [],
             isComplete: false,
             parserInstance: null as any,
           };
           newAgentContext.conversation.messages.push(aiMessage);
     
+          // --- Start Rehydration ---
           const parserContext = new ParserContext(newAgentContext);
           const parser = new IncrementalAIResponseParser(parserContext);
-    
+          aiMessage.parserInstance = parser;
+          
+          // 1. Process text content through the parser to create text/tool segments
           if (msg.text) {
             parser.processChunks([msg.text]);
           }
           parser.finalize();
-    
-          aiMessage.parserInstance = parser;
+          
+          // 2. Manually add media segments from the historical data
+          if (msg.imageUrls && msg.imageUrls.length > 0) {
+            const mediaSegment: MediaSegment = { type: 'media', mediaType: 'image', urls: [...msg.imageUrls] };
+            aiMessage.segments.push(mediaSegment);
+          }
+          if (msg.audioUrls && msg.audioUrls.length > 0) {
+            const mediaSegment: MediaSegment = { type: 'media', mediaType: 'audio', urls: [...msg.audioUrls] };
+            aiMessage.segments.push(mediaSegment);
+          }
+          if (msg.videoUrls && msg.videoUrls.length > 0) {
+            const mediaSegment: MediaSegment = { type: 'media', mediaType: 'video', urls: [...msg.videoUrls] };
+            aiMessage.segments.push(mediaSegment);
+          }
+          
           aiMessage.isComplete = true;
+          // --- End Rehydration ---
         }
       }
       
