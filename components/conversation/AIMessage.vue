@@ -37,6 +37,10 @@
           v-else-if="segment.type === 'media'"
           :segment="segment"
         />
+        <ErrorSegment
+          v-else-if="segment.type === 'error'"
+          :segment="segment"
+        />
       </template>
     </div>
   </div>
@@ -50,9 +54,11 @@ import ThinkSegment from '~/components/conversation/segments/ThinkSegment.vue';
 import ToolCallSegment from '~/components/conversation/segments/ToolCallSegment.vue';
 import FileWriterSegment from '~/components/conversation/segments/FileWriterSegment.vue';
 import SystemTaskNotificationSegment from '~/components/conversation/segments/SystemTaskNotificationSegment.vue';
-import MediaSegment from '~/components/conversation/segments/MediaSegment.vue'; // NEW
+import MediaSegment from '~/components/conversation/segments/MediaSegment.vue';
+import ErrorSegment from '~/components/conversation/segments/ErrorSegment.vue';
 
-const props = defineProps<{  message: AIMessage;
+const props = defineProps<{
+  message: AIMessage;
   agentId: string;
   messageIndex: number;
 }>();

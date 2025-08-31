@@ -3,8 +3,15 @@
     <div v-if="message.contextFilePaths && message.contextFilePaths.length > 0">
       <strong>Context Files:</strong>
       <ul class="list-disc list-inside">
-        <li v-for="file in message.contextFilePaths" :key="file.path" class="truncate">
-          {{ file.path }} ({{ file.type }})
+        <li v-for="file in message.contextFilePaths" :key="file.path" class="flex items-baseline">
+          <span
+            @click="handleFileClick(file.path)"
+            class="cursor-pointer hover:underline truncate"
+            :title="`Open ${file.path}`"
+          >
+            {{ file.path }}
+          </span>
+          <span class="ml-1 flex-shrink-0">({{ file.type }})</span>
         </li>
       </ul>
     </div>
@@ -18,9 +25,17 @@
 
 <script setup lang="ts">
 import type { UserMessage } from '~/types/conversation';
+import { useFileExplorerStore } from '~/stores/fileExplorer';
 
-const props = defineProps<{  message: UserMessage;
+const props = defineProps<{
+  message: UserMessage;
 }>();
+
+const fileExplorerStore = useFileExplorerStore();
+
+const handleFileClick = (filePath: string) => {
+  fileExplorerStore.openFile(filePath);
+};
 </script>
 
 <style scoped>

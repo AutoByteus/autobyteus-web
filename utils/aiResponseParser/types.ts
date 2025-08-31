@@ -52,13 +52,21 @@ export interface MediaSegment {
   urls: string[];
 }
 
+export interface ErrorSegment{
+  type: 'error';
+  source: string;
+  message: string;
+  details?: string | null;
+}
+
 export type AIResponseSegment = 
   | AIResponseTextSegment 
   | FileSegment 
   | ThinkSegment
   | ToolCallSegment
   | SystemTaskNotificationSegment
-  | MediaSegment; // ADDED
+  | MediaSegment
+  | ErrorSegment;
 
 export interface ParsedAIResponse {
   segments: AIResponseSegment[];

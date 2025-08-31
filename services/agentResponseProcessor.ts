@@ -10,7 +10,8 @@ import {
   handleToolInteractionLog,
 } from './agentResponseHandlers/toolCallHandler';
 import { handleAgentPhaseTransition } from './agentResponseHandlers/phaseTransitionHandler';
-import { handleSystemTaskNotification } from './agentResponseHandlers/systemTaskNotificationHandler'; // NEW
+import { handleSystemTaskNotification } from './agentResponseHandlers/systemTaskNotificationHandler';
+import { handleAgentError } from './agentResponseHandlers/errorEventHandler';
 
 /**
  * Main dispatcher for processing all agent response events.
@@ -43,14 +44,11 @@ export function processAgentResponseEvent(
     case 'GraphQLAgentOperationalPhaseTransitionData':
       return handleAgentPhaseTransition(eventData, agentContext);
 
-    // NEW CASE
     case 'GraphQLSystemTaskNotificationData':
       return handleSystemTaskNotification(eventData, agentContext);
 
     case 'GraphQLErrorEventData':
-      // Handle error events here or in a dedicated handler.
-      console.error('Agent Stream Error:', eventData.message, eventData.details);
-      break;
+      return handleAgentError(eventData, agentContext);
 
     default:
       // Optional: log unhandled event types.

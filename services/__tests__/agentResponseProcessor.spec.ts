@@ -3,7 +3,8 @@ import { processAgentResponseEvent } from '../agentResponseProcessor';
 import * as assistantHandler from '../agentResponseHandlers/assistantResponseHandler';
 import * as toolCallHandler from '../agentResponseHandlers/toolCallHandler';
 import * as statusHandler from '../agentResponseHandlers/phaseTransitionHandler';
-import * as systemTaskHandler from '../agentResponseHandlers/systemTaskNotificationHandler'; // NEW IMPORT
+import * as systemTaskHandler from '../agentResponseHandlers/systemTaskNotificationHandler';
+import * as errorHandler from '../agentResponseHandlers/errorEventHandler'; // NEW IMPORT
 import { AgentContext } from '~/types/agent/AgentContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import { AgentRunState } from '~/types/agent/AgentRunState';
@@ -26,9 +27,13 @@ vi.mock('../agentResponseHandlers/phaseTransitionHandler', () => ({
   handleAgentPhaseTransition: vi.fn(),
 }));
 
-// NEW MOCK
 vi.mock('../agentResponseHandlers/systemTaskNotificationHandler', () => ({
   handleSystemTaskNotification: vi.fn(),
+}));
+
+// NEW MOCK for the error handler
+vi.mock('../agentResponseHandlers/errorEventHandler', () => ({
+  handleAgentError: vi.fn(),
 }));
 
 
@@ -46,7 +51,7 @@ const createMockAgentContext = (): AgentContext => {
     llmModelIdentifier: 'test-model',
     autoExecuteTools: false,
     parseToolCalls: true,
-    useXmlToolFormat: false, // FIX: Added missing property
+    useXmlToolFormat: false,
   };
   return new AgentContext(agentConfig, agentState);
 };
@@ -120,7 +125,6 @@ describe('processAgentResponseEvent', () => {
     expect(statusHandler.handleAgentPhaseTransition).toHaveBeenCalledWith(eventData, mockAgentContext);
   });
   
-  // NEW TEST CASE
   it('should call handleSystemTaskNotification for GraphQLSystemTaskNotificationData', () => {
     const eventData: AgentResponseSubscription['agentResponse']['data'] = {
       __typename: 'GraphQLSystemTaskNotificationData',
@@ -131,17 +135,26 @@ describe('processAgentResponseEvent', () => {
     expect(systemTaskHandler.handleSystemTaskNotification).toHaveBeenCalledWith(eventData, mockAgentContext);
   });
 
-  it('should handle GraphQLErrorEventData without calling other handlers', () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  // REVISED TEST CASE
+  it('should call handleAgentError for GraphQLErrorEventData', () => {
     const eventData: AgentResponseSubscription['agentResponse']['data'] = {
       __typename: 'GraphQLErrorEventData',
       message: 'Something went wrong',
       details: 'Error details',
+      source: 'test-source',
     };
     processAgentResponseEvent(eventData, mockAgentContext);
+
+    // Verify the correct handler was called
+    expect(errorHandler.handleAgentError).toHaveBeenCalledWith(eventData, mockAgentContext);
+
+    // Verify other handlers were not called
     expect(assistantHandler.handleAssistantChunk).not.toHaveBeenCalled();
+    expect(assistantHandler.handleAssistantCompleteResponse).not.toHaveBeenCalled();
     expect(toolCallHandler.handleToolInteractionLog).not.toHaveBeenCalled();
-    expect(consoleErrorSpy).toHaveBeenCalled();
-    consoleErrorSpy.mockRestore();
+    expect(toolCallHandler.handleToolInvocationApprovalRequested).not.toHaveBeenCalled();
+    expect(toolCallHandler.handleToolInvocationAutoExecuting).not.toHaveBeenCalled();
+    expect(statusHandler.handleAgentPhaseTransition).not.toHaveBeenCalled();
+    expect(systemTaskHandler.handleSystemTaskNotification).not.toHaveBeenCalled();
   });
 });
