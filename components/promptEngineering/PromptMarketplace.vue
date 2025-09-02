@@ -54,6 +54,25 @@
       
       <!-- Filter and Group Controls -->
       <div class="flex flex-wrap items-center gap-4">
+        <!-- Search Input -->
+        <div class="relative flex-grow" style="min-width: 200px;">
+          <label for="prompt-search" class="block text-sm font-medium text-gray-700 mb-1">Search Prompts</label>
+          <div class="relative">
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <input
+              id="prompt-search"
+              v-model="searchQuery"
+              type="text"
+              class="block w-full p-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Search name, description, content..."
+            />
+          </div>
+        </div>
+
         <!-- Model Filter Dropdown -->
         <div class="relative min-w-[200px]">
           <label for="modelFilter" class="block text-sm font-medium text-gray-700 mb-1">Filter by Model</label>
@@ -371,6 +390,9 @@ const llmStore = useLLMProviderConfigStore();
 const { prompts, loading, error, syncing, syncResult, deleteResult } = storeToRefs(promptStore);
 const { canonicalModels: availableModels } = storeToRefs(llmStore);
 
+// Search query
+const searchQuery = ref('');
+
 // Local loading state for the reload button
 const reloading = ref(false);
 
@@ -393,17 +415,31 @@ const comparisonName = ref('');
 let syncNotificationTimer: number | null = null;
 let deleteNotificationTimer: number | null = null;
 
-// Filter prompts based on model compatibility
+// Filter prompts based on model compatibility and search query
 const filteredPrompts = computed(() => {
-  if (!selectedModelFilter.value) {
-    return prompts.value;
+  let filtered = prompts.value;
+
+  // Filter by model compatibility
+  if (selectedModelFilter.value) {
+    filtered = filtered.filter(prompt => {
+      if (!prompt.suitableForModels) return false;
+      const modelList = prompt.suitableForModels.split(',').map(model => model.trim());
+      return modelList.includes(selectedModelFilter.value);
+    });
   }
   
-  return prompts.value.filter(prompt => {
-    if (!prompt.suitableForModels) return false;
-    const modelList = prompt.suitableForModels.split(',').map(model => model.trim());
-    return modelList.includes(selectedModelFilter.value);
-  });
+  // Filter by search query
+  if (searchQuery.value.trim()) {
+    const lowerCaseQuery = searchQuery.value.trim().toLowerCase();
+    filtered = filtered.filter(prompt => {
+      const inName = prompt.name.toLowerCase().includes(lowerCaseQuery);
+      const inDescription = prompt.description?.toLowerCase().includes(lowerCaseQuery) || false;
+      const inContent = prompt.promptContent.toLowerCase().includes(lowerCaseQuery);
+      return inName || inDescription || inContent;
+    });
+  }
+  
+  return filtered;
 });
 
 // Extract unique categories from filtered prompts

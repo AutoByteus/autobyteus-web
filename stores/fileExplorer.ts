@@ -278,7 +278,9 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
 
       try {
         const { onResult, onError } = useQuery<GetFileContentQuery, GetFileContentQueryVariables>(
-          GetFileContent, { workspaceId, filePath }
+          GetFileContent,
+          { workspaceId, filePath },
+          { fetchPolicy: 'network-only' }
         );
 
         return new Promise((resolve, reject) => {
