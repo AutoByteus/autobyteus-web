@@ -35,13 +35,15 @@
         />
 
         <AudioRecorder
-          :disabled="isSending"
+          :disabled="true"
+          title="Voice input is coming soon"
         />
         
         <div class="flex flex-col sm:flex-row gap-3 sm:gap-2">
           <button
             @click="handleSearchContext"
-            :disabled="isSending || !internalRequirement.trim() || isSearching || !activeContextStore.activeAgentContext"
+            :disabled="true"
+            title="Context-aware search is coming soon"
             class="flex items-center justify-center px-4 py-2.5 bg-green-500 text-white text-sm font-medium rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
           >
             <svg v-if="isSearching" class="animate-spin h-4 w-4 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
