@@ -10,7 +10,12 @@ import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
-    const argString = JSON.stringify(Object.keys(args).sort().reduce((acc, key) => ({...acc, [key]: args[key]}), {}));
+    // Sort keys before stringifying to ensure deterministic IDs for testing
+    const sortedArgs = Object.keys(args).sort().reduce((acc, key) => {
+      acc[key] = args[key];
+      return acc;
+    }, {} as Record<string, any>);
+    const argString = JSON.stringify(sortedArgs);
     return `call_mock_${toolName}_${argString}`;
   }
 }));
@@ -182,55 +187,50 @@ describe('GeminiToolParsingStrategy (Simplified)', () => {
             expect(segment1.status).toBe('parsed');
         });
 
-        it('should return no invocations for an incomplete stream', () => {
+        it('should revert to a text segment for an incomplete stream', () => {
             const signatureBuffer = '{"name": "tool1", "args": {';
             strategy.startSegment(context, signatureBuffer);
             strategy.finalize(context);
-            // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);
             expect(segments[0].type).toBe('text');
             expect((segments[0] as AIResponseTextSegment).content).toBe(signatureBuffer);
         });
 
-        it('should return no invocations if "name" is missing', () => {
+        it('should revert to a text segment if "name" is missing', () => {
             const stream = '{"args": {}}';
             strategy.startSegment(context, '{"args":');
             for(const char of ' {}}') strategy.processChar(char, context);
             strategy.finalize(context);
-            // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);
             expect(segments[0].type).toBe('text');
             expect((segments[0] as AIResponseTextSegment).content).toBe(stream);
         });
 
-        it('should return no invocations if "name" is not a string', () => {
+        it('should revert to a text segment if "name" is not a string', () => {
             const stream = '{"name": 123, "args": {}}';
             strategy.startSegment(context, '{"name":');
             for(const char of ' 123, "args": {}}') strategy.processChar(char, context);
             strategy.finalize(context);
-            // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);
             expect(segments[0].type).toBe('text');
             expect((segments[0] as AIResponseTextSegment).content).toBe(stream);
         });
 
-        it('should return no invocations if "args" is not an object', () => {
+        it('should revert to a text segment if "args" is not an object', () => {
             const stream = '{"name": "test", "args": "invalid"}';
             strategy.startSegment(context, '{"name":');
             for(const char of ' "test", "args": "invalid"}') strategy.processChar(char, context);
             strategy.finalize(context);
-            // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);
             expect(segments[0].type).toBe('text');
             expect((segments[0] as AIResponseTextSegment).content).toBe(stream);
         });
 
-        it('should return no invocations if "args" is an array', () => {
+        it('should revert to a text segment if "args" is an array', () => {
             const stream = '{"name": "test", "args": []}';
             strategy.startSegment(context, '{"name":');
             for(const char of ' "test", "args": []}') strategy.processChar(char, context);
             strategy.finalize(context);
-            // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);
             expect(segments[0].type).toBe('text');
             expect((segments[0] as AIResponseTextSegment).content).toBe(stream);

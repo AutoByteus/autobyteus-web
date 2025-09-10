@@ -11,7 +11,7 @@ import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 // Mock the invocation ID generator for predictable test results
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
-    // FIX: Sort keys before stringifying to ensure deterministic IDs
+    // Sort keys before stringifying to ensure deterministic IDs for testing
     const sortedArgs = Object.keys(args).sort().reduce((acc, key) => {
       acc[key] = args[key];
       return acc;
@@ -32,11 +32,11 @@ const createMockAgentContext = (segments: AIResponseSegment[]): AgentContext => 
   const lastAIMessage: AIMessage = { type: 'ai', text: '', timestamp: new Date(), chunks: [], segments, isComplete: false, parserInstance: null as any };
   conversation.messages.push(lastAIMessage);
   const agentState = new AgentRunState('test-conv-id', conversation);
-  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelIdentifier: 'test-model', autoExecuteTools: false, parseToolCalls: true };
+  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelIdentifier: 'test-model', autoExecuteTools: false, parseToolCalls: true, useXmlToolFormat: true };
   return new AgentContext(agentConfig, agentState);
 };
 
-describe('XmlToolParsingStrategy', () => {
+describe('XmlToolParsingStrategy (State Machine)', () => {
     let context: ParserContext;
     let segments: AIResponseSegment[];
     let strategy: XmlToolParsingStrategy;
@@ -48,6 +48,20 @@ describe('XmlToolParsingStrategy', () => {
         const agentContext = createMockAgentContext(segments);
         context = new ParserContext(agentContext);
     });
+
+    const runStream = (stream: string) => {
+        const toolStartIndex = stream.indexOf('<tool');
+        if (toolStartIndex === -1) throw new Error("Test stream must contain '<tool'");
+        
+        const signatureBuffer = '<tool';
+        strategy.startSegment(context, signatureBuffer);
+
+        const contentStream = stream.substring(toolStartIndex + signatureBuffer.length);
+        for (const char of contentStream) {
+            strategy.processChar(char, context);
+        }
+        strategy.finalize(context);
+    }
 
     // --- Signature Checks ---
     it('checkSignature should return "no_match" for non-matching text', () => {
@@ -65,15 +79,8 @@ describe('XmlToolParsingStrategy', () => {
     
     // --- Full Stream Test ---
     it('should parse a complete tool call received at once', () => {
-        const signatureBuffer = '<tool';
-        strategy.startSegment(context, signatureBuffer);
-        
-        const contentStream = ` name="write_file"><arguments><arg name="path">/test.txt</arg><arg name="content">Hello World</arg></arguments></tool>`;
-        for (const char of contentStream) {
-            strategy.processChar(char, context);
-        }
-        
-        strategy.finalize(context);
+        const stream = `<tool name="write_file"><arguments><arg name="path">/test.txt</arg><arg name="content">Hello World</arg></arguments></tool>`;
+        runStream(stream);
 
         expect(strategy.isComplete()).toBe(true);
         expect(segments.length).toBe(1);
@@ -89,134 +96,154 @@ describe('XmlToolParsingStrategy', () => {
         expect(segment.invocationId).toBe('call_mock_write_file_{"content":"Hello World","path":"/test.txt"}_0');
     });
 
-    // --- Incremental Stream Test ---
-    it('should parse a tool call received in multiple chunks', () => {
-        const signatureBuffer = '<tool';
-        strategy.startSegment(context, signatureBuffer);
-        
-        let segment = segments[0] as ToolCallSegment;
-        expect(segment.status).toBe('parsing');
-        expect(segment.toolName).toBe('');
-
-        const streamChunks = [
-            ' name="edit',
-            '_file">',
-            '<arguments>',
-            '<arg name="path">',
-            '/src/main',
-            '.js</arg>',
-            '<arg name="content">co',
-            'nsole.log("hello");',
-            '</arg>',
-            '</arguments>',
-            '</t',
-            'ool>'
-        ];
-
-        for (const chunk of streamChunks) {
-            for (const char of chunk) {
-                strategy.processChar(char, context);
-            }
-        }
-        
-        strategy.finalize(context);
-        
-        expect(strategy.isComplete()).toBe(true);
-        segment = segments[0] as ToolCallSegment;
-        expect(segment.toolName).toBe('edit_file');
-        expect(segment.status).toBe('parsed');
-        expect(segment.arguments).toEqual({
-            path: '/src/main.js',
-            content: 'console.log("hello");'
-        });
-    });
-
-    it('should parse a tool call with no arguments and an XML comment', () => {
-        const signatureBuffer = '<tool';
-        strategy.startSegment(context, signatureBuffer);
-        
-        const contentStream = ` name="sqlite_list_tables">\n    <!-- This tool takes no arguments -->\n</tool>`;
-
-        for (const char of contentStream) {
-            strategy.processChar(char, context);
-        }
-        
-        strategy.finalize(context);
+    it('should parse a tool call with no arguments', () => {
+        const stream = `<tool name="list_files"><arguments></arguments></tool>`;
+        runStream(stream);
 
         expect(strategy.isComplete()).toBe(true);
-        expect(segments.length).toBe(1);
-
         const segment = segments[0] as ToolCallSegment;
-        expect(segment.type).toBe('tool_call');
-        expect(segment.toolName).toBe('sqlite_list_tables');
+        expect(segment.toolName).toBe('list_files');
         expect(segment.arguments).toEqual({});
         expect(segment.status).toBe('parsed');
-        expect(segment.invocationId).toBe('call_mock_sqlite_list_tables_{}_0');
+        expect(segment.invocationId).toBe('call_mock_list_files_{}_0');
     });
 
-    it('should stream argument values character by character', () => {
-        const signatureBuffer = '<tool';
-        strategy.startSegment(context, signatureBuffer);
-        
-        // Stream up to the start of an argument value
-        const preContentStream = ` name="echo"><arguments><arg name="text">`;
-        for (const char of preContentStream) {
-            strategy.processChar(char, context);
-        }
-    
-        const segment = segments[0] as ToolCallSegment;
-        expect(segment.arguments['text']).toBeDefined();
-        expect(segment.arguments['text']).toBe('');
-    
-        // Stream first character of value
-        strategy.processChar('H', context);
-        expect(segment.arguments['text']).toBe('H');
-    
-        // Stream second character
-        strategy.processChar('i', context);
-        expect(segment.arguments['text']).toBe('Hi');
-    
-        // Stream the rest
-        const postContentStream = `</arg></arguments></tool>`;
-        for (const char of postContentStream) {
-            strategy.processChar(char, context);
-        }
-        strategy.finalize(context);
-    
-        expect(segment.status).toBe('parsed');
-        expect(segment.arguments).toEqual({ text: 'Hi' });
-    });
+    it('should correctly decode XML entities in argument values', () => {
+        const stream = `<tool name="test"><arguments><arg name="code">1 &lt; 2 &amp;&amp; 3 &gt; 1</arg><arg name="quotes">&quot;Hello&quot; &apos;World&apos;</arg></arguments></tool>`;
+        runStream(stream);
 
-    // --- Edge Cases ---
-    it('should handle arguments containing XML-like syntax', () => {
-        const signatureBuffer = '<tool';
-        strategy.startSegment(context, signatureBuffer);
-
-        const contentStream = ` name="comment_code"><arguments><arg name="comment"><!-- <p>This is an HTML comment</p> --></arg></arguments></tool>`;
-        for (const char of contentStream) {
-            strategy.processChar(char, context);
-        }
-        
-        strategy.finalize(context);
-
-        expect(strategy.isComplete()).toBe(true);
         const segment = segments[0] as ToolCallSegment;
         expect(segment.arguments).toEqual({
-            comment: '<!-- <p>This is an HTML comment</p> -->'
+            code: '1 < 2 && 3 > 1',
+            quotes: '"Hello" \'World\''
         });
     });
 
-    it('should not be complete if stream ends prematurely', () => {
-        const signatureBuffer = '<tool';
-        strategy.startSegment(context, signatureBuffer);
+    it('should handle arguments containing XML-like syntax as a string', () => {
+        const stream = `<tool name="comment_code"><arguments><arg name="comment"><!-- <p>This is a comment</p> --></arg></arguments></tool>`;
+        runStream(stream);
 
-        const contentStream = ` name="incomplete_tool"><arguments><arg name="path">/test.txt</arg>`; // Missing closing tags
-        for (const char of contentStream) {
-            strategy.processChar(char, context);
-        }
+        const segment = segments[0] as ToolCallSegment;
+        expect(segment.arguments).toEqual({
+            comment: '<!-- <p>This is a comment</p> -->'
+        });
+    });
+
+    it('should not be complete if stream ends prematurely and should revert to text', () => {
+        const stream = `<tool name="incomplete_tool"><arguments><arg name="path">/test.txt</arg>`;
+        runStream(stream);
 
         expect(strategy.isComplete()).toBe(false);
-        const segment = segments[0] as ToolCallSegment;
-        expect(segment.status).toBe('parsing');
+        expect(segments.length).toBe(1);
+        expect(segments[0].type).toBe('text');
+        // The reverted text should contain the full attempted parse
+        expect((segments[0].content as string)).toContain('<tool name="incomplete_tool">');
+    });
+    
+    describe('Nested and List Structures', () => {
+        it('should parse nested objects (arg inside arg)', () => {
+            const stream = `
+                <tool name="NestedTool">
+                    <arguments>
+                        <arg name="config">
+                            <arg name="setting">true</arg>
+                            <arg name="level">5</arg>
+                        </arg>
+                    </arguments>
+                </tool>`;
+            runStream(stream);
+
+            const segment = segments[0] as ToolCallSegment;
+            expect(segment.toolName).toBe('NestedTool');
+            expect(segment.arguments).toEqual({
+                config: {
+                    setting: 'true',
+                    level: '5'
+                }
+            });
+        });
+
+        it('should parse a list of strings using <item> tags', () => {
+            const stream = `
+                <tool name="ListTool">
+                    <arguments>
+                        <arg name="items">
+                            <item>apple</item>
+                            <item>banana</item>
+                        </arg>
+                    </arguments>
+                </tool>`;
+            runStream(stream);
+
+            const segment = segments[0] as ToolCallSegment;
+            expect(segment.toolName).toBe('ListTool');
+            expect(segment.arguments).toEqual({
+                items: ['apple', 'banana']
+            });
+        });
+
+        it('should parse a list of objects', () => {
+            const stream = `
+                <tool name="ListOfObjectsTool">
+                    <arguments>
+                        <arg name="tasks">
+                            <item>
+                                <arg name="task_name">implement_logic</arg>
+                                <arg name="status">done</arg>
+                            </item>
+                             <item>
+                                <arg name="task_name">write_docs</arg>
+                                <arg name="status">pending</arg>
+                            </item>
+                        </arg>
+                    </arguments>
+                </tool>`;
+            runStream(stream);
+
+            const segment = segments[0] as ToolCallSegment;
+            expect(segment.toolName).toBe('ListOfObjectsTool');
+            expect(segment.arguments).toEqual({
+                tasks: [
+                    { task_name: 'implement_logic', status: 'done' },
+                    { task_name: 'write_docs', status: 'pending' }
+                ]
+            });
+        });
+        
+        it('should correctly handle a mix of nested structures', () => {
+            const stream = `
+                <tool name="ComplexTool">
+                    <arguments>
+                        <arg name="name">Project X</arg>
+                        <arg name="config">
+                            <arg name="retries">3</arg>
+                            <arg name="flags">
+                                <item>A</item>
+                                <item>B</item>
+                            </arg>
+                        </arg>
+                        <arg name="users">
+                           <item>
+                                <arg name="name">Alice</arg>
+                                <arg name="id">101</arg>
+                           </item>
+                        </arg>
+                    </arguments>
+                </tool>`;
+            runStream(stream);
+
+            const segment = segments[0] as ToolCallSegment;
+            expect(segment.toolName).toBe('ComplexTool');
+            expect(segment.arguments).toEqual({
+                name: 'Project X',
+                config: {
+                    retries: '3',
+                    flags: ['A', 'B']
+                },
+                users: [
+                    { name: 'Alice', id: '101' }
+                ]
+            });
+        });
     });
 });

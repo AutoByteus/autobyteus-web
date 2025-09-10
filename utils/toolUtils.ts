@@ -39,6 +39,9 @@ export function generateBaseInvocationId(toolName: string, args: Record<string, 
   // 2. Combine with tool name.
   const hashString = `${toolName}:${canonicalArgs}`;
 
+  // --- ADDED LOGGING ---
+  console.log(`[Frontend toolUtils] Generating tool invocation ID from hash_string: '${hashString}'`);
+
   // 3. Generate SHA-256 hash.
   const hash = sha256(hashString).toString();
 

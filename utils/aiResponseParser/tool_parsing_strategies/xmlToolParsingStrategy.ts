@@ -9,28 +9,31 @@ const entityMap: { [key: string]: string } = {
   '&#39;': "'",
   '&apos;': "'"
 };
-
-function decodeEntity(entity: string): string {
-  return entityMap[entity] || entity;
+const entityRegex = /&[a-zA-Z0-9#]+;/g;
+function decodeEntities(text: string): string {
+  return text.replace(entityRegex, (entity) => entityMap[entity] || entity);
 }
 
-const knownEntityNames = ['amp', 'lt', 'gt', 'quot', 'apos', '#'];
+type State = 'OUTSIDE_TAG' | 'INSIDE_TAG' | 'INSIDE_COMMENT';
+type Container = Record<string, any> | any[];
+type StackFrame = {
+    container: Container;
+    // The following properties link this frame to its parent in the data structure
+    parentContainer: Container | null;
+    keyInParent: string | number | null;
+};
+
 
 export class XmlToolParsingStrategy implements ToolParsingStrategy {
     readonly signature = '<tool';
-    private toolName: string = '';
-    
-    private internalState: 'parsing_opening_tag' | 'in_arguments' | 'in_arg_value' | 'scanning_arg_close_tag' | 'scanning_arg_entity' | 'invalid' = 'parsing_opening_tag';
-    private currentArgName: string = '';
-    private isDone: boolean = false;
-    
-    // Buffer for the entire tool call attempt
-    private rawBuffer: string = ''; 
-    private openingTagBuffer: string = '';
+    private isDone = false;
 
-    private readonly argClosingTag = '</arg>';
-    private potentialCloseTagBuffer = '';
-    private entityBuffer: string = '';
+    // State machine properties
+    private state: State = 'OUTSIDE_TAG';
+    private stack: StackFrame[] = [];
+    private tagBuffer = '';
+    private contentBuffer = '';
+    private fullBuffer = ''; // For reverting on failure
 
     checkSignature(buffer: string): SignatureMatch {
         if (this.signature.startsWith(buffer)) {
@@ -40,144 +43,187 @@ export class XmlToolParsingStrategy implements ToolParsingStrategy {
     }
 
     startSegment(context: ParserContext, signatureBuffer: string): void {
-        // Reset all state for a new tool call.
-        this.toolName = '';
-        this.internalState = 'parsing_opening_tag';
-        this.currentArgName = '';
+        console.log('[XmlParser] Strategy starting.');
         this.isDone = false;
-        this.potentialCloseTagBuffer = '';
-        this.entityBuffer = '';
+        this.state = 'INSIDE_TAG'; // We start having seen '<tool'
+        this.stack = [];
+        this.tagBuffer = signatureBuffer;
+        this.contentBuffer = '';
+        this.fullBuffer = signatureBuffer;
+
+        context.startXmlToolCallSegment('');
         
-        // Initialize buffers for the current parsing attempt.
-        this.rawBuffer = signatureBuffer; 
-        this.openingTagBuffer = signatureBuffer;
-        
-        context.startXmlToolCallSegment(''); // Create a temporary segment
+        if (context.currentSegment?.type === 'tool_call') {
+            const rootContainer = context.currentSegment.arguments;
+            this.stack.push({ container: rootContainer, parentContainer: null, keyInParent: null });
+        }
+    }
+    
+    private _isStructural(tag: string): boolean {
+        const tagNameMatch = tag.match(/<\/?([^\s>]+)/);
+        const tagName = tagNameMatch ? tagNameMatch[1] : '';
+        const structuralTags = ['tool', 'arguments', 'arg', 'item'];
+        return structuralTags.includes(tagName);
     }
 
     processChar(char: string, context: ParserContext): void {
-        this.rawBuffer += char;
+        this.fullBuffer += char;
 
-        if (this.internalState === 'invalid') {
-            return;
-        }
-
-        if (this.internalState === 'parsing_opening_tag') {
-            this.openingTagBuffer += char;
-            if (char === '>') {
-                this.validateOpeningTag(context);
-            }
-            return;
-        }
-
-        // State for reading argument content
-        if (this.internalState === 'in_arg_value') {
-            if (char === '<') {
-                this.internalState = 'scanning_arg_close_tag';
-                this.potentialCloseTagBuffer = '<';
-            } else if (char === '&') {
-                this.internalState = 'scanning_arg_entity';
-                this.entityBuffer = '&';
-            } else {
-                context.appendToCurrentToolArgument(this.currentArgName, char);
-            }
-            return;
-        }
-
-        // State for scanning a potential closing </arg> tag
-        if (this.internalState === 'scanning_arg_close_tag') {
-            this.potentialCloseTagBuffer += char;
-            
-            if (this.argClosingTag.startsWith(this.potentialCloseTagBuffer)) {
-                if (this.potentialCloseTagBuffer === this.argClosingTag) {
-                    this.currentArgName = '';
-                    this.potentialCloseTagBuffer = '';
-                    this.internalState = 'in_arguments';
+        if (this.state === 'INSIDE_TAG') {
+            this.tagBuffer += char;
+            if (this.tagBuffer === '<!--') {
+                this.contentBuffer += this.tagBuffer;
+                this.tagBuffer = '';
+                this.state = 'INSIDE_COMMENT';
+            } else if (char === '>') {
+                if (this._isStructural(this.tagBuffer)) {
+                    // This is a structural tag. Let _processTag handle committing content.
+                    this._processTag(this.tagBuffer);
+                } else {
+                    // This is not a structural tag, so treat it as part of the content.
+                    this.contentBuffer += this.tagBuffer;
                 }
+                this.tagBuffer = '';
+                this.state = 'OUTSIDE_TAG';
+            }
+        } else if (this.state === 'OUTSIDE_TAG') {
+            if (char === '<') {
+                // Potential start of a new tag. Do NOT commit content yet.
+                this.tagBuffer = '<';
+                this.state = 'INSIDE_TAG';
             } else {
-                context.appendToCurrentToolArgument(this.currentArgName, this.potentialCloseTagBuffer);
-                this.potentialCloseTagBuffer = '';
-                this.internalState = 'in_arg_value';
+                this.contentBuffer += char;
             }
-            return;
-        }
-        
-        // State for scanning an XML entity
-        if (this.internalState === 'scanning_arg_entity') {
-            this.entityBuffer += char;
-
-            if (char === ';') {
-                const decoded = decodeEntity(this.entityBuffer);
-                context.appendToCurrentToolArgument(this.currentArgName, decoded);
-                this.entityBuffer = '';
-                this.internalState = 'in_arg_value';
-                return;
-            }
-
-            const entityName = this.entityBuffer.substring(1);
-            const isPotential = knownEntityNames.some(p => p.startsWith(entityName));
-
-            if (!isPotential || this.entityBuffer.length > 7) {
-                context.appendToCurrentToolArgument(this.currentArgName, this.entityBuffer);
-                this.entityBuffer = '';
-                this.internalState = 'in_arg_value';
-            }
-            return;
-        }
-        
-        // This part handles the main XML structure tags
-        const lowerCaseRawBuffer = this.rawBuffer.toLowerCase();
-
-        if (this.internalState === 'in_arguments') {
-            // FIX: The regex now requires a closing '>' on the <arg> tag.
-            const argMatch = this.rawBuffer.match(/<arg\s+name="([^"]+)">/);
-            if (argMatch) {
-                this.currentArgName = argMatch[1];
-                context.appendToCurrentToolArgument(this.currentArgName, '');
-                this.internalState = 'in_arg_value';
-                this.rawBuffer = ''; // Clear buffer after processing tag
-            } else if (lowerCaseRawBuffer.endsWith('</tool>')) {
-                this.isDone = true;
-            } else if (char === '<') {
-                this.rawBuffer = '<'; // Start buffering for next tag
+        } else if (this.state === 'INSIDE_COMMENT') {
+            this.contentBuffer += char;
+            if (this.contentBuffer.endsWith('-->')) {
+                this.state = 'OUTSIDE_TAG';
             }
         }
     }
 
-    private validateOpeningTag(context: ParserContext): void {
-        const nameMatch = this.openingTagBuffer.match(/name\s*=\s*["']([^"']+)["']/);
-        if (nameMatch && nameMatch[1]) {
-            this.toolName = nameMatch[1];
-            if (context.currentSegment?.type === 'tool_call') {
-                context.currentSegment.toolName = this.toolName;
+    private _processTag(tag: string) {
+        const isClosing = tag.startsWith('</');
+        const tagNameMatch = tag.match(/<\/?([^\s>]+)/);
+        const tagName = tagNameMatch ? tagNameMatch[1] : '';
+
+        if (isClosing) {
+            // FIX: Commit any buffered content BEFORE processing the closing tag.
+            // This ensures content is assigned to the correct parent.
+            this._commitContent();
+            
+            const closingTagName = tag.substring(2, tag.length - 1).trim();
+            console.log(`[XmlParser] Processing Closing Tag: </${closingTagName}>. Stack depth: ${this.stack.length}`);
+            if (closingTagName === 'tool') {
+                this.isDone = true;
+                return;
             }
-            this.internalState = 'in_arguments';
-            this.rawBuffer = ''; // Reset buffer to look for next tags
-        } else {
-            // Invalid opening tag
-            this.internalState = 'invalid';
-            this.isDone = true;
+            if (this.stack.length > 1) { // Don't pop the root
+                const poppedFrame = this.stack.pop();
+                console.log('[XmlParser] Popped frame from stack.');
+
+                if (poppedFrame && poppedFrame.parentContainer && poppedFrame.keyInParent !== null) {
+                    const value = poppedFrame.parentContainer[poppedFrame.keyInParent as keyof typeof poppedFrame.parentContainer];
+                    if (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length === 0) {
+                        (poppedFrame.parentContainer as any)[poppedFrame.keyInParent] = '';
+                        console.log(`[XmlParser] Collapsed empty object for key "${poppedFrame.keyInParent}" to empty string.`);
+                    }
+                }
+            }
+        } else { // Opening tag
+            console.log(`[XmlParser] Processing Opening Tag: <${tagName}>. Full tag: ${tag.trim()}`);
+            const currentFrame = this.stack[this.stack.length - 1];
+            if (!currentFrame || typeof currentFrame.container !== 'object') {
+                return;
+            }
+
+            if (tagName === 'arg') {
+                const nameMatch = tag.match(/name="([^"]+)"/);
+                if (nameMatch && !Array.isArray(currentFrame.container)) {
+                    const argName = nameMatch[1];
+                    const newContainer = {}; // Placeholder object
+                    currentFrame.container[argName] = newContainer;
+                    this.stack.push({ container: newContainer, parentContainer: currentFrame.container, keyInParent: argName });
+                    console.log(`[XmlParser] Pushed new object for <arg name="${argName}">. Stack depth: ${this.stack.length}`);
+                }
+            } else if (tagName === 'item') {
+                if (!Array.isArray(currentFrame.container)) {
+                    if (currentFrame.parentContainer && currentFrame.keyInParent !== null) {
+                         const newArray: any[] = [];
+                         (currentFrame.parentContainer as any)[currentFrame.keyInParent] = newArray;
+                         currentFrame.container = newArray;
+                         console.log(`[XmlParser] Converted placeholder object for key "${currentFrame.keyInParent}" to a list.`);
+                    } else {
+                        return;
+                    }
+                }
+                const newItemObject = {};
+                currentFrame.container.push(newItemObject);
+                this.stack.push({ container: newItemObject, parentContainer: currentFrame.container, keyInParent: currentFrame.container.length - 1 });
+                console.log(`[XmlParser] Pushed new item to list. Stack depth: ${this.stack.length}`);
+            }
+        }
+    }
+    
+    private _commitContent() {
+        // If the buffer only contains whitespace, ignore it. This handles pretty-printing.
+        if (this.contentBuffer.trim().length === 0) {
+            this.contentBuffer = '';
+            return;
+        }
+
+        const contentToCommit = this.contentBuffer;
+        this.contentBuffer = ''; // Always clear the buffer
+        
+        const decodedContent = decodeEntities(contentToCommit);
+        
+        const currentFrame = this.stack[this.stack.length - 1];
+        console.log(`[XmlParser] Committing content: "${decodedContent.substring(0, 100).replace(/\n/g, '\\n')}..." to parent key:`, currentFrame?.keyInParent);
+        
+        if (currentFrame && currentFrame.parentContainer && currentFrame.keyInParent !== null) {
+            const parentContainer = currentFrame.parentContainer as any;
+            const key = currentFrame.keyInParent;
+            const existingValue = parentContainer[key];
+
+            if (typeof existingValue === 'object' && Object.keys(existingValue).length === 0) {
+                // This is the first piece of content, replacing the placeholder object.
+                parentContainer[key] = decodedContent;
+            } else if (typeof existingValue === 'string') {
+                // This is subsequent content, append it.
+                parentContainer[key] += decodedContent;
+            }
         }
     }
     
     finalize(context: ParserContext): void {
+        console.log('[XmlParser] Finalizing parse.');
+        this._commitContent();
+
         const parsingSegment = context.segments.find(
             s => s.type === 'tool_call' && s.status === 'parsing'
         );
-
         if (!parsingSegment) return;
 
-        const parsingSegmentIndex = context.segments.indexOf(parsingSegment);
-
-        if (this.internalState !== 'invalid' && this.isDone) {
-             // Successfully parsed a valid tool call.
-             // The segment already has its name and arguments populated.
-             // Now we delegate finalization to the context.
-             context.endCurrentToolSegment();
+        const nameMatch = this.fullBuffer.match(/<tool\s+name="([^"]+)"/);
+        if (nameMatch) {
+            parsingSegment.toolName = nameMatch[1];
         } else {
-            // Incomplete or invalid tool call, remove the temporary segment and revert to text.
-            context.segments.splice(parsingSegmentIndex, 1);
-            context.appendTextSegment(this.rawBuffer);
+            this.isDone = false;
+        }
+
+        console.log(`[XmlParser] Final check: isDone = ${this.isDone}`);
+        console.log('[XmlParser] Final arguments object:', JSON.stringify(parsingSegment.arguments, null, 2));
+
+        if (this.isDone) {
+            context.endCurrentToolSegment();
+            console.log('[XmlParser] Finalization successful. Segment status set to "parsed".');
+        } else {
+            console.log('[XmlParser] Finalization failed. Reverting to text segment.');
+            const parsingSegmentIndex = context.segments.indexOf(parsingSegment);
+            if (parsingSegmentIndex !== -1) {
+                context.segments.splice(parsingSegmentIndex, 1);
+                context.appendTextSegment(this.fullBuffer);
+            }
         }
     }
 

@@ -10,7 +10,12 @@ import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
-    const argString = JSON.stringify(Object.keys(args).sort().reduce((acc, key) => ({...acc, [key]: args[key]}), {}));
+    // Sort keys before stringifying to ensure deterministic IDs for testing
+    const sortedArgs = Object.keys(args).sort().reduce((acc, key) => {
+      acc[key] = args[key];
+      return acc;
+    }, {} as Record<string, any>);
+    const argString = JSON.stringify(sortedArgs);
     return `call_mock_${toolName}_${argString}`;
   }
 }));

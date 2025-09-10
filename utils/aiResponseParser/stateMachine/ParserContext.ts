@@ -114,11 +114,9 @@ export class ParserContext {
   }
 
   startXmlToolCallSegment(toolName: string): void {
-      // Generate ID immediately with empty args, will be updated later.
-      const invocationId = this.agentRunState.generateUniqueInvocationId(toolName, {});
       const toolCallSegment: ToolCallSegment = {
           type: 'tool_call',
-          invocationId,
+          invocationId: 'temp-xml-id', // Use placeholder, will be updated in endCurrentToolSegment
           toolName,
           arguments: {},
           status: 'parsing',

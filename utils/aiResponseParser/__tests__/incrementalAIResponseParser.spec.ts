@@ -8,6 +8,7 @@ import { AgentRunState } from '~/types/agent/AgentRunState';
 import type { Conversation, AIMessage } from '~/types/conversation';
 import { AgentContext } from '~/types/agent/AgentContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
+import sha256 from 'crypto-js/sha256';
 
 // Helper for creating deterministic JSON strings for mock invocation IDs
 const deterministicJsonStringify = (value: any): string => {
@@ -29,11 +30,14 @@ const deterministicJsonStringify = (value: any): string => {
   return `{${pairs.join(',')}}`;
 };
 
-// MOCK: Use a simple, deterministic invocation ID for test stability.
+// MOCK: This mock now generates an ID with the 'mock_call_' prefix for test clarity.
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
     const canonicalArgs = deterministicJsonStringify(args);
-    return `mock_call_${toolName}_${canonicalArgs}`;
+    const hashString = `${toolName}:${canonicalArgs}`;
+    console.log(`[Frontend Test Mock] Generating tool invocation ID from hash_string: '${hashString}'`);
+    const hash = sha256(hashString).toString();
+    return `mock_call_${hash}`;
   }
 }));
 
@@ -71,7 +75,7 @@ const createMockAgentContext = (
   const agentConfig: AgentRunConfig = {
     launchProfileId: 'test-profile', workspaceId: null,
     llmModelIdentifier: llmModelIdentifier, autoExecuteTools: false, parseToolCalls: parseToolCalls,
-    useXmlToolFormat: false, // FIX: Added missing property
+    useXmlToolFormat: llmModelIdentifier === 'anthropic',
   };
 
   return new AgentContext(agentConfig, agentState);
@@ -111,6 +115,8 @@ describe('IncrementalAIResponseParser with Strategies', () => {
     parser.processChunks(chunks);
     parser.finalize();
 
+    const expectedHash = sha256(`file_writer:${deterministicJsonStringify({ path: '/test.txt', content: 'Hello' })}`).toString();
+
     expect(segments).toEqual([
       expect.objectContaining({
         type: 'tool_call',
@@ -120,9 +126,213 @@ describe('IncrementalAIResponseParser with Strategies', () => {
           content: 'Hello'
         },
         status: 'parsed',
-        invocationId: 'mock_call_file_writer_{"content":"Hello","path":"/test.txt"}_0'
+        invocationId: `mock_call_${expectedHash}_0`
       })
     ]);
+  });
+
+  it('should parse a complex, streamed XML tool call with nested lists and objects', () => {
+    const parser = createParser(LLMProvider.ANTHROPIC, true);
+    
+    const chunks = [
+      '<tool name="ComplexTool"><arguments><arg name="name">Pro',
+      'ject X</arg><arg name="config"><arg name="retries">3</arg><arg name="flags">',
+      '<item>A</item><item>B</item></arg></arg><arg name="users">',
+      '<item><arg name="name">Alice</arg><arg name="id">101</arg></item>',
+      '<item><arg name="name">Bob</arg><arg name="id">102</arg></item>',
+      '</arg></arguments></tool>'
+    ];
+    
+    parser.processChunks(chunks);
+    parser.finalize();
+    
+    const expectedArgs = {
+      name: 'Project X',
+      config: {
+        retries: '3',
+        flags: ['A', 'B']
+      },
+      users: [
+        { name: 'Alice', id: '101' },
+        { name: 'Bob', id: '102' }
+      ]
+    };
+    
+    const expectedHash = sha256(`ComplexTool:${deterministicJsonStringify(expectedArgs)}`).toString();
+
+    expect(segments).toEqual([
+      expect.objectContaining({
+        type: 'tool_call',
+        toolName: 'ComplexTool',
+        arguments: expectedArgs,
+        status: 'parsed',
+        invocationId: `mock_call_${expectedHash}_0`
+      })
+    ]);
+  });
+  
+  // NEW TEST CASE FOR THE PRODUCTION XML ISSUE
+  it('should correctly parse the production XML case and log the generated ID', () => {
+    const parser = createParser(LLMProvider.ANTHROPIC, true);
+    const xml = `<tool name="PublishTaskPlan"> <arguments> <arg name="plan"> <arg name="overall_goal">Develop a complete Snake game in Python from scratch</arg> <arg name="tasks"> <item> <arg name="task_name">implement_game_logic</arg> <arg name="assignee_name">Software Engineer</arg> <arg name="description">Implement the core game logic for Snake including snake movement, food generation, collision detection, and score tracking</arg> </item> <item> <arg name="task_name">code_review</arg> <arg name="assignee_name">Code Reviewer</arg> <arg name="description">Conduct a thorough code review of the implemented Snake game logic, checking for best practices, efficiency, and correctness</arg> <arg name="dependencies"> <item>implement_game_logic</item> </arg> </item> <item> <arg name="task_name">write_unit_tests</arg> <arg name="assignee_name">Test Writer</arg> <arg name="description">Write comprehensive unit tests for all game components including movement, collision detection, and scoring logic</arg> <arg name="dependencies"> <item>implement_game_logic</item> </arg> </item> <item> <arg name="task_name">run_tests</arg> <arg name="assignee_name">Tester</arg> <arg name="description">Execute all unit tests and perform manual testing of the Snake game to ensure it functions correctly and meets requirements</arg> <arg name="dependencies"> <item>code_review</item> <item>write_unit_tests</item> </arg> </item> </arg> </arg> </arguments></tool>`;
+
+    parser.processChunks([xml]);
+    parser.finalize();
+
+    expect(segments.length).toBe(1);
+    const segment = segments[0] as ToolCallSegment;
+    expect(segment.type).toBe('tool_call');
+    expect(segment.toolName).toBe('PublishTaskPlan');
+    expect(segment.arguments.plan.tasks.length).toBe(4);
+
+    // FIX: Log the entire segment object to ensure we see the final ID after all processing.
+    console.log('[Frontend Test] Final Segment for Production XML Case:', segment);
+    
+    expect(segment.invocationId).toContain('mock_call_');
+    expect(segment.invocationId.length).toBe('mock_call_'.length + 64 + '_0'.length); // Ensure it's a hash
+  });
+
+  it('should correctly parse a large code block with special XML characters as a single string argument', () => {
+    const parser = createParser(LLMProvider.ANTHROPIC, true);
+
+    // This code block is ported from the backend test suite and contains many special characters
+    // that could be misinterpreted as XML tags (e.g., <, >).
+    // FIX: These characters are now properly escaped as XML entities.
+    const codeContent = `import sys
+from unittest.mock import patch
+import pytest
+
+# Add project root to path for imports, e.g. 'sys.path.insert(0, '.')'
+# This ensures that modules like 'snake_game' can be found.
+
+# Assuming 'snake_game' with 'Snake' class exists.
+from snake_game import Snake
+
+@pytest.mark.parametrize("test_input,expected", [("3+5", 8), ("2*4", 8)])
+class TestComplexCode:
+    """A test suite to demonstrate complex syntax parsing inside an XML arg."""
+    def test_conditions_and_operators(self, test_input, expected):
+        """
+        Tests various conditions with special XML chars like &lt;, &gt;, &amp;, and "quotes".
+        The parser must treat this whole block as a single string.
+        """
+        snake = Snake()
+        game_over = False
+        
+        # Test for growth &amp; other conditions
+        if snake.score &gt; 10 and snake.length &lt; 20:
+            print(f"Snake size is &lt; 20. Score is &gt; 10. A 'good' state.")
+        
+        # Using bitwise AND operator
+        if (snake.score & 1) == 0:
+            # Score is even
+            pass
+            
+        # Modulo operator for wrapping
+        pos_x = (snake.head_x + 1) % 40
+        
+        if pos_x == 0:
+            game_over = True
+        
+        assert game_over is False # Check boolean identity
+
+        # This should not be interpreted as an XML tag: &lt;some_tag&gt;
+        fake_xml_string = "&lt;note&gt;This is not XML.&lt;/note&gt;"
+        assert game.game_over is True if __name__ == "__main__": pytest.main([__file__, "-v"])
+`;
+
+    const decodedCodeContent = `import sys
+from unittest.mock import patch
+import pytest
+
+# Add project root to path for imports, e.g. 'sys.path.insert(0, '.')'
+# This ensures that modules like 'snake_game' can be found.
+
+# Assuming 'snake_game' with 'Snake' class exists.
+from snake_game import Snake
+
+@pytest.mark.parametrize("test_input,expected", [("3+5", 8), ("2*4", 8)])
+class TestComplexCode:
+    """A test suite to demonstrate complex syntax parsing inside an XML arg."""
+    def test_conditions_and_operators(self, test_input, expected):
+        """
+        Tests various conditions with special XML chars like <, >, &, and "quotes".
+        The parser must treat this whole block as a single string.
+        """
+        snake = Snake()
+        game_over = False
+        
+        # Test for growth & other conditions
+        if snake.score > 10 and snake.length < 20:
+            print(f"Snake size is < 20. Score is > 10. A 'good' state.")
+        
+        # Using bitwise AND operator
+        if (snake.score & 1) == 0:
+            # Score is even
+            pass
+            
+        # Modulo operator for wrapping
+        pos_x = (snake.head_x + 1) % 40
+        
+        if pos_x == 0:
+            game_over = True
+        
+        assert game_over is False # Check boolean identity
+
+        # This should not be interpreted as an XML tag: <some_tag>
+        fake_xml_string = "<note>This is not XML.</note>"
+        assert game.game_over is True if __name__ == "__main__": pytest.main([__file__, "-v"])
+`;
+
+    const xml = `<tool name="FileWriter"><arguments><arg name="path">test.py</arg><arg name="content">${codeContent}</arg></arguments></tool>`;
+    
+    parser.processChunks([xml]);
+    parser.finalize();
+
+    expect(segments.length).toBe(1);
+    const segment = segments[0] as ToolCallSegment;
+    expect(segment.type).toBe('tool_call');
+    expect(segment.toolName).toBe('FileWriter');
+
+    // Crucial assertions: The arguments should be parsed correctly,
+    // and the 'content' field must be a single string identical to the original code block.
+    expect(Object.keys(segment.arguments)).toEqual(['path', 'content']);
+    expect(segment.arguments.path).toBe('test.py');
+    expect(typeof segment.arguments.content).toBe('string');
+    expect(segment.arguments.content).toBe(decodedCodeContent);
+    
+    // Also verify the invocation ID is generated correctly
+    const expectedArgs = { path: 'test.py', content: decodedCodeContent };
+    const expectedHash = sha256(`FileWriter:${deterministicJsonStringify(expectedArgs)}`).toString();
+    expect(segment.invocationId).toBe(`mock_call_${expectedHash}_0`);
+  });
+
+  // NEW TEST CASE FROM BACKEND SUITE
+  it('should correctly parse the second large code block from backend tests', () => {
+    const parser = createParser(LLMProvider.ANTHROPIC, true);
+
+    const codeContentWithEscapedChars = `"""Test that snake wraps around screen edges""" snake = Snake() # Set snake at edge snake.positions = [(0, 0)] snake.direction = (-1, 0) # Moving left from edge # Update - should wrap to right side snake.update() # Should be at right edge (GRID_WIDTH - 1, 0) head = snake.get_head_position() assert head[0] == 39 # GRID_WIDTH - 1 = 800/20 - 1 = 39 def test_food_positioning(): """Test food positioning logic""" food = Food() # Food position should be within grid bounds assert 0 &lt;= food.position[0] &lt; 40 # GRID_WIDTH = 800/20 = 40 assert 0 &lt;= food.position[1] &lt; 30 # GRID_HEIGHT = 600/20 = 30 def test_game_score_system(): """Test that game score system works correctly""" game = SnakeGame() # Initially no points assert game.snake.score == 0 # After eating food, score should increase by 10 game.snake.grow() assert game.snake.score == 10 game.snake.grow() assert game.snake.score == 20 def test_game_over_condition(): """Test that game over condition is detected correctly""" game = SnakeGame() # Initially not game over assert game.game_over is False # Force game over by causing collision with self game.snake.positions = [(5, 5), (6, 5), (7, 5)] game.snake.direction = (1, 0) # Moving right # This should set game_over to True game.update() assert game.game_over is True if __name__ == "__main__": pytest.main([__file__, "-v"])`;
+    const codeContent = `"""Test that snake wraps around screen edges""" snake = Snake() # Set snake at edge snake.positions = [(0, 0)] snake.direction = (-1, 0) # Moving left from edge # Update - should wrap to right side snake.update() # Should be at right edge (GRID_WIDTH - 1, 0) head = snake.get_head_position() assert head[0] == 39 # GRID_WIDTH - 1 = 800/20 - 1 = 39 def test_food_positioning(): """Test food positioning logic""" food = Food() # Food position should be within grid bounds assert 0 <= food.position[0] < 40 # GRID_WIDTH = 800/20 = 40 assert 0 <= food.position[1] < 30 # GRID_HEIGHT = 600/20 = 30 def test_game_score_system(): """Test that game score system works correctly""" game = SnakeGame() # Initially no points assert game.snake.score == 0 # After eating food, score should increase by 10 game.snake.grow() assert game.snake.score == 10 game.snake.grow() assert game.snake.score == 20 def test_game_over_condition(): """Test that game over condition is detected correctly""" game = SnakeGame() # Initially not game over assert game.game_over is False # Force game over by causing collision with self game.snake.positions = [(5, 5), (6, 5), (7, 5)] game.snake.direction = (1, 0) # Moving right # This should set game_over to True game.update() assert game.game_over is True if __name__ == "__main__": pytest.main([__file__, "-v"])`;
+
+    const xml = `<tool name="FileWriter"><arguments><arg name="path">test_snake_game.py</arg><arg name="content">${codeContentWithEscapedChars}</arg></arguments></tool>`;
+    
+    parser.processChunks([xml]);
+    parser.finalize();
+
+    expect(segments.length).toBe(1);
+    const segment = segments[0] as ToolCallSegment;
+    expect(segment.type).toBe('tool_call');
+    expect(segment.toolName).toBe('FileWriter');
+    expect(segment.arguments.path).toBe('test_snake_game.py');
+    expect(typeof segment.arguments.content).toBe('string');
+    expect(segment.arguments.content).toBe(codeContent);
+
+    // Log the generated ID for comparison with the backend
+    console.log(`[Frontend Test] Generated ID for second large code block: ${segment.invocationId}`);
+
+    const expectedArgs = { path: 'test_snake_game.py', content: codeContent };
+    const expectedHash = sha256(`FileWriter:${deterministicJsonStringify(expectedArgs)}`).toString();
+    expect(segment.invocationId).toBe(`mock_call_${expectedHash}_0`);
   });
 
   it('should parse a complete OpenAI JSON tool_call segment using the OpenAiToolParsingStrategy', () => {
@@ -137,6 +347,7 @@ describe('IncrementalAIResponseParser with Strategies', () => {
     ];
     parser.processChunks(chunks);
     parser.finalize();
+    const expectedHash = sha256(`file_reader:${deterministicJsonStringify({ path: '/test.txt' })}`).toString();
 
     expect(segments).toEqual([
       expect.objectContaining({
@@ -146,7 +357,7 @@ describe('IncrementalAIResponseParser with Strategies', () => {
           path: '/test.txt'
         },
         status: 'parsed',
-        invocationId: 'mock_call_file_reader_{"path":"/test.txt"}_0'
+        invocationId: `mock_call_${expectedHash}_0`
       })
     ]);
   });
@@ -165,6 +376,8 @@ describe('IncrementalAIResponseParser with Strategies', () => {
     parser.processChunks(chunks);
     parser.finalize();
 
+    const expectedHash = sha256(`ListAvailableTools:${deterministicJsonStringify({})}`).toString();
+    
     expect(segments).toEqual([
         { type: 'text', content: 'Some text first ' },
         expect.objectContaining({
@@ -172,7 +385,7 @@ describe('IncrementalAIResponseParser with Strategies', () => {
           toolName: 'ListAvailableTools',
           arguments: {},
           status: 'parsed',
-          invocationId: 'mock_call_ListAvailableTools_{}_0'
+          invocationId: `mock_call_${expectedHash}_0`
         }),
         { type: 'text', content: ' some text after.' }
     ]);
@@ -189,18 +402,21 @@ describe('IncrementalAIResponseParser with Strategies', () => {
     parser.processChunks(chunks);
     parser.finalize();
 
+    const hash1 = sha256(`tool_one:${deterministicJsonStringify({ p: 1 })}`).toString();
+    const hash2 = sha256(`tool_two:${deterministicJsonStringify({ q: 2 })}`).toString();
+
     expect(segments).toEqual([
         expect.objectContaining({
           type: 'tool_call',
           toolName: 'tool_one',
           arguments: { p: 1 },
-          invocationId: 'mock_call_tool_one_{"p":1}_0'
+          invocationId: `mock_call_${hash1}_0`
         }),
         expect.objectContaining({
           type: 'tool_call',
           toolName: 'tool_two',
           arguments: { q: 2 },
-          invocationId: 'mock_call_tool_two_{"q":2}_0'
+          invocationId: `mock_call_${hash2}_0`
         })
     ]);
   });
@@ -218,19 +434,19 @@ describe('IncrementalAIResponseParser with Strategies', () => {
     parser.processChunks(chunks);
     parser.finalize();
 
+    const expectedArgs = {
+      config: { type: 'special', retries: 3 },
+      data: [1, 2, 3]
+    };
+    const expectedHash = sha256(`complex_tool:${deterministicJsonStringify(expectedArgs)}`).toString();
+
     expect(segments).toEqual([
       expect.objectContaining({
         type: 'tool_call',
         toolName: 'complex_tool',
-        arguments: {
-          config: {
-            type: 'special',
-            retries: 3
-          },
-          data: [1, 2, 3]
-        },
+        arguments: expectedArgs,
         status: 'parsed',
-        invocationId: 'mock_call_complex_tool_{"config":{"retries":3,"type":"special"},"data":[1,2,3]}_0'
+        invocationId: `mock_call_${expectedHash}_0`
       })
     ]);
   });
@@ -255,20 +471,20 @@ describe('IncrementalAIResponseParser with Strategies', () => {
     ];
     parser.processChunks(chunks);
     parser.finalize();
+    
+    const expectedArgs = {
+        config: { type: 'direct', retries: 5 },
+        data: ["a", "b"]
+    };
+    const expectedHash = sha256(`direct_complex_tool:${deterministicJsonStringify(expectedArgs)}`).toString();
 
     expect(segments).toEqual([
       expect.objectContaining({
         type: 'tool_call',
         toolName: 'direct_complex_tool',
-        arguments: {
-          config: {
-            type: 'direct',
-            retries: 5
-          },
-          data: ["a", "b"]
-        },
+        arguments: expectedArgs,
         status: 'parsed',
-        invocationId: 'mock_call_direct_complex_tool_{"config":{"retries":5,"type":"direct"},"data":["a","b"]}_0'
+        invocationId: `mock_call_${expectedHash}_0`
       })
     ]);
   });
@@ -294,13 +510,12 @@ describe('IncrementalAIResponseParser with Strategies', () => {
     parser.processChunks([chunk]);
     parser.finalize();
     
-    const generatedId = (segments[0] as ToolCallSegment).invocationId;
-    console.log(`[Frontend Test] Generated ID for Gemini Live Case: ${generatedId}`);
-
-    expect(segments[0].type).toBe('tool_call');
-    expect((segments[0] as ToolCallSegment).toolName).toBe(toolName);
-    // As requested, we are only logging the ID for manual comparison, not asserting its value.
-    expect(generatedId).toContain('mock_call_');
+    const segment = segments[0] as ToolCallSegment;
+    
+    expect(segment.type).toBe('tool_call');
+    expect(segment.toolName).toBe(toolName);
+    expect(segment.invocationId).toContain('mock_call_');
+    expect(segment.invocationId.length).toBe('mock_call_'.length + 64 + '_0'.length);
   });
 
   it('should handle mixed text and multiple tool calls with different strategies', () => {

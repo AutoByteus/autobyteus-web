@@ -10,7 +10,12 @@ import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
-    const argString = JSON.stringify(Object.keys(args).sort().reduce((acc, key) => ({...acc, [key]: args[key]}), {}));
+    // Sort keys before stringifying to ensure deterministic IDs for testing
+    const sortedArgs = Object.keys(args).sort().reduce((acc, key) => {
+      acc[key] = args[key];
+      return acc;
+    }, {} as Record<string, any>);
+    const argString = JSON.stringify(sortedArgs);
     return `call_mock_${toolName}_${argString}`;
   }
 }));
@@ -96,63 +101,58 @@ describe('DefaultJsonToolParsingStrategy', () => {
     });
 
     describe('Edge Cases', () => {
-        it('should return no invocations for incomplete JSON', () => {
+        it('should revert to a text segment for incomplete JSON', () => {
             const signatureBuffer = '{"tool": {';
             strategy.startSegment(context, signatureBuffer);
             strategy.finalize(context);
-            // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);
             expect(segments[0].type).toBe('text');
             expect((segments[0] as AIResponseTextSegment).content).toBe(signatureBuffer);
         });
 
-        it('should return no invocations if "function" is missing', () => {
+        it('should revert to a text segment if "function" is missing', () => {
             const stream = '{"tool": {"parameters": {}}}';
             strategy.startSegment(context, '{"tool":');
             for (const char of ' {"parameters": {}}}') {
                 strategy.processChar(char, context);
             }
             strategy.finalize(context);
-            // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);
             expect(segments[0].type).toBe('text');
             expect((segments[0] as AIResponseTextSegment).content).toBe(stream);
         });
 
-        it('should return no invocations if "function" is not a string', () => {
+        it('should revert to a text segment if "function" is not a string', () => {
             const stream = '{"tool": {"function": 123, "parameters": {}}}';
             strategy.startSegment(context, '{"tool":');
             for (const char of ' {"function": 123, "parameters": {}}}') {
                 strategy.processChar(char, context);
             }
             strategy.finalize(context);
-            // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);
             expect(segments[0].type).toBe('text');
             expect((segments[0] as AIResponseTextSegment).content).toBe(stream);
         });
 
-        it('should return no invocations if "parameters" is not an object', () => {
+        it('should revert to a text segment if "parameters" is not an object', () => {
             const stream = '{"tool": {"function": "test", "parameters": "not-an-object"}}';
             strategy.startSegment(context, '{"tool":');
             for (const char of ' {"function": "test", "parameters": "not-an-object"}}') {
                 strategy.processChar(char, context);
             }
             strategy.finalize(context);
-            // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);
             expect(segments[0].type).toBe('text');
             expect((segments[0] as AIResponseTextSegment).content).toBe(stream);
         });
 
-        it('should return no invocations if "tool" is not an object', () => {
+        it('should revert to a text segment if "tool" is not an object', () => {
             const stream = '{"tool": "invalid"}';
             strategy.startSegment(context, '{"tool":');
             for (const char of ' "invalid"}') {
                 strategy.processChar(char, context);
             }
             strategy.finalize(context);
-            // FIX: Expect a text segment, not an empty array
             expect(segments.length).toBe(1);
             expect(segments[0].type).toBe('text');
             expect((segments[0] as AIResponseTextSegment).content).toBe(stream);

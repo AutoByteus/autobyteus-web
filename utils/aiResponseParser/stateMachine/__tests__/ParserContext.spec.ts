@@ -8,15 +8,29 @@ import type { Conversation, AIMessage } from '~/types/conversation';
 import { AgentContext } from '~/types/agent/AgentContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 
+// Helper for creating deterministic JSON strings, same as in incrementalAIResponseParser.spec.ts
+const deterministicJsonStringify = (value: any): string => {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(deterministicJsonStringify).join(',')}]`;
+  }
+  const keys = Object.keys(value).sort();
+  const pairs = keys.map(key => {
+    const k = JSON.stringify(key);
+    const v = deterministicJsonStringify(value[key]);
+    return `${k}:${v}`;
+  });
+  return `{${pairs.join(',')}}`;
+};
+
+
 // Mock the base ID generator to make tests predictable
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: (toolName: string, args: Record<string, any>): string => {
-    // FIX: Sort keys before stringifying to ensure deterministic IDs
-    const sortedArgs = Object.keys(args).sort().reduce((acc, key) => {
-      acc[key] = args[key];
-      return acc;
-    }, {} as Record<string, any>);
-    const argString = JSON.stringify(sortedArgs);
+    // FIX: Use a fully recursive, whitespace-free stringify to ensure deterministic IDs
+    const argString = deterministicJsonStringify(args);
     return `call_base_${toolName}_${argString}`;
   }
 }));
@@ -32,7 +46,7 @@ const createMockAgentContext = (segments: AIResponseSegment[]): AgentContext => 
   const lastAIMessage: AIMessage = { type: 'ai', text: '', timestamp: new Date(), chunks: [], segments, isComplete: false, parserInstance: null as any };
   conversation.messages.push(lastAIMessage);
   const agentState = new AgentRunState('test-conv-id', conversation);
-  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelIdentifier: 'test-model', autoExecuteTools: false, parseToolCalls: true };
+  const agentConfig: AgentRunConfig = { launchProfileId: '', workspaceId: null, llmModelIdentifier: 'test-model', autoExecuteTools: false, parseToolCalls: true, useXmlToolFormat: false };
   return new AgentContext(agentConfig, agentState);
 };
 
@@ -92,8 +106,8 @@ describe('ParserContext', () => {
       expect(toolSegment.type).toBe('tool_call');
       expect(toolSegment.toolName).toBe('test_tool');
       expect(toolSegment.status).toBe('parsing');
-      // Initial ID is based on empty args
-      expect(toolSegment.invocationId).toBe('call_base_test_tool_{}_0');
+      // Initial ID is now a placeholder
+      expect(toolSegment.invocationId).toBe('temp-xml-id');
 
       context.updateCurrentToolArguments({ param: 'value' });
       toolSegment = segments[0] as ToolCallSegment;
@@ -102,8 +116,8 @@ describe('ParserContext', () => {
       context.endCurrentToolSegment();
       toolSegment = segments[0] as ToolCallSegment;
       expect(toolSegment.status).toBe('parsed');
-      // ID is regenerated with final args
-      expect(toolSegment.invocationId).toBe('call_base_test_tool_{"param":"value"}_1');
+      // ID is generated for the first time with final args, so suffix is _0
+      expect(toolSegment.invocationId).toBe('call_base_test_tool_{"param":"value"}_0');
     });
   });
 
