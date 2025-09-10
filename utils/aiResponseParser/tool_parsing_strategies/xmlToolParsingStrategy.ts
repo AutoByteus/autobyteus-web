@@ -88,7 +88,9 @@ export class XmlToolParsingStrategy implements ToolParsingStrategy {
             }
         } else if (this.state === 'OUTSIDE_TAG') {
             if (char === '<') {
-                // Potential start of a new tag. Do NOT commit content yet.
+                // FIX: Commit any content (like whitespace) before starting a new tag.
+                // This ensures whitespace-only nodes between tags are discarded correctly.
+                this._commitContent();
                 this.tagBuffer = '<';
                 this.state = 'INSIDE_TAG';
             } else {
@@ -108,7 +110,7 @@ export class XmlToolParsingStrategy implements ToolParsingStrategy {
         const tagName = tagNameMatch ? tagNameMatch[1] : '';
 
         if (isClosing) {
-            // FIX: Commit any buffered content BEFORE processing the closing tag.
+            // Commit any buffered content BEFORE processing the closing tag.
             // This ensures content is assigned to the correct parent.
             this._commitContent();
             
