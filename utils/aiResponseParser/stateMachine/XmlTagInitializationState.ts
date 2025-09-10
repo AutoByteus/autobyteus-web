@@ -1,5 +1,6 @@
 import { BaseState, ParserStateType } from './State';
 import { FileParsingState } from './FileParsingState';
+import { IframeParsingState } from './IframeParsingState';
 import { ToolParsingState } from './ToolParsingState';
 import { TextState } from './TextState';
 import { ParserContext } from './ParserContext';
@@ -9,6 +10,7 @@ export class XmlTagInitializationState extends BaseState {
   stateType = ParserStateType.XML_TAG_INITIALIZATION_STATE;
   private readonly possibleFile = '<file';
   private readonly possibleTool = '<tool';
+  private readonly possibleDoctype = '<!doctype html>'; // Case-insensitive check target
   private tagBuffer: string = '';
 
   constructor(context: ParserContext) {
@@ -26,31 +28,36 @@ export class XmlTagInitializationState extends BaseState {
       this.context.advance();
 
       const { strategy } = this.context;
+      const lowerCaseBuffer = this.tagBuffer.toLowerCase();
       
-      const couldBeFile = this.possibleFile.startsWith(this.tagBuffer);
-      const couldBeTool = (strategy instanceof XmlToolParsingStrategy) && this.possibleTool.startsWith(this.tagBuffer);
+      const couldBeFile = this.possibleFile.startsWith(lowerCaseBuffer);
+      const couldBeTool = (strategy instanceof XmlToolParsingStrategy) && this.possibleTool.startsWith(lowerCaseBuffer);
+      const couldBeDoctype = this.possibleDoctype.startsWith(lowerCaseBuffer);
 
-      if (this.tagBuffer === '<file') {
+      if (lowerCaseBuffer === '<file') {
         this.context.transitionTo(new FileParsingState(this.context));
         return;
       }
       
-      if (this.tagBuffer === '<tool' && strategy instanceof XmlToolParsingStrategy) {
+      // Check for complete DOCTYPE match
+      if (lowerCaseBuffer === this.possibleDoctype) {
+        this.context.transitionTo(new IframeParsingState(this.context, this.tagBuffer));
+        return;
+      }
+      
+      if (lowerCaseBuffer === '<tool' && strategy instanceof XmlToolParsingStrategy) {
         if (this.context.parseToolCalls) {
-          // We have a match. Rewind the buffer so the ToolParsingState can
-          // consume the full signature from the start.
           this.context.setPosition(this.context.getPosition() - this.tagBuffer.length);
           this.context.transitionTo(new ToolParsingState(this.context, this.tagBuffer));
         } else {
-          // Parsing is disabled, so treat this as text and revert.
           this.context.appendTextSegment(this.tagBuffer);
           this.context.transitionTo(new TextState(this.context));
         }
         return;
       }
 
-      if (!couldBeFile && !couldBeTool) {
-        // Not a recognized tag. Revert to text.
+      if (!couldBeFile && !couldBeTool && !couldBeDoctype) {
+        // Not a recognized tag or declaration. Revert to text.
         this.context.appendTextSegment(this.tagBuffer);
         this.context.transitionTo(new TextState(this.context));
         return;

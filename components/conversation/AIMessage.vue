@@ -37,6 +37,10 @@
           v-else-if="segment.type === 'media'"
           :segment="segment"
         />
+        <IframeSegment
+          v-else-if="segment.type === 'iframe'"
+          :segment="segment"
+        />
         <ErrorSegment
           v-else-if="segment.type === 'error'"
           :segment="segment"
@@ -55,6 +59,7 @@ import ToolCallSegment from '~/components/conversation/segments/ToolCallSegment.
 import FileWriterSegment from '~/components/conversation/segments/FileWriterSegment.vue';
 import SystemTaskNotificationSegment from '~/components/conversation/segments/SystemTaskNotificationSegment.vue';
 import MediaSegment from '~/components/conversation/segments/MediaSegment.vue';
+import IframeSegment from '~/components/conversation/segments/IframeSegment.vue';
 import ErrorSegment from '~/components/conversation/segments/ErrorSegment.vue';
 
 const props = defineProps<{

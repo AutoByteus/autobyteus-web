@@ -11,6 +11,7 @@ export const CreateAgentDefinition = gql`
       inputProcessorNames
       llmResponseProcessorNames
       systemPromptProcessorNames
+      toolExecutionResultProcessorNames
       phaseHookNames
       systemPromptCategory
       systemPromptName
@@ -34,6 +35,7 @@ export const UpdateAgentDefinition = gql`
       inputProcessorNames
       llmResponseProcessorNames
       systemPromptProcessorNames
+      toolExecutionResultProcessorNames
       phaseHookNames
       systemPromptCategory
       systemPromptName

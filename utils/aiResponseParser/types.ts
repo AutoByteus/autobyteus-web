@@ -52,6 +52,12 @@ export interface MediaSegment {
   urls: string[];
 }
 
+// RENAMED IframeHtmlSegment TYPE
+export interface IframeSegment {
+  type: 'iframe';
+  content: string;
+}
+
 export interface ErrorSegment{
   type: 'error';
   source: string;
@@ -66,6 +72,7 @@ export type AIResponseSegment =
   | ToolCallSegment
   | SystemTaskNotificationSegment
   | MediaSegment
+  | IframeSegment
   | ErrorSegment;
 
 export interface ParsedAIResponse {

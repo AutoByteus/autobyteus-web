@@ -1,5 +1,5 @@
 /* autobyteus-web/utils/aiResponseParser/stateMachine/ParserContext.ts */
-import type { AIResponseSegment, AIResponseTextSegment, FileSegment, ThinkSegment, ToolCallSegment } from '../types';
+import type { AIResponseSegment, AIResponseTextSegment, FileSegment, ThinkSegment, ToolCallSegment, IframeSegment } from '../types';
 import { getLanguage } from '../languageDetector';
 import type { State } from './State';
 import type { ToolParsingStrategy } from '../tool_parsing_strategies/base';
@@ -10,7 +10,7 @@ import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import { getToolParsingStrategy } from '../strategyProvider';
 import { StreamScanner } from './StreamScanner';
 
-type CurrentSegment = FileSegment | AIResponseTextSegment | ThinkSegment | ToolCallSegment | null;
+type CurrentSegment = FileSegment | AIResponseTextSegment | ThinkSegment | ToolCallSegment | IframeSegment | null;
 
 export class ParserContext {
   public segments: AIResponseSegment[];
@@ -86,6 +86,12 @@ export class ParserContext {
   }
 
   endFileSegment(): void {
+    this.currentSegment = null;
+  }
+
+  addIframeSegment(content: string): void {
+    const newHtmlSegment: IframeSegment = { type: 'iframe', content };
+    this.segments.push(newHtmlSegment);
     this.currentSegment = null;
   }
   

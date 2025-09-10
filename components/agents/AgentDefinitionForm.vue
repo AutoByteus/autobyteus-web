@@ -120,7 +120,8 @@ import GroupableTagInput from '~/components/agents/GroupableTagInput.vue';
 import type { GroupedSource, FlatSource } from '~/components/agents/GroupableTagInput.vue';
 
 
-const props = defineProps<{  initialData?: any;
+const props = defineProps<{
+  initialData?: any;
   isSubmitting: boolean;
   submitButtonText: string;
 }>();
@@ -158,6 +159,7 @@ const componentFields = computed(() => [
   { name: 'input_processor_names', camelCase: 'inputProcessorNames', label: 'Input Processors', placeholder: 'Add custom processors...', helpText: 'Select available input processors.' },
   { name: 'llm_response_processor_names', camelCase: 'llmResponseProcessorNames', label: 'LLM Response Processors', placeholder: 'Add custom processors...', helpText: 'Select available LLM response processors.' },
   { name: 'system_prompt_processor_names', camelCase: 'systemPromptProcessorNames', label: 'System Prompt Processors', placeholder: 'Add custom processors...', helpText: 'Select available system prompt processors.' },
+  { name: 'tool_execution_result_processor_names', camelCase: 'toolExecutionResultProcessorNames', label: 'Tool Result Processors', placeholder: 'Add custom processors...', helpText: 'Select available tool result processors.' },
   { name: 'phase_hook_names', camelCase: 'phaseHookNames', label: 'Phase Hooks', placeholder: 'Add custom hooks...', helpText: 'Select available phase hooks.' },
 ]);
 
@@ -190,6 +192,7 @@ const getComponentSource = (fieldName: string): GroupedSource | FlatSource => {
     'input_processor_names': 'inputProcessorNames',
     'llm_response_processor_names': 'llmResponseProcessorNames',
     'system_prompt_processor_names': 'systemPromptProcessorNames',
+    'tool_execution_result_processor_names': 'toolExecutionResultProcessorNames',
     'phase_hook_names': 'phaseHookNames',
   };
 
@@ -273,6 +276,7 @@ const handleSubmit = () => {
     inputProcessorNames: formData.input_processor_names,
     llmResponseProcessorNames: formData.llm_response_processor_names,
     systemPromptProcessorNames: formData.system_prompt_processor_names,
+    toolExecutionResultProcessorNames: formData.tool_execution_result_processor_names,
     phaseHookNames: formData.phase_hook_names,
   };
   emit('submit', submissionData);

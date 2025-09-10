@@ -6,6 +6,7 @@ export const GetAgentCustomizationOptions = gql`
     availableInputProcessorNames
     availableLlmResponseProcessorNames
     availableSystemPromptProcessorNames
+    availableToolExecutionResultProcessorNames
     availablePhaseHookNames
     availablePromptCategories {
       category

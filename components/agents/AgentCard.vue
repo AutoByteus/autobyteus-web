@@ -55,7 +55,8 @@
 import { computed, toRefs } from 'vue';
 import type { AgentDefinition } from '~/stores/agentDefinitionStore';
 
-const props = defineProps<{  agentDef: AgentDefinition;
+const props = defineProps<{
+  agentDef: AgentDefinition;
 }>();
 
 const emit = defineEmits(['view-details', 'run-agent']);
@@ -68,6 +69,7 @@ const allSkills = computed(() => [
   ...(agentDef.value.inputProcessorNames || []),
   ...(agentDef.value.llmResponseProcessorNames || []),
   ...(agentDef.value.systemPromptProcessorNames || []),
+  ...(agentDef.value.toolExecutionResultProcessorNames || []),
   ...(agentDef.value.phaseHookNames || []),
 ]);
 

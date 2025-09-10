@@ -133,6 +133,7 @@ const componentLists = [
   { title: 'Input Processors', key: 'inputProcessorNames' },
   { title: 'LLM Response Processors', key: 'llmResponseProcessorNames' },
   { title: 'System Prompt Processors', key: 'systemPromptProcessorNames' },
+  { title: 'Tool Result Processors', key: 'toolExecutionResultProcessorNames' },
   { title: 'Phase Hooks', key: 'phaseHookNames' },
 ];
 

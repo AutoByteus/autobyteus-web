@@ -12,7 +12,7 @@ import type {
   FileSystemChangedSubscriptionVariables,
 } from '~/generated/graphql'
 import { TreeNode, convertJsonToTreeNode } from '~/utils/fileExplorer/TreeNode'
-import { createNodeIdToNodeDictionary, handleFileSystemChange } from '~/utils/fileExplorer/fileUtils'
+import { createNodeIdToNodeDictionary, handleFileSystemChange as applyTreeChanges } from '~/utils/fileExplorer/fileUtils'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
 import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
 import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
@@ -187,14 +187,26 @@ export const useWorkspaceStore = defineStore('workspace', {
         return;
       }
       
-      handleFileSystemChange(workspace.fileExplorer, workspace.nodeIdToNode, event);
-
       const fileExplorerStore = useFileExplorerStore();
+      
+      // Apply structural changes to the tree
+      applyTreeChanges(workspace.fileExplorer, workspace.nodeIdToNode, event);
+
+      // Handle content invalidation intelligently
       event.changes.forEach(change => {
         if (change.type === 'modify') {
           const node = workspace.nodeIdToNode[change.node_id];
           if (node && node.is_file) {
-            fileExplorerStore.invalidateFileContent(node.path);
+            const wsFileExplorerState = fileExplorerStore._getOrCreateCurrentWorkspaceState();
+            
+            // Check if this modify event is an echo of our own save action
+            if (wsFileExplorerState.filesToIgnoreNextModify.has(node.path)) {
+              // It is. Consume the tag and do not invalidate the content.
+              wsFileExplorerState.filesToIgnoreNextModify.delete(node.path);
+            } else {
+              // It's an external change. Invalidate content to trigger a re-fetch.
+              fileExplorerStore.invalidateFileContent(node.path);
+            }
           }
         }
       });

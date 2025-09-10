@@ -70,6 +70,9 @@ interface WorkspaceFileExplorerState {
   renameLoading: Record<string, boolean>;
   createError: Record<string, string | null>;
   createLoading: Record<string, boolean>;
+
+  // Used to prevent re-fetching content for self-initiated saves
+  filesToIgnoreNextModify: Set<string>;
 }
 
 interface FileExplorerStoreState {
@@ -95,7 +98,8 @@ const createDefaultWorkspaceFileExplorerState = (): WorkspaceFileExplorerState =
   renameError: {},
   renameLoading: {},
   createError: {},
-  createLoading: {}
+  createLoading: {},
+  filesToIgnoreNextModify: new Set(),
 });
 
 export const useFileExplorerStore = defineStore('fileExplorer', {
@@ -330,26 +334,40 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
      */
     async _writeFileCore(workspaceId: string, filePath: string, content: string) {
       const { mutate } = useMutation<WriteFileContentMutation, WriteFileContentMutationVariables>(WriteFileContent);
+      const wsState = this._getOrCreateCurrentWorkspaceState();
       
+      // "Tag" this file to ignore the incoming subscription event echo for 'modify'
+      wsState.filesToIgnoreNextModify.add(filePath);
+      // Safety timeout to clear the tag in case the subscription message fails
+      setTimeout(() => {
+        wsState.filesToIgnoreNextModify.delete(filePath);
+      }, 5000);
+
       try {
         const result = await mutate({ workspaceId, filePath, content });
       
         if (result?.data?.writeFileContent) {
-          const wsState = this._getOrCreateCurrentWorkspaceState();
+          // Optimistic update: the mutation was successful, so update our local state immediately.
           const file = wsState.openFiles.find(f => f.path === filePath);
           if (file) {
             file.content = content;
           }
+          // Let the subscription handle the tree change event to avoid double-processing.
+          // The subscription will call handleFileSystemChange, which will now intelligently
+          // ignore the 'modify' event for this file path.
           const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.writeFileContent);
           const workspaceStore = useWorkspaceStore();
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
         } else if (result?.errors) {
+          wsState.filesToIgnoreNextModify.delete(filePath); // Clean up tag on error
           throw new Error(result.errors.map(e => e.message).join(', '));
         } else {
+          wsState.filesToIgnoreNextModify.delete(filePath); // Clean up tag on error
           throw new Error('An unknown error occurred while writing the file.');
         }
       } catch (err) {
         console.error('Core file write operation failed:', err);
+        wsState.filesToIgnoreNextModify.delete(filePath); // Clean up tag on error
         // Re-throw the error to be caught by the calling wrapper action
         throw err;
       }

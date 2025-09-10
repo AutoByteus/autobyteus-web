@@ -527,4 +527,35 @@ describe('IncrementalAIResponseParser with Strategies', () => {
     // Check for correct parsing of escaped content
     expect(toolCall.arguments.prompt_content).toContain('named "Professor Chemostry."');
   });
+
+  it('should correctly parse a complete HTML document into an iframe segment', () => {
+    const parser = createParser(LLMProvider.ANTHROPIC, true);
+    const htmlDoc = '<!doctype html><html><body><p>Hello</p></body></html>';
+    const chunks = [
+      'Here is the document: ',
+      htmlDoc,
+      ' That is all.',
+    ];
+    parser.processChunks(chunks);
+    parser.finalize();
+
+    expect(segments).toEqual([
+      { type: 'text', content: 'Here is the document: ' },
+      { type: 'iframe', content: htmlDoc },
+      { type: 'text', content: ' That is all.' },
+    ]);
+  });
+
+  it('should treat an incomplete HTML document as plain text', () => {
+    const parser = createParser(LLMProvider.ANTHROPIC, true);
+    const incompleteHtml = '<!doctype html><html><body><p>Uh oh';
+    const chunks = [ 'Response: ', incompleteHtml ];
+    
+    parser.processChunks(chunks);
+    parser.finalize();
+
+    expect(segments).toEqual([
+      { type: 'text', content: 'Response: <!doctype html><html><body><p>Uh oh' },
+    ]);
+  });
 });

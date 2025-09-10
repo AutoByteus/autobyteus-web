@@ -13,6 +13,7 @@ interface AgentDefinitionOptionsState {
   inputProcessorNames: string[];
   llmResponseProcessorNames: string[];
   systemPromptProcessorNames: string[];
+  toolExecutionResultProcessorNames: string[];
   phaseHookNames: string[];
   promptCategories: PromptCategory[];
   loading: boolean;
@@ -26,6 +27,7 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
   const inputProcessorNames = ref<string[]>([]);
   const llmResponseProcessorNames = ref<string[]>([]);
   const systemPromptProcessorNames = ref<string[]>([]);
+  const toolExecutionResultProcessorNames = ref<string[]>([]);
   const phaseHookNames = ref<string[]>([]);
   const promptCategories = ref<PromptCategory[]>([]);
   
@@ -51,6 +53,7 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
         inputProcessorNames.value = result.data.availableInputProcessorNames || [];
         llmResponseProcessorNames.value = result.data.availableLlmResponseProcessorNames || [];
         systemPromptProcessorNames.value = result.data.availableSystemPromptProcessorNames || [];
+        toolExecutionResultProcessorNames.value = result.data.availableToolExecutionResultProcessorNames || [];
         phaseHookNames.value = result.data.availablePhaseHookNames || [];
         promptCategories.value = result.data.availablePromptCategories || [];
         fetched.value = true;
@@ -75,6 +78,7 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
     inputProcessorNames,
     llmResponseProcessorNames,
     systemPromptProcessorNames,
+    toolExecutionResultProcessorNames,
     phaseHookNames,
     promptCategories,
     loading,
