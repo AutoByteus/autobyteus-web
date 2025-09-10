@@ -1,4 +1,3 @@
-/* autobyteus-web/utils/aiResponseParser/stateMachine/__tests__/FileParsingStateMachine.spec.ts */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { FileParsingStateMachine } from '../FileParsingStateMachine';
@@ -85,6 +84,37 @@ describe('FileParsingStateMachine', () => {
     expect(machine.wasSuccessful()).toBe(true);
     const fileSegment = segments[0] as FileSegment;
     expect(fileSegment.originalContent).toBe('const x = 1 < 2;');
+  });
+
+  it('should treat content containing "<file" not part of a valid tag as plain text', () => {
+    const codeWithFakeTag = `const possibleFile = '<file'; // This should not be parsed as a tag`;
+    const input = ` path="a.txt">${codeWithFakeTag}</file>`;
+    const machine = runMachine(input);
+
+    expect(machine.isComplete()).toBe(true);
+    expect(machine.wasSuccessful()).toBe(true);
+    const fileSegment = segments[0] as FileSegment;
+    expect(fileSegment.originalContent).toBe(codeWithFakeTag);
+  });
+
+  it('should correctly parse the user provided real case example', () => {
+    const userProvidedContent = `import { BaseState, ParserStateType } from './State';
+import { FileParsingState } from './FileParsingState';
+import { IframeParsingState } from './IframeParsingState';
+import { ToolParsingState } from './ToolParsingState';
+import { TextState } from './TextState';
+import { ParserContext } from './ParserContext';
+import { XmlToolParsingStrategy } from '../tool_parsing_strategies/xmlToolParsingStrategy';
+import { FileWriterParsingState } from './FileWriterParsingState'; export class XmlTagInitializationState extends BaseState { stateType = ParserStateType.XML_TAG_INITIALIZATION_STATE; private readonly possibleFile = '<file'; private readonly possibleTool = '<tool'; private readonly possibleDoctype = '<!doctype html>'; // Case-insensitive check target private tagBuffer: string = ''; constructor(context: ParserContext) { super(context); // The TextState found a '<' but did not consume it. // Per the "Cursor Rule", this state consumes the '<' it was created for. this.context.advance(); this.tagBuffer = '<'; } run(): void { while (this.context.hasMoreChars()) { const char = this.context.peekChar()!; this.tagBuffer += char; this.context.advance(); const { strategy } = this.context; const lowerCaseBuffer = this.tagBuffer.toLowerCase(); // --- Exact match checks --- if (lowerCaseBuffer === '<file') { this.context.transitionTo(new FileParsingState(this.context)); return; } if (lowerCaseBuffer === this.possibleDoctype) { this.context.transitionTo(new IframeParsingState(this.context, this.tagBuffer)); return; } // --- Tool-related checks (requires more context) --- if (lowerCaseBuffer.startsWith(this.possibleTool) && strategy instanceof XmlToolParsingStrategy) { // Check for FileWriter specifically if (this.tagBuffer.includes('name="FileWriter"')) { this.context.transitionTo(new FileWriterParsingState(this.context, this.tagBuffer)); return; } // If we have a full opening tag and it's not FileWriter, it's a generic tool if (char === '>') { if (this.context.parseToolCalls) { this.context.setPosition(this.context.getPosition() - this.tagBuffer.length); this.context.transitionTo(new ToolParsingState(this.context, this.tagBuffer)); } else { this.context.appendTextSegment(this.tagBuffer); this.context.transitionTo(new TextState(this.context)); } return; } } // --- Revert condition --- const couldBeFile = this.possibleFile.startsWith(lowerCaseBuffer); const couldBeTool = (strategy instanceof XmlToolParsingStrategy) && this.possibleTool.startsWith(lowerCaseBuffer); const couldBeDoctype = this.possibleDoctype.startsWith(lowerCaseBuffer); if (!couldBeFile && !couldBeTool && !couldBeDoctype) { // Not a recognized tag or declaration. Revert to text. this.context.appendTextSegment(this.tagBuffer); this.context.transitionTo(new TextState(this.context)); return; } } } finalize(): void { if (this.tagBuffer) { this.context.appendTextSegment(this.tagBuffer); this.tagBuffer = ''; } this.context.transitionTo(new TextState(this.context)); }
+}`;
+    const input = ` path="blu.ts">${userProvidedContent}</file>`;
+    const machine = runMachine(input);
+
+    expect(machine.isComplete()).toBe(true);
+    expect(machine.wasSuccessful()).toBe(true);
+    const fileSegment = segments[0] as FileSegment;
+    expect(fileSegment.path).toBe('blu.ts');
+    expect(fileSegment.originalContent).toBe(userProvidedContent);
   });
 
   it('should handle incomplete streams by not completing', () => {

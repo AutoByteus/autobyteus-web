@@ -96,19 +96,32 @@ export class FileParsingStateMachine {
     const char = this.context.peekChar()!;
     this.tagScanBuffer += char;
     this.context.advance();
-    
+
     // Check for nested opening tag <file ... >
     if (this.tagScanBuffer.startsWith(this.possibleOpeningFileTag)) {
+      // It *could* be an opening tag. Let's see if it's confirmed or invalidated.
+      // A valid tag must be <file> or <file followed by a space.
+      if (this.tagScanBuffer.length === this.possibleOpeningFileTag.length + 1) {
+        const nextChar = this.tagScanBuffer[this.possibleOpeningFileTag.length];
+        if (nextChar !== ' ' && nextChar !== '>') {
+          // It's something like '<fileX', not a tag. Revert.
+          this.context.appendToFileSegment(this.tagScanBuffer);
+          this.tagScanBuffer = '';
+          this.internalState = InternalFileState.READING_CONTENT;
+          return;
+        }
+      }
+
+      // If it's a valid potential start, keep scanning for '>'
       if (char === '>') {
         this.nestingLevel++;
         this.context.appendToFileSegment(this.tagScanBuffer);
         this.tagScanBuffer = '';
         this.internalState = InternalFileState.READING_CONTENT;
       }
-      // If not '>', we continue scanning the nested opening tag.
-      return;
+      return; // Keep this return because we are inside what we believe is a valid tag.
     }
-    
+
     // Check for closing tag </file>
     if (this.tagScanBuffer === this.closingFileTag) {
       this.nestingLevel--;
@@ -124,11 +137,11 @@ export class FileParsingStateMachine {
       }
       return;
     }
-    
+
     // If the buffer can no longer become a file or closing tag, revert to text.
     const couldBeOpening = this.possibleOpeningFileTag.startsWith(this.tagScanBuffer);
     const couldBeClosing = this.closingFileTag.startsWith(this.tagScanBuffer);
-    
+
     if (!couldBeOpening && !couldBeClosing) {
       this.context.appendToFileSegment(this.tagScanBuffer);
       this.tagScanBuffer = '';
