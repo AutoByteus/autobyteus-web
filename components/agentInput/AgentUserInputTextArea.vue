@@ -255,14 +255,19 @@ const handleDrop = (event: DragEvent) => {
   const dragData = event.dataTransfer?.getData('application/json');
 
   if (dragData) {
-    console.log('Drop event is from internal file explorer.');
+    console.log('[INFO] Drop event is from internal file explorer.');
     try {
       const droppedNode: TreeNode = JSON.parse(dragData);
+      console.log('[DEBUG] Dropped node data:', droppedNode);
+      
       filePaths = getFilePathsFromFolder(droppedNode);
+      console.log('[DEBUG] Initial relative paths from dropped node:', filePaths);
 
-      if (isElectron.value && workspaceStore.activeWorkspace?.absolutePath) {
+      // Check for an absolute path from the workspace store, regardless of environment.
+      if (workspaceStore.activeWorkspace?.absolutePath) {
         const basePath = workspaceStore.activeWorkspace.absolutePath;
-        console.log(`Electron environment detected with workspace absolute path: ${basePath}`);
+        console.log(`[INFO] Workspace absolute path found: "${basePath}". Converting to absolute paths.`);
+        
         // Determine the correct path separator based on the OS of the backend.
         const separator = basePath.includes('\\') ? '\\' : '/';
         
@@ -272,38 +277,41 @@ const handleDrop = (event: DragEvent) => {
             basePath.replace(/[/\\]$/, ''), // Remove trailing slash from base
             ...relativePath.split('/')      // Split relative path by '/'
           ];
-          return parts.join(separator);
+          const absolutePath = parts.join(separator);
+          console.log(`[DEBUG] Converted "${relativePath}" -> "${absolutePath}"`);
+          return absolutePath;
         });
+      } else {
+        console.log('[WARN] No workspace absolute path found. Using relative paths as fallback.');
       }
 
     } catch (error) {
       console.error('Failed to parse dropped node data:', error);
     }
   } else if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
-    console.log('Drop event is from native OS file system.');
+    console.log('[INFO] Drop event is from native OS file system.');
     console.log(`[DEBUG] isElectron flag is currently: ${isElectron.value}`);
     // For files from the OS, browser security prevents access to the full file path.
     // Only the filename is available. In Electron, the `path` property is available.
     if (isElectron.value) {
-      console.log('[DEBUG] Executing Electron-specific path logic.');
+      console.log('[DEBUG] Executing Electron-specific path logic for native drop.');
       // In Electron, we have access to the full native path.
       filePaths = Array.from(event.dataTransfer.files).map(file => {
-        console.log('[DEBUG] Processing file object from OS drop:', file);
-        console.log(`[DEBUG] Special Electron 'path' property: ${(file as any).path}`);
-        console.log(`[DEBUG] Standard 'name' property: ${file.name}`);
-        return (file as any).path || file.name
+        const nativePath = (file as any).path || file.name;
+        console.log(`[DEBUG] Processing file from OS drop: name='${file.name}', nativePath='${nativePath}'`);
+        return nativePath;
       });
     } else {
-      console.log('[DEBUG] Executing standard browser path logic (fallback).');
+      console.log('[DEBUG] Executing standard browser path logic for native drop (fallback to filename).');
       // In a standard browser, we only get the filename.
       filePaths = Array.from(event.dataTransfer.files).map(file => file.name);
     }
   }
   
-  console.log('[DEBUG] Final generated file paths to be inserted:', filePaths);
+  console.log('[INFO] Final generated file paths to be inserted:', filePaths);
 
   if (filePaths.length > 0) {
-    const textToInsert = filePaths.join(', ');
+    const textToInsert = filePaths.join(' ');
     const start = textarea.value.selectionStart;
     const end = textarea.value.selectionEnd;
     
