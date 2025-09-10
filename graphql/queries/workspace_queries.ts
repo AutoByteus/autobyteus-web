@@ -24,6 +24,7 @@ export const GetAllWorkspaces = gql`
       workspaceTypeName
       config
       fileExplorer
+      absolutePath
     }
   }
 `

@@ -41,6 +41,7 @@ export interface WorkspaceInfo {
   nodeIdToNode: Record<string, TreeNode>;
   workspaceTypeName: string;
   workspaceConfig: any;
+  absolutePath: string | null;
 }
 
 interface WorkspaceState {
@@ -91,6 +92,7 @@ export const useWorkspaceStore = defineStore('workspace', {
             nodeIdToNode: nodeIdToNode,
             workspaceTypeName: workspaceTypeName,
             workspaceConfig: config,
+            absolutePath: newWorkspace.absolutePath,
           };
           
           // Subscribe to changes for the newly created workspace
@@ -162,6 +164,7 @@ export const useWorkspaceStore = defineStore('workspace', {
                           nodeIdToNode: nodeIdToNode,
                           workspaceTypeName: ws.workspaceTypeName,
                           workspaceConfig: ws.config,
+                          absolutePath: ws.absolutePath,
                       };
                       // Subscribe to changes for each fetched workspace
                       this.subscribeToWorkspaceChanges(ws.workspaceId);

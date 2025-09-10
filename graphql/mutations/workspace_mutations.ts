@@ -6,6 +6,7 @@ export const CreateWorkspace = gql`
       workspaceId
       name
       fileExplorer
+      absolutePath
     }
   }
 `

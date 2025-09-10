@@ -82,6 +82,7 @@ import { storeToRefs } from 'pinia';
 import { useActiveContextStore } from '~/stores/activeContextStore';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import { useServerStore } from '~/stores/serverStore';
+import { useWorkspaceStore } from '~/stores/workspace';
 import AudioRecorder from '~/components/AudioRecorder.vue';
 import GroupedSelect from '~/components/agentInput/GroupedSelect.vue';
 import { getFilePathsFromFolder } from '~/utils/fileExplorer/fileUtils';
@@ -91,6 +92,7 @@ import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
 const activeContextStore = useActiveContextStore();
 const llmProviderConfigStore = useLLMProviderConfigStore();
 const serverStore = useServerStore();
+const workspaceStore = useWorkspaceStore();
 
 // Store refs
 const { isSending, currentRequirement: storeCurrentRequirement } = storeToRefs(activeContextStore);
@@ -248,28 +250,57 @@ const handleSearchContext = async () => {
 const handleDrop = (event: DragEvent) => {
   if (!textarea.value || !activeContextStore.activeAgentContext) return;
 
+  console.log('--- File Drop Detected in Text Area ---');
   let filePaths: string[] = [];
   const dragData = event.dataTransfer?.getData('application/json');
 
   if (dragData) {
+    console.log('Drop event is from internal file explorer.');
     try {
       const droppedNode: TreeNode = JSON.parse(dragData);
-      // This utility function extracts file paths from a dragged node from the internal file explorer.
       filePaths = getFilePathsFromFolder(droppedNode);
+
+      if (isElectron.value && workspaceStore.activeWorkspace?.absolutePath) {
+        const basePath = workspaceStore.activeWorkspace.absolutePath;
+        console.log(`Electron environment detected with workspace absolute path: ${basePath}`);
+        // Determine the correct path separator based on the OS of the backend.
+        const separator = basePath.includes('\\') ? '\\' : '/';
+        
+        filePaths = filePaths.map(relativePath => {
+          // Join base path and relative path, ensuring correct separators.
+          const parts = [
+            basePath.replace(/[/\\]$/, ''), // Remove trailing slash from base
+            ...relativePath.split('/')      // Split relative path by '/'
+          ];
+          return parts.join(separator);
+        });
+      }
+
     } catch (error) {
       console.error('Failed to parse dropped node data:', error);
     }
   } else if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+    console.log('Drop event is from native OS file system.');
+    console.log(`[DEBUG] isElectron flag is currently: ${isElectron.value}`);
     // For files from the OS, browser security prevents access to the full file path.
     // Only the filename is available. In Electron, the `path` property is available.
     if (isElectron.value) {
+      console.log('[DEBUG] Executing Electron-specific path logic.');
       // In Electron, we have access to the full native path.
-      filePaths = Array.from(event.dataTransfer.files).map(file => (file as any).path || file.name);
+      filePaths = Array.from(event.dataTransfer.files).map(file => {
+        console.log('[DEBUG] Processing file object from OS drop:', file);
+        console.log(`[DEBUG] Special Electron 'path' property: ${(file as any).path}`);
+        console.log(`[DEBUG] Standard 'name' property: ${file.name}`);
+        return (file as any).path || file.name
+      });
     } else {
+      console.log('[DEBUG] Executing standard browser path logic (fallback).');
       // In a standard browser, we only get the filename.
       filePaths = Array.from(event.dataTransfer.files).map(file => file.name);
     }
   }
+  
+  console.log('[DEBUG] Final generated file paths to be inserted:', filePaths);
 
   if (filePaths.length > 0) {
     const textToInsert = filePaths.join(', ');

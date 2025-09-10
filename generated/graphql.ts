@@ -1135,6 +1135,7 @@ export type WorkspaceDefinition = {
 
 export type WorkspaceInfo = {
   __typename?: 'WorkspaceInfo';
+  absolutePath?: Maybe<Scalars['String']['output']>;
   config: Scalars['JSON']['output'];
   fileExplorer?: Maybe<Scalars['JSON']['output']>;
   name: Scalars['String']['output'];
@@ -1364,7 +1365,7 @@ export type CreateWorkspaceMutationVariables = Exact<{
 }>;
 
 
-export type CreateWorkspaceMutation = { __typename?: 'Mutation', createWorkspace: { __typename?: 'WorkspaceInfo', workspaceId: string, name: string, fileExplorer?: any | null } };
+export type CreateWorkspaceMutation = { __typename?: 'Mutation', createWorkspace: { __typename?: 'WorkspaceInfo', workspaceId: string, name: string, fileExplorer?: any | null, absolutePath?: string | null } };
 
 export type ExecuteBashCommandsMutationVariables = Exact<{
   workspaceId: Scalars['String']['input'];
@@ -1502,7 +1503,7 @@ export type GetAvailableWorkspaceDefinitionsQuery = { __typename?: 'Query', avai
 export type GetAllWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAllWorkspacesQuery = { __typename?: 'Query', workspaces: Array<{ __typename?: 'WorkspaceInfo', workspaceId: string, name: string, workspaceTypeName: string, config: any, fileExplorer?: any | null }> };
+export type GetAllWorkspacesQuery = { __typename?: 'Query', workspaces: Array<{ __typename?: 'WorkspaceInfo', workspaceId: string, name: string, workspaceTypeName: string, config: any, fileExplorer?: any | null, absolutePath?: string | null }> };
 
 export type NestedTeamEventFragment = { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentOperationalPhaseTransitionData', newPhase: AgentOperationalPhase, oldPhase?: AgentOperationalPhase | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamPhaseTransitionData', newPhase: AgentTeamOperationalPhase, oldPhase?: AgentTeamOperationalPhase | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload' } | { __typename: 'GraphQLTaskPlanPublishedEvent', teamId: string, planId?: string | null, plan: { __typename?: 'GraphQLTaskPlan', planId: string, overallGoal: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, planId?: string | null, taskId: string, newStatus: TaskStatus, agentName: string, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } };
 
@@ -2646,6 +2647,7 @@ export const CreateWorkspaceDocument = gql`
     workspaceId
     name
     fileExplorer
+    absolutePath
   }
 }
     `;
@@ -3429,6 +3431,7 @@ export const GetAllWorkspacesDocument = gql`
     workspaceTypeName
     config
     fileExplorer
+    absolutePath
   }
 }
     `;
