@@ -32,6 +32,7 @@ export type AgentConversation = {
   createdAt: Scalars['String']['output'];
   llmModel?: Maybe<Scalars['String']['output']>;
   messages: Array<Message>;
+  useXmlToolFormat: Scalars['Boolean']['output'];
 };
 
 export type AgentDefinition = {
@@ -1403,7 +1404,7 @@ export type GetConversationHistoryQueryVariables = Exact<{
 }>;
 
 
-export type GetConversationHistoryQuery = { __typename?: 'Query', getConversationHistory: { __typename?: 'ConversationHistory', totalPages: number, currentPage: number, conversations: Array<{ __typename?: 'AgentConversation', agentId: string, agentDefinitionId: string, createdAt: string, llmModel?: string | null, messages: Array<{ __typename?: 'Message', messageId?: string | null, role: string, message: string, timestamp: string, contextPaths?: Array<string> | null, originalMessage?: string | null, tokenCount?: number | null, cost?: number | null, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null }> }> } };
+export type GetConversationHistoryQuery = { __typename?: 'Query', getConversationHistory: { __typename?: 'ConversationHistory', totalPages: number, currentPage: number, conversations: Array<{ __typename?: 'AgentConversation', agentId: string, agentDefinitionId: string, createdAt: string, llmModel?: string | null, useXmlToolFormat: boolean, messages: Array<{ __typename?: 'Message', messageId?: string | null, role: string, message: string, timestamp: string, contextPaths?: Array<string> | null, originalMessage?: string | null, tokenCount?: number | null, cost?: number | null, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null }> }> } };
 
 export type GetFileContentQueryVariables = Exact<{
   workspaceId: Scalars['String']['input'];
@@ -2877,6 +2878,7 @@ export const GetConversationHistoryDocument = gql`
       agentDefinitionId
       createdAt
       llmModel
+      useXmlToolFormat
       messages {
         messageId
         role
