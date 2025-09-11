@@ -4,54 +4,71 @@ import type { ParserContext } from './ParserContext';
 
 enum InternalState {
   EXPECTING_HTML_TAG,
-  READING_CONTENT,
+  STREAMING_CONTENT,
 }
 
 export class IframeParsingState extends BaseState {
   stateType = ParserStateType.IFRAME_PARSING_STATE;
   private internalState: InternalState = InternalState.EXPECTING_HTML_TAG;
-  private buffer: string = '';
+  private tempBuffer: string = '';
   private readonly closingTag = '</html>';
+  private segmentStarted: boolean = false;
 
   constructor(context: ParserContext, doctypeDeclaration: string) {
     super(context);
-    // The previous state consumed the DOCTYPE. We hold onto it.
-    this.buffer = doctypeDeclaration;
-    // We no longer create the segment optimistically.
+    this.tempBuffer = doctypeDeclaration;
   }
 
   run(): void {
     while (this.context.hasMoreChars()) {
       const char = this.context.peekChar()!;
-      this.buffer += char;
-      this.context.advance();
+      const advanceAndContinue = () => {
+        this.context.advance();
+        return;
+      };
 
       if (this.internalState === InternalState.EXPECTING_HTML_TAG) {
-        // Trim whitespace and check for the start of the <html> tag.
-        const trimmedBuffer = this.buffer.toLowerCase().replace(/\s/g, '');
+        this.tempBuffer += char;
+        const trimmedBuffer = this.tempBuffer.toLowerCase().replace(/\s/g, '');
+        
         if (trimmedBuffer.includes('<html')) {
-          // Once we find the start, we need to find the end of the opening tag.
           if (char === '>') {
-            this.internalState = InternalState.READING_CONTENT;
+            this.context.startIframeSegment(this.tempBuffer);
+            this.segmentStarted = true;
+            this.internalState = InternalState.STREAMING_CONTENT;
+            this.tempBuffer = ''; // Clear buffer as it's now in the segment
           }
         }
-      } else if (this.internalState === InternalState.READING_CONTENT) {
-        // Check for the closing tag case-insensitively.
-        if (this.buffer.toLowerCase().endsWith(this.closingTag)) {
-          // Now that we have a complete document, create the segment in one go.
-          this.context.addIframeSegment(this.buffer);
+        advanceAndContinue();
+        continue;
+      } 
+      
+      if (this.internalState === InternalState.STREAMING_CONTENT) {
+        this.context.appendToIframeSegmentContent(char);
+        this.tempBuffer += char; // Also keep a small look-behind buffer
+        
+        if (this.tempBuffer.length > this.closingTag.length) {
+            this.tempBuffer = this.tempBuffer.substring(1);
+        }
+
+        if (this.tempBuffer.toLowerCase().endsWith(this.closingTag)) {
+          this.context.endIframeSegment();
           this.context.transitionTo(new TextState(this.context));
+          this.context.advance();
           return;
         }
+        advanceAndContinue();
       }
     }
   }
 
   finalize(): void {
-    // If the stream ends before we find </html>, it's not a complete document.
-    // Revert the entire buffered content to a simple text segment.
-    // Since no iframe segment was created, we don't need to clean anything up.
-    this.context.appendTextSegment(this.buffer);
+    if (!this.segmentStarted) {
+      // If we never even started the iframe segment, revert the doctype to text.
+      this.context.appendTextSegment(this.tempBuffer);
+    }
+    // If the stream ends mid-content, we simply do nothing.
+    // The segment remains with isComplete: false, which is the desired outcome.
     this.context.transitionTo(new TextState(this.context));
   }
 }

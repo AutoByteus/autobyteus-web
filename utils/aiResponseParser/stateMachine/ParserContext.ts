@@ -78,19 +78,40 @@ export class ParserContext {
       this.currentSegment.originalContent += char;
     }
   }
+  
+  appendToIframeSegmentContent(content: string): void {
+    if (this.currentSegment && this.currentSegment.type === 'iframe') {
+      this.currentSegment.content += content;
+    }
+  }
 
   startFileSegment(path: string): void {
     const newFileSegment: FileSegment = { type: 'file', path, originalContent: '', language: getLanguage(path) };
     this.segments.push(newFileSegment);
     this.currentSegment = newFileSegment;
   }
+  
+  startIframeSegment(initialContent: string): void {
+    const newIframeSegment: IframeSegment = { type: 'iframe', content: initialContent, isComplete: false };
+    this.segments.push(newIframeSegment);
+    this.currentSegment = newIframeSegment;
+  }
 
   endFileSegment(): void {
     this.currentSegment = null;
   }
+  
+  endIframeSegment(): void {
+    if (this.currentSegment && this.currentSegment.type === 'iframe') {
+      this.currentSegment.isComplete = true;
+    }
+    this.currentSegment = null;
+  }
 
   addIframeSegment(content: string): void {
-    const newHtmlSegment: IframeSegment = { type: 'iframe', content };
+    // This method is DEPRECATED in favor of the new streaming methods,
+    // but kept for compatibility with any state that might still use it.
+    const newHtmlSegment: IframeSegment = { type: 'iframe', content, isComplete: true };
     this.segments.push(newHtmlSegment);
     this.currentSegment = null;
   }

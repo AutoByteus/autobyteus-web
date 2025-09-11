@@ -52,10 +52,11 @@ export interface MediaSegment {
   urls: string[];
 }
 
-// RENAMED IframeHtmlSegment TYPE
+// IframeSegment TYPE with streaming support
 export interface IframeSegment {
   type: 'iframe';
   content: string;
+  isComplete: boolean; // Flag to control rendering (code vs. iframe)
 }
 
 export interface ErrorSegment{
