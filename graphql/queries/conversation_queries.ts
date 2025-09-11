@@ -18,6 +18,7 @@ export const GET_CONVERSATION_HISTORY = gql`
         agentDefinitionId
         createdAt
         llmModel
+        useXmlToolFormat
         messages {
           messageId
           role

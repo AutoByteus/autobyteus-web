@@ -9,6 +9,7 @@ import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementa
 import { ParserContext } from '~/utils/aiResponseParser/stateMachine/ParserContext';
 import { useLLMProviderConfigStore } from './llmProviderConfig';
 import type { MediaSegment } from '~/utils/aiResponseParser/types';
+import { LLMProvider } from '~/types/llm';
 
 /**
  * @interface ProfileAgentState
@@ -299,7 +300,7 @@ export const useAgentContextsStore = defineStore('agentContexts', {
         llmModelIdentifier: historicalConversationData.llmModelIdentifier || '',
         autoExecuteTools: false,
         parseToolCalls: historicalConversationData.parseToolCalls ?? true,
-        useXmlToolFormat: false, // Defaulting to false for historical conversations
+        useXmlToolFormat: historicalConversationData.useXmlToolFormat ?? false, // Use the direct flag from history
       };
       
       const newAgentState = new AgentRunState(tempId, {

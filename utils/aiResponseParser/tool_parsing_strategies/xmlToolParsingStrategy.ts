@@ -10,8 +10,9 @@ const entityMap: { [key: string]: string } = {
   '&apos;': "'"
 };
 const entityRegex = /&[a-zA-Z0-9#]+;/g;
+//do nothing decode to match backend behavior
 function decodeEntities(text: string): string {
-  return text.replace(entityRegex, (entity) => entityMap[entity] || entity);
+  return text;
 }
 
 type State = 'OUTSIDE_TAG' | 'INSIDE_TAG' | 'INSIDE_COMMENT';
@@ -186,10 +187,11 @@ export class XmlToolParsingStrategy implements ToolParsingStrategy {
         const contentToCommit = this.contentBuffer;
         this.contentBuffer = ''; // Always clear the buffer
         
-        const decodedContent = decodeEntities(contentToCommit);
+        // This parser performs NO entity decoding to match the backend's raw parsing behavior.
+        const contentToUse = decodeEntities(contentToCommit);
         
         const currentFrame = this.stack[this.stack.length - 1];
-        console.log(`[XmlParser] Committing content: "${decodedContent.substring(0, 100).replace(/\n/g, '\\n')}..." to parent key:`, currentFrame?.keyInParent);
+        console.log(`[XmlParser] Committing content: "${contentToUse.substring(0, 100).replace(/\n/g, '\\n')}..." to parent key:`, currentFrame?.keyInParent);
         
         if (currentFrame && currentFrame.parentContainer && currentFrame.keyInParent !== null) {
             const parentContainer = currentFrame.parentContainer as any;
@@ -198,10 +200,10 @@ export class XmlToolParsingStrategy implements ToolParsingStrategy {
 
             if (typeof existingValue === 'object' && Object.keys(existingValue).length === 0) {
                 // This is the first piece of content, replacing the placeholder object.
-                parentContainer[key] = decodedContent;
+                parentContainer[key] = contentToUse;
             } else if (typeof existingValue === 'string') {
                 // This is subsequent content, append it.
-                parentContainer[key] += decodedContent;
+                parentContainer[key] += contentToUse;
             }
         }
     }

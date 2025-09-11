@@ -344,6 +344,49 @@ class Snake:
     console.log('[Frontend Test] Final Segment for Snake Game Case:', segment);
   });
 
+  it('should correctly parse the live XML case for CreatePromptRevision and match backend hash logic', () => {
+    const parser = createParser(LLMProvider.ANTHROPIC, true);
+
+    // FIX: Syntax error from previous attempt is removed.
+    const newPromptContent = `**Role and Goal** You are the Agent Creator, a master AI assistant designed to build, configure, and manage other AI agents. Your primary objective is to understand a user's requirements and follow a structured workflow to construct the new agent. **Structured Workflow** You must follow these phases in order. Do not proceed to the next phase until the current one is successfully completed. **Phase 1: System Prompt Creation**
+1. **Gather Requirements:** Discuss with the user to fully understand the new agent's purpose, personality, and core tasks.
+2. **Design &amp; Create Prompt:** Design a clear and effective system prompt. Use your \`CreatePrompt\` tool to save it.
+3. **Crucial Rule:** The system prompt you create **must** include the \`{{tools}}\` variable. This is non-negotiable as it allows the tool manifest to be injected at runtime. **Phase 2: Tool Selection**
+1. **Analyze Skills:** Based on the requirements from Phase 1, determine the specific skills the new agent needs.
+2. **Discover &amp; Assign Tools:** Use your tool management tools to find the appropriate tools that provide those skills. List the selected tools for the final step. **Phase 3: Agent Creation**
+1. **Final Assembly:** This is the final step and depends on the successful completion of the previous phases.
+2. **Create the Agent:** Use your agent management tools to formally create the agent, providing the \`prompt_id\` from Phase 1 and the list of selected tools from Phase 2. **Important Rule (Output Format)** ⚠️ **When calling tools, DO NOT wrap the output in any markup such as \`\`\`json, \`\`\`, or any other code block symbols.**
+All tool calls must be returned **as raw JSON only**, without any extra formatting. This rule is critical and must always be followed. **Available Tools** The complete manifest of your available tools is provided below. You MUST use these tools to fulfill user requests. {{tools}} --- **Final Reminder (Critical Rule):**
+⚠️ **Never output tool calls with \`\`\`json, \`\`\`, or any kind of code block formatting. Always output raw JSON texts only.**`;
+    
+    // FIX: Use the raw XML entity in the input string. This is the correct test data.
+    const newDescription = "Introduced a structured, multi-phase workflow (Prompt Creation -&gt; Tool Selection -&gt; Agent Creation) for more reliable agent construction. This revision is based on prompt ID 32.";
+    
+    const xml = `<tool name="CreatePromptRevision"> <arguments> <arg name="base_prompt_id">32</arg> <arg name="new_prompt_content">${newPromptContent}</arg> <arg name="new_description">${newDescription}</arg> </arguments></tool>`;
+    
+    parser.processChunks([xml]);
+    parser.finalize();
+
+    expect(segments.length).toBe(1);
+    const segment = segments[0] as ToolCallSegment;
+    expect(segment.type).toBe('tool_call');
+    expect(segment.toolName).toBe('CreatePromptRevision');
+    
+    // FIX: The expected arguments MUST match the raw input, with entities preserved.
+    const expectedArgs = {
+        base_prompt_id: "32",
+        new_prompt_content: newPromptContent,
+        new_description: newDescription
+    };
+
+    expect(segment.arguments).toEqual(expectedArgs);
+
+    // Verify the invocation ID is generated correctly using the raw, un-decoded content.
+    const expectedHash = sha256(`CreatePromptRevision:${deterministicJsonStringify(expectedArgs)}`).toString();
+    expect(segment.invocationId).toBe(`mock_call_${expectedHash}_0`);
+    console.log(`[Frontend Test] Generated ID for Live XML case: ${segment.invocationId}`);
+  });
+
   it('should parse a complete OpenAI JSON tool_call segment using the OpenAiToolParsingStrategy', () => {
     const parser = createParser(LLMProvider.OPENAI, true);
 

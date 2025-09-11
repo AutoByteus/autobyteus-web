@@ -158,6 +158,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
         llmModelIdentifier: agentConversation.llmModel || undefined,
         parseToolCalls: true,
         agentDefinitionId: agentConversation.agentDefinitionId,
+        useXmlToolFormat: agentConversation.useXmlToolFormat,
       };
     }
   },
