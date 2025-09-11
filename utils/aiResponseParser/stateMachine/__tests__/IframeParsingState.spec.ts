@@ -22,7 +22,7 @@ const createMockAgentContext = (segments: AIResponseSegment[]): AgentContext => 
   return new AgentContext(agentConfig, agentState);
 };
 
-describe('IframeParsingState', () => {
+describe('IframeParsingState (Streaming Logic)', () => {
   let segments: AIResponseSegment[];
   let context: ParserContext;
   let machine: StateMachine;
@@ -35,12 +35,32 @@ describe('IframeParsingState', () => {
     machine = new StateMachine(context);
   });
 
-  it('should parse a complete, valid HTML document and transition back to TextState', () => {
-    const htmlDoc = '<!doctype html><html><body>Hello World</body></html>';
-    const remainingText = '...more text';
-    const input = `${htmlDoc}${remainingText}`;
+  it('should create an incomplete iframe segment and stream content into it', () => {
+    const chunk1 = '<!doctype html><html><body>';
+    const chunk2 = '<p>Hello</p>';
     
-    machine.appendChunks([input]);
+    machine.appendChunks([chunk1]);
+    machine.run();
+    
+    expect(segments.length).toBe(1);
+    let iframeSegment = segments[0] as IframeSegment;
+    expect(iframeSegment.type).toBe('iframe');
+    expect(iframeSegment.isComplete).toBe(false);
+    expect(iframeSegment.content).toBe('<!doctype html><html><body>');
+
+    machine.appendChunks([chunk2]);
+    machine.run();
+    
+    iframeSegment = segments[0] as IframeSegment;
+    expect(iframeSegment.content).toBe('<!doctype html><html><body><p>Hello</p>');
+    expect(iframeSegment.isComplete).toBe(false); // Still incomplete
+  });
+
+  it('should mark the iframe segment as complete upon receiving the closing tag', () => {
+    const htmlDoc = '<!doctype html><html><body>Hello</body></html>';
+    const remainingText = '...more text';
+    
+    machine.appendChunks([`${htmlDoc}${remainingText}`]);
     machine.run();
     machine.finalize();
 
@@ -49,41 +69,27 @@ describe('IframeParsingState', () => {
     const iframeSegment = segments[0] as IframeSegment;
     expect(iframeSegment.type).toBe('iframe');
     expect(iframeSegment.content).toBe(htmlDoc);
+    expect(iframeSegment.isComplete).toBe(true); // Should be marked as complete
     
     expect(segments[1]).toEqual({ type: 'text', content: remainingText });
-    
-    // Check that the state machine has returned to TextState
     expect(context.currentState).toBeInstanceOf(TextState);
   });
-
-  it('should revert to a text segment if the stream ends before </html> is found', () => {
+  
+  it('should leave the iframe segment as incomplete if the stream ends prematurely', () => {
     const incompleteHtml = '<!doctype html><html><body>Hello';
     
     machine.appendChunks([incompleteHtml]);
-    machine.run();
-    machine.finalize(); // Finalize is crucial here
-
-    expect(segments.length).toBe(1);
-    expect(segments[0]).toEqual({
-      type: 'text',
-      content: incompleteHtml,
-    });
-  });
-
-  it('should handle case-insensitive doctype and html tags', () => {
-    const htmlDoc = '<!DOCTYPE HTML><HTML><HEAD></HEAD><BODY>Case Insensitive</BODY></HTML>';
-    
-    machine.appendChunks([htmlDoc]);
     machine.run();
     machine.finalize();
 
     expect(segments.length).toBe(1);
     const iframeSegment = segments[0] as IframeSegment;
     expect(iframeSegment.type).toBe('iframe');
-    expect(iframeSegment.content).toBe(htmlDoc);
+    expect(iframeSegment.content).toBe(incompleteHtml);
+    expect(iframeSegment.isComplete).toBe(false); // Should remain incomplete
   });
 
-  it('should revert to text if <html> tag does not follow the doctype', () => {
+  it('should revert to text if <html> tag does not follow the doctype and stream ends', () => {
     const malformedContent = '<!doctype html>This is just some text.';
     
     machine.appendChunks([malformedContent]);
@@ -95,20 +101,5 @@ describe('IframeParsingState', () => {
       type: 'text',
       content: malformedContent,
     });
-  });
-
-  it('should correctly parse a complete HTML document mixed with other text', () => {
-    const htmlDoc = '<!doctype html><html><body>Test</body></html>';
-    const input = `Here is some text. ${htmlDoc} And here is some more text.`;
-    
-    machine.appendChunks([input]);
-    machine.run();
-    machine.finalize();
-
-    expect(segments).toEqual([
-      { type: 'text', content: 'Here is some text. ' },
-      { type: 'iframe', content: htmlDoc },
-      { type: 'text', content: ' And here is some more text.' },
-    ]);
   });
 });

@@ -1,5 +1,5 @@
 import { IncrementalAIResponseParser } from '../incrementalAIResponseParser';
-import type { AIResponseSegment, ToolCallSegment } from '../types';
+import type { AIResponseSegment, ToolCallSegment, IframeSegment } from '../types';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { LLMProvider } from '~/types/llm';
@@ -174,7 +174,7 @@ describe('IncrementalAIResponseParser with Strategies', () => {
   // NEW TEST CASE FOR THE PRODUCTION XML ISSUE
   it('should correctly parse the production XML case and log the generated ID', () => {
     const parser = createParser(LLMProvider.ANTHROPIC, true);
-    const xml = `<tool name="PublishTaskPlan"> <arguments> <arg name="plan"> <arg name="overall_goal">Develop a complete Snake game in Python from scratch</arg> <arg name="tasks"> <item> <arg name="task_name">implement_game_logic</arg> <arg name="assignee_name">Software Engineer</arg> <arg name="description">Implement the core game logic for Snake including snake movement, food generation, collision detection, and score tracking</arg> </item> <item> <arg name="task_name">code_review</arg> <arg name="assignee_name">Code Reviewer</arg> <arg name="description">Conduct a thorough code review of the implemented Snake game logic, checking for best practices, efficiency, and correctness</arg> <arg name="dependencies"> <item>implement_game_logic</item> </arg> </item> <item> <arg name="task_name">write_unit_tests</arg> <arg name="assignee_name">Test Writer</arg> <arg name="description">Write comprehensive unit tests for all game components including movement, collision detection, and scoring logic</arg> <arg name="dependencies"> <item>implement_game_logic</item> </arg> </item> <item> <arg name="task_name">run_tests</arg> <arg name="assignee_name">Tester</arg> <arg name="description">Execute all unit tests and perform manual testing of the Snake game to ensure it functions correctly and meets requirements</arg> <arg name="dependencies"> <item>code_review</item> <item>write_unit_tests</item> </arg> </item> </arg> </arg> </arguments></tool>`;
+    const xml = `<tool name="PublishTaskPlan"> <arguments> <arg name="plan"> <arg name="overall_goal">Develop a complete Snake game in Python from scratch</arg> <arg name="tasks"> <item> <arg name="task_name">implement_game_logic</arg> <arg name="assignee_name">Software Engineer</arg> <arg name="description">Implement the core game logic for Snake including snake movement, food generation, collision detection, and score tracking</arg> </item> <item> <arg name="task_name">code_review</arg> <arg name="assignee_name">Code Reviewer</arg> <arg name="description">Conduct a thorough code review of the implemented Snake game logic, checking for best practices, efficiency, and correctness</arg> <arg name="dependencies"> <item>implement_game_logic</item> </arg> </item> <item> <arg name="task_name">write_unit_tests</arg> <arg name="assignee_name">Test Writer</arg> <arg name="description">Write comprehensive unit tests for all game components including movement, collision detection, and scoring logic</arg> <arg name="dependencies"> <item>implement_game_logic</item> </arg> </item> <item> <arg name="task_name">run_tests</arg> <arg name="assignee_name">Tester</arg> <arg name="description">Execute all unit tests and perform manual testing of the Snake game to ensure it functions correctly and meets requirements</arg> <arg name="dependencies"> <item>code_review</item> <item>write_unit_tests</item> </arg> </item> </arg> </arg></arguments></tool>`;
 
     parser.processChunks([xml]);
     parser.finalize();
@@ -195,9 +195,9 @@ describe('IncrementalAIResponseParser with Strategies', () => {
   it('should correctly parse a large code block with special XML characters as a single string argument', () => {
     const parser = createParser(LLMProvider.ANTHROPIC, true);
 
-    // This code block is ported from the backend test suite and contains many special characters
-    // that could be misinterpreted as XML tags (e.g., <, >).
-    // FIX: These characters are now properly escaped as XML entities.
+    // This is the raw content string, exactly as it should appear in the final parsed arguments.
+    // It contains XML entities because that's what the LLM must generate to produce valid XML.
+    // The FileWriter parser is designed to NOT decode this specific argument.
     const codeContent = `import sys
 from unittest.mock import patch
 import pytest
@@ -241,49 +241,6 @@ class TestComplexCode:
         assert game.game_over is True if __name__ == "__main__": pytest.main([__file__, "-v"])
 `;
 
-    const decodedCodeContent = `import sys
-from unittest.mock import patch
-import pytest
-
-# Add project root to path for imports, e.g. 'sys.path.insert(0, '.')'
-# This ensures that modules like 'snake_game' can be found.
-
-# Assuming 'snake_game' with 'Snake' class exists.
-from snake_game import Snake
-
-@pytest.mark.parametrize("test_input,expected", [("3+5", 8), ("2*4", 8)])
-class TestComplexCode:
-    """A test suite to demonstrate complex syntax parsing inside an XML arg."""
-    def test_conditions_and_operators(self, test_input, expected):
-        """
-        Tests various conditions with special XML chars like <, >, &, and "quotes".
-        The parser must treat this whole block as a single string.
-        """
-        snake = Snake()
-        game_over = False
-        
-        # Test for growth & other conditions
-        if snake.score > 10 and snake.length < 20:
-            print(f"Snake size is < 20. Score is > 10. A 'good' state.")
-        
-        # Using bitwise AND operator
-        if (snake.score & 1) == 0:
-            # Score is even
-            pass
-            
-        # Modulo operator for wrapping
-        pos_x = (snake.head_x + 1) % 40
-        
-        if pos_x == 0:
-            game_over = True
-        
-        assert game_over is False # Check boolean identity
-
-        # This should not be interpreted as an XML tag: <some_tag>
-        fake_xml_string = "<note>This is not XML.</note>"
-        assert game.game_over is True if __name__ == "__main__": pytest.main([__file__, "-v"])
-`;
-
     const xml = `<tool name="FileWriter"><arguments><arg name="path">test.py</arg><arg name="content">${codeContent}</arg></arguments></tool>`;
     
     parser.processChunks([xml]);
@@ -299,10 +256,11 @@ class TestComplexCode:
     expect(Object.keys(segment.arguments)).toEqual(['path', 'content']);
     expect(segment.arguments.path).toBe('test.py');
     expect(typeof segment.arguments.content).toBe('string');
-    expect(segment.arguments.content).toBe(decodedCodeContent);
+    // FIX: Assert that the content is the raw, undecoded string.
+    expect(segment.arguments.content).toBe(codeContent);
     
-    // Also verify the invocation ID is generated correctly
-    const expectedArgs = { path: 'test.py', content: decodedCodeContent };
+    // Also verify the invocation ID is generated correctly using the raw content.
+    const expectedArgs = { path: 'test.py', content: codeContent };
     const expectedHash = sha256(`FileWriter:${deterministicJsonStringify(expectedArgs)}`).toString();
     expect(segment.invocationId).toBe(`mock_call_${expectedHash}_0`);
   });
@@ -312,7 +270,6 @@ class TestComplexCode:
     const parser = createParser(LLMProvider.ANTHROPIC, true);
 
     const codeContentWithEscapedChars = `"""Test that snake wraps around screen edges""" snake = Snake() # Set snake at edge snake.positions = [(0, 0)] snake.direction = (-1, 0) # Moving left from edge # Update - should wrap to right side snake.update() # Should be at right edge (GRID_WIDTH - 1, 0) head = snake.get_head_position() assert head[0] == 39 # GRID_WIDTH - 1 = 800/20 - 1 = 39 def test_food_positioning(): """Test food positioning logic""" food = Food() # Food position should be within grid bounds assert 0 &lt;= food.position[0] &lt; 40 # GRID_WIDTH = 800/20 = 40 assert 0 &lt;= food.position[1] &lt; 30 # GRID_HEIGHT = 600/20 = 30 def test_game_score_system(): """Test that game score system works correctly""" game = SnakeGame() # Initially no points assert game.snake.score == 0 # After eating food, score should increase by 10 game.snake.grow() assert game.snake.score == 10 game.snake.grow() assert game.snake.score == 20 def test_game_over_condition(): """Test that game over condition is detected correctly""" game = SnakeGame() # Initially not game over assert game.game_over is False # Force game over by causing collision with self game.snake.positions = [(5, 5), (6, 5), (7, 5)] game.snake.direction = (1, 0) # Moving right # This should set game_over to True game.update() assert game.game_over is True if __name__ == "__main__": pytest.main([__file__, "-v"])`;
-    const codeContent = `"""Test that snake wraps around screen edges""" snake = Snake() # Set snake at edge snake.positions = [(0, 0)] snake.direction = (-1, 0) # Moving left from edge # Update - should wrap to right side snake.update() # Should be at right edge (GRID_WIDTH - 1, 0) head = snake.get_head_position() assert head[0] == 39 # GRID_WIDTH - 1 = 800/20 - 1 = 39 def test_food_positioning(): """Test food positioning logic""" food = Food() # Food position should be within grid bounds assert 0 <= food.position[0] < 40 # GRID_WIDTH = 800/20 = 40 assert 0 <= food.position[1] < 30 # GRID_HEIGHT = 600/20 = 30 def test_game_score_system(): """Test that game score system works correctly""" game = SnakeGame() # Initially no points assert game.snake.score == 0 # After eating food, score should increase by 10 game.snake.grow() assert game.snake.score == 10 game.snake.grow() assert game.snake.score == 20 def test_game_over_condition(): """Test that game over condition is detected correctly""" game = SnakeGame() # Initially not game over assert game.game_over is False # Force game over by causing collision with self game.snake.positions = [(5, 5), (6, 5), (7, 5)] game.snake.direction = (1, 0) # Moving right # This should set game_over to True game.update() assert game.game_over is True if __name__ == "__main__": pytest.main([__file__, "-v"])`;
 
     const xml = `<tool name="FileWriter"><arguments><arg name="path">test_snake_game.py</arg><arg name="content">${codeContentWithEscapedChars}</arg></arguments></tool>`;
     
@@ -325,14 +282,66 @@ class TestComplexCode:
     expect(segment.toolName).toBe('FileWriter');
     expect(segment.arguments.path).toBe('test_snake_game.py');
     expect(typeof segment.arguments.content).toBe('string');
-    expect(segment.arguments.content).toBe(codeContent);
+    // FIX: Assert that the content is the raw, undecoded string.
+    expect(segment.arguments.content).toBe(codeContentWithEscapedChars);
 
     // Log the generated ID for comparison with the backend
     console.log(`[Frontend Test] Generated ID for second large code block: ${segment.invocationId}`);
 
-    const expectedArgs = { path: 'test_snake_game.py', content: codeContent };
+    // FIX: Use the raw, undecoded content for the hash generation.
+    const expectedArgs = { path: 'test_snake_game.py', content: codeContentWithEscapedChars };
     const expectedHash = sha256(`FileWriter:${deterministicJsonStringify(expectedArgs)}`).toString();
     expect(segment.invocationId).toBe(`mock_call_${expectedHash}_0`);
+  });
+
+  // NEW TEST CASE based on user-provided image to enhance test coverage
+  it('should correctly parse a FileWriter tool call with Python code content', () => {
+    const parser = createParser(LLMProvider.ANTHROPIC, true);
+
+    const snakeGameCode = `import random
+import pygame
+import sys
+
+# Initialize Pygame
+pygame.init()
+
+# Constants
+WIDTH, HEIGHT = 800, 600
+GRID_SIZE = 20
+GRID_WIDTH = WIDTH // GRID_SIZE
+GRID_HEIGHT = HEIGHT // GRID_SIZE
+FPS = 10
+
+# Colors
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+
+class Snake:
+    def __init__(self):
+        self.reset()`;
+    
+    // The content does not contain special XML characters, so no escaping is needed here.
+    const xml = `<tool name="FileWriter"><arguments><arg name="path">snake_game.py</arg><arg name="content">${snakeGameCode}</arg></arguments></tool>`;
+    
+    parser.processChunks([xml]);
+    parser.finalize();
+
+    expect(segments.length).toBe(1);
+    const segment = segments[0] as ToolCallSegment;
+    expect(segment.type).toBe('tool_call');
+    expect(segment.toolName).toBe('FileWriter');
+    expect(segment.arguments.path).toBe('snake_game.py');
+    expect(segment.arguments.content).toBe(snakeGameCode);
+
+    // Also verify the invocation ID is generated correctly and deterministically
+    const expectedArgs = { path: 'snake_game.py', content: snakeGameCode };
+    const expectedHash = sha256(`FileWriter:${deterministicJsonStringify(expectedArgs)}`).toString();
+    expect(segment.invocationId).toBe(`mock_call_${expectedHash}_0`);
+
+    // Log the final segment to the console for user visibility
+    console.log('[Frontend Test] Final Segment for Snake Game Case:', segment);
   });
 
   it('should parse a complete OpenAI JSON tool_call segment using the OpenAiToolParsingStrategy', () => {
@@ -743,7 +752,7 @@ class TestComplexCode:
     expect(toolCall.arguments.prompt_content).toContain('named "Professor Chemostry."');
   });
 
-  it('should correctly parse a complete HTML document into an iframe segment', () => {
+  it('should correctly parse a complete HTML document into a complete iframe segment', () => {
     const parser = createParser(LLMProvider.ANTHROPIC, true);
     const htmlDoc = '<!doctype html><html><body><p>Hello</p></body></html>';
     const chunks = [
@@ -756,12 +765,12 @@ class TestComplexCode:
 
     expect(segments).toEqual([
       { type: 'text', content: 'Here is the document: ' },
-      { type: 'iframe', content: htmlDoc },
+      { type: 'iframe', content: htmlDoc, isComplete: true },
       { type: 'text', content: ' That is all.' },
     ]);
   });
 
-  it('should treat an incomplete HTML document as plain text', () => {
+  it('should parse an incomplete HTML document into an incomplete iframe segment', () => {
     const parser = createParser(LLMProvider.ANTHROPIC, true);
     const incompleteHtml = '<!doctype html><html><body><p>Uh oh';
     const chunks = [ 'Response: ', incompleteHtml ];
@@ -769,8 +778,12 @@ class TestComplexCode:
     parser.processChunks(chunks);
     parser.finalize();
 
-    expect(segments).toEqual([
-      { type: 'text', content: 'Response: <!doctype html><html><body><p>Uh oh' },
-    ]);
+    expect(segments.length).toBe(2);
+    expect(segments[0]).toEqual({ type: 'text', content: 'Response: ' });
+    
+    const iframeSegment = segments[1] as IframeSegment;
+    expect(iframeSegment.type).toBe('iframe');
+    expect(iframeSegment.content).toBe(incompleteHtml);
+    expect(iframeSegment.isComplete).toBe(false);
   });
 });

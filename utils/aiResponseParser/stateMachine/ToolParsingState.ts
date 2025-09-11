@@ -2,6 +2,8 @@ import { BaseState, ParserStateType } from './State';
 import { TextState } from './TextState';
 import type { ParserContext } from './ParserContext';
 import type { ToolParsingStrategy } from '../tool_parsing_strategies/base';
+import { XmlToolParsingStrategy } from '../tool_parsing_strategies/xmlToolParsingStrategy';
+import { FileWriterXmlToolParsingStrategy } from '../tool_parsing_strategies/fileWriterXmlToolParsingStrategy';
 
 export class ToolParsingState extends BaseState {
     stateType = ParserStateType.TOOL_PARSING_STATE;
@@ -9,14 +11,33 @@ export class ToolParsingState extends BaseState {
 
     constructor(context: ParserContext, signatureBuffer: string) {
         super(context);
-        this.strategy = context.strategy;
         
-        // Start the segment with the signature found by the previous state
+        // This is the new routing logic.
+        this.strategy = this.selectStrategy(signatureBuffer);
+        
+        // The previous state identified the signature and rewound the cursor.
+        // This state is responsible for starting the strategy and consuming the signature from the stream.
         this.strategy.startSegment(this.context, signatureBuffer);
         
-        // Per our "Cursor Rule", this state is responsible for consuming the
-        // signature that it was created to handle.
+        // Per the "rewind and re-parse" contract, consume the signature from the stream.
         this.context.advanceBy(signatureBuffer.length);
+    }
+
+    private selectStrategy(signatureBuffer: string): ToolParsingStrategy {
+      // For XML, we inspect the name attribute to see if it's a special case.
+      if (signatureBuffer.trim().startsWith('<tool')) {
+        const isFileWriter = /name\s*=\s*['"]FileWriter['"]/.test(signatureBuffer);
+        if (isFileWriter) {
+          console.log('[ToolParsingState] Selecting FileWriterXmlToolParsingStrategy');
+          return new FileWriterXmlToolParsingStrategy();
+        }
+        console.log('[ToolParsingState] Selecting generic XmlToolParsingStrategy');
+        return new XmlToolParsingStrategy();
+      }
+      
+      // For JSON and other types, the context's default strategy is used.
+      console.log('[ToolParsingState] Selecting context default strategy');
+      return this.context.strategy;
     }
 
     run(): void {

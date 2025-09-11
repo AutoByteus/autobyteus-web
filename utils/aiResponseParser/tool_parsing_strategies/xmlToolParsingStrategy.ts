@@ -43,20 +43,29 @@ export class XmlToolParsingStrategy implements ToolParsingStrategy {
     }
 
     startSegment(context: ParserContext, signatureBuffer: string): void {
-        console.log('[XmlParser] Strategy starting.');
+        console.log('[XmlParser] Strategy starting with full tag:', signatureBuffer);
         this.isDone = false;
-        this.state = 'INSIDE_TAG'; // We start having seen '<tool'
-        this.stack = [];
-        this.tagBuffer = signatureBuffer;
-        this.contentBuffer = '';
+        // The signatureBuffer is the full opening tag, e.g. '<tool name="MyTool">'
         this.fullBuffer = signatureBuffer;
 
-        context.startXmlToolCallSegment('');
+        const nameMatch = signatureBuffer.match(/name="([^"]+)"/);
+        const toolName = nameMatch ? nameMatch[1] : '';
+
+        // Start the segment with the correct tool name
+        context.startXmlToolCallSegment(toolName);
         
-        if (context.currentSegment?.type === 'tool_call') {
-            const rootContainer = context.currentSegment.arguments;
-            this.stack.push({ container: rootContainer, parentContainer: null, keyInParent: null });
+        const currentSegment = context.currentSegment;
+        if (currentSegment?.type === 'tool_call') {
+            const rootContainer = currentSegment.arguments;
+            this.stack = [{ container: rootContainer, parentContainer: null, keyInParent: null }];
+        } else {
+            this.stack = [];
         }
+        
+        // We have consumed the opening tag, so we are now OUTSIDE, waiting for content or closing tag.
+        this.state = 'OUTSIDE_TAG';
+        this.tagBuffer = '';
+        this.contentBuffer = '';
     }
     
     private _isStructural(tag: string): boolean {
@@ -203,14 +212,17 @@ export class XmlToolParsingStrategy implements ToolParsingStrategy {
 
         const parsingSegment = context.segments.find(
             s => s.type === 'tool_call' && s.status === 'parsing'
-        );
+        ) as ToolCallSegment | undefined;
         if (!parsingSegment) return;
 
-        const nameMatch = this.fullBuffer.match(/<tool\s+name="([^"]+)"/);
-        if (nameMatch) {
-            parsingSegment.toolName = nameMatch[1];
-        } else {
-            this.isDone = false;
+        // The tool name is now set in startSegment, but we double-check here.
+        if (!parsingSegment.toolName) {
+            const nameMatch = this.fullBuffer.match(/<tool\s+name="([^"]+)"/);
+            if (nameMatch) {
+                parsingSegment.toolName = nameMatch[1];
+            } else {
+                this.isDone = false;
+            }
         }
 
         console.log(`[XmlParser] Final check: isDone = ${this.isDone}`);

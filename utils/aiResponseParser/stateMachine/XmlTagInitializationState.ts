@@ -22,42 +22,49 @@ export class XmlTagInitializationState extends BaseState {
   }
 
   run(): void {
+    const { strategy } = this.context;
+
     while (this.context.hasMoreChars()) {
       const char = this.context.peekChar()!;
       this.tagBuffer += char;
       this.context.advance();
 
-      const { strategy } = this.context;
       const lowerCaseBuffer = this.tagBuffer.toLowerCase();
       
-      const couldBeFile = this.possibleFile.startsWith(lowerCaseBuffer);
-      const couldBeTool = (strategy instanceof XmlToolParsingStrategy) && this.possibleTool.startsWith(lowerCaseBuffer);
-      const couldBeDoctype = this.possibleDoctype.startsWith(lowerCaseBuffer);
-
+      // --- Immediate transition for exact short-circuit matches ---
       if (lowerCaseBuffer === '<file') {
         this.context.transitionTo(new FileParsingState(this.context));
         return;
       }
-      
-      // Check for complete DOCTYPE match
       if (lowerCaseBuffer === this.possibleDoctype) {
         this.context.transitionTo(new IframeParsingState(this.context, this.tagBuffer));
         return;
       }
-      
-      if (lowerCaseBuffer === '<tool' && strategy instanceof XmlToolParsingStrategy) {
-        if (this.context.parseToolCalls) {
-          this.context.setPosition(this.context.getPosition() - this.tagBuffer.length);
-          this.context.transitionTo(new ToolParsingState(this.context, this.tagBuffer));
+
+      // --- Tag completion check ---
+      if (char === '>') {
+        if ((strategy instanceof XmlToolParsingStrategy) && lowerCaseBuffer.startsWith(this.possibleTool)) {
+            if (this.context.parseToolCalls) {
+                // Rewind before transitioning so ToolParsingState can re-parse the tag and select the right strategy.
+                this.context.setPosition(this.context.getPosition() - this.tagBuffer.length);
+                this.context.transitionTo(new ToolParsingState(this.context, this.tagBuffer));
+            } else {
+                this.context.appendTextSegment(this.tagBuffer);
+                this.context.transitionTo(new TextState(this.context));
+            }
         } else {
-          this.context.appendTextSegment(this.tagBuffer);
-          this.context.transitionTo(new TextState(this.context));
+            this.context.appendTextSegment(this.tagBuffer);
+            this.context.transitionTo(new TextState(this.context));
         }
         return;
       }
 
+      // --- Continuity check ---
+      const couldBeFile = this.possibleFile.startsWith(lowerCaseBuffer);
+      const couldBeTool = (strategy instanceof XmlToolParsingStrategy) && (this.possibleTool.startsWith(lowerCaseBuffer) || lowerCaseBuffer.startsWith(this.possibleTool));
+      const couldBeDoctype = this.possibleDoctype.startsWith(lowerCaseBuffer);
+
       if (!couldBeFile && !couldBeTool && !couldBeDoctype) {
-        // Not a recognized tag or declaration. Revert to text.
         this.context.appendTextSegment(this.tagBuffer);
         this.context.transitionTo(new TextState(this.context));
         return;
