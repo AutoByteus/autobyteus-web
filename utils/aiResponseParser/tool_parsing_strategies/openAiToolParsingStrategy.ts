@@ -49,15 +49,13 @@ export class OpenAiToolParsingStrategy implements ToolParsingStrategy {
 
         context.startJsonToolCallSegment();
         this.rawJsonBuffer = signatureBuffer;
-        if (context.currentSegment?.type === 'tool_call') {
-            context.currentSegment.rawJsonContent = signatureBuffer;
-        }
+        context.appendToCurrentToolRawContent(signatureBuffer);
         this.braceCount = (signatureBuffer.match(/[{[]/g) || []).length - (signatureBuffer.match(/[}\]]/g) || []).length;
     }
 
     processChar(char: string, context: ParserContext): void {
         this.rawJsonBuffer += char;
-        context.appendToCurrentToolRawJson(char);
+        context.appendToCurrentToolRawContent(char);
 
         if (this.inString) {
             if (this.isEscaped) {

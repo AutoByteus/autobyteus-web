@@ -44,10 +44,12 @@ export class FileWriterXmlToolParsingStrategy implements ToolParsingStrategy {
   startSegment(context: ParserContext, signatureBuffer: string): void {
     this.fullToolBuffer = signatureBuffer;
     context.startXmlToolCallSegment('FileWriter');
+    context.appendToCurrentToolRawContent(signatureBuffer);
   }
 
   processChar(char: string, context: ParserContext): void {
     this.fullToolBuffer += char;
+    context.appendToCurrentToolRawContent(char);
     
     switch (this.internalState) {
       case FwState.AWAITING_ARGUMENTS_OPEN:

@@ -54,6 +54,7 @@ export class XmlToolParsingStrategy implements ToolParsingStrategy {
 
         // Start the segment with the correct tool name
         context.startXmlToolCallSegment(toolName);
+        context.appendToCurrentToolRawContent(signatureBuffer);
         
         const currentSegment = context.currentSegment;
         if (currentSegment?.type === 'tool_call') {
@@ -78,6 +79,7 @@ export class XmlToolParsingStrategy implements ToolParsingStrategy {
 
     processChar(char: string, context: ParserContext): void {
         this.fullBuffer += char;
+        context.appendToCurrentToolRawContent(char);
 
         if (this.state === 'INSIDE_TAG') {
             this.tagBuffer += char;

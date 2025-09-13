@@ -116,12 +116,12 @@ export class ParserContext {
     this.currentSegment = null;
   }
   
-  appendToCurrentToolRawJson(char: string): void {
+  appendToCurrentToolRawContent(char: string): void {
     if (this.currentSegment && this.currentSegment.type === 'tool_call' && this.currentSegment.status === 'parsing') {
-        if(this.currentSegment.rawJsonContent === undefined) {
-            this.currentSegment.rawJsonContent = '';
+        if(this.currentSegment.rawContent === undefined) {
+            this.currentSegment.rawContent = '';
         }
-        this.currentSegment.rawJsonContent += char;
+        this.currentSegment.rawContent += char;
     }
   }
   
@@ -144,6 +144,7 @@ export class ParserContext {
           logs: [],
           result: null,
           error: null,
+          rawContent: '',
       };
       this.segments.push(toolCallSegment);
       this.currentSegment = toolCallSegment;
@@ -159,7 +160,7 @@ export class ParserContext {
           logs: [],
           result: null,
           error: null,
-          rawJsonContent: '',
+          rawContent: '',
       };
       this.segments.push(toolCallSegment);
       this.currentSegment = toolCallSegment;
@@ -204,12 +205,12 @@ export class ParserContext {
                   logs: [],
                   result: null,
                   error: null,
-                  rawJsonContent: parsingSegment.rawJsonContent,
+                  rawContent: parsingSegment.rawContent,
               };
               this.segments.splice(parsingSegmentIndex + i, 0, toolCallSegment);
           }
       } else {
-          const rawContent = parsingSegment.rawJsonContent || '';
+          const rawContent = parsingSegment.rawContent || '';
           if (rawContent) {
               console.warn("Could not parse JSON tool call from stream. Reverting to text.", rawContent);
               

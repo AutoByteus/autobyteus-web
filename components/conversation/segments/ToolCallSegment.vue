@@ -24,18 +24,10 @@
       </div>
     </div>
 
-    <!-- Raw Content Streaming View (for both JSON and streaming XML args) -->
-    <div v-if="!segment.toolName || segment.status === 'parsing'">
-      <div v-if="segment.rawJsonContent" class="arguments-section p-3 bg-gray-50 dark:bg-gray-800 rounded mb-3">
-          <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Receiving...</div>
-          <pre class="mt-2 text-xs text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 p-2 rounded overflow-auto"><code>{{ segment.rawJsonContent }}</code></pre>
-      </div>
-       <div v-else class="arguments-section p-3 bg-gray-50 dark:bg-gray-800 rounded mb-3">
-          <details open>
-            <summary class="cursor-pointer text-xs font-semibold text-gray-600 dark:text-gray-300">Arguments (Streaming)</summary>
-            <pre class="mt-2 text-xs text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 p-2 rounded overflow-auto"><code>{{ JSON.stringify(segment.arguments, null, 2) }}</code></pre>
-          </details>
-      </div>
+    <!-- Raw Content Streaming View -->
+    <div v-if="segment.status === 'parsing' && segment.rawContent" class="arguments-section p-3 bg-gray-50 dark:bg-gray-800 rounded mb-3">
+        <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Receiving...</div>
+        <pre class="mt-2 text-xs text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 p-2 rounded overflow-auto"><code>{{ segment.rawContent }}</code></pre>
     </div>
     
     <!-- Structured Arguments View (after parsing is complete) -->

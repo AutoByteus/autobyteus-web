@@ -35,7 +35,7 @@ export interface ToolCallSegment {
   logs: string[];
   result: any | null;
   error: string | null;
-  rawJsonContent?: string; // Buffer for streaming raw JSON
+  rawContent?: string; // Buffer for streaming raw content (JSON or XML)
 }
 
 // NEW SEGMENT TYPE
