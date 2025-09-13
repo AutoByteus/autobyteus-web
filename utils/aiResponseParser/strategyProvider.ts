@@ -27,6 +27,9 @@ export function getToolParsingStrategy(provider: LLMProvider, useXmlToolFormat: 
     // Otherwise, select the JSON parser based on the provider.
     switch (provider) {
         case LLMProvider.OPENAI:
+        case LLMProvider.MISTRAL:
+        case LLMProvider.DEEPSEEK:
+        case LLMProvider.GROK:
             return new OpenAiToolParsingStrategy();
         case LLMProvider.GEMINI:
             return new GeminiToolParsingStrategy();
