@@ -135,6 +135,9 @@ const toolStore = useToolManagementStore();
 
 // Fetch required data on mount
 onMounted(async () => {
+  // Fetch all options for dropdowns and tag inputs.
+  optionsStore.fetchAllAvailableOptions();
+
   // Use the new action to fetch grouped local tools
   if (toolStore.getLocalToolsByCategory.length === 0) {
     toolStore.fetchLocalToolsGroupedByCategory();

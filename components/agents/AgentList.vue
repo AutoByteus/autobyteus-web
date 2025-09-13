@@ -71,14 +71,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useAgentDefinitionStore, type AgentDefinition } from '~/stores/agentDefinitionStore';
-import { useAgentDefinitionOptionsStore } from '~/stores/agentDefinitionOptionsStore';
 import AgentCard from '~/components/agents/AgentCard.vue';
 import WorkspaceConfigModal from '~/components/workspace/WorkspaceConfigModal.vue';
 
 const emit = defineEmits(['navigate']);
 
 const agentDefinitionStore = useAgentDefinitionStore();
-const agentDefinitionOptionsStore = useAgentDefinitionOptionsStore();
 
 const agentDefinitions = computed(() => agentDefinitionStore.agentDefinitions);
 const loading = computed(() => agentDefinitionStore.loading);
@@ -103,8 +101,6 @@ onMounted(() => {
   if (agentDefinitions.value.length === 0) {
     agentDefinitionStore.fetchAllAgentDefinitions();
   }
-  // Fetch options for the create/edit form
-  agentDefinitionOptionsStore.fetchAllAvailableOptions();
 });
 
 const viewDetails = (agentId: string) => {
