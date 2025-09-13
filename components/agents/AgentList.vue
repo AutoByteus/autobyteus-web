@@ -15,14 +15,14 @@
       <div class="mb-6">
         <div class="relative">
           <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <span class="i-heroicons-magnifying-glass-20-solid text-gray-400 w-5 h-5" aria-hidden="true" />
+            <span class="i-heroicons-magnifying-glass-20-solid text-gray-500 w-5 h-5" aria-hidden="true" />
           </div>
           <input
             type="text"
             v-model="searchQuery"
             name="agent-search"
             id="agent-search"
-            class="block w-full rounded-lg border-gray-300 pl-10 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2.5"
+            class="block w-full rounded-lg border-gray-200 pl-10 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2.5 bg-gray-50 focus:bg-white placeholder-gray-500"
             placeholder="Search agents by name or description..."
           />
         </div>
