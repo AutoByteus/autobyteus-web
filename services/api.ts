@@ -60,7 +60,15 @@ class ApiService {
     return this.axiosInstance.post<T>(url, data, config)
   }
 
-  // Similarly, you can add put, delete, etc.
+  // Generic PUT request
+  public put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.axiosInstance.put<T>(url, data, config)
+  }
+
+  // Generic DELETE request
+  public delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.axiosInstance.delete<T>(url, config)
+  }
 }
 
 // Export a singleton instance
