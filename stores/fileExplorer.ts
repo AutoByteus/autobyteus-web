@@ -28,6 +28,7 @@ import { useWorkspaceStore } from '~/stores/workspace'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
 import { findFileByPath, determineFileType } from '~/utils/fileExplorer/fileUtils'
+import { getServerUrls } from '~/utils/serverConfig'
 
 // --- NEW TYPES FOR MULTI-CONTENT SUPPORT ---
 export type FileDataType = 'Text' | 'Image' | 'Audio' | 'Video' | 'Unsupported';
@@ -225,10 +226,12 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
           } else if (['Image', 'Audio', 'Video'].includes(newFileState.type)) {
             const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
             if (workspaceId) {
+              const serverUrls = getServerUrls();
+              const restBaseUrl = serverUrls.rest.replace(/\/$/, ''); // Ensure no trailing slash
               const encodedFilePath = encodeURIComponent(pathOrUrl);
-              newFileState.url = `/rest/workspaces/${workspaceId}/content?path=${encodedFilePath}`;
+              newFileState.url = `${restBaseUrl}/workspaces/${workspaceId}/content?path=${encodedFilePath}`;
               newFileState.isLoading = false;
-              console.log(`[FileExplorer] Constructed media URL for "${pathOrUrl}": ${newFileState.url}`);
+              console.log(`[FileExplorer] Constructed absolute media URL for "${pathOrUrl}": ${newFileState.url}`);
             } else {
               newFileState.error = "No active workspace to construct file URL.";
               newFileState.isLoading = false;
