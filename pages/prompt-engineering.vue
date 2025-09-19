@@ -29,11 +29,6 @@
           :promptId="viewStore.selectedPromptId!"
         />
         
-        <!-- Generation View -->
-        <div v-else-if="sidebarView === 'generation'">
-          <h1 class="text-2xl font-bold mb-6">Prompt Generation</h1>
-          <!-- Future prompt generation implementation will go here -->
-        </div>
       </transition>
     </div>
   </div>
@@ -57,7 +52,6 @@ const sidebarView = ref('marketplace');
 
 const menuItems = [
   { id: 'marketplace', label: 'Prompts Marketplace' },
-  { id: 'generation', label: 'Prompt Generation' }
 ];
 
 function navigateTo(view: string) {
