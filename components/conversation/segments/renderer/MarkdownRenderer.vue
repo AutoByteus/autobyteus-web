@@ -1,5 +1,5 @@
 <template>
-  <div class="markdown-renderer-segments">
+  <div class="markdown-renderer-segments" @click="handleLinkClick">
     <template v-for="segment in segments" :key="segment.key">
       <div v-if="segment.type === 'html'" v-html="segment.content" class="markdown-body prose dark:prose-invert prose-gray max-w-none"></div>
       <PlantUMLDiagram
@@ -52,6 +52,53 @@ const applyPostRenderEffects = async () => {
     // }
 };
 
+/**
+ * Handles clicks within the rendered markdown content. If a click is on an
+ * external link, it prevents the default navigation and opens the link in
+ * the user's default external browser.
+ */
+const handleLinkClick = (event: MouseEvent) => {
+  const target = event.target as HTMLElement;
+  const anchor = target.closest('a');
+  
+  if (anchor && anchor.href) {
+    // Check if it's an external link (http or https)
+    try {
+      // Using anchor.href ensures we get the absolute URL
+      const url = new URL(anchor.href);
+      if (['http:', 'https:'].includes(url.protocol)) {
+        event.preventDefault();
+        openExternalLink(anchor.href);
+      }
+    } catch (e) {
+      // Could be a malformed URL or a relative path, let the browser handle it or ignore.
+      console.warn('Could not parse anchor href, or it is not an external link:', anchor.href, e);
+    }
+  }
+};
+
+/**
+ * Opens a URL in the user's default browser. It attempts to use the exposed
+ * Electron API for a native experience and falls back to `window.open`
+ * for standard web environments.
+ */
+const openExternalLink = (url: string) => {
+  // Use the exposed Electron API to open links externally if available.
+  // This is the correct, secure way for a context-isolated renderer.
+  if (window.electronAPI?.openExternalLink) {
+    try {
+      window.electronAPI.openExternalLink(url);
+      return;
+    } catch (e) {
+      console.error('Failed to open link using electronAPI.openExternalLink. Falling back to window.open.', e);
+    }
+  }
+  
+  // Standard browser fallback to open in a new tab.
+  window.open(url, '_blank', 'noopener,noreferrer');
+};
+
+
 onMounted(applyPostRenderEffects);
 watch(segments, applyPostRenderEffects, { deep: true }); // Re-apply if segments change
 
@@ -87,7 +134,7 @@ watch(segments, applyPostRenderEffects, { deep: true }); // Re-apply if segments
   /* Standard prose styles will apply here */
 }
 .dark .markdown-renderer-segments .dark\:prose-invert {
- /* Dark mode prose styles */
+ /* Dark mode styles */
 }
 
 </style>

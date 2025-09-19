@@ -219,6 +219,20 @@ ipcMain.handle('open-log-file', async (event, filePath) => {
   }
 })
 
+ipcMain.handle('open-external-link', async (event, url: string) => {
+  try {
+    logger.info(`Attempting to open external link: ${url}`);
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    logger.error(`Failed to open external link: ${error instanceof Error ? error.message : String(error)}`);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error opening external link'
+    };
+  }
+});
+
 ipcMain.handle('read-log-file', async (event, filePath) => {
   try {
     logger.info(`Reading log file content: ${filePath}`)
