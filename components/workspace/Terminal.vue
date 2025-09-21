@@ -1,6 +1,6 @@
 <template>
-  <div class="terminal-container h-full" ref="terminalContainer">
-    <div ref="terminalElement"></div>
+  <div class="terminal-container h-full flex flex-col" ref="terminalContainer">
+    <div ref="terminalElement" class="flex-1 w-full"></div>
   </div>
 </template>
 
@@ -19,6 +19,8 @@ const fitAddon = ref<FitAddon | null>(null);
 const isAddonActivated = ref(false);
 const bashCommandStore = useBashCommandStore();
 const workspaceStore = useWorkspaceStore();
+
+let resizeObserver: ResizeObserver | null = null;
 
 const currentConversationId = ref<string>('default-conversation');
 const currentMessageIndex = ref<number>(0);
@@ -44,9 +46,14 @@ const processPendingCommand = async () => {
   }
 };
 
+const prompt = computed(() => {
+  const workspaceName = workspaceStore.activeWorkspace?.name || 'no-workspace';
+  return `\r\n${workspaceName}:~$ `;
+});
+
 const writePrompt = () => {
   if (terminalInstance.value) {
-    terminalInstance.value.write('\r\nuser@autobyteus-web:~$ ');
+    terminalInstance.value.write(prompt.value);
   }
 };
 
@@ -212,7 +219,11 @@ const debouncedFit = debounce(() => {
 }, 100);
 
 const cleanup = () => {
-  window.removeEventListener('resize', debouncedFit);
+  if (resizeObserver && terminalContainer.value) {
+    resizeObserver.unobserve(terminalContainer.value);
+  }
+  resizeObserver = null;
+  
   terminalContainer.value?.removeEventListener('click', () => terminalInstance.value?.focus());
 
   try {
@@ -240,7 +251,11 @@ onMounted(() => {
   nextTick(() => {
     initializeTerminal();
     
-    window.addEventListener('resize', debouncedFit);
+    if (terminalContainer.value) {
+      resizeObserver = new ResizeObserver(debouncedFit);
+      resizeObserver.observe(terminalContainer.value);
+    }
+    
     terminalContainer.value?.addEventListener('click', () => {
       terminalInstance.value?.focus();
     });
@@ -265,5 +280,6 @@ onBeforeUnmount(() => {
 
 .xterm {
   padding: 0;
+  height: 100%;
 }
 </style>
