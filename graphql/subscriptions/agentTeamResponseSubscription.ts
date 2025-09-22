@@ -83,39 +83,31 @@ const nestedTeamEventFragment = gql`
               toolName
               arguments
             }
-            # --- START: ADDED FRAGMENT ---
             ... on GraphQLSystemTaskNotificationData {
               senderId
               content
             }
-            # --- END: ADDED FRAGMENT ---
           }
         }
       }
-      ... on GraphQLTaskPlanPublishedEvent {
+      ... on GraphQLTasksAddedEvent {
         teamId
-        planId
-        plan {
-          planId
-          overallGoal
-          tasks {
-            taskId
-            taskName
-            assigneeName
-            description
-            dependencies
-            fileDeliverables {
-              filePath
-              summary
-              authorAgentName
-              timestamp
-            }
+        tasks {
+          taskId
+          taskName
+          assigneeName
+          description
+          dependencies
+          fileDeliverables {
+            filePath
+            summary
+            authorAgentName
+            timestamp
           }
         }
       }
       ... on GraphQLTaskStatusUpdatedEvent {
         teamId
-        planId
         taskId
         newStatus
         agentName

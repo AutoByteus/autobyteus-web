@@ -1,5 +1,5 @@
 // file: autobyteus-web/services/agentTeamResponseHandlers/taskBoardHandler.ts
-import type { GraphQLTaskPlanPublishedEvent, GraphQLTaskStatusUpdatedEvent } from '~/generated/graphql';
+import type { GraphQLTasksAddedEvent, GraphQLTaskStatusUpdatedEvent } from '~/generated/graphql';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import type { Task } from '~/types/taskManagement';
 import { TaskStatus } from '~/types/taskManagement';
@@ -15,18 +15,26 @@ function mapGqlTaskToLocal(gqlTask: any): Task {
   };
 }
 
-export function handleTaskPlanPublished(
-  data: GraphQLTaskPlanPublishedEvent,
+export function handleTasksAdded(
+  data: GraphQLTasksAddedEvent,
   teamContext: AgentTeamContext
 ): void {
-  console.log(`Task plan published for team ${teamContext.teamId}`);
-  if (data.plan && data.plan.tasks) {
-    teamContext.taskPlan = data.plan.tasks.map(mapGqlTaskToLocal);
-    const newStatuses: Record<string, TaskStatus> = {};
-    for (const task of data.plan.tasks) {
-      newStatuses[task.taskId] = TaskStatus.NOT_STARTED;
+  console.log(`Tasks added for team ${teamContext.teamId}`);
+  if (data.tasks) {
+    // If a plan already exists, this adds to it. Otherwise, it initializes it.
+    if (!teamContext.taskPlan) {
+      teamContext.taskPlan = [];
     }
-    teamContext.taskStatuses = newStatuses;
+    if (!teamContext.taskStatuses) {
+      teamContext.taskStatuses = {};
+    }
+    
+    const newTasks = data.tasks.map(mapGqlTaskToLocal);
+    teamContext.taskPlan.push(...newTasks);
+    
+    for (const task of newTasks) {
+      teamContext.taskStatuses[task.taskId] = TaskStatus.NOT_STARTED;
+    }
   }
 }
 

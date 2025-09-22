@@ -10,6 +10,7 @@
           <tr>
             <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
             <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+            <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
             <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
             <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deliverables</th>
             <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Depends On</th>
@@ -23,7 +24,8 @@
                 {{ statusVisuals(task.taskId).text }}
               </span>
             </td>
-            <td class="px-4 py-3 text-sm text-gray-800 font-medium align-top" :title="task.description">{{ task.taskName }}</td>
+            <td class="px-4 py-3 text-sm text-gray-800 font-medium align-top">{{ task.taskName }}</td>
+            <td class="px-4 py-3 text-xs text-gray-500 align-top max-w-md break-words" :title="task.description">{{ task.description }}</td>
             <td class="px-4 py-3 text-sm text-gray-600 align-top">{{ task.assigneeName }}</td>
             <td class="px-4 py-3 text-sm text-gray-600 align-top">
               <div v-if="task.fileDeliverables && task.fileDeliverables.length > 0">
