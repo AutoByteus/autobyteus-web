@@ -121,6 +121,16 @@ const baseConfig = {
           : serverUrls.graphqlBaseUrl,
         wsEndpoint: serverUrls.wsBaseUrl,
         websocketsOnly: false,
+        // Enable in-memory cache and set default fetch policy
+        inMemoryCacheOptions: {},
+        defaultOptions: {
+          watchQuery: {
+            fetchPolicy: 'cache-first',
+          },
+          query: {
+            fetchPolicy: 'cache-first',
+          },
+        },
       },
     },
   },

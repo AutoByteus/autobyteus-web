@@ -4,6 +4,7 @@ import { useQuery } from '@vue/apollo-composable';
 import { GetAgentCustomizationOptions } from '~/graphql/queries/agentCustomizationOptionsQueries';
 
 interface PromptCategory {
+  __typename?: 'PromptCategory';
   category: string;
   names: string[];
 }
@@ -18,7 +19,7 @@ interface AgentDefinitionOptionsState {
   promptCategories: PromptCategory[];
   loading: boolean;
   error: any;
-  fetched: boolean;
+  fetched: boolean; // This will be removed, but keeping interface for reference
 }
 
 export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOptions', () => {
@@ -33,16 +34,14 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
   
   const loading = ref(false);
   const error = ref<any>(null);
-  const fetched = ref(false); // To prevent multiple fetches
 
   // Actions
   function fetchAllAvailableOptions() {
-    if (fetched.value) return;
-
+    // The manual `fetched` flag is no longer needed; Apollo's `cache-first` policy handles this.
     const { onResult, onError, loading: queryLoading } = useQuery(
       GetAgentCustomizationOptions,
       null,
-      { fetchPolicy: 'network-only' }
+      // No fetchPolicy needed, it will use the 'cache-first' default from nuxt.config.ts
     );
 
     loading.value = queryLoading.value;
@@ -56,7 +55,6 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
         toolExecutionResultProcessorNames.value = result.data.availableToolExecutionResultProcessorNames || [];
         phaseHookNames.value = result.data.availablePhaseHookNames || [];
         promptCategories.value = result.data.availablePromptCategories || [];
-        fetched.value = true;
       }
       loading.value = false;
     });
@@ -68,9 +66,10 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
     });
   }
 
-  function invalidateCache() {
-    fetched.value = false;
-  }
+  // This function is no longer needed as we rely on Apollo's cache invalidation via refetchQueries.
+  // function invalidateCache() {
+  //   fetched.value = false;
+  // }
 
   return {
     // State
@@ -83,9 +82,7 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
     promptCategories,
     loading,
     error,
-    fetched,
     // Actions
     fetchAllAvailableOptions,
-    invalidateCache,
   };
 });

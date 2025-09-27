@@ -6,9 +6,24 @@
           <h1 class="text-2xl font-bold text-gray-900">Local Agents</h1>
           <p class="text-gray-500 mt-1">Access your installed local AI agents</p>
         </div>
-        <button @click="$emit('navigate', { view: 'create' })" class="px-4 py-2 bg-blue-600 text-white font-semibold text-sm rounded-md hover:bg-blue-700 transition-colors flex items-center">
-          Create New Agent
-        </button>
+        <div class="flex items-center space-x-2">
+          <button
+            @click="handleReload"
+            :disabled="reloading"
+            class="flex items-center px-4 py-2 text-sm rounded-lg transition-colors"
+            :class="[
+              reloading ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+            ]"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" :class="{'animate-spin': reloading}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {{ reloading ? 'Reloading...' : 'Reload' }}
+          </button>
+          <button @click="$emit('navigate', { view: 'create' })" class="px-4 py-2 bg-blue-600 text-white font-semibold text-sm rounded-md hover:bg-blue-700 transition-colors flex items-center">
+            Create New Agent
+          </button>
+        </div>
       </div>
 
       <!-- Single Box Search Filter -->
@@ -28,7 +43,7 @@
         </div>
       </div>
 
-      <div v-if="loading" class="text-center py-20">
+      <div v-if="loading && !reloading" class="text-center py-20">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto mb-4"></div>
         <p>Loading agent definitions...</p>
       </div>
@@ -84,6 +99,7 @@ const error = computed(() => agentDefinitionStore.error);
 
 const selectedAgent = ref<AgentDefinition | null>(null);
 const searchQuery = ref('');
+const reloading = ref(false);
 
 const filteredAgentDefinitions = computed(() => {
   if (!searchQuery.value) {
@@ -102,6 +118,18 @@ onMounted(() => {
     agentDefinitionStore.fetchAllAgentDefinitions();
   }
 });
+
+const handleReload = async () => {
+  reloading.value = true;
+  try {
+    await agentDefinitionStore.reloadAllAgentDefinitions();
+  } catch (e) {
+    console.error("Failed to reload agents:", e);
+    // Optionally show a notification to the user
+  } finally {
+    reloading.value = false;
+  }
+};
 
 const viewDetails = (agentId: string) => {
   emit('navigate', { view: 'detail', id: agentId });

@@ -15,12 +15,12 @@
         <h2 class="text-xl font-semibold text-gray-800">Prompt Marketplace</h2>
         <div class="flex items-center gap-2">
           <button
-            @click="reloadPrompts"
+            @click="handleReload"
             class="flex items-center px-4 py-2 text-sm rounded-lg transition-colors"
             :class="[
               reloading ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-50 text-blue-600 hover:bg-blue-100',
             ]"
-            :disabled="loading || syncing"
+            :disabled="reloading || syncing"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" :class="{'animate-spin': reloading}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -496,10 +496,12 @@ const promptsByNameAndCategory = computed(() => {
 });
 
 // Functions
-const reloadPrompts = async () => {
+const handleReload = async () => {
   reloading.value = true;
   try {
-    await promptStore.fetchPrompts(null); // Use the new fetchPrompts to get all
+    await promptStore.reloadPrompts();
+  } catch(e) {
+    console.error("Failed to reload prompts:", e);
   } finally {
     reloading.value = false;
   }

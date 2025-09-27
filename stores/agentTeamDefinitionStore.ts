@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { useMutation, useApolloClient } from '@vue/apollo-composable';
+import { useMutation, useApolloClient, gql } from '@vue/apollo-composable';
 import { GetAgentTeamDefinitions } from '~/graphql/queries/agentTeamDefinitionQueries';
 import { CreateAgentTeamDefinition, UpdateAgentTeamDefinition, DeleteAgentTeamDefinition } from '~/graphql/mutations/agentTeamDefinitionMutations';
 import type { 
@@ -18,13 +18,14 @@ import type {
 export type { TeamMemberInput };
 
 export interface AgentTeamDefinition {
+  __typename?: 'AgentTeamDefinition';
   id: string;
   name: string;
   description: string;
   role?: string | null;
   coordinatorMemberName: string;
   nodes: {
-    __typename?: 'TeamMember'; // Acknowledge that __typename can exist from queries
+    __typename?: 'TeamMember';
     memberName: string;
     referenceId: string;
     referenceType: 'AGENT' | 'AGENT_TEAM';
@@ -58,12 +59,13 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
   // --- ACTIONS ---
 
   async function fetchAllAgentTeamDefinitions() {
+    if (agentTeamDefinitions.value.length > 0) return;
     loading.value = true;
     error.value = null;
     try {
       const { data, errors } = await client.query<GetAgentTeamDefinitionsQuery>({
         query: GetAgentTeamDefinitions,
-        fetchPolicy: 'network-only',
+        // Uses default 'cache-first'
       });
 
       if (errors && errors.length > 0) {
@@ -79,12 +81,35 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
     }
   }
 
+  async function reloadAllAgentTeamDefinitions() {
+    loading.value = true;
+    error.value = null;
+    try {
+      const { data, errors } = await client.query<GetAgentTeamDefinitionsQuery>({
+        query: GetAgentTeamDefinitions,
+        fetchPolicy: 'network-only',
+      });
+
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map(e => e.message).join(', '));
+      }
+
+      agentTeamDefinitions.value = (data.agentTeamDefinitions || []) as AgentTeamDefinition[];
+    } catch (e) {
+      error.value = e;
+      console.error("Failed to reload agent team definitions:", e);
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   async function createAgentTeamDefinition(input: CreateAgentTeamDefinitionInput): Promise<AgentTeamDefinition | null> {
-    const { mutate } = useMutation<CreateAgentTeamDefinitionMutation, CreateAgentTeamDefinitionMutationVariables>(CreateAgentTeamDefinition);
+    const { mutate } = useMutation<CreateAgentTeamDefinitionMutation, CreateAgentTeamDefinitionMutationVariables>(CreateAgentTeamDefinition, {
+      refetchQueries: [{ query: GetAgentTeamDefinitions }]
+    });
     
     try {
-      // Create a clean copy of the input, removing __typename from nodes.
-      // This is necessary because Apollo Client adds __typename to cached objects.
       const cleanedInput = JSON.parse(JSON.stringify(input));
       if (cleanedInput.nodes) {
         cleanedInput.nodes.forEach((node: any) => delete node.__typename);
@@ -92,8 +117,11 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
 
       const result = await mutate({ input: cleanedInput });
       if (result?.data?.createAgentTeamDefinition) {
-        await fetchAllAgentTeamDefinitions();
-        // The result from create might be minimal, so we find the full object from our updated list.
+        // The refetch will update the cache and trigger reactivity.
+        // We need to wait for the data to be available in the store.
+        await client.query({ query: GetAgentTeamDefinitions, fetchPolicy: 'network-only' }).then(({ data }) => {
+            agentTeamDefinitions.value = (data.agentTeamDefinitions || []) as AgentTeamDefinition[];
+        });
         return getAgentTeamDefinitionById.value(result.data.createAgentTeamDefinition.id);
       }
       return null;
@@ -105,11 +133,11 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
   }
 
   async function updateAgentTeamDefinition(input: UpdateAgentTeamDefinitionInput): Promise<AgentTeamDefinition | null> {
-    const { mutate } = useMutation<UpdateAgentTeamDefinitionMutation, UpdateAgentTeamDefinitionMutationVariables>(UpdateAgentTeamDefinition);
+    const { mutate } = useMutation<UpdateAgentTeamDefinitionMutation, UpdateAgentTeamDefinitionMutationVariables>(UpdateAgentTeamDefinition, {
+        refetchQueries: [{ query: GetAgentTeamDefinitions }] // Refetching as mutation response is minimal
+    });
 
     try {
-      // Create a clean copy of the input, removing __typename from nodes.
-      // This is necessary because Apollo Client adds __typename to cached objects.
       const cleanedInput = JSON.parse(JSON.stringify(input));
       if (cleanedInput.nodes) {
         cleanedInput.nodes.forEach((node: any) => delete node.__typename);
@@ -117,8 +145,9 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
 
       const result = await mutate({ input: cleanedInput });
       if (result?.data?.updateAgentTeamDefinition) {
-        await fetchAllAgentTeamDefinitions();
-         // The result from update might be minimal, so we find the full object from our updated list.
+        await client.query({ query: GetAgentTeamDefinitions, fetchPolicy: 'network-only' }).then(({ data }) => {
+            agentTeamDefinitions.value = (data.agentTeamDefinitions || []) as AgentTeamDefinition[];
+        });
         return getAgentTeamDefinitionById.value(result.data.updateAgentTeamDefinition.id);
       }
       return null;
@@ -130,15 +159,25 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
   }
   
   async function deleteAgentTeamDefinition(id: string): Promise<boolean> {
-    const { mutate } = useMutation<DeleteAgentTeamDefinitionMutation, DeleteAgentTeamDefinitionMutationVariables>(DeleteAgentTeamDefinition);
+    const { mutate } = useMutation<DeleteAgentTeamDefinitionMutation, DeleteAgentTeamDefinitionMutationVariables>(DeleteAgentTeamDefinition, {
+      update: (cache) => {
+        cache.modify({
+          fields: {
+            agentTeamDefinitions(existingDefs: any[], { readField }) {
+              const newDefs = existingDefs.filter(defRef => readField('id', defRef) !== id);
+              agentTeamDefinitions.value = newDefs; // Update local state
+              return newDefs;
+            }
+          }
+        });
+        cache.evict({ id: cache.identify({ __typename: 'AgentTeamDefinition', id }) });
+        cache.gc();
+      }
+    });
     
     try {
       const result = await mutate({ id });
-      if (result?.data?.deleteAgentTeamDefinition?.success) {
-        await fetchAllAgentTeamDefinitions();
-        return true;
-      }
-      return false;
+      return !!result?.data?.deleteAgentTeamDefinition?.success;
     } catch (e) {
       error.value = e;
       console.error("Failed to delete agent team definition:", e);
@@ -156,6 +195,7 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
     loading,
     error,
     fetchAllAgentTeamDefinitions,
+    reloadAllAgentTeamDefinitions,
     createAgentTeamDefinition,
     updateAgentTeamDefinition,
     deleteAgentTeamDefinition,

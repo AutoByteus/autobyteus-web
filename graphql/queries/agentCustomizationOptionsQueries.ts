@@ -9,6 +9,7 @@ export const GetAgentCustomizationOptions = gql`
     availableToolExecutionResultProcessorNames
     availablePhaseHookNames
     availablePromptCategories {
+      __typename
       category
       names
     }

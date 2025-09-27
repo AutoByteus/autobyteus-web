@@ -3,6 +3,7 @@ import { gql } from 'graphql-tag'
 export const GetAgentDefinitions = gql`
   query GetAgentDefinitions {
     agentDefinitions {
+      __typename
       id
       name
       role
@@ -16,6 +17,7 @@ export const GetAgentDefinitions = gql`
       systemPromptCategory
       systemPromptName
       prompts {
+        __typename
         id
         name
         category

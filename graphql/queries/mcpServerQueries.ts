@@ -30,6 +30,7 @@ export const GET_MCP_SERVERS = gql`
 export const PREVIEW_MCP_SERVER_TOOLS = gql`
   query PreviewMcpServerTools($input: McpServerInput!) {
     previewMcpServerTools(input: $input) {
+      __typename
       name
       description
     }

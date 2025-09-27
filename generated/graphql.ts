@@ -1140,84 +1140,84 @@ export type CreateAgentDefinitionMutationVariables = Exact<{
 }>;
 
 
-export type CreateAgentDefinitionMutation = { __typename?: 'Mutation', createAgentDefinition: { __typename?: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename?: 'Prompt', id: string, name: string, category: string }> } };
+export type CreateAgentDefinitionMutation = { __typename?: 'Mutation', createAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string }> } };
 
 export type UpdateAgentDefinitionMutationVariables = Exact<{
   input: UpdateAgentDefinitionInput;
 }>;
 
 
-export type UpdateAgentDefinitionMutation = { __typename?: 'Mutation', updateAgentDefinition: { __typename?: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null } };
+export type UpdateAgentDefinitionMutation = { __typename?: 'Mutation', updateAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null } };
 
 export type DeleteAgentDefinitionMutationVariables = Exact<{
   id: Scalars['String']['input'];
 }>;
 
 
-export type DeleteAgentDefinitionMutation = { __typename?: 'Mutation', deleteAgentDefinition: { __typename?: 'DeleteAgentDefinitionResult', success: boolean, message: string } };
+export type DeleteAgentDefinitionMutation = { __typename?: 'Mutation', deleteAgentDefinition: { __typename: 'DeleteAgentDefinitionResult', success: boolean, message: string } };
 
 export type TerminateAgentInstanceMutationVariables = Exact<{
   id: Scalars['String']['input'];
 }>;
 
 
-export type TerminateAgentInstanceMutation = { __typename?: 'Mutation', terminateAgentInstance: { __typename?: 'TerminateAgentInstanceResult', success: boolean, message: string } };
+export type TerminateAgentInstanceMutation = { __typename?: 'Mutation', terminateAgentInstance: { __typename: 'TerminateAgentInstanceResult', success: boolean, message: string } };
 
 export type SendAgentUserInputMutationVariables = Exact<{
   input: SendAgentUserInputInput;
 }>;
 
 
-export type SendAgentUserInputMutation = { __typename?: 'Mutation', sendAgentUserInput: { __typename?: 'SendAgentUserInputResult', success: boolean, message: string, agentId?: string | null } };
+export type SendAgentUserInputMutation = { __typename?: 'Mutation', sendAgentUserInput: { __typename: 'SendAgentUserInputResult', success: boolean, message: string, agentId?: string | null } };
 
 export type ApproveToolInvocationMutationVariables = Exact<{
   input: ApproveToolInvocationInput;
 }>;
 
 
-export type ApproveToolInvocationMutation = { __typename?: 'Mutation', approveToolInvocation: { __typename?: 'ApproveToolInvocationResult', success: boolean, message: string } };
+export type ApproveToolInvocationMutation = { __typename?: 'Mutation', approveToolInvocation: { __typename: 'ApproveToolInvocationResult', success: boolean, message: string } };
 
 export type CreateAgentTeamDefinitionMutationVariables = Exact<{
   input: CreateAgentTeamDefinitionInput;
 }>;
 
 
-export type CreateAgentTeamDefinitionMutation = { __typename?: 'Mutation', createAgentTeamDefinition: { __typename?: 'AgentTeamDefinition', id: string, name: string } };
+export type CreateAgentTeamDefinitionMutation = { __typename?: 'Mutation', createAgentTeamDefinition: { __typename: 'AgentTeamDefinition', id: string, name: string } };
 
 export type UpdateAgentTeamDefinitionMutationVariables = Exact<{
   input: UpdateAgentTeamDefinitionInput;
 }>;
 
 
-export type UpdateAgentTeamDefinitionMutation = { __typename?: 'Mutation', updateAgentTeamDefinition: { __typename?: 'AgentTeamDefinition', id: string, name: string } };
+export type UpdateAgentTeamDefinitionMutation = { __typename?: 'Mutation', updateAgentTeamDefinition: { __typename: 'AgentTeamDefinition', id: string, name: string } };
 
 export type DeleteAgentTeamDefinitionMutationVariables = Exact<{
   id: Scalars['String']['input'];
 }>;
 
 
-export type DeleteAgentTeamDefinitionMutation = { __typename?: 'Mutation', deleteAgentTeamDefinition: { __typename?: 'DeleteAgentTeamDefinitionResult', success: boolean, message: string } };
+export type DeleteAgentTeamDefinitionMutation = { __typename?: 'Mutation', deleteAgentTeamDefinition: { __typename: 'DeleteAgentTeamDefinitionResult', success: boolean, message: string } };
 
 export type CreateAgentTeamInstanceMutationVariables = Exact<{
   input: CreateAgentTeamInstanceInput;
 }>;
 
 
-export type CreateAgentTeamInstanceMutation = { __typename?: 'Mutation', createAgentTeamInstance: { __typename?: 'CreateAgentTeamInstanceResult', success: boolean, message: string, teamId?: string | null } };
+export type CreateAgentTeamInstanceMutation = { __typename?: 'Mutation', createAgentTeamInstance: { __typename: 'CreateAgentTeamInstanceResult', success: boolean, message: string, teamId?: string | null } };
 
 export type TerminateAgentTeamInstanceMutationVariables = Exact<{
   id: Scalars['String']['input'];
 }>;
 
 
-export type TerminateAgentTeamInstanceMutation = { __typename?: 'Mutation', terminateAgentTeamInstance: { __typename?: 'TerminateAgentTeamInstanceResult', success: boolean, message: string } };
+export type TerminateAgentTeamInstanceMutation = { __typename?: 'Mutation', terminateAgentTeamInstance: { __typename: 'TerminateAgentTeamInstanceResult', success: boolean, message: string } };
 
 export type SendMessageToTeamMutationVariables = Exact<{
   input: SendMessageToTeamInput;
 }>;
 
 
-export type SendMessageToTeamMutation = { __typename?: 'Mutation', sendMessageToTeam: { __typename?: 'SendMessageToTeamResult', success: boolean, message: string, teamId?: string | null } };
+export type SendMessageToTeamMutation = { __typename?: 'Mutation', sendMessageToTeam: { __typename: 'SendMessageToTeamResult', success: boolean, message: string, teamId?: string | null } };
 
 export type WriteFileContentMutationVariables = Exact<{
   workspaceId: Scalars['String']['input'];
@@ -1288,61 +1288,61 @@ export type DeleteMcpServerMutationVariables = Exact<{
 }>;
 
 
-export type DeleteMcpServerMutation = { __typename?: 'Mutation', deleteMcpServer: { __typename?: 'DeleteMcpServerResult', success: boolean, message: string } };
+export type DeleteMcpServerMutation = { __typename?: 'Mutation', deleteMcpServer: { __typename: 'DeleteMcpServerResult', success: boolean, message: string } };
 
 export type DiscoverAndRegisterMcpServerToolsMutationVariables = Exact<{
   serverId: Scalars['String']['input'];
 }>;
 
 
-export type DiscoverAndRegisterMcpServerToolsMutation = { __typename?: 'Mutation', discoverAndRegisterMcpServerTools: { __typename?: 'DiscoverAndRegisterMcpServerToolsResult', success: boolean, message: string, discoveredTools: Array<{ __typename?: 'ToolDefinitionDetail', name: string, description: string, origin: ToolOriginEnum, category: string, argumentSchema?: { __typename?: 'ToolArgumentSchema', parameters: Array<{ __typename?: 'ToolParameterDefinition', name: string, paramType: ToolParameterTypeEnum, description: string, required: boolean, defaultValue?: string | null, enumValues?: Array<string> | null }> } | null }> } };
+export type DiscoverAndRegisterMcpServerToolsMutation = { __typename?: 'Mutation', discoverAndRegisterMcpServerTools: { __typename: 'DiscoverAndRegisterMcpServerToolsResult', success: boolean, message: string, discoveredTools: Array<{ __typename: 'ToolDefinitionDetail', name: string, description: string, origin: ToolOriginEnum, category: string, argumentSchema?: { __typename: 'ToolArgumentSchema', parameters: Array<{ __typename: 'ToolParameterDefinition', name: string, paramType: ToolParameterTypeEnum, description: string, required: boolean, defaultValue?: string | null, enumValues?: Array<string> | null }> } | null }> } };
 
 export type ImportMcpServerConfigsMutationVariables = Exact<{
   jsonString: Scalars['String']['input'];
 }>;
 
 
-export type ImportMcpServerConfigsMutation = { __typename?: 'Mutation', importMcpServerConfigs: { __typename?: 'ImportMcpServerConfigsResult', success: boolean, message: string, importedCount: number, failedCount: number } };
+export type ImportMcpServerConfigsMutation = { __typename?: 'Mutation', importMcpServerConfigs: { __typename: 'ImportMcpServerConfigsResult', success: boolean, message: string, importedCount: number, failedCount: number } };
 
 export type CreatePromptMutationVariables = Exact<{
   input: CreatePromptInput;
 }>;
 
 
-export type CreatePromptMutation = { __typename?: 'Mutation', createPrompt: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } };
+export type CreatePromptMutation = { __typename?: 'Mutation', createPrompt: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } };
 
 export type UpdatePromptMutationVariables = Exact<{
   input: UpdatePromptInput;
 }>;
 
 
-export type UpdatePromptMutation = { __typename?: 'Mutation', updatePrompt: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } };
+export type UpdatePromptMutation = { __typename?: 'Mutation', updatePrompt: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } };
 
 export type AddNewPromptRevisionMutationVariables = Exact<{
   input: AddNewPromptRevisionInput;
 }>;
 
 
-export type AddNewPromptRevisionMutation = { __typename?: 'Mutation', addNewPromptRevision: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } };
+export type AddNewPromptRevisionMutation = { __typename?: 'Mutation', addNewPromptRevision: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } };
 
 export type MarkActivePromptMutationVariables = Exact<{
   input: MarkActivePromptInput;
 }>;
 
 
-export type MarkActivePromptMutation = { __typename?: 'Mutation', markActivePrompt: { __typename?: 'Prompt', id: string, isActive: boolean } };
+export type MarkActivePromptMutation = { __typename?: 'Mutation', markActivePrompt: { __typename: 'Prompt', id: string, isActive: boolean } };
 
 export type SyncPromptsMutationVariables = Exact<{ [key: string]: never; }>;
 
 
-export type SyncPromptsMutation = { __typename?: 'Mutation', syncPrompts: { __typename?: 'SyncPromptsResult', success: boolean, message: string, initialCount: number, finalCount: number, syncedCount: number } };
+export type SyncPromptsMutation = { __typename?: 'Mutation', syncPrompts: { __typename: 'SyncPromptsResult', success: boolean, message: string, initialCount: number, finalCount: number, syncedCount: number } };
 
 export type DeletePromptMutationVariables = Exact<{
   input: DeletePromptInput;
 }>;
 
 
-export type DeletePromptMutation = { __typename?: 'Mutation', deletePrompt: { __typename?: 'DeletePromptResult', success: boolean, message: string } };
+export type DeletePromptMutation = { __typename?: 'Mutation', deletePrompt: { __typename: 'DeletePromptResult', success: boolean, message: string } };
 
 export type UpdateServerSettingMutationVariables = Exact<{
   key: Scalars['String']['input'];
@@ -1357,7 +1357,7 @@ export type CreateWorkspaceMutationVariables = Exact<{
 }>;
 
 
-export type CreateWorkspaceMutation = { __typename?: 'Mutation', createWorkspace: { __typename?: 'WorkspaceInfo', workspaceId: string, name: string, fileExplorer?: any | null, absolutePath?: string | null } };
+export type CreateWorkspaceMutation = { __typename?: 'Mutation', createWorkspace: { __typename: 'WorkspaceInfo', workspaceId: string, name: string, fileExplorer?: any | null, absolutePath?: string | null } };
 
 export type ExecuteBashCommandsMutationVariables = Exact<{
   workspaceId: Scalars['String']['input'];
@@ -1365,27 +1365,27 @@ export type ExecuteBashCommandsMutationVariables = Exact<{
 }>;
 
 
-export type ExecuteBashCommandsMutation = { __typename?: 'Mutation', executeBashCommands: { __typename?: 'CommandExecutionResult', success: boolean, message: string } };
+export type ExecuteBashCommandsMutation = { __typename?: 'Mutation', executeBashCommands: { __typename: 'CommandExecutionResult', success: boolean, message: string } };
 
 export type GetAgentCustomizationOptionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentCustomizationOptionsQuery = { __typename?: 'Query', availableToolNames: Array<string>, availableInputProcessorNames: Array<string>, availableLlmResponseProcessorNames: Array<string>, availableSystemPromptProcessorNames: Array<string>, availableToolExecutionResultProcessorNames: Array<string>, availablePhaseHookNames: Array<string>, availablePromptCategories: Array<{ __typename?: 'PromptCategory', category: string, names: Array<string> }> };
+export type GetAgentCustomizationOptionsQuery = { __typename?: 'Query', availableToolNames: Array<string>, availableInputProcessorNames: Array<string>, availableLlmResponseProcessorNames: Array<string>, availableSystemPromptProcessorNames: Array<string>, availableToolExecutionResultProcessorNames: Array<string>, availablePhaseHookNames: Array<string>, availablePromptCategories: Array<{ __typename: 'PromptCategory', category: string, names: Array<string> }> };
 
 export type GetAgentDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename?: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean }> }> };
+export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean }> }> };
 
 export type GetAgentInstancesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentInstancesQuery = { __typename?: 'Query', agentInstances: Array<{ __typename?: 'AgentInstance', id: string, name: string, role: string, currentPhase: string, agentDefinitionId?: string | null, workspace?: { __typename?: 'WorkspaceInfo', workspaceId: string, name: string, workspaceTypeName: string, config: any } | null }> };
+export type GetAgentInstancesQuery = { __typename?: 'Query', agentInstances: Array<{ __typename: 'AgentInstance', id: string, name: string, role: string, currentPhase: string, agentDefinitionId?: string | null, workspace?: { __typename: 'WorkspaceInfo', workspaceId: string, name: string, workspaceTypeName: string, config: any } | null }> };
 
 export type GetAgentTeamDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentTeamDefinitionsQuery = { __typename?: 'Query', agentTeamDefinitions: Array<{ __typename?: 'AgentTeamDefinition', id: string, name: string, description: string, role?: string | null, coordinatorMemberName: string, nodes: Array<{ __typename?: 'TeamMember', memberName: string, referenceId: string, referenceType: TeamMemberType, dependencies: Array<string> }> }> };
+export type GetAgentTeamDefinitionsQuery = { __typename?: 'Query', agentTeamDefinitions: Array<{ __typename: 'AgentTeamDefinition', id: string, name: string, description: string, role?: string | null, coordinatorMemberName: string, nodes: Array<{ __typename: 'TeamMember', memberName: string, referenceId: string, referenceType: TeamMemberType, dependencies: Array<string> }> }> };
 
 export type GetConversationHistoryQueryVariables = Exact<{
   agentDefinitionId: Scalars['String']['input'];
@@ -1395,7 +1395,7 @@ export type GetConversationHistoryQueryVariables = Exact<{
 }>;
 
 
-export type GetConversationHistoryQuery = { __typename?: 'Query', getConversationHistory: { __typename?: 'ConversationHistory', totalPages: number, currentPage: number, conversations: Array<{ __typename?: 'AgentConversation', agentId: string, agentDefinitionId: string, createdAt: string, llmModel?: string | null, useXmlToolFormat: boolean, messages: Array<{ __typename?: 'Message', messageId?: string | null, role: string, message: string, timestamp: string, contextPaths?: Array<string> | null, originalMessage?: string | null, tokenCount?: number | null, cost?: number | null, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null }> }> } };
+export type GetConversationHistoryQuery = { __typename?: 'Query', getConversationHistory: { __typename: 'ConversationHistory', totalPages: number, currentPage: number, conversations: Array<{ __typename: 'AgentConversation', agentId: string, agentDefinitionId: string, createdAt: string, llmModel?: string | null, useXmlToolFormat: boolean, messages: Array<{ __typename: 'Message', messageId?: string | null, role: string, message: string, timestamp: string, contextPaths?: Array<string> | null, originalMessage?: string | null, tokenCount?: number | null, cost?: number | null, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null }> }> } };
 
 export type GetFileContentQueryVariables = Exact<{
   workspaceId: Scalars['String']['input'];
@@ -1423,7 +1423,7 @@ export type GetLlmProviderApiKeyQuery = { __typename?: 'Query', getLlmProviderAp
 export type GetAvailableLlmProvidersWithModelsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAvailableLlmProvidersWithModelsQuery = { __typename?: 'Query', availableLlmProvidersWithModels: Array<{ __typename?: 'ProviderWithModels', provider: string, models: Array<{ __typename?: 'ModelDetail', modelIdentifier: string, name: string, value: string, canonicalName: string }> }> };
+export type GetAvailableLlmProvidersWithModelsQuery = { __typename?: 'Query', availableLlmProvidersWithModels: Array<{ __typename: 'ProviderWithModels', provider: string, models: Array<{ __typename: 'ModelDetail', modelIdentifier: string, name: string, value: string, canonicalName: string }> }> };
 
 export type GetMcpServersQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1435,21 +1435,21 @@ export type PreviewMcpServerToolsQueryVariables = Exact<{
 }>;
 
 
-export type PreviewMcpServerToolsQuery = { __typename?: 'Query', previewMcpServerTools: Array<{ __typename?: 'ToolDefinitionDetail', name: string, description: string }> };
+export type PreviewMcpServerToolsQuery = { __typename?: 'Query', previewMcpServerTools: Array<{ __typename: 'ToolDefinitionDetail', name: string, description: string }> };
 
 export type GetPromptsQueryVariables = Exact<{
   isActive?: InputMaybe<Scalars['Boolean']['input']>;
 }>;
 
 
-export type GetPromptsQuery = { __typename?: 'Query', prompts: Array<{ __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean }> };
+export type GetPromptsQuery = { __typename?: 'Query', prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean }> };
 
 export type GetPromptByIdQueryVariables = Exact<{
   id: Scalars['String']['input'];
 }>;
 
 
-export type GetPromptByIdQuery = { __typename?: 'Query', promptDetails?: { __typename?: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } | null };
+export type GetPromptByIdQuery = { __typename?: 'Query', promptDetails?: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } | null };
 
 export type GetPromptDetailsByNameAndCategoryQueryVariables = Exact<{
   category: Scalars['String']['input'];
@@ -1457,12 +1457,12 @@ export type GetPromptDetailsByNameAndCategoryQueryVariables = Exact<{
 }>;
 
 
-export type GetPromptDetailsByNameAndCategoryQuery = { __typename?: 'Query', promptDetailsByNameAndCategory?: { __typename?: 'PromptDetails', description?: string | null, promptContent: string } | null };
+export type GetPromptDetailsByNameAndCategoryQuery = { __typename?: 'Query', promptDetailsByNameAndCategory?: { __typename: 'PromptDetails', description?: string | null, promptContent: string } | null };
 
 export type GetServerSettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetServerSettingsQuery = { __typename?: 'Query', getServerSettings: Array<{ __typename?: 'ServerSetting', key: string, value: string, description: string }> };
+export type GetServerSettingsQuery = { __typename?: 'Query', getServerSettings: Array<{ __typename: 'ServerSetting', key: string, value: string, description: string }> };
 
 export type GetUsageStatisticsInPeriodQueryVariables = Exact<{
   startTime: Scalars['DateTime']['input'];
@@ -1478,24 +1478,24 @@ export type GetToolsQueryVariables = Exact<{
 }>;
 
 
-export type GetToolsQuery = { __typename?: 'Query', tools: Array<{ __typename?: 'ToolDefinitionDetail', name: string, description: string, origin: ToolOriginEnum, category: string, argumentSchema?: { __typename?: 'ToolArgumentSchema', parameters: Array<{ __typename?: 'ToolParameterDefinition', name: string, paramType: ToolParameterTypeEnum, description: string, required: boolean, defaultValue?: string | null, enumValues?: Array<string> | null }> } | null }> };
+export type GetToolsQuery = { __typename?: 'Query', tools: Array<{ __typename: 'ToolDefinitionDetail', name: string, description: string, origin: ToolOriginEnum, category: string, argumentSchema?: { __typename: 'ToolArgumentSchema', parameters: Array<{ __typename: 'ToolParameterDefinition', name: string, paramType: ToolParameterTypeEnum, description: string, required: boolean, defaultValue?: string | null, enumValues?: Array<string> | null }> } | null }> };
 
 export type GetToolsGroupedByCategoryQueryVariables = Exact<{
   origin: ToolOriginEnum;
 }>;
 
 
-export type GetToolsGroupedByCategoryQuery = { __typename?: 'Query', toolsGroupedByCategory: Array<{ __typename?: 'ToolCategoryGroup', categoryName: string, tools: Array<{ __typename?: 'ToolDefinitionDetail', name: string, description: string, origin: ToolOriginEnum, category: string, argumentSchema?: { __typename?: 'ToolArgumentSchema', parameters: Array<{ __typename?: 'ToolParameterDefinition', name: string, paramType: ToolParameterTypeEnum, description: string, required: boolean, defaultValue?: string | null, enumValues?: Array<string> | null }> } | null }> }> };
+export type GetToolsGroupedByCategoryQuery = { __typename?: 'Query', toolsGroupedByCategory: Array<{ __typename: 'ToolCategoryGroup', categoryName: string, tools: Array<{ __typename: 'ToolDefinitionDetail', name: string, description: string, origin: ToolOriginEnum, category: string, argumentSchema?: { __typename: 'ToolArgumentSchema', parameters: Array<{ __typename: 'ToolParameterDefinition', name: string, paramType: ToolParameterTypeEnum, description: string, required: boolean, defaultValue?: string | null, enumValues?: Array<string> | null }> } | null }> }> };
 
 export type GetAvailableWorkspaceDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAvailableWorkspaceDefinitionsQuery = { __typename?: 'Query', availableWorkspaceDefinitions: Array<{ __typename?: 'WorkspaceDefinition', workspaceTypeName: string, description: string, configSchema: Array<{ __typename?: 'ParameterDefinition', name: string, type: ParameterType, description: string, required: boolean, defaultValue?: any | null }> }> };
+export type GetAvailableWorkspaceDefinitionsQuery = { __typename?: 'Query', availableWorkspaceDefinitions: Array<{ __typename: 'WorkspaceDefinition', workspaceTypeName: string, description: string, configSchema: Array<{ __typename: 'ParameterDefinition', name: string, type: ParameterType, description: string, required: boolean, defaultValue?: any | null }> }> };
 
 export type GetAllWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAllWorkspacesQuery = { __typename?: 'Query', workspaces: Array<{ __typename?: 'WorkspaceInfo', workspaceId: string, name: string, workspaceTypeName: string, config: any, fileExplorer?: any | null, absolutePath?: string | null }> };
+export type GetAllWorkspacesQuery = { __typename?: 'Query', workspaces: Array<{ __typename: 'WorkspaceInfo', workspaceId: string, name: string, workspaceTypeName: string, config: any, fileExplorer?: any | null, absolutePath?: string | null }> };
 
 export type NestedTeamEventFragment = { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentOperationalPhaseTransitionData', newPhase: AgentOperationalPhase, oldPhase?: AgentOperationalPhase | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamPhaseTransitionData', newPhase: AgentTeamOperationalPhase, oldPhase?: AgentTeamOperationalPhase | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload' } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, taskId: string, newStatus: TaskStatus, agentName: string, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } | { __typename: 'GraphQLTasksAddedEvent', teamId: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } };
 
@@ -1642,6 +1642,7 @@ export const NestedTeamEventFragmentDoc = gql`
 export const CreateAgentDefinitionDocument = gql`
     mutation CreateAgentDefinition($input: CreateAgentDefinitionInput!) {
   createAgentDefinition(input: $input) {
+    __typename
     id
     name
     role
@@ -1655,6 +1656,7 @@ export const CreateAgentDefinitionDocument = gql`
     systemPromptCategory
     systemPromptName
     prompts {
+      __typename
       id
       name
       category
@@ -1687,6 +1689,7 @@ export type CreateAgentDefinitionMutationCompositionFunctionResult = VueApolloCo
 export const UpdateAgentDefinitionDocument = gql`
     mutation UpdateAgentDefinition($input: UpdateAgentDefinitionInput!) {
   updateAgentDefinition(input: $input) {
+    __typename
     id
     name
     role
@@ -1727,6 +1730,7 @@ export type UpdateAgentDefinitionMutationCompositionFunctionResult = VueApolloCo
 export const DeleteAgentDefinitionDocument = gql`
     mutation DeleteAgentDefinition($id: String!) {
   deleteAgentDefinition(id: $id) {
+    __typename
     success
     message
   }
@@ -1757,6 +1761,7 @@ export type DeleteAgentDefinitionMutationCompositionFunctionResult = VueApolloCo
 export const TerminateAgentInstanceDocument = gql`
     mutation TerminateAgentInstance($id: String!) {
   terminateAgentInstance(id: $id) {
+    __typename
     success
     message
   }
@@ -1787,6 +1792,7 @@ export type TerminateAgentInstanceMutationCompositionFunctionResult = VueApolloC
 export const SendAgentUserInputDocument = gql`
     mutation SendAgentUserInput($input: SendAgentUserInputInput!) {
   sendAgentUserInput(input: $input) {
+    __typename
     success
     message
     agentId
@@ -1818,6 +1824,7 @@ export type SendAgentUserInputMutationCompositionFunctionResult = VueApolloCompo
 export const ApproveToolInvocationDocument = gql`
     mutation ApproveToolInvocation($input: ApproveToolInvocationInput!) {
   approveToolInvocation(input: $input) {
+    __typename
     success
     message
   }
@@ -1848,6 +1855,7 @@ export type ApproveToolInvocationMutationCompositionFunctionResult = VueApolloCo
 export const CreateAgentTeamDefinitionDocument = gql`
     mutation CreateAgentTeamDefinition($input: CreateAgentTeamDefinitionInput!) {
   createAgentTeamDefinition(input: $input) {
+    __typename
     id
     name
   }
@@ -1878,6 +1886,7 @@ export type CreateAgentTeamDefinitionMutationCompositionFunctionResult = VueApol
 export const UpdateAgentTeamDefinitionDocument = gql`
     mutation UpdateAgentTeamDefinition($input: UpdateAgentTeamDefinitionInput!) {
   updateAgentTeamDefinition(input: $input) {
+    __typename
     id
     name
   }
@@ -1908,6 +1917,7 @@ export type UpdateAgentTeamDefinitionMutationCompositionFunctionResult = VueApol
 export const DeleteAgentTeamDefinitionDocument = gql`
     mutation DeleteAgentTeamDefinition($id: String!) {
   deleteAgentTeamDefinition(id: $id) {
+    __typename
     success
     message
   }
@@ -1938,6 +1948,7 @@ export type DeleteAgentTeamDefinitionMutationCompositionFunctionResult = VueApol
 export const CreateAgentTeamInstanceDocument = gql`
     mutation CreateAgentTeamInstance($input: CreateAgentTeamInstanceInput!) {
   createAgentTeamInstance(input: $input) {
+    __typename
     success
     message
     teamId
@@ -1969,6 +1980,7 @@ export type CreateAgentTeamInstanceMutationCompositionFunctionResult = VueApollo
 export const TerminateAgentTeamInstanceDocument = gql`
     mutation TerminateAgentTeamInstance($id: String!) {
   terminateAgentTeamInstance(id: $id) {
+    __typename
     success
     message
   }
@@ -1999,6 +2011,7 @@ export type TerminateAgentTeamInstanceMutationCompositionFunctionResult = VueApo
 export const SendMessageToTeamDocument = gql`
     mutation SendMessageToTeam($input: SendMessageToTeamInput!) {
   sendMessageToTeam(input: $input) {
+    __typename
     success
     message
     teamId
@@ -2287,6 +2300,7 @@ export type ConfigureMcpServerMutationCompositionFunctionResult = VueApolloCompo
 export const DeleteMcpServerDocument = gql`
     mutation DeleteMcpServer($serverId: String!) {
   deleteMcpServer(serverId: $serverId) {
+    __typename
     success
     message
   }
@@ -2317,15 +2331,19 @@ export type DeleteMcpServerMutationCompositionFunctionResult = VueApolloComposab
 export const DiscoverAndRegisterMcpServerToolsDocument = gql`
     mutation DiscoverAndRegisterMcpServerTools($serverId: String!) {
   discoverAndRegisterMcpServerTools(serverId: $serverId) {
+    __typename
     success
     message
     discoveredTools {
+      __typename
       name
       description
       origin
       category
       argumentSchema {
+        __typename
         parameters {
+          __typename
           name
           paramType
           description
@@ -2363,6 +2381,7 @@ export type DiscoverAndRegisterMcpServerToolsMutationCompositionFunctionResult =
 export const ImportMcpServerConfigsDocument = gql`
     mutation ImportMcpServerConfigs($jsonString: String!) {
   importMcpServerConfigs(jsonString: $jsonString) {
+    __typename
     success
     message
     importedCount
@@ -2395,6 +2414,7 @@ export type ImportMcpServerConfigsMutationCompositionFunctionResult = VueApolloC
 export const CreatePromptDocument = gql`
     mutation CreatePrompt($input: CreatePromptInput!) {
   createPrompt(input: $input) {
+    __typename
     id
     name
     category
@@ -2434,6 +2454,7 @@ export type CreatePromptMutationCompositionFunctionResult = VueApolloComposable.
 export const UpdatePromptDocument = gql`
     mutation UpdatePrompt($input: UpdatePromptInput!) {
   updatePrompt(input: $input) {
+    __typename
     id
     name
     category
@@ -2474,6 +2495,7 @@ export type UpdatePromptMutationCompositionFunctionResult = VueApolloComposable.
 export const AddNewPromptRevisionDocument = gql`
     mutation AddNewPromptRevision($input: AddNewPromptRevisionInput!) {
   addNewPromptRevision(input: $input) {
+    __typename
     id
     name
     category
@@ -2513,6 +2535,7 @@ export type AddNewPromptRevisionMutationCompositionFunctionResult = VueApolloCom
 export const MarkActivePromptDocument = gql`
     mutation MarkActivePrompt($input: MarkActivePromptInput!) {
   markActivePrompt(input: $input) {
+    __typename
     id
     isActive
   }
@@ -2543,6 +2566,7 @@ export type MarkActivePromptMutationCompositionFunctionResult = VueApolloComposa
 export const SyncPromptsDocument = gql`
     mutation SyncPrompts {
   syncPrompts {
+    __typename
     success
     message
     initialCount
@@ -2572,6 +2596,7 @@ export type SyncPromptsMutationCompositionFunctionResult = VueApolloComposable.U
 export const DeletePromptDocument = gql`
     mutation DeletePrompt($input: DeletePromptInput!) {
   deletePrompt(input: $input) {
+    __typename
     success
     message
   }
@@ -2630,6 +2655,7 @@ export type UpdateServerSettingMutationCompositionFunctionResult = VueApolloComp
 export const CreateWorkspaceDocument = gql`
     mutation CreateWorkspace($input: CreateWorkspaceInput!) {
   createWorkspace(input: $input) {
+    __typename
     workspaceId
     name
     fileExplorer
@@ -2662,6 +2688,7 @@ export type CreateWorkspaceMutationCompositionFunctionResult = VueApolloComposab
 export const ExecuteBashCommandsDocument = gql`
     mutation ExecuteBashCommands($workspaceId: String!, $command: String!) {
   executeBashCommands(workspaceId: $workspaceId, command: $command) {
+    __typename
     success
     message
   }
@@ -2699,6 +2726,7 @@ export const GetAgentCustomizationOptionsDocument = gql`
   availableToolExecutionResultProcessorNames
   availablePhaseHookNames
   availablePromptCategories {
+    __typename
     category
     names
   }
@@ -2727,6 +2755,7 @@ export type GetAgentCustomizationOptionsQueryCompositionFunctionResult = VueApol
 export const GetAgentDefinitionsDocument = gql`
     query GetAgentDefinitions {
   agentDefinitions {
+    __typename
     id
     name
     role
@@ -2740,6 +2769,7 @@ export const GetAgentDefinitionsDocument = gql`
     systemPromptCategory
     systemPromptName
     prompts {
+      __typename
       id
       name
       category
@@ -2779,12 +2809,14 @@ export type GetAgentDefinitionsQueryCompositionFunctionResult = VueApolloComposa
 export const GetAgentInstancesDocument = gql`
     query GetAgentInstances {
   agentInstances {
+    __typename
     id
     name
     role
     currentPhase
     agentDefinitionId
     workspace {
+      __typename
       workspaceId
       name
       workspaceTypeName
@@ -2816,12 +2848,14 @@ export type GetAgentInstancesQueryCompositionFunctionResult = VueApolloComposabl
 export const GetAgentTeamDefinitionsDocument = gql`
     query GetAgentTeamDefinitions {
   agentTeamDefinitions {
+    __typename
     id
     name
     description
     role
     coordinatorMemberName
     nodes {
+      __typename
       memberName
       referenceId
       referenceType
@@ -2858,13 +2892,16 @@ export const GetConversationHistoryDocument = gql`
     pageSize: $pageSize
     searchQuery: $searchQuery
   ) {
+    __typename
     conversations {
+      __typename
       agentId
       agentDefinitionId
       createdAt
       llmModel
       useXmlToolFormat
       messages {
+        __typename
         messageId
         role
         message
@@ -2999,8 +3036,10 @@ export type GetLlmProviderApiKeyQueryCompositionFunctionResult = VueApolloCompos
 export const GetAvailableLlmProvidersWithModelsDocument = gql`
     query GetAvailableLLMProvidersWithModels {
   availableLlmProvidersWithModels {
+    __typename
     provider
     models {
+      __typename
       modelIdentifier
       name
       value
@@ -3078,6 +3117,7 @@ export type GetMcpServersQueryCompositionFunctionResult = VueApolloComposable.Us
 export const PreviewMcpServerToolsDocument = gql`
     query PreviewMcpServerTools($input: McpServerInput!) {
   previewMcpServerTools(input: $input) {
+    __typename
     name
     description
   }
@@ -3109,6 +3149,7 @@ export type PreviewMcpServerToolsQueryCompositionFunctionResult = VueApolloCompo
 export const GetPromptsDocument = gql`
     query GetPrompts($isActive: Boolean) {
   prompts(isActive: $isActive) {
+    __typename
     id
     name
     category
@@ -3150,6 +3191,7 @@ export type GetPromptsQueryCompositionFunctionResult = VueApolloComposable.UseQu
 export const GetPromptByIdDocument = gql`
     query GetPromptById($id: String!) {
   promptDetails(id: $id) {
+    __typename
     id
     name
     category
@@ -3191,6 +3233,7 @@ export type GetPromptByIdQueryCompositionFunctionResult = VueApolloComposable.Us
 export const GetPromptDetailsByNameAndCategoryDocument = gql`
     query GetPromptDetailsByNameAndCategory($category: String!, $name: String!) {
   promptDetailsByNameAndCategory(category: $category, name: $name) {
+    __typename
     description
     promptContent
   }
@@ -3223,6 +3266,7 @@ export type GetPromptDetailsByNameAndCategoryQueryCompositionFunctionResult = Vu
 export const GetServerSettingsDocument = gql`
     query GetServerSettings {
   getServerSettings {
+    __typename
     key
     value
     description
@@ -3288,12 +3332,15 @@ export type GetUsageStatisticsInPeriodQueryCompositionFunctionResult = VueApollo
 export const GetToolsDocument = gql`
     query GetTools($origin: ToolOriginEnum, $sourceServerId: String) {
   tools(origin: $origin, sourceServerId: $sourceServerId) {
+    __typename
     name
     description
     origin
     category
     argumentSchema {
+      __typename
       parameters {
+        __typename
         name
         paramType
         description
@@ -3332,14 +3379,18 @@ export type GetToolsQueryCompositionFunctionResult = VueApolloComposable.UseQuer
 export const GetToolsGroupedByCategoryDocument = gql`
     query GetToolsGroupedByCategory($origin: ToolOriginEnum!) {
   toolsGroupedByCategory(origin: $origin) {
+    __typename
     categoryName
     tools {
+      __typename
       name
       description
       origin
       category
       argumentSchema {
+        __typename
         parameters {
+          __typename
           name
           paramType
           description
@@ -3378,9 +3429,11 @@ export type GetToolsGroupedByCategoryQueryCompositionFunctionResult = VueApolloC
 export const GetAvailableWorkspaceDefinitionsDocument = gql`
     query GetAvailableWorkspaceDefinitions {
   availableWorkspaceDefinitions {
+    __typename
     workspaceTypeName
     description
     configSchema {
+      __typename
       name
       type
       description
@@ -3413,6 +3466,7 @@ export type GetAvailableWorkspaceDefinitionsQueryCompositionFunctionResult = Vue
 export const GetAllWorkspacesDocument = gql`
     query GetAllWorkspaces {
   workspaces {
+    __typename
     workspaceId
     name
     workspaceTypeName

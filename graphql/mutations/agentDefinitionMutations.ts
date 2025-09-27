@@ -3,6 +3,7 @@ import { gql } from 'graphql-tag'
 export const CreateAgentDefinition = gql`
   mutation CreateAgentDefinition($input: CreateAgentDefinitionInput!) {
     createAgentDefinition(input: $input) {
+      __typename
       id
       name
       role
@@ -16,6 +17,7 @@ export const CreateAgentDefinition = gql`
       systemPromptCategory
       systemPromptName
       prompts {
+        __typename
         id
         name
         category
@@ -27,6 +29,7 @@ export const CreateAgentDefinition = gql`
 export const UpdateAgentDefinition = gql`
   mutation UpdateAgentDefinition($input: UpdateAgentDefinitionInput!) {
     updateAgentDefinition(input: $input) {
+      __typename
       id
       name
       role
@@ -46,6 +49,7 @@ export const UpdateAgentDefinition = gql`
 export const DeleteAgentDefinition = gql`
   mutation DeleteAgentDefinition($id: String!) {
     deleteAgentDefinition(id: $id) {
+      __typename
       success
       message
     }

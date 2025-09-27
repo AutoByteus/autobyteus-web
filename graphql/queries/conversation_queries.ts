@@ -13,13 +13,16 @@ export const GET_CONVERSATION_HISTORY = gql`
       pageSize: $pageSize
       searchQuery: $searchQuery
     ) {
+      __typename
       conversations {
+        __typename
         agentId
         agentDefinitionId
         createdAt
         llmModel
         useXmlToolFormat
         messages {
+          __typename
           messageId
           role
           message
