@@ -32,9 +32,24 @@ function createWindow() {
         preload: path.join(__dirname, 'preload.js'),
         nodeIntegration: false,
         contextIsolation: true,
+        sandbox: true, // Sandboxing is recommended for security
       },
       show: true,
     })
+
+    // --- SECURITY ENHANCEMENTS ---
+    // Block unintended navigations (file/URL drop, window.location change, etc.)
+    mainWindow.webContents.on('will-navigate', (e) => {
+      logger.warn(`Blocked navigation attempt to: ${e.url}`)
+      e.preventDefault()
+    });
+
+    // Block all new windows (e.g., from target="_blank")
+    mainWindow.webContents.setWindowOpenHandler(() => {
+      logger.warn('Blocked attempt to open a new window.')
+      return { action: 'deny' }
+    });
+    // --- END SECURITY ENHANCEMENTS ---
 
     // Intercept the close event
     mainWindow.on('close', (event) => {
@@ -189,6 +204,10 @@ ipcMain.handle('check-server-health', async () => {
 ipcMain.handle('get-log-file-path', () => {
   return logger.getLogPath()
 })
+
+ipcMain.handle('get-platform', () => {
+  return process.platform;
+});
 
 ipcMain.handle('clear-app-cache', async () => {
   const cacheDir = serverManager.getCacheDir();

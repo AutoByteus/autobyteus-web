@@ -4,6 +4,8 @@
     @dragover.prevent
     @drop.prevent="onFileDrop"
     @paste="onPaste"
+    data-file-drop-target="true"
+    ref="dropAreaRef"
   >
     <!-- Hidden file input for upload button -->
     <input
@@ -63,7 +65,7 @@
 
     <!-- File List (conditionally rendered) -->
     <ul
-      vif="isContextListExpanded && contextFilePaths.length > 0"
+      v-if="isContextListExpanded && contextFilePaths.length > 0"
       id="context-file-list"
       class="space-y-2"
     >
@@ -155,7 +157,6 @@ const toggleContextList = () => {
 };
 
 const handleContextFileClick = (filePath: ContextFilePath) => {
-  // Prevent opening file while it is still uploading
   if (uploadingFiles.value.includes(filePath.path)) {
     return;
   }
@@ -233,9 +234,11 @@ const onFileSelect = (event: Event) => {
 const onFileDrop = async (event: DragEvent) => {
   if (!activeContextStore.activeAgentContext) return;
 
-  const dragData = event.dataTransfer?.getData('application/json');
+  const dataTransfer = event.dataTransfer;
+  const dragData = dataTransfer?.getData('application/json');
+
   if (dragData) {
-    // This handles drops from the internal file explorer
+    console.log('[INFO] Drop event is from internal file explorer.');
     const droppedNode: TreeNode = JSON.parse(dragData);
     const filePaths = getFilePathsFromFolder(droppedNode);
     for (const filePath of filePaths) {
@@ -245,26 +248,23 @@ const onFileDrop = async (event: DragEvent) => {
     if (filePaths.length > 0 && !isContextListExpanded.value) {
       isContextListExpanded.value = true;
     }
-  } else if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
-    // This handles drops from the user's native operating system
-    if (isElectron.value) {
-      // In Electron, we get the full path and add it directly without uploading.
-      const files = Array.from(event.dataTransfer.files);
-      for (const file of files) {
-        // Electron enhances the File object with a 'path' property.
-        const nativePath = (file as any).path;
-        if (nativePath) {
-          const fileType = await determineFileType(nativePath);
-          activeContextStore.addContextFilePath({ path: nativePath, type: fileType });
-        }
-      }
-      if (files.length > 0 && !isContextListExpanded.value) {
-        isContextListExpanded.value = true;
-      }
-    } else {
-      // In a standard browser, we must upload the file.
-      await processAndUploadFiles(Array.from(event.dataTransfer.files));
+  } else if (isElectron.value && dataTransfer?.files?.length) {
+    console.log('[INFO] Drop event from native OS in Electron.');
+    const files = Array.from(dataTransfer.files);
+    const pathPromises = files.map(f => window.electronAPI?.getPathForFile(f));
+    const paths = (await Promise.all(pathPromises)).filter((p): p is string => Boolean(p));
+    
+    console.log('[INFO] Received native file paths from preload bridge:', paths);
+    for (const path of paths) {
+      const fileType = await determineFileType(path);
+      activeContextStore.addContextFilePath({ path, type: fileType });
     }
+    if (paths.length > 0 && !isContextListExpanded.value) {
+      isContextListExpanded.value = true;
+    }
+  } else if (!isElectron.value && dataTransfer?.files?.length) {
+    console.log('[INFO] Drop event from native OS in browser, uploading files.');
+    await processAndUploadFiles(Array.from(dataTransfer.files));
   }
 };
 

@@ -14,6 +14,7 @@
         :disabled="!activeContextStore.activeAgentContext"
         @dragover.prevent
         @drop.prevent="handleDrop"
+        data-file-drop-target="true"
       ></textarea>
     </div>
 
@@ -105,6 +106,7 @@ const textarea = ref<HTMLTextAreaElement | null>(null);
 const controlsRef = ref<HTMLDivElement | null>(null);
 const textareaHeight = ref(150);
 const isSearching = ref(false);
+const platform = ref<'win32' | 'linux' | 'darwin'>('linux');
 
 // Computed properties for v-model binding to the store
 const selectedModel = computed({
@@ -247,91 +249,70 @@ const handleSearchContext = async () => {
   console.log('Search Context button clicked, but functionality is not yet implemented.');
 };
 
-const handleDrop = (event: DragEvent) => {
-  if (!textarea.value || !activeContextStore.activeAgentContext) return;
+const insertFilePaths = (filePaths: string[]) => {
+  if (!textarea.value || filePaths.length === 0) return;
 
-  console.log('--- File Drop Detected in Text Area ---');
+  const textToInsert = filePaths.join(' ');
+  const start = textarea.value.selectionStart;
+  const end = textarea.value.selectionEnd;
+  
+  const newText = internalRequirement.value.substring(0, start) + textToInsert + internalRequirement.value.substring(end);
+  internalRequirement.value = newText;
+
+  nextTick(adjustTextareaHeight);
+  debouncedUpdateStore(internalRequirement.value);
+
+  nextTick(() => {
+    if (textarea.value) {
+      const newCursorPos = start + textToInsert.length;
+      textarea.value.focus();
+      textarea.value.setSelectionRange(newCursorPos, newCursorPos);
+    }
+  });
+};
+
+const handleDrop = async (event: DragEvent) => {
+  if (!activeContextStore.activeAgentContext) return;
+  
+  const dataTransfer = event.dataTransfer;
+  if (!dataTransfer) return;
+
   let filePaths: string[] = [];
-  const dragData = event.dataTransfer?.getData('application/json');
+  const dragData = dataTransfer.getData('application/json');
 
   if (dragData) {
     console.log('[INFO] Drop event is from internal file explorer.');
     try {
       const droppedNode: TreeNode = JSON.parse(dragData);
-      console.log('[DEBUG] Dropped node data:', droppedNode);
-      
       filePaths = getFilePathsFromFolder(droppedNode);
-      console.log('[DEBUG] Initial relative paths from dropped node:', filePaths);
 
-      // Check for an absolute path from the workspace store, regardless of environment.
+      // This logic to make paths absolute seems better placed here than in the context file area
       if (workspaceStore.activeWorkspace?.absolutePath) {
         const basePath = workspaceStore.activeWorkspace.absolutePath;
-        console.log(`[INFO] Workspace absolute path found: "${basePath}". Converting to absolute paths.`);
-        
-        // Determine the correct path separator based on the OS of the backend.
         const separator = basePath.includes('\\') ? '\\' : '/';
-        
         filePaths = filePaths.map(relativePath => {
-          // Join base path and relative path, ensuring correct separators.
-          const parts = [
-            basePath.replace(/[/\\]$/, ''), // Remove trailing slash from base
-            ...relativePath.split('/')      // Split relative path by '/'
-          ];
-          const absolutePath = parts.join(separator);
-          console.log(`[DEBUG] Converted "${relativePath}" -> "${absolutePath}"`);
-          return absolutePath;
+          // Ensure relativePath doesn't start with a slash
+          const cleanRelativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
+          const parts = [basePath.replace(/[/\\]$/, ''), ...cleanRelativePath.split('/')];
+          return parts.join(separator);
         });
-      } else {
-        console.log('[WARN] No workspace absolute path found. Using relative paths as fallback.');
       }
-
     } catch (error) {
       console.error('Failed to parse dropped node data:', error);
     }
-  } else if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
-    console.log('[INFO] Drop event is from native OS file system.');
-    console.log(`[DEBUG] isElectron flag is currently: ${isElectron.value}`);
-    // For files from the OS, browser security prevents access to the full file path.
-    // Only the filename is available. In Electron, the `path` property is available.
-    if (isElectron.value) {
-      console.log('[DEBUG] Executing Electron-specific path logic for native drop.');
-      // In Electron, we have access to the full native path.
-      filePaths = Array.from(event.dataTransfer.files).map(file => {
-        const nativePath = (file as any).path || file.name;
-        console.log(`[DEBUG] Processing file from OS drop: name='${file.name}', nativePath='${nativePath}'`);
-        return nativePath;
-      });
-    } else {
-      console.log('[DEBUG] Executing standard browser path logic for native drop (fallback to filename).');
-      // In a standard browser, we only get the filename.
-      filePaths = Array.from(event.dataTransfer.files).map(file => file.name);
-    }
+  } else if (isElectron.value && dataTransfer.files.length > 0 && window.electronAPI) {
+    console.log('[INFO] Drop event from native OS in Electron.');
+    const files = Array.from(dataTransfer.files);
+    const pathPromises = files.map(f => window.electronAPI.getPathForFile(f));
+    const paths = (await Promise.all(pathPromises)).filter((p): p is string => Boolean(p));
+    filePaths = paths;
+    console.log('[INFO] Received native file paths from preload bridge:', filePaths);
+  } else if (!isElectron.value && dataTransfer.files.length > 0) {
+    console.log('[INFO] Drop event from native OS in browser, using filenames as fallback.');
+    filePaths = Array.from(dataTransfer.files).map(file => file.name);
   }
   
-  console.log('[INFO] Final generated file paths to be inserted:', filePaths);
-
-  if (filePaths.length > 0) {
-    const textToInsert = filePaths.join(' ');
-    const start = textarea.value.selectionStart;
-    const end = textarea.value.selectionEnd;
-    
-    // Construct the new text with the file path(s) inserted at the cursor.
-    const newText = internalRequirement.value.substring(0, start) + textToInsert + internalRequirement.value.substring(end);
-    internalRequirement.value = newText;
-
-    // Trigger update logic to ensure state is synced and UI is adjusted.
-    nextTick(adjustTextareaHeight);
-    debouncedUpdateStore(internalRequirement.value);
-
-    // Set cursor position after the newly inserted text.
-    nextTick(() => {
-      if (textarea.value) {
-        const newCursorPos = start + textToInsert.length;
-        textarea.value.focus();
-        textarea.value.setSelectionRange(newCursorPos, newCursorPos);
-      }
-    });
-  }
+  insertFilePaths(filePaths);
 };
 
 const handleKeyDown = (event: KeyboardEvent) => {
@@ -351,23 +332,30 @@ const initializeModels = async () => {
     const allModels = llmProviderConfigStore.models;
     if (allModels.length > 0 && (!selectedModel.value || !allModels.includes(selectedModel.value))) {
       // Don't auto-select a model. Let the user choose.
-      // If a default is needed, it should be set in the launch profile or context creation.
     }
   } catch (error) {
     console.error('Failed to fetch available models:', error);
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('resize', handleResize);
   initializeModels();
+
+  if (window.electronAPI) {
+    try {
+      platform.value = await window.electronAPI.getPlatform();
+      console.log(`[INFO] Detected platform: ${platform.value}`);
+    } catch (error) {
+      console.error('Failed to get platform from Electron API:', error);
+    }
+  }
 });
 
 onUnmounted(() => {
   flushDebouncedUpdateStore(); 
   window.removeEventListener('resize', handleResize);
 });
-
 </script>
 
 <style scoped>
