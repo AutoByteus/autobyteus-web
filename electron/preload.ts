@@ -28,8 +28,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Method to open an external link
   openExternalLink: (url: string) => ipcRenderer.invoke('open-external-link', url),
 
-  // New method to read log file content
+  // Method to read log file content
   readLogFile: (filePath: string) => ipcRenderer.invoke('read-log-file', filePath),
+
+  // **NEW** Method to read local text file content
+  readLocalTextFile: (filePath: string) => ipcRenderer.invoke('read-local-text-file', filePath),
 
   // Method to get OS platform
   getPlatform: () => ipcRenderer.invoke('get-platform'),
@@ -42,7 +45,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   clearAppCache: () => ipcRenderer.invoke('clear-app-cache'),
   resetServerData: () => ipcRenderer.invoke('reset-server-data'),
 
-  // **NEW** Method for getting file path from a dropped file object
+  // Method for getting file path from a dropped file object
   // In sandboxed renderers, `file.path` is removed. This is the secure way to get the real path.
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
 })

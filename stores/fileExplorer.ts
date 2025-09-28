@@ -26,6 +26,7 @@ import type {
 } from '~/generated/graphql'
 import { useWorkspaceStore } from '~/stores/workspace'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
+import { useServerStore } from '~/stores/serverStore'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
 import { findFileByPath, determineFileType } from '~/utils/fileExplorer/fileUtils'
 import { getServerUrls } from '~/utils/serverConfig'
@@ -102,6 +103,24 @@ const createDefaultWorkspaceFileExplorerState = (): WorkspaceFileExplorerState =
   createLoading: {},
   filesToIgnoreNextModify: new Set(),
 });
+
+/**
+ * Checks if a path is an absolute local file path (for Windows, Linux, macOS).
+ * @param path The path string to check.
+ * @returns True if it's an absolute local path.
+ */
+function isAbsoluteLocalPath(path: string): boolean {
+  // Unix-like paths start with '/'
+  if (path.startsWith('/')) {
+    return true;
+  }
+  // Windows paths start with a drive letter, e.g., C:\
+  if (/^[a-zA-Z]:[\\/]/.test(path)) {
+    return true;
+  }
+  return false;
+}
+
 
 export const useFileExplorerStore = defineStore('fileExplorer', {
   state: (): FileExplorerStoreState => ({
@@ -191,63 +210,91 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       wsState.openFolders[folderPath] = !wsState.openFolders[folderPath];
     },
 
-    async openFile(pathOrUrl: string) {
-      console.log(`[FileExplorer] Opening file: ${pathOrUrl}`);
+    async openFile(filePath: string) {
+      console.log(`[FileExplorer] Opening file: ${filePath}`);
       const wsState = this._getOrCreateCurrentWorkspaceState();
-      
-      const existingFile = wsState.openFiles.find(f => f.path === pathOrUrl);
+      const serverStore = useServerStore();
+      const { isElectron } = storeToRefs(serverStore);
+
+      const existingFile = wsState.openFiles.find(f => f.path === filePath);
 
       if (!existingFile) {
-        const workspaceStore = useWorkspaceStore();
-        const isExternalUrl = pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://');
-        const fileType = await determineFileType(pathOrUrl);
-        console.log(`[FileExplorer] Determined file type for "${pathOrUrl}": ${fileType}`);
+          const fileType = await determineFileType(filePath);
+          console.log(`[FileExplorer] Determined file type for "${filePath}": ${fileType}`);
+          
+          const newFileState: OpenFileState = {
+              path: filePath,
+              type: fileType,
+              content: null,
+              url: null,
+              isLoading: true,
+              error: null,
+          };
+          wsState.openFiles.push(newFileState);
+          console.log('[FileExplorer] Pushed new initial file state:', JSON.parse(JSON.stringify(newFileState)));
 
-        const newFileState: OpenFileState = {
-          path: pathOrUrl,
-          type: fileType,
-          content: null,
-          url: null,
-          isLoading: true,
-          error: null,
-        };
-        wsState.openFiles.push(newFileState);
-        console.log('[FileExplorer] Pushed new initial file state:', JSON.parse(JSON.stringify(newFileState)));
-
-        if (isExternalUrl) {
-          console.log(`[FileExplorer] Handling as an external URL.`);
-          newFileState.url = pathOrUrl;
-          newFileState.isLoading = false;
-        } else {
-          console.log(`[FileExplorer] Handling as a workspace path.`);
-          if (newFileState.type === 'Text') {
-            console.log(`[FileExplorer] Fetching text content for "${pathOrUrl}" via GraphQL.`);
-            this.fetchFileContent(pathOrUrl);
-          } else if (['Image', 'Audio', 'Video'].includes(newFileState.type)) {
-            const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
-            if (workspaceId) {
-              const serverUrls = getServerUrls();
-              const restBaseUrl = serverUrls.rest.replace(/\/$/, ''); // Ensure no trailing slash
-              const encodedFilePath = encodeURIComponent(pathOrUrl);
-              newFileState.url = `${restBaseUrl}/workspaces/${workspaceId}/content?path=${encodedFilePath}`;
+          // **NEW LOGIC: Handle local absolute paths in Electron**
+          if (isElectron.value && isAbsoluteLocalPath(filePath) && window.electronAPI) {
+              console.log(`[FileExplorer] Handling as a local absolute path in Electron.`);
+              if (newFileState.type === 'Text') {
+                  try {
+                      const result = await window.electronAPI.readLocalTextFile(filePath);
+                      if (result.success) {
+                          newFileState.content = result.content ?? '';
+                      } else {
+                          newFileState.error = result.error || 'Failed to read local file.';
+                      }
+                  } catch (e) {
+                      newFileState.error = e instanceof Error ? e.message : String(e);
+                  }
+              } else if (['Image', 'Audio', 'Video'].includes(newFileState.type)) {
+                  // Use the custom 'local-file' protocol
+                  newFileState.url = `local-file://${filePath}`;
+                  console.log(`[FileExplorer] Constructed local media URL: ${newFileState.url}`);
+              } else {
+                  console.warn(`[FileExplorer] Unsupported local file type "${newFileState.type}" for "${filePath}".`);
+                  newFileState.error = 'Unsupported file type for local preview.';
+              }
               newFileState.isLoading = false;
-              console.log(`[FileExplorer] Constructed absolute media URL for "${pathOrUrl}": ${newFileState.url}`);
-            } else {
-              newFileState.error = "No active workspace to construct file URL.";
-              newFileState.isLoading = false;
-              console.error(`[FileExplorer] Cannot construct media URL: No active workspace.`);
-            }
           } else {
-            console.warn(`[FileExplorer] Unsupported file type "${newFileState.type}" for "${pathOrUrl}".`);
-            newFileState.isLoading = false;
+              // --- Original logic for workspace files and web URLs ---
+              const isExternalUrl = filePath.startsWith('http://') || filePath.startsWith('https://');
+              if (isExternalUrl) {
+                  console.log(`[FileExplorer] Handling as an external URL.`);
+                  newFileState.url = filePath;
+                  newFileState.isLoading = false;
+              } else {
+                  console.log(`[FileExplorer] Handling as a workspace path.`);
+                  if (newFileState.type === 'Text') {
+                      console.log(`[FileExplorer] Fetching text content for "${filePath}" via GraphQL.`);
+                      this.fetchFileContent(filePath);
+                  } else if (['Image', 'Audio', 'Video'].includes(newFileState.type)) {
+                      const workspaceStore = useWorkspaceStore();
+                      const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
+                      if (workspaceId) {
+                          const serverUrls = getServerUrls();
+                          const restBaseUrl = serverUrls.rest.replace(/\/$/, '');
+                          const encodedFilePath = encodeURIComponent(filePath);
+                          newFileState.url = `${restBaseUrl}/workspaces/${workspaceId}/content?path=${encodedFilePath}`;
+                          newFileState.isLoading = false;
+                          console.log(`[FileExplorer] Constructed absolute media URL for "${filePath}": ${newFileState.url}`);
+                      } else {
+                          newFileState.error = "No active workspace to construct file URL.";
+                          newFileState.isLoading = false;
+                          console.error(`[FileExplorer] Cannot construct media URL: No active workspace.`);
+                      }
+                  } else {
+                      console.warn(`[FileExplorer] Unsupported file type "${newFileState.type}" for "${filePath}".`);
+                      newFileState.isLoading = false;
+                  }
+              }
           }
-        }
       }
       
-      wsState.activeFile = pathOrUrl;
+      wsState.activeFile = filePath;
       const fileContentDisplayModeStore = useFileContentDisplayModeStore();
       fileContentDisplayModeStore.showFullscreen();
-    },
+  },
 
     closeFile(filePath: string) {
       const wsState = this._getOrCreateCurrentWorkspaceState();

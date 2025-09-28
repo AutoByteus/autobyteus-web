@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, protocol, net } from 'electron'
 import * as path from 'path'
 import isDev from 'electron-is-dev'
 import { serverManager } from './server/serverManagerFactory'
@@ -6,6 +6,7 @@ import { logger } from './logger'
 import * as fs from 'fs/promises'
 import * as fsSync from 'fs'
 import { ServerStatusManager } from './server/serverStatusManager'
+import { URL } from 'url'
 
 // Create server status manager
 const serverStatusManager = new ServerStatusManager(serverManager);
@@ -275,23 +276,57 @@ ipcMain.handle('read-log-file', async (event, filePath) => {
       error: error instanceof Error ? error.message : 'Unknown error reading log file'
     }
   }
-})
+});
+
+// **NEW** IPC handler for reading local text files securely.
+ipcMain.handle('read-local-text-file', async (event, filePath: string) => {
+  try {
+    logger.info(`Reading local text file: ${filePath}`);
+    if (!fsSync.existsSync(filePath)) {
+      logger.error(`Local file does not exist: ${filePath}`);
+      return { success: false, error: 'File does not exist' };
+    }
+    const content = await fs.readFile(filePath, 'utf-8');
+    return { success: true, content };
+  } catch (error) {
+    logger.error(`Failed to read local text file ${filePath}:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error reading file'
+    };
+  }
+});
 
 app.whenReady()
   .then(async () => {
-    logger.info('App is ready, creating window...')
-    createWindow()
+    logger.info('App is ready, creating window...');
+    
+    // **NEW** Register a custom protocol to serve local files for media.
+    // This allows <video>, <audio>, and <img> tags to load local content securely.
+    protocol.handle('local-file', (request) => {
+      try {
+        const url = new URL(request.url);
+        const filePath = path.normalize(decodeURIComponent(url.pathname));
+        logger.info(`[local-file protocol] Serving file: ${filePath}`);
+        return net.fetch(`file://${filePath}`);
+      } catch (error) {
+        logger.error(`[local-file protocol] Error handling request ${request.url}:`, error);
+        return new Response(null, { status: 404 });
+      }
+    });
+
+    createWindow();
 
     // Ensure Nuitka cache is cleaned when the Electron version changes
-    cleanOldCacheIfNeeded()
+    cleanOldCacheIfNeeded();
 
     serverStatusManager.initializeServer().catch(err => {
-      logger.error('Server initialization failed in background:', err)
-    })
+      logger.error('Server initialization failed in background:', err);
+    });
   })
   .catch(err => {
-    logger.error('Failed to initialize app:', err)
-  })
+    logger.error('Failed to initialize app:', err);
+  });
 
 // Quit when all windows are closed.
 app.on('window-all-closed', () => {
@@ -299,9 +334,9 @@ app.on('window-all-closed', () => {
   // to stay active until the user quits explicitly with Cmd + Q.
   // The 'will-quit' event will handle server shutdown.
   if (process.platform !== 'darwin') {
-    app.quit()
+    app.quit();
   }
-})
+});
 
 // Use 'will-quit' to robustly shut down the server.
 // This event is fired when the app is about to close.
@@ -321,6 +356,6 @@ app.on('will-quit', async (event) => {
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow()
+    createWindow();
   }
-})
+});

@@ -10,6 +10,7 @@ interface Window {
     getLogFilePath: () => Promise<string>;
     openLogFile: (filePath: string) => Promise<{ success: boolean; error?: string }>;
     readLogFile: (filePath: string) => Promise<{ success: boolean; error?: string, content?: string }>;
+    readLocalTextFile: (filePath: string) => Promise<{ success: boolean; error?: string, content?: string }>;
     getPlatform: () => Promise<'win32' | 'linux' | 'darwin'>;
     onAppQuitting: (callback: () => void) => void;
     startShutdown: () => void;
