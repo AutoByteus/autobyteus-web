@@ -19,7 +19,6 @@ interface AgentDefinitionOptionsState {
   promptCategories: PromptCategory[];
   loading: boolean;
   error: any;
-  fetched: boolean; // This will be removed, but keeping interface for reference
 }
 
 export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOptions', () => {
@@ -65,11 +64,6 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
       console.error("Failed to fetch agent definition options:", err);
     });
   }
-
-  // This function is no longer needed as we rely on Apollo's cache invalidation via refetchQueries.
-  // function invalidateCache() {
-  //   fetched.value = false;
-  // }
 
   return {
     // State
