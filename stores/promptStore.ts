@@ -179,7 +179,10 @@ export const usePromptStore = defineStore('prompt', {
         });
 
         if (response?.data?.createPrompt) {
-          return response.data.createPrompt;
+          const newPrompt = response.data.createPrompt;
+          // Use immutable update to ensure reactivity
+          this.prompts = [...this.prompts, newPrompt];
+          return newPrompt;
         }
         throw new Error('Failed to create prompt: No data returned');
       } catch (e: any) {
@@ -204,7 +207,6 @@ export const usePromptStore = defineStore('prompt', {
         });
 
         if (response?.data?.updatePrompt) {
-          // FIX: Manually update the prompts list in the Pinia state.
           const updatedPrompt = response.data.updatePrompt;
           const index = this.prompts.findIndex(p => p.id === updatedPrompt.id);
           if (index !== -1) {
@@ -305,6 +307,9 @@ export const usePromptStore = defineStore('prompt', {
 
         if (response?.data?.deletePrompt) {
           this.deleteResult = response.data.deletePrompt;
+          if (this.deleteResult.success) {
+            this.prompts = this.prompts.filter(p => p.id !== id);
+          }
           return this.deleteResult;
         }
         throw new Error('Failed to delete prompt: No data returned');
