@@ -23,11 +23,12 @@ export const useServerSettingsStore = defineStore('serverSettings', {
   },
   actions: {
     async fetchServerSettings() {
+      if (this.settings.length > 0) return; // Guard clause
       this.isLoading = true
       this.error = null
       
       const { onResult, onError } = useQuery(GET_SERVER_SETTINGS, null, {
-        fetchPolicy: 'network-only' // Force network fetch, bypassing cache
+        // Use default 'cache-first' policy
       })
       
       return new Promise((resolve, reject) => {
@@ -50,6 +51,35 @@ export const useServerSettingsStore = defineStore('serverSettings', {
         })
       })
     },
+
+    async reloadServerSettings() {
+      this.isLoading = true;
+      this.error = null;
+      
+      const { onResult, onError } = useQuery(GET_SERVER_SETTINGS, null, {
+        fetchPolicy: 'network-only' // Force network fetch, bypassing cache
+      });
+      
+      return new Promise((resolve, reject) => {
+        onResult(({ data }) => {
+          this.isLoading = false;
+          if (data?.getServerSettings) {
+            this.settings = data.getServerSettings;
+            resolve(data.getServerSettings);
+          } else {
+            this.settings = [];
+            resolve([]);
+          }
+        });
+        
+        onError((error) => {
+          this.isLoading = false;
+          this.error = error.message;
+          console.error('Failed to reload server settings:', error);
+          reject(error);
+        });
+      });
+    },
     
     async updateServerSetting(key: string, value: string) {
       this.isUpdating = true
@@ -65,29 +95,13 @@ export const useServerSettingsStore = defineStore('serverSettings', {
         
         const responseMessage = result?.data?.updateServerSetting
         
-        // Check if the response contains a success message
         if (responseMessage && responseMessage.includes("successfully")) {
-          // Update the local state using immutable pattern
-          // Instead of directly modifying the object property (which is read-only)
-          // create a new array with the updated setting
-          const index = this.settings.findIndex(setting => setting.key === key)
-          if (index >= 0) {
-            // Create a new array with all the old items
-            const updatedSettings = [...this.settings]
-            // Replace the item at the found index with a new object
-            updatedSettings[index] = {
-              ...this.settings[index], // copy all properties
-              value: value // update only the value property
-            }
-            // Replace the entire settings array
-            this.settings = updatedSettings
-          }
-          
+          // Reload settings from server to ensure state is consistent
+          await this.reloadServerSettings();
           this.isUpdating = false
           return true
         }
         
-        // If we don't get a success message, throw an error with the response
         this.isUpdating = false
         this.error = responseMessage || 'Failed to update server setting'
         throw new Error(responseMessage || 'Failed to update server setting')

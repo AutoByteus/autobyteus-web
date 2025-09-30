@@ -101,13 +101,14 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
     },
 
     async fetchProvidersWithModels() {
+      if (this.providersWithModels.length > 0) return; // Guard clause
       this.isLoadingModels = true;
       const { client } = useApolloClient();
 
       try {
         const { data } = await client.query({
           query: GET_AVAILABLE_LLM_PROVIDERS_WITH_MODELS,
-          fetchPolicy: 'network-only' // Force network fetch, bypassing cache
+          // Use default 'cache-first' policy
         });
 
         if (data?.availableLlmProvidersWithModels) {
@@ -125,6 +126,31 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
       }
     },
 
+    async reloadProvidersWithModels() {
+      this.isReloadingModels = true;
+      const { client } = useApolloClient();
+
+      try {
+        const { data } = await client.query({
+          query: GET_AVAILABLE_LLM_PROVIDERS_WITH_MODELS,
+          fetchPolicy: 'network-only' // Force network fetch, bypassing cache
+        });
+
+        if (data?.availableLlmProvidersWithModels) {
+          this.providersWithModels = data.availableLlmProvidersWithModels;
+        } else {
+          this.providersWithModels = [];
+        }
+        return this.providersWithModels;
+      } catch (error) {
+        console.error('Failed to reload providers and models:', error);
+        this.providersWithModels = [];
+        throw error;
+      } finally {
+        this.isReloadingModels = false;
+      }
+    },
+
     async reloadModels() {
       this.isReloadingModels = true;
       const { mutate } = useMutation(RELOAD_LLM_MODELS);
@@ -135,7 +161,7 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
         
         if (responseMessage && responseMessage.includes("successfully")) {
           // After successful reload, fetch the updated models
-          await this.fetchProvidersWithModels();
+          await this.reloadProvidersWithModels();
           return true;
         }
         
