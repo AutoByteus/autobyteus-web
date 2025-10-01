@@ -73,11 +73,33 @@
       </div>
     </fieldset>
 
-    <!-- Component Configuration -->
+    <!-- Tool Configuration -->
     <fieldset class="border-t border-gray-200 pt-8">
-       <legend class="text-xl font-semibold text-gray-900">Component Configuration</legend>
-      <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
-        <div v-for="field in componentFields" :key="field.name">
+      <legend class="text-xl font-semibold text-gray-900">Tool Configuration</legend>
+      <div class="mt-4 grid grid-cols-1 gap-x-8 gap-y-8">
+        <div>
+          <label for="tool_names" class="block text-base font-medium text-gray-800">Tools</label>
+          <p class="text-sm text-gray-500 mb-2">Select available tools for the agent to use.</p>
+          <GroupableTagInput
+            :model-value="formData['tool_names']"
+            @update:model-value="formData['tool_names'] = $event"
+            :source="getComponentSource('tool_names')"
+            placeholder="Add tools..."
+            :loading="toolStore.loading"
+            @add-all="handleAddAllTools"
+          />
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- Advanced Settings -->
+    <details class="border-t border-gray-200 pt-8">
+      <summary class="text-xl font-semibold text-gray-900 cursor-pointer">Advanced Settings</summary>
+      <p class="text-sm text-gray-500 mt-2 mb-4">
+        The following components are pre-selected with sensible defaults. Modify them only if you need to customize the agent's core behavior. Mandatory components are locked.
+      </p>
+      <fieldset class="mt-4 space-y-8">
+        <div v-for="field in componentFields.filter(f => f.name !== 'tool_names')" :key="field.name">
           <label :for="field.name" class="block text-base font-medium text-gray-800">{{ field.label }}</label>
           <p class="text-sm text-gray-500 mb-2">{{ field.helpText }}</p>
           <GroupableTagInput
@@ -85,12 +107,10 @@
             @update:model-value="formData[field.name] = $event"
             :source="getComponentSource(field.name)"
             :placeholder="field.placeholder"
-            :loading="field.name === 'tool_names' && toolStore.loading"
-            @add-all="handleAddAllTools"
           />
         </div>
-      </div>
-    </fieldset>
+      </fieldset>
+    </details>
 
     <div class="flex justify-end pt-4 space-x-4">
       <button
@@ -118,16 +138,17 @@ import { useAgentDefinitionOptionsStore } from '~/stores/agentDefinitionOptionsS
 import { useToolManagementStore } from '~/stores/toolManagementStore';
 import GroupableTagInput from '~/components/agents/GroupableTagInput.vue';
 import type { GroupedSource, FlatSource } from '~/components/agents/GroupableTagInput.vue';
-
+import type { ProcessorOption } from '~/stores/agentDefinitionOptionsStore';
 
 const props = defineProps<{
   initialData?: any;
   isSubmitting: boolean;
   submitButtonText: string;
+  isCreateMode: boolean;
 }>();
 
 const emit = defineEmits(['submit', 'cancel']);
-const { initialData } = toRefs(props);
+const { initialData, isCreateMode } = toRefs(props);
 
 // Stores
 const optionsStore = useAgentDefinitionOptionsStore();
@@ -135,21 +156,13 @@ const toolStore = useToolManagementStore();
 
 // Fetch required data on mount
 onMounted(async () => {
-  // Fetch all options for dropdowns and tag inputs.
   optionsStore.fetchAllAvailableOptions();
-
-  // Use the new action to fetch grouped local tools
   if (toolStore.getLocalToolsByCategory.length === 0) {
     toolStore.fetchLocalToolsGroupedByCategory();
   }
-
-  // Fetch the list of MCP servers if it's not in the store.
   if (toolStore.getMcpServers.length === 0) {
     await toolStore.fetchMcpServers();
   }
-
-  // Now that we're sure the server list is available,
-  // iterate over it and fetch tools for any server that doesn't have them yet.
   toolStore.getMcpServers.forEach(server => {
     if (toolStore.getToolsForServer(server.serverId).length === 0) {
       toolStore.fetchToolsForServer(server.serverId);
@@ -158,30 +171,25 @@ onMounted(async () => {
 });
 
 const componentFields = computed(() => [
-  { name: 'tool_names', camelCase: 'toolNames', label: 'Tools', placeholder: 'Add custom tools...', helpText: 'Select available tools or add custom ones.' },
-  { name: 'input_processor_names', camelCase: 'inputProcessorNames', label: 'Input Processors', placeholder: 'Add custom processors...', helpText: 'Select available input processors.' },
-  { name: 'llm_response_processor_names', camelCase: 'llmResponseProcessorNames', label: 'LLM Response Processors', placeholder: 'Add custom processors...', helpText: 'Select available LLM response processors.' },
-  { name: 'system_prompt_processor_names', camelCase: 'systemPromptProcessorNames', label: 'System Prompt Processors', placeholder: 'Add custom processors...', helpText: 'Select available system prompt processors.' },
-  { name: 'tool_execution_result_processor_names', camelCase: 'toolExecutionResultProcessorNames', label: 'Tool Result Processors', placeholder: 'Add custom processors...', helpText: 'Select available tool result processors.' },
-  { name: 'phase_hook_names', camelCase: 'phaseHookNames', label: 'Phase Hooks', placeholder: 'Add custom hooks...', helpText: 'Select available phase hooks.' },
+  { name: 'tool_names', camelCase: 'toolNames', label: 'Tools', placeholder: 'Add custom tools...', helpText: 'Select available tools for the agent to use.' },
+  { name: 'input_processor_names', camelCase: 'inputProcessorNames', label: 'Input Processors', placeholder: 'Add custom processors...', helpText: 'Customize processors that handle incoming messages.' },
+  { name: 'llm_response_processor_names', camelCase: 'llmResponseProcessorNames', label: 'LLM Response Processors', placeholder: 'Add custom processors...', helpText: 'Customize processors that interpret LLM responses.' },
+  { name: 'system_prompt_processor_names', camelCase: 'systemPromptProcessorNames', label: 'System Prompt Processors', placeholder: 'Add custom processors...', helpText: 'Customize processors that build the system prompt.' },
+  { name: 'tool_execution_result_processor_names', camelCase: 'toolExecutionResultProcessorNames', label: 'Tool Result Processors', placeholder: 'Add custom processors...', helpText: 'Customize processors that handle tool results.' },
+  { name: 'phase_hook_names', camelCase: 'phaseHookNames', label: 'Phase Hooks', placeholder: 'Add custom hooks...', helpText: 'Customize hooks that trigger on agent phase changes.' },
 ]);
 
-// Data sources for the GroupableTagInput
 const toolSource = computed((): GroupedSource => {
-  // Create groups for local tools based on their categories
   const localToolGroups = toolStore.getLocalToolsByCategory.map(group => ({
     name: group.categoryName,
-    tags: group.tools.map(t => t.name),
+    tags: group.tools.map(t => ({ name: t.name, isMandatory: false })), // Tools are never mandatory in this context
     allowAll: true,
   }));
-  
-  // Create groups for MCP server tools
   const mcpServerGroups = toolStore.getMcpServers.map(server => ({
     name: `MCP: ${server.serverId}`,
-    tags: toolStore.getToolsForServer(server.serverId).map(t => t.name),
+    tags: toolStore.getToolsForServer(server.serverId).map(t => ({ name: t.name, isMandatory: false })),
     allowAll: true,
   }));
-
   return { type: 'grouped', groups: [...localToolGroups, ...mcpServerGroups] };
 });
 
@@ -189,24 +197,20 @@ const getComponentSource = (fieldName: string): GroupedSource | FlatSource => {
   if (fieldName === 'tool_names') {
     return toolSource.value;
   }
-  
-  // Map form field name to store property name
   const storeKeyMap: { [key: string]: keyof typeof optionsStore } = {
-    'input_processor_names': 'inputProcessorNames',
-    'llm_response_processor_names': 'llmResponseProcessorNames',
-    'system_prompt_processor_names': 'systemPromptProcessorNames',
-    'tool_execution_result_processor_names': 'toolExecutionResultProcessorNames',
-    'phase_hook_names': 'phaseHookNames',
+    'input_processor_names': 'inputProcessors',
+    'llm_response_processor_names': 'llmResponseProcessors',
+    'system_prompt_processor_names': 'systemPromptProcessors',
+    'tool_execution_result_processor_names': 'toolExecutionResultProcessors',
+    'phase_hook_names': 'phaseHooks',
   };
-
   const key = storeKeyMap[fieldName];
-  const tags = optionsStore[key] as string[] | undefined;
+  const tags = optionsStore[key] as ProcessorOption[] | undefined;
   return {
     type: 'flat',
     tags: tags || []
   };
 };
-
 
 const getInitialValue = (): { [key: string]: any } => ({
   name: '',
@@ -220,7 +224,7 @@ const getInitialValue = (): { [key: string]: any } => ({
 const formData = reactive(getInitialValue());
 
 watch(initialData, (newData) => {
-  if (newData) {
+  if (newData && !isCreateMode.value) {
     formData.name = newData.name || '';
     formData.role = newData.role || '';
     formData.description = newData.description || '';
@@ -235,7 +239,27 @@ watch(initialData, (newData) => {
   }
 }, { immediate: true, deep: true });
 
-// Dependent dropdown logic
+// New logic for defaulting processors in create mode
+watch(() => optionsStore.loading, (isLoading) => {
+  if (!isLoading && isCreateMode.value) {
+    if (formData.input_processor_names.length === 0) {
+      formData.input_processor_names = optionsStore.inputProcessors.map(p => p.name);
+    }
+    if (formData.llm_response_processor_names.length === 0) {
+      formData.llm_response_processor_names = optionsStore.llmResponseProcessors.map(p => p.name);
+    }
+    if (formData.system_prompt_processor_names.length === 0) {
+      formData.system_prompt_processor_names = optionsStore.systemPromptProcessors.map(p => p.name);
+    }
+    if (formData.tool_execution_result_processor_names.length === 0) {
+      formData.tool_execution_result_processor_names = optionsStore.toolExecutionResultProcessors.map(p => p.name);
+    }
+    if (formData.phase_hook_names.length === 0) {
+      formData.phase_hook_names = optionsStore.phaseHooks.map(p => p.name);
+    }
+  }
+});
+
 const availablePromptNames = computed(() => {
   if (!formData.system_prompt_category) return [];
   const selectedCat = optionsStore.promptCategories.find(c => c.category === formData.system_prompt_category);
@@ -246,27 +270,22 @@ watch(() => formData.system_prompt_category, () => {
   formData.system_prompt_name = '';
 });
 
-// Event Handlers
 function handleAddAllTools(groupName: string) {
   let toolsToAdd: string[] = [];
-  
   const mcpPrefix = 'MCP: ';
   if (groupName.startsWith(mcpPrefix)) {
     const serverId = groupName.substring(mcpPrefix.length);
     toolsToAdd = toolStore.getToolsForServer(serverId).map(t => t.name);
   } else {
-    // It's a local tool category
     const categoryGroup = toolStore.getLocalToolsByCategory.find(g => g.categoryName === groupName);
     if (categoryGroup) {
       toolsToAdd = categoryGroup.tools.map(t => t.name);
     }
   }
-
   const currentTools = formData.tool_names;
   const newToolSet = new Set([...currentTools, ...toolsToAdd]);
   formData.tool_names = Array.from(newToolSet);
 }
-
 
 const handleSubmit = () => {
   const submissionData = {

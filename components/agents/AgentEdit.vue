@@ -11,6 +11,7 @@
           :initial-data="agentDef"
           :is-submitting="isSubmitting"
           submit-button-text="Save Changes"
+          :is-create-mode="false"
           @submit="handleUpdate"
           @cancel="handleCancel"
         />

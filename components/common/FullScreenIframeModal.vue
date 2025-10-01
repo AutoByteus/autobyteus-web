@@ -1,21 +1,24 @@
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 transition-opacity" @click.self="closeModal">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-[95vw] h-[95vh] flex flex-col overflow-hidden">
-        <!-- Modal Header -->
-        <div class="flex justify-between items-center p-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-          <h3 class="text-base font-semibold text-gray-800 dark:text-gray-200">{{ title }}</h3>
-          <button @click="closeModal" class="p-1 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-            <XMarkIcon class="h-5 w-5" />
-          </button>
-        </div>
+    <!-- The outer div is the backdrop. Centering classes are removed as the child now fills the screen. -->
+    <div v-if="visible" class="fixed inset-0 bg-black bg-opacity-75 z-50 transition-opacity">
+      <!-- Main modal container: Now takes up the entire screen. No rounding or shadow. -->
+      <div class="relative bg-white dark:bg-gray-800 w-screen h-screen flex flex-col overflow-hidden">
+        <button 
+          @click="closeModal" 
+          class="absolute top-4 right-4 z-20 p-2 rounded-full bg-gray-100/80 dark:bg-gray-900/80 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all shadow-lg"
+          aria-label="Close"
+          title="Close"
+        >
+          <XMarkIcon class="h-6 w-6" />
+        </button>
         
-        <!-- Iframe Content -->
-        <div class="flex-grow">
+        <!-- Iframe Content Wrapper: This layout remains correct for filling the container. -->
+        <div class="flex-grow min-h-0 relative">
           <iframe
             v-if="iframeSrc"
             :src="iframeSrc"
-            class="w-full h-full border-none"
+            class="absolute inset-0 w-full h-full border-none"
             sandbox="allow-scripts allow-same-origin"
             :title="title"
           ></iframe>

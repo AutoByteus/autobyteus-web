@@ -3,9 +3,10 @@
     <!-- Selected Tags & Custom Input -->
     <div class="w-full bg-white border border-gray-300 rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-text" @click="focusInput">
       <div class="flex flex-wrap gap-2 items-center">
-        <span v-for="tag in modelValue" :key="tag" class="inline-flex items-center py-1 pl-3 pr-2 text-sm font-medium rounded-full bg-indigo-100 text-indigo-800">
+        <span v-for="tag in modelValue" :key="tag" class="inline-flex items-center py-1 pl-3 pr-2 text-sm font-medium rounded-full" :class="isMandatory(tag) ? 'bg-gray-200 text-gray-800' : 'bg-indigo-100 text-indigo-800'">
+          <span v-if="isMandatory(tag)" class="i-heroicons-lock-closed-20-solid w-3 h-3 mr-1.5 text-gray-500"></span>
           {{ tag }}
-          <button type="button" @click.stop="removeTag(tag)" class="flex-shrink-0 ml-1.5 h-4 w-4 rounded-full inline-flex items-center justify-center text-indigo-400 hover:bg-indigo-200 hover:text-indigo-500 focus:outline-none">
+          <button v-if="!isMandatory(tag)" type="button" @click.stop="removeTag(tag)" class="flex-shrink-0 ml-1.5 h-4 w-4 rounded-full inline-flex items-center justify-center text-indigo-400 hover:bg-indigo-200 hover:text-indigo-500 focus:outline-none">
             <svg class="h-2 w-2" stroke="currentColor" fill="none" viewBox="0 0 8 8"><path stroke-linecap="round" stroke-width="1.5" d="M1 1l6 6m0-6L1 7" /></svg>
           </button>
         </span>
@@ -39,10 +40,13 @@
             </button>
           </summary>
           <ul class="px-4 pb-2">
-            <li v-for="tag in group.tags" :key="tag" @click="toggleTag(tag)" class="flex justify-between items-center p-2 rounded-md hover:bg-indigo-50 cursor-pointer">
-              <span class="text-sm">{{ tag }}</span>
-              <span v-if="isSelected(tag)" class="text-xs font-semibold text-red-600">Remove</span>
-              <span v-else class="text-xs font-semibold text-green-600">Add</span>
+            <li v-for="tag in group.tags" :key="tag.name" @click="toggleTag(tag.name)" class="flex justify-between items-center p-2 rounded-md hover:bg-indigo-50 cursor-pointer">
+              <span class="text-sm flex items-center">
+                <span v-if="tag.isMandatory" class="i-heroicons-lock-closed-20-solid w-4 h-4 mr-2 text-gray-400" title="Mandatory"></span>
+                {{ tag.name }}
+              </span>
+              <span v-if="isSelected(tag.name) && !tag.isMandatory" class="text-xs font-semibold text-red-600">Remove</span>
+              <span v-else-if="!isSelected(tag.name)" class="text-xs font-semibold text-green-600">Add</span>
             </li>
           </ul>
         </details>
@@ -51,10 +55,13 @@
       <!-- Flat Layout -->
       <div v-else-if="source.type === 'flat'">
          <ul class="px-2 pb-2">
-            <li v-for="tag in filteredFlatTags" :key="tag" @click="toggleTag(tag)" class="flex justify-between items-center p-2 rounded-md hover:bg-indigo-50 cursor-pointer">
-              <span class="text-sm">{{ tag }}</span>
-              <span v-if="isSelected(tag)" class="text-xs font-semibold text-red-600">Remove</span>
-              <span v-else class="text-xs font-semibold text-green-600">Add</span>
+            <li v-for="tag in filteredFlatTags" :key="tag.name" @click="toggleTag(tag.name)" class="flex justify-between items-center p-2 rounded-md hover:bg-indigo-50 cursor-pointer">
+              <span class="text-sm flex items-center">
+                <span v-if="tag.isMandatory" class="i-heroicons-lock-closed-20-solid w-4 h-4 mr-2 text-gray-400" title="Mandatory"></span>
+                {{ tag.name }}
+              </span>
+              <span v-if="isSelected(tag.name) && !tag.isMandatory" class="text-xs font-semibold text-red-600">Remove</span>
+              <span v-else-if="!isSelected(tag.name)" class="text-xs font-semibold text-green-600">Add</span>
             </li>
             <li v-if="filteredFlatTags.length === 0" class="text-sm text-gray-500 p-2 text-center">No matching items.</li>
           </ul>
@@ -65,22 +72,24 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import type { ProcessorOption } from '~/stores/agentDefinitionOptionsStore';
 
 export interface GroupedSource {
   type: 'grouped';
   groups: {
     name: string;
-    tags: string[];
+    tags: ProcessorOption[]; // Now expects objects
     allowAll?: boolean;
   }[];
 }
 
 export interface FlatSource {
   type: 'flat';
-  tags: string[];
+  tags: ProcessorOption[]; // Now expects objects
 }
 
-const props = defineProps<{  modelValue: string[];
+const props = defineProps<{
+  modelValue: string[];
   source: GroupedSource | FlatSource;
   placeholder?: string;
   loading?: boolean;
@@ -92,7 +101,20 @@ const customTag = ref('');
 const searchTerm = ref('');
 const inputRef = ref<HTMLInputElement | null>(null);
 
-const isSelected = (tag: string) => props.modelValue.includes(tag);
+const isSelected = (tagName: string) => props.modelValue.includes(tagName);
+
+const mandatoryTags = computed(() => {
+  if (props.source.type === 'flat') {
+    return new Set(props.source.tags.filter(t => t.isMandatory).map(t => t.name));
+  }
+  if (props.source.type === 'grouped') {
+    const allTags = props.source.groups.flatMap(g => g.tags);
+    return new Set(allTags.filter(t => t.isMandatory).map(t => t.name));
+  }
+  return new Set();
+});
+
+const isMandatory = (tagName: string) => mandatoryTags.value.has(tagName);
 
 const filteredGroups = computed(() => {
   if (props.source.type !== 'grouped') return [];
@@ -101,7 +123,7 @@ const filteredGroups = computed(() => {
   return props.source.groups
     .map(group => ({
       ...group,
-      tags: group.tags.filter(tag => tag.toLowerCase().includes(searchLower))
+      tags: group.tags.filter(tag => tag.name.toLowerCase().includes(searchLower))
     }))
     .filter(group => group.tags.length > 0);
 });
@@ -109,22 +131,27 @@ const filteredGroups = computed(() => {
 const filteredFlatTags = computed(() => {
   if (props.source.type !== 'flat') return [];
   const searchLower = searchTerm.value.toLowerCase();
-  return props.source.tags.filter(tag => !isSelected(tag) && tag.toLowerCase().includes(searchLower));
+  return props.source.tags.filter(tag => tag.name.toLowerCase().includes(searchLower));
 });
 
-function toggleTag(tag: string) {
+function toggleTag(tagName: string) {
+  if (isMandatory(tagName) && isSelected(tagName)) {
+    // Prevent removing mandatory tags that are already selected
+    return;
+  }
   const newSelection = [...props.modelValue];
-  const index = newSelection.indexOf(tag);
+  const index = newSelection.indexOf(tagName);
   if (index > -1) {
     newSelection.splice(index, 1);
   } else {
-    newSelection.push(tag);
+    newSelection.push(tagName);
   }
   emit('update:modelValue', newSelection);
 }
 
-function removeTag(tag: string) {
-  const newSelection = props.modelValue.filter(t => t !== tag);
+function removeTag(tagName: string) {
+  if (isMandatory(tagName)) return;
+  const newSelection = props.modelValue.filter(t => t !== tagName);
   emit('update:modelValue', newSelection);
 }
 
@@ -139,7 +166,10 @@ function addCustomTag() {
 
 function handleBackspace() {
   if (customTag.value === '' && props.modelValue.length > 0) {
-    removeTag(props.modelValue[props.modelValue.length - 1]);
+    const lastTag = props.modelValue[props.modelValue.length - 1];
+    if (!isMandatory(lastTag)) {
+      removeTag(lastTag);
+    }
   }
 }
 

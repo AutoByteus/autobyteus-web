@@ -409,6 +409,12 @@ export type GraphQlToolInvocationAutoExecutingData = {
   toolName?: Maybe<Scalars['String']['output']>;
 };
 
+export type HookOption = {
+  __typename?: 'HookOption';
+  isMandatory: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+};
+
 export type ImportMcpServerConfigsResult = {
   __typename?: 'ImportMcpServerConfigsResult';
   failedCount: Scalars['Int']['output'];
@@ -693,6 +699,12 @@ export enum ParameterType {
   String = 'STRING'
 }
 
+export type ProcessorOption = {
+  __typename?: 'ProcessorOption';
+  isMandatory: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+};
+
 export type Prompt = {
   __typename?: 'Prompt';
   category: Scalars['String']['output'];
@@ -743,13 +755,13 @@ export type Query = {
   agentTeamDefinitions: Array<AgentTeamDefinition>;
   agentTeamInstance?: Maybe<AgentTeamInstance>;
   agentTeamInstances: Array<AgentTeamInstance>;
-  availableInputProcessorNames: Array<Scalars['String']['output']>;
+  availableInputProcessors: Array<ProcessorOption>;
   availableLlmProvidersWithModels: Array<ProviderWithModels>;
-  availableLlmResponseProcessorNames: Array<Scalars['String']['output']>;
-  availablePhaseHookNames: Array<Scalars['String']['output']>;
+  availableLlmResponseProcessors: Array<ProcessorOption>;
+  availablePhaseHooks: Array<HookOption>;
   availablePromptCategories: Array<PromptCategory>;
-  availableSystemPromptProcessorNames: Array<Scalars['String']['output']>;
-  availableToolExecutionResultProcessorNames: Array<Scalars['String']['output']>;
+  availableSystemPromptProcessors: Array<ProcessorOption>;
+  availableToolExecutionResultProcessors: Array<ProcessorOption>;
   availableToolNames: Array<Scalars['String']['output']>;
   availableWorkspaceDefinitions: Array<WorkspaceDefinition>;
   fileContent: Scalars['String']['output'];
@@ -1370,7 +1382,7 @@ export type ExecuteBashCommandsMutation = { __typename?: 'Mutation', executeBash
 export type GetAgentCustomizationOptionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentCustomizationOptionsQuery = { __typename?: 'Query', availableToolNames: Array<string>, availableInputProcessorNames: Array<string>, availableLlmResponseProcessorNames: Array<string>, availableSystemPromptProcessorNames: Array<string>, availableToolExecutionResultProcessorNames: Array<string>, availablePhaseHookNames: Array<string>, availablePromptCategories: Array<{ __typename: 'PromptCategory', category: string, names: Array<string> }> };
+export type GetAgentCustomizationOptionsQuery = { __typename?: 'Query', availableToolNames: Array<string>, availableInputProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableLlmResponseProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableSystemPromptProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableToolExecutionResultProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availablePhaseHooks: Array<{ __typename: 'HookOption', name: string, isMandatory: boolean }>, availablePromptCategories: Array<{ __typename: 'PromptCategory', category: string, names: Array<string> }> };
 
 export type GetAgentDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -2720,11 +2732,31 @@ export type ExecuteBashCommandsMutationCompositionFunctionResult = VueApolloComp
 export const GetAgentCustomizationOptionsDocument = gql`
     query GetAgentCustomizationOptions {
   availableToolNames
-  availableInputProcessorNames
-  availableLlmResponseProcessorNames
-  availableSystemPromptProcessorNames
-  availableToolExecutionResultProcessorNames
-  availablePhaseHookNames
+  availableInputProcessors {
+    __typename
+    name
+    isMandatory
+  }
+  availableLlmResponseProcessors {
+    __typename
+    name
+    isMandatory
+  }
+  availableSystemPromptProcessors {
+    __typename
+    name
+    isMandatory
+  }
+  availableToolExecutionResultProcessors {
+    __typename
+    name
+    isMandatory
+  }
+  availablePhaseHooks {
+    __typename
+    name
+    isMandatory
+  }
   availablePromptCategories {
     __typename
     category

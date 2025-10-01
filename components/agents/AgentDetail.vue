@@ -60,19 +60,35 @@
             </div>
             <p v-else class="text-sm text-gray-500 italic">No system prompt configured.</p>
           </div>
-
-          <!-- Component Lists -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-            <div v-for="list in componentLists" :key="list.title">
-              <h3 class="font-semibold text-gray-800 mb-3">{{ list.title }}</h3>
-              <ul v-if="agentDef[list.key] && agentDef[list.key].length" class="space-y-2">
-                <li v-for="item in agentDef[list.key]" :key="item" class="text-sm font-mono bg-gray-50 text-gray-800 px-4 py-2 rounded-md border border-gray-200">
-                  {{ item }}
-                </li>
-              </ul>
-              <p v-else class="text-sm text-gray-500 italic">None configured.</p>
-            </div>
+          
+          <!-- Tools -->
+          <div class="border-t border-gray-200 pt-6 mt-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-2">Tools</h2>
+            <ul v-if="agentDef.toolNames && agentDef.toolNames.length" class="space-y-2">
+              <li v-for="item in agentDef.toolNames" :key="item" class="text-sm font-mono bg-gray-50 text-gray-800 px-4 py-2 rounded-md border border-gray-200">
+                {{ item }}
+              </li>
+            </ul>
+            <p v-else class="text-sm text-gray-500 italic">None configured.</p>
           </div>
+
+          <!-- Advanced Settings -->
+          <details class="border-t border-gray-200 pt-6 mt-6">
+            <summary class="text-lg font-semibold text-gray-800 cursor-pointer">Advanced Settings</summary>
+            <!-- Component Lists -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
+              <div v-for="list in componentLists.filter(l => l.key !== 'toolNames')" :key="list.title">
+                <h3 class="font-semibold text-gray-800 mb-3">{{ list.title }}</h3>
+                <ul v-if="agentDef[list.key] && agentDef[list.key].length" class="space-y-2">
+                  <li v-for="item in agentDef[list.key]" :key="item" class="text-sm font-mono bg-gray-50 text-gray-800 px-4 py-2 rounded-md border border-gray-200">
+                    {{ item }}
+                  </li>
+                </ul>
+                <p v-else class="text-sm text-gray-500 italic">None configured.</p>
+              </div>
+            </div>
+          </details>
+
         </div>
       </div>
     </div>

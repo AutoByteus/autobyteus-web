@@ -61,7 +61,7 @@
                 <GroupableTagInput
                     :model-value="node.dependencies"
                     @update:model-value="node.dependencies = $event"
-                    :source="{ type: 'flat', tags: availableDependencies(index).map(d => d.memberName) }"
+                    :source="{ type: 'flat', tags: availableDependencies(index).map(d => ({ name: d.memberName, isMandatory: false })) }"
                     placeholder="Select dependencies..."
                 />
             </div>

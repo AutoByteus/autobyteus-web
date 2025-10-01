@@ -9,6 +9,7 @@
       <AgentDefinitionForm
         :is-submitting="isSubmitting"
         submit-button-text="Create Agent"
+        :is-create-mode="true"
         @submit="handleCreate"
         @cancel="handleCancel"
       />
