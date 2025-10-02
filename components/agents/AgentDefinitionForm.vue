@@ -100,7 +100,16 @@
       </p>
       <fieldset class="mt-4 space-y-8">
         <div v-for="field in componentFields.filter(f => f.name !== 'tool_names')" :key="field.name">
-          <label :for="field.name" class="block text-base font-medium text-gray-800">{{ field.label }}</label>
+          <div class="flex justify-between items-baseline mb-1">
+            <label :for="field.name" class="block text-base font-medium text-gray-800">{{ field.label }}</label>
+            <button
+              type="button"
+              @click="resetToDefaults(field.name)"
+              class="text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-md px-2 py-1 -my-1"
+            >
+              Reset to Defaults
+            </button>
+          </div>
           <p class="text-sm text-gray-500 mb-2">{{ field.helpText }}</p>
           <GroupableTagInput
             :model-value="formData[field.name]"
@@ -285,6 +294,25 @@ function handleAddAllTools(groupName: string) {
   const currentTools = formData.tool_names;
   const newToolSet = new Set([...currentTools, ...toolsToAdd]);
   formData.tool_names = Array.from(newToolSet);
+}
+
+// NEW: Reset to defaults function
+function resetToDefaults(fieldName: string) {
+  const storeKeyMap: { [key: string]: keyof typeof optionsStore } = {
+    'input_processor_names': 'inputProcessors',
+    'llm_response_processor_names': 'llmResponseProcessors',
+    'system_prompt_processor_names': 'systemPromptProcessors',
+    'tool_execution_result_processor_names': 'toolExecutionResultProcessors',
+    'phase_hook_names': 'phaseHooks',
+  };
+  const key = storeKeyMap[fieldName];
+  if (!key) return;
+
+  const defaultOptions = optionsStore[key] as ProcessorOption[] | undefined;
+  if (defaultOptions) {
+    // This directly replaces the current list with the default list of names.
+    (formData as any)[fieldName] = defaultOptions.map(p => p.name);
+  }
 }
 
 const handleSubmit = () => {
