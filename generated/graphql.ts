@@ -118,6 +118,14 @@ export type AgentUserInput = {
   contextFiles?: InputMaybe<Array<ContextFilePathInput>>;
 };
 
+export type ApplicationManifest = {
+  __typename?: 'ApplicationManifest';
+  description: Scalars['String']['output'];
+  icon?: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+};
+
 export type ApproveToolInvocationInput = {
   agentId: Scalars['String']['input'];
   invocationId: Scalars['String']['input'];
@@ -507,6 +515,7 @@ export type Mutation = {
   moveFileOrFolder: Scalars['String']['output'];
   reloadLlmModels: Scalars['String']['output'];
   renameFileOrFolder: Scalars['String']['output'];
+  runApplication: Scalars['JSON']['output'];
   sendAgentUserInput: SendAgentUserInputResult;
   sendMessageToTeam: SendMessageToTeamResult;
   setLlmProviderApiKey: Scalars['String']['output'];
@@ -626,6 +635,12 @@ export type MutationRenameFileOrFolderArgs = {
   newName: Scalars['String']['input'];
   targetPath: Scalars['String']['input'];
   workspaceId: Scalars['String']['input'];
+};
+
+
+export type MutationRunApplicationArgs = {
+  appId: Scalars['String']['input'];
+  input: Scalars['JSON']['input'];
 };
 
 
@@ -769,6 +784,7 @@ export type Query = {
   getLlmProviderApiKey?: Maybe<Scalars['String']['output']>;
   getModelsByProvider: Array<ProviderModels>;
   getServerSettings: Array<ServerSetting>;
+  listApplications: Array<ApplicationManifest>;
   mcpServers: Array<McpServerConfigUnion>;
   previewMcpServerTools: Array<ToolDefinitionDetail>;
   promptDetails?: Maybe<Prompt>;
@@ -1231,6 +1247,14 @@ export type SendMessageToTeamMutationVariables = Exact<{
 
 export type SendMessageToTeamMutation = { __typename?: 'Mutation', sendMessageToTeam: { __typename: 'SendMessageToTeamResult', success: boolean, message: string, teamId?: string | null } };
 
+export type RunApplicationMutationVariables = Exact<{
+  appId: Scalars['String']['input'];
+  input: Scalars['JSON']['input'];
+}>;
+
+
+export type RunApplicationMutation = { __typename?: 'Mutation', runApplication: any };
+
 export type WriteFileContentMutationVariables = Exact<{
   workspaceId: Scalars['String']['input'];
   filePath: Scalars['String']['input'];
@@ -1398,6 +1422,11 @@ export type GetAgentTeamDefinitionsQueryVariables = Exact<{ [key: string]: never
 
 
 export type GetAgentTeamDefinitionsQuery = { __typename?: 'Query', agentTeamDefinitions: Array<{ __typename: 'AgentTeamDefinition', id: string, name: string, description: string, role?: string | null, coordinatorMemberName: string, nodes: Array<{ __typename: 'TeamMember', memberName: string, referenceId: string, referenceType: TeamMemberType, dependencies: Array<string> }> }> };
+
+export type ListApplicationsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ListApplicationsQuery = { __typename?: 'Query', listApplications: Array<{ __typename: 'ApplicationManifest', id: string, name: string, description: string, icon?: string | null }> };
 
 export type GetConversationHistoryQueryVariables = Exact<{
   agentDefinitionId: Scalars['String']['input'];
@@ -2052,6 +2081,34 @@ export function useSendMessageToTeamMutation(options: VueApolloComposable.UseMut
   return VueApolloComposable.useMutation<SendMessageToTeamMutation, SendMessageToTeamMutationVariables>(SendMessageToTeamDocument, options);
 }
 export type SendMessageToTeamMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<SendMessageToTeamMutation, SendMessageToTeamMutationVariables>;
+export const RunApplicationDocument = gql`
+    mutation RunApplication($appId: String!, $input: JSON!) {
+  runApplication(appId: $appId, input: $input)
+}
+    `;
+
+/**
+ * __useRunApplicationMutation__
+ *
+ * To run a mutation, you first call `useRunApplicationMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useRunApplicationMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useRunApplicationMutation({
+ *   variables: {
+ *     appId: // value for 'appId'
+ *     input: // value for 'input'
+ *   },
+ * });
+ */
+export function useRunApplicationMutation(options: VueApolloComposable.UseMutationOptions<RunApplicationMutation, RunApplicationMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<RunApplicationMutation, RunApplicationMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<RunApplicationMutation, RunApplicationMutationVariables>(RunApplicationDocument, options);
+}
+export type RunApplicationMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<RunApplicationMutation, RunApplicationMutationVariables>;
 export const WriteFileContentDocument = gql`
     mutation WriteFileContent($workspaceId: String!, $filePath: String!, $content: String!) {
   writeFileContent(
@@ -2916,6 +2973,37 @@ export function useGetAgentTeamDefinitionsLazyQuery(options: VueApolloComposable
   return VueApolloComposable.useLazyQuery<GetAgentTeamDefinitionsQuery, GetAgentTeamDefinitionsQueryVariables>(GetAgentTeamDefinitionsDocument, {}, options);
 }
 export type GetAgentTeamDefinitionsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAgentTeamDefinitionsQuery, GetAgentTeamDefinitionsQueryVariables>;
+export const ListApplicationsDocument = gql`
+    query ListApplications {
+  listApplications {
+    __typename
+    id
+    name
+    description
+    icon
+  }
+}
+    `;
+
+/**
+ * __useListApplicationsQuery__
+ *
+ * To run a query within a Vue component, call `useListApplicationsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useListApplicationsQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useListApplicationsQuery();
+ */
+export function useListApplicationsQuery(options: VueApolloComposable.UseQueryOptions<ListApplicationsQuery, ListApplicationsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<ListApplicationsQuery, ListApplicationsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<ListApplicationsQuery, ListApplicationsQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<ListApplicationsQuery, ListApplicationsQueryVariables>(ListApplicationsDocument, {}, options);
+}
+export function useListApplicationsLazyQuery(options: VueApolloComposable.UseQueryOptions<ListApplicationsQuery, ListApplicationsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<ListApplicationsQuery, ListApplicationsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<ListApplicationsQuery, ListApplicationsQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<ListApplicationsQuery, ListApplicationsQueryVariables>(ListApplicationsDocument, {}, options);
+}
+export type ListApplicationsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<ListApplicationsQuery, ListApplicationsQueryVariables>;
 export const GetConversationHistoryDocument = gql`
     query GetConversationHistory($agentDefinitionId: String!, $page: Int, $pageSize: Int, $searchQuery: String) {
   getConversationHistory(

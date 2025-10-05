@@ -1,0 +1,29 @@
+<template>
+  <div class="w-full h-full grid grid-cols-1 md:grid-cols-2">
+    <!-- Left Panel: User Input -->
+    <ProblemInput
+      :is-loading="store.isLoading"
+      @submit="handleSubmit"
+    />
+
+    <!-- Right Panel: Solution and Animation Output -->
+    <SolutionDisplay
+      :is-loading="store.isLoading"
+      :error="store.error"
+      :solution-text="store.solutionText"
+      :animation-url="store.animationUrl"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { useGeometrySolverStore } from './store';
+import ProblemInput from './components/ProblemInput.vue';
+import SolutionDisplay from './components/SolutionDisplay.vue';
+
+const store = useGeometrySolverStore();
+
+function handleSubmit(problemText: string) {
+  store.solveAndAnimate(problemText);
+}
+</script>
