@@ -252,19 +252,19 @@ watch(initialData, (newData) => {
 watch(() => optionsStore.loading, (isLoading) => {
   if (!isLoading && isCreateMode.value) {
     if (formData.input_processor_names.length === 0) {
-      formData.input_processor_names = optionsStore.inputProcessors.map(p => p.name);
+      formData.input_processor_names = optionsStore.inputProcessors.filter(p => p.isMandatory).map(p => p.name);
     }
     if (formData.llm_response_processor_names.length === 0) {
-      formData.llm_response_processor_names = optionsStore.llmResponseProcessors.map(p => p.name);
+      formData.llm_response_processor_names = optionsStore.llmResponseProcessors.filter(p => p.isMandatory).map(p => p.name);
     }
     if (formData.system_prompt_processor_names.length === 0) {
-      formData.system_prompt_processor_names = optionsStore.systemPromptProcessors.map(p => p.name);
+      formData.system_prompt_processor_names = optionsStore.systemPromptProcessors.filter(p => p.isMandatory).map(p => p.name);
     }
     if (formData.tool_execution_result_processor_names.length === 0) {
-      formData.tool_execution_result_processor_names = optionsStore.toolExecutionResultProcessors.map(p => p.name);
+      formData.tool_execution_result_processor_names = optionsStore.toolExecutionResultProcessors.filter(p => p.isMandatory).map(p => p.name);
     }
     if (formData.phase_hook_names.length === 0) {
-      formData.phase_hook_names = optionsStore.phaseHooks.map(p => p.name);
+      formData.phase_hook_names = optionsStore.phaseHooks.filter(p => p.isMandatory).map(p => p.name);
     }
   }
 });
@@ -311,7 +311,7 @@ function resetToDefaults(fieldName: string) {
   const defaultOptions = optionsStore[key] as ProcessorOption[] | undefined;
   if (defaultOptions) {
     // This directly replaces the current list with the default list of names.
-    (formData as any)[fieldName] = defaultOptions.map(p => p.name);
+    (formData as any)[fieldName] = defaultOptions.filter(p => p.isMandatory).map(p => p.name);
   }
 }
 
