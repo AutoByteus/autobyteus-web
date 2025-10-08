@@ -20,6 +20,9 @@ interface ModelInfo {
   name: string;
   value: string;
   canonicalName: string;
+  provider: string;
+  runtime: string;
+  hostUrl?: string | null;
 }
 
 interface ProviderWithModels {
@@ -30,9 +33,11 @@ interface ProviderWithModels {
 export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
   state: () => ({
     providersWithModels: [] as ProviderWithModels[],
+    audioProvidersWithModels: [] as ProviderWithModels[],
     providerConfigs: {} as Record<string, LLMProviderConfig>,
     isLoadingModels: false,
     isReloadingModels: false,
+    hasFetchedProviders: false,
   }),
   getters: {
     providers(state): string[] {
@@ -40,6 +45,9 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
     },
     models(state): string[] {
       return state.providersWithModels.flatMap(p => p.models.map(m => m.modelIdentifier));
+    },
+    audioModels(state): string[] {
+      return state.audioProvidersWithModels.flatMap(p => p.models.map(m => m.modelIdentifier));
     },
     providersWithModelsForSelection(state): ProviderWithModels[] {
       return state.providersWithModels.filter(p => p.models && p.models.length > 0);
@@ -101,7 +109,7 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
     },
 
     async fetchProvidersWithModels() {
-      if (this.providersWithModels.length > 0) return; // Guard clause
+      if (this.hasFetchedProviders) return;
       this.isLoadingModels = true;
       const { client } = useApolloClient();
 
@@ -111,15 +119,14 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
           // Use default 'cache-first' policy
         });
 
-        if (data?.availableLlmProvidersWithModels) {
-          this.providersWithModels = data.availableLlmProvidersWithModels;
-        } else {
-          this.providersWithModels = [];
-        }
+        this.providersWithModels = data?.availableLlmProvidersWithModels ?? [];
+        this.audioProvidersWithModels = data?.availableAudioProvidersWithModels ?? [];
+        this.hasFetchedProviders = true;
         return this.providersWithModels;
       } catch (error) {
         console.error('Failed to fetch providers and models:', error);
         this.providersWithModels = [];
+        this.audioProvidersWithModels = [];
         throw error;
       } finally {
         this.isLoadingModels = false;
@@ -136,15 +143,14 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
           fetchPolicy: 'network-only' // Force network fetch, bypassing cache
         });
 
-        if (data?.availableLlmProvidersWithModels) {
-          this.providersWithModels = data.availableLlmProvidersWithModels;
-        } else {
-          this.providersWithModels = [];
-        }
+        this.providersWithModels = data?.availableLlmProvidersWithModels ?? [];
+        this.audioProvidersWithModels = data?.availableAudioProvidersWithModels ?? [];
+        this.hasFetchedProviders = true;
         return this.providersWithModels;
       } catch (error) {
         console.error('Failed to reload providers and models:', error);
         this.providersWithModels = [];
+        this.audioProvidersWithModels = [];
         throw error;
       } finally {
         this.isReloadingModels = false;

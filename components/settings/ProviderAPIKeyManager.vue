@@ -116,18 +116,37 @@
               {{ isReloadingModels ? 'Reloading and discovering models...' : 'Loading available models...' }}
             </p>
           </div>
-          <div v-else-if="availableModels.length === 0" class="bg-gray-50 rounded-lg p-6 text-center">
+          <div v-else-if="!hasAnyModels" class="bg-gray-50 rounded-lg p-6 text-center">
             <span class="i-heroicons-cube-transparent-20-solid w-10 h-10 text-gray-400 mx-auto mb-3"></span>
             <p class="text-gray-600">No models available. Configure at least one provider API key to see available models.</p>
           </div>
-          <div v-else class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            <div 
-              v-for="model in availableModels" 
-              :key="model"
-              class="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center"
-            >
-              <span class="i-heroicons-cube-20-solid w-4 h-4 text-blue-600 mr-2"></span>
-              <span class="text-sm font-medium text-gray-800 truncate">{{ model }}</span>
+          <div v-else class="space-y-6">
+            <div v-if="availableLlmModels.length > 0">
+              <h4 class="text-md font-medium text-gray-700 mb-2">LLM Models</h4>
+              <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                <div 
+                  v-for="model in availableLlmModels" 
+                  :key="`llm-${model}`"
+                  class="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center"
+                >
+                  <span class="i-heroicons-cube-20-solid w-4 h-4 text-blue-600 mr-2"></span>
+                  <span class="text-sm font-medium text-gray-800 truncate">{{ model }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="availableAudioModels.length > 0">
+              <h4 class="text-md font-medium text-gray-700 mb-2">Audio Models</h4>
+              <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                <div 
+                  v-for="model in availableAudioModels" 
+                  :key="`audio-${model}`"
+                  class="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center"
+                >
+                  <span class="i-heroicons-speaker-wave-20-solid w-4 h-4 text-blue-600 mr-2"></span>
+                  <span class="text-sm font-medium text-gray-800 truncate">{{ model }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -152,7 +171,13 @@ import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig'
 
 const store = useLLMProviderConfigStore()
 // Use storeToRefs for reactive state properties
-const { isLoadingModels, models, isReloadingModels, providers } = storeToRefs(store)
+const { 
+  isLoadingModels, 
+  models: llmModels, 
+  audioModels, 
+  isReloadingModels, 
+  providers 
+} = storeToRefs(store)
 
 const loading = ref(true)
 const saving = ref(false)
@@ -163,8 +188,12 @@ const notification = ref<{ type: 'success' | 'error'; message: string } | null>(
 
 const providerConfigs = ref<Record<string, { apiKey?: string }>>({})
 
-// Computed property to ensure models is always an array
-const availableModels = computed(() => models.value || [])
+// Computed properties for available model lists
+const availableLlmModels = computed(() => llmModels.value || [])
+const availableAudioModels = computed(() => audioModels.value || [])
+const hasAnyModels = computed(() =>
+  availableLlmModels.value.length > 0 || availableAudioModels.value.length > 0
+)
 
 const refreshModels = async () => {
   try {
