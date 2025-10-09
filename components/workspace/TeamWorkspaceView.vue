@@ -9,7 +9,7 @@
         </h4>
         <TeamStatusDisplay v-if="activeTeamContext" :phase="activeTeamContext.currentPhase" />
       </div>
-      <WorkspaceHeaderActions @new-agent="createNewTeamInstance" />
+      <WorkspaceHeaderActions @new-agent="createNewTeamInstance" @open-history="openHistoryPanel" />
     </div>
 
     <!-- Tabs for team instances -->
@@ -30,11 +30,17 @@
         </p>
       </div>
     </div>
+
+    <!-- History Panel (Modal) -->
+    <ConversationHistoryPanel
+      :is-open="isHistoryPanelOpen"
+      @close="isHistoryPanelOpen = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
 import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
@@ -42,16 +48,37 @@ import TeamStatusDisplay from '~/components/workspace/TeamStatusDisplay.vue';
 import AgentTeamEventMonitorTabs from '~/components/workspace/AgentTeamEventMonitorTabs.vue';
 import AgentTeamEventMonitor from '~/components/workspace/AgentTeamEventMonitor.vue';
 import WorkspaceHeaderActions from '~/components/workspace/WorkspaceHeaderActions.vue';
+import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue';
+import { useConversationHistoryStore } from '~/stores/conversationHistory';
 
 const teamLaunchProfileStore = useAgentTeamLaunchProfileStore();
 const teamRunStore = useAgentTeamRunStore();
 const teamContextsStore = useAgentTeamContextsStore();
+const conversationHistoryStore = useConversationHistoryStore();
+
+const isHistoryPanelOpen = ref(false);
 
 const activeLaunchProfile = computed(() => teamLaunchProfileStore.activeLaunchProfile);
 const activeTeamContext = computed(() => teamContextsStore.activeTeamContext);
+const focusedMember = computed(() => teamContextsStore.focusedMemberContext);
 
 const createNewTeamInstance = () => {
   // Call the simple, stateless action to create a new instance based on the active environment
   teamRunStore.createNewTeamInstance();
+};
+
+const openHistoryPanel = () => {
+  if (focusedMember.value) {
+    const agentDefId = focusedMember.value.state.conversation.agentDefinitionId;
+    if (agentDefId) {
+      conversationHistoryStore.setAgentDefinitionId(agentDefId);
+      isHistoryPanelOpen.value = true;
+    } else {
+      console.error("Cannot open history panel: Focused member does not have an agentDefinitionId.");
+      // Here you could add a user-facing notification if desired
+    }
+  } else {
+    console.error("Cannot open history panel: No agent is focused in the team view.");
+  }
 };
 </script>
