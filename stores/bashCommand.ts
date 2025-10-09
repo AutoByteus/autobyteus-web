@@ -1,4 +1,3 @@
-
 import { defineStore } from 'pinia'
 import { useMutation } from '@vue/apollo-composable'
 import { EXECUTE_BASH_COMMANDS } from '~/graphql/mutations/workspace_mutations'
@@ -6,99 +5,88 @@ import type {
   ExecuteBashCommandsMutation,
   ExecuteBashCommandsMutationVariables
 } from '~/generated/graphql'
-import { useWorkspaceStore } from '~/stores/workspace'
-import { ref } from 'vue'
+
+interface BashCommandResult {
+  success: boolean;
+  message: string;
+}
 
 interface BashCommandState {
-  commandResults: Record<string, Record<number, { success: boolean; message: string }>>
-  commandErrors: Record<string, Record<number, string | null>>
-  pendingCommands: string[]
+  // Stores the result of a command execution, keyed by a unique composite key.
+  // Key format: `${conversationId}:${messageIndex}:${segmentIndex}`
+  commandResults: Record<string, BashCommandResult>;
+  
+  // Tracks the keys of commands currently being executed.
+  commandsInProgress: Set<string>;
 }
 
 export const useBashCommandStore = defineStore('bashCommand', {
   state: (): BashCommandState => ({
     commandResults: {},
-    commandErrors: {},
-    pendingCommands: []
+    commandsInProgress: new Set(),
   }),
 
   actions: {
     async executeBashCommand(
       workspaceId: string,
       command: string,
-      conversationId: string,
-      messageIndex: number
+      commandKey: string,
     ): Promise<void> {
-      const { mutate: executeBashCommandsMutation } = useMutation<ExecuteBashCommandsMutation, ExecuteBashCommandsMutationVariables>(EXECUTE_BASH_COMMANDS)
-      
-      if (!this.commandResults[conversationId]) {
-        this.commandResults[conversationId] = {}
-      }
-      if (!this.commandResults[conversationId][messageIndex]) {
-        this.commandResults[conversationId][messageIndex] = { success: false, message: '' }
+      if (this.commandsInProgress.has(commandKey)) {
+        console.warn(`Command execution for ${commandKey} is already in progress.`);
+        return;
       }
       
-      this.commandErrors[conversationId] = this.commandErrors[conversationId] || {}
-      this.commandErrors[conversationId][messageIndex] = null
+      this.commandsInProgress.add(commandKey);
       
+      // Clear previous results for this command before re-running.
+      delete this.commandResults[commandKey];
+
       try {
+        const { mutate: executeBashCommandsMutation } = useMutation<ExecuteBashCommandsMutation, ExecuteBashCommandsMutationVariables>(EXECUTE_BASH_COMMANDS);
+        
         const result = await executeBashCommandsMutation({
           workspaceId,
           command
-        })
-        if (result?.data?.executeBashCommands?.success) {
-          this.commandResults[conversationId][messageIndex] = { 
-            success: true, 
-            message: result.data.executeBashCommands.message 
-          }
+        });
+        
+        if (result?.data?.executeBashCommands) {
+          const { success, message } = result.data.executeBashCommands;
+          this.commandResults[commandKey] = { success, message };
         } else {
-          throw new Error(result?.data?.executeBashCommands?.message || 'Failed to execute bash command')
+          const errorMessage = result?.errors?.map(e => e.message).join(', ') || 'Failed to execute bash command: No data returned.';
+          throw new Error(errorMessage);
         }
       } catch (error) {
-        console.error('Error executing bash command:', error)
-        this.commandErrors[conversationId][messageIndex] = (error as Error).message
-        throw error
+        const errorMessage = (error as Error).message;
+        console.error(`Error executing bash command for ${commandKey}:`, errorMessage);
+        this.commandResults[commandKey] = { success: false, message: errorMessage };
+      } finally {
+        this.commandsInProgress.delete(commandKey);
       }
     },
-
-    enqueueCommand(command: string) {
-      this.pendingCommands.push(command)
-    },
-
-    dequeueCommand(): string | undefined {
-      return this.pendingCommands.shift()
-    },
-
-    hasPendingCommands(): boolean {
-      return this.pendingCommands.length > 0
-    },
-
-    isApplyCommandInProgress(conversationId: string, messageIndex: number): boolean {
-      const result = this.commandResults[conversationId]?.[messageIndex]
-      return result ? !result.success && result.message === '' : false
-    },
-
-    isCommandExecuted(conversationId: string, messageIndex: number): boolean {
-      return this.commandResults[conversationId]?.[messageIndex]?.success || false
-    },
-
-    getApplyCommandError(conversationId: string, messageIndex: number): string | null {
-      return this.commandErrors[conversationId]?.[messageIndex] || null
-    },
-
-    setApplyCommandError(conversationId: string, messageIndex: number, error: string | null) {
-      this.commandErrors[conversationId] = this.commandErrors[conversationId] || {}
-      this.commandErrors[conversationId][messageIndex] = error
-    }
   },
 
   getters: {
-    getCommandResult: (state) => (conversationId: string, messageIndex: number) => {
-      return state.commandResults[conversationId]?.[messageIndex] || { success: false, message: '' }
+    isApplyCommandInProgress: (state) => (commandKey: string): boolean => {
+      return state.commandsInProgress.has(commandKey);
+    },
+
+    isCommandExecuted: (state) => (commandKey: string): boolean => {
+      // A command is considered "executed" if it's not in progress and has a result.
+      return !!state.commandResults[commandKey] && !state.commandsInProgress.has(commandKey);
+    },
+
+    getApplyCommandResult: (state) => (commandKey: string): BashCommandResult | null => {
+      return state.commandResults[commandKey] || null;
     },
     
-    nextPendingCommand: (state): string | undefined => {
-      return state.pendingCommands[0]
-    }
+    getApplyCommandError: (state) => (commandKey: string): string | null => {
+      const result = state.commandResults[commandKey];
+      if (result && !result.success) {
+        return result.message;
+      }
+      return null;
+    },
   }
 })

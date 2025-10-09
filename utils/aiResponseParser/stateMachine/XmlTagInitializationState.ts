@@ -5,10 +5,12 @@ import { ToolParsingState } from './ToolParsingState';
 import { TextState } from './TextState';
 import { ParserContext } from './ParserContext';
 import { XmlToolParsingStrategy } from '../tool_parsing_strategies/xmlToolParsingStrategy';
+import { BashParsingState } from './BashParsingState';
 
 export class XmlTagInitializationState extends BaseState {
   stateType = ParserStateType.XML_TAG_INITIALIZATION_STATE;
   private readonly possibleFile = '<file';
+  private readonly possibleBash = '<bash';
   private readonly possibleTool = '<tool';
   private readonly possibleDoctype = '<!doctype html>'; // Case-insensitive check target
   private tagBuffer: string = '';
@@ -43,7 +45,9 @@ export class XmlTagInitializationState extends BaseState {
 
       // --- Tag completion check ---
       if (char === '>') {
-        if ((strategy instanceof XmlToolParsingStrategy) && lowerCaseBuffer.startsWith(this.possibleTool)) {
+        if (lowerCaseBuffer.startsWith(this.possibleBash)) {
+            this.context.transitionTo(new BashParsingState(this.context, this.tagBuffer));
+        } else if ((strategy instanceof XmlToolParsingStrategy) && lowerCaseBuffer.startsWith(this.possibleTool)) {
             if (this.context.parseToolCalls) {
                 // Rewind before transitioning so ToolParsingState can re-parse the tag and select the right strategy.
                 this.context.setPosition(this.context.getPosition() - this.tagBuffer.length);
@@ -61,10 +65,11 @@ export class XmlTagInitializationState extends BaseState {
 
       // --- Continuity check ---
       const couldBeFile = this.possibleFile.startsWith(lowerCaseBuffer);
+      const couldBeBash = this.possibleBash.startsWith(lowerCaseBuffer);
       const couldBeTool = (strategy instanceof XmlToolParsingStrategy) && (this.possibleTool.startsWith(lowerCaseBuffer) || lowerCaseBuffer.startsWith(this.possibleTool));
       const couldBeDoctype = this.possibleDoctype.startsWith(lowerCaseBuffer);
 
-      if (!couldBeFile && !couldBeTool && !couldBeDoctype) {
+      if (!couldBeFile && !couldBeBash && !couldBeTool && !couldBeDoctype) {
         this.context.appendTextSegment(this.tagBuffer);
         this.context.transitionTo(new TextState(this.context));
         return;

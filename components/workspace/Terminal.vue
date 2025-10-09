@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed, nextTick, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
@@ -28,23 +28,6 @@ const currentMessageIndex = ref<number>(0);
 const commandHistory = ref<string[]>([]);
 const historyIndex = ref<number>(0);
 let currentCommand = '';
-
-const pendingCommand = computed(() => bashCommandStore.nextPendingCommand);
-
-const processPendingCommand = async () => {
-  if (pendingCommand.value && terminalInstance.value) {
-    const command = bashCommandStore.dequeueCommand();
-    if (command) {
-      while (currentCommand.length > 0) {
-        terminalInstance.value.write('\b \b');
-        currentCommand = currentCommand.slice(0, -1);
-      }
-      
-      currentCommand = command;
-      terminalInstance.value.write(command);
-    }
-  }
-};
 
 const prompt = computed(() => {
   const workspaceName = workspaceStore.activeWorkspace?.name || 'no-workspace';
@@ -73,18 +56,22 @@ const handleCommand = async (command: string) => {
   }
 
   try {
+    // We execute the command but the result is handled by the store,
+    // here we just need to display the output in the terminal as well.
+    // For now, we will use a separate store action for terminal execution if needed,
+    // or let's just execute and show the result.
     await bashCommandStore.executeBashCommand(
       workspaceId,
       command,
-      currentConversationId.value,
-      currentMessageIndex.value
+      currentConversationId.value, // This is a generic ID for terminal commands
+      Date.now() // Use timestamp for a unique index for terminal commands
     );
-    const result = bashCommandStore.getCommandResult(currentConversationId.value, currentMessageIndex.value);
-    if (result.success) {
-      terminalInstance.value.writeln(result.message);
-    } else {
-      terminalInstance.value.writeln(`Error: ${result.message}`);
+    const result = bashCommandStore.commandResults[currentConversationId.value]?.[Object.keys(bashCommandStore.commandResults[currentConversationId.value] || {}).pop() as any];
+    
+    if (result) {
+        terminalInstance.value.writeln(result.message);
     }
+
   } catch (error) {
     terminalInstance.value.writeln(`Error: ${(error as Error).message}`);
   }
@@ -197,10 +184,6 @@ const initializeTerminal = () => {
           terminalInstance.value?.write(command);
         }
       }
-    });
-
-    watch(pendingCommand, () => {
-      processPendingCommand();
     });
 
   } catch (error) {

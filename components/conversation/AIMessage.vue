@@ -13,6 +13,14 @@
           :conversation-id="agentId"
           :message-index="messageIndex"
         />
+        <BashCommandSegment
+          v-else-if="segment.type === 'bash_command'"
+          :command="segment.command"
+          :description="segment.description"
+          :conversation-id="agentId"
+          :message-index="messageIndex"
+          :segment-index="segmentIndex"
+        />
         <ThinkSegment
           v-else-if="segment.type === 'think'"
           :content="segment.content"
@@ -54,6 +62,7 @@
 import type { AIMessage } from '~/types/conversation';
 import TextSegment from '~/components/conversation/segments/TextSegment.vue';
 import FileContentSegment from '~/components/conversation/segments/FileContentSegment.vue';
+import BashCommandSegment from '~/components/conversation/segments/BashCommandSegment.vue';
 import ThinkSegment from '~/components/conversation/segments/ThinkSegment.vue';
 import ToolCallSegment from '~/components/conversation/segments/ToolCallSegment.vue';
 import FileWriterSegment from '~/components/conversation/segments/FileWriterSegment.vue';

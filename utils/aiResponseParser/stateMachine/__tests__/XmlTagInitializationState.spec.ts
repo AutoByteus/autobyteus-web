@@ -13,6 +13,7 @@ import { AgentContext } from '~/types/agent/AgentContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import { StreamScanner } from '../StreamScanner';
 import { StateMachine } from '../StateMachine';
+import { BashParsingState } from '../BashParsingState';
 
 vi.mock('~/utils/toolUtils', () => ({
   generateBaseInvocationId: () => 'mock_id'
@@ -55,6 +56,11 @@ describe('XmlTagInitializationState', () => {
     context = runMachine('pre-text <file path="test.txt">');
     // After running, the state machine would be in FileParsingState waiting for more input.
     expect(context.currentState.stateType).toBe(ParserStateType.FILE_PARSING_STATE);
+  });
+  
+  it('should transition to BashParsingState for known tag <bash>', () => {
+    context = runMachine('pre-text <bash>');
+    expect(context.currentState.stateType).toBe(ParserStateType.BASH_PARSING_STATE);
   });
   
   it('should transition to ToolParsingState for a <tool name="FileWriter"> tag', () => {
