@@ -11,7 +11,6 @@
           >
             {{ file.path }}
           </span>
-          <span class="ml-1 flex-shrink-0">({{ file.type }})</span>
         </li>
       </ul>
     </div>
