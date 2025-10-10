@@ -13,9 +13,9 @@ interface RunApplicationResult {
   };
 }
 
-const APP_ID = "geometry_solver";
+const APP_ID = "socratic_math_teacher";
 
-export const useGeometrySolverStore = defineStore('geometrySolverApp', () => {
+export const useSocraticMathTeacherStore = defineStore('socraticMathTeacherApp', () => {
   // --- STATE ---
   const isLoading = ref(false);
   const error = ref<string | null>(null);
@@ -27,7 +27,7 @@ export const useGeometrySolverStore = defineStore('geometrySolverApp', () => {
   // --- GETTERS ---
   const configSummary = computed(() => {
     return Object.entries(agentLlmConfig.value)
-      .map(([agent, model]) => `${agent}: ${model.split('/').pop()}`)
+      .map(([agent, model])]) => `${agent}: ${model.split('/').pop()}`)
       .join(', ');
   });
 
@@ -103,7 +103,7 @@ export const useGeometrySolverStore = defineStore('geometrySolverApp', () => {
         throw new Error("Invalid response from server.");
       }
     } catch (e: any) {
-      console.error("Error running Geometry Solver application:", e);
+      console.error("Error running Socratic Math Teacher application:", e);
       error.value = e.message || "An unknown error occurred.";
     } finally {
       isLoading.value = false;

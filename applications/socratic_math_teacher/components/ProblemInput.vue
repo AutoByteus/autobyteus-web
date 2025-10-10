@@ -1,7 +1,7 @@
 <template>
   <div class="p-6 h-full flex flex-col space-y-4">
     <div>
-      <h2 class="text-xl font-semibold text-gray-800 mb-2">Geometry Problem</h2>
+      <h2 class="text-xl font-semibold text-gray-800 mb-2">Math Problem</h2>
       <p class="text-sm text-gray-500">Describe the problem and provide any relevant files as context.</p>
     </div>
 
@@ -51,7 +51,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, watch, onMounted } from 'vue';
-import { useGeometrySolverStore } from '../store';
+import { useSocraticMathTeacherStore } from '../store';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import type { ContextFilePath } from '~/types/conversation';
 import AppInputForm from './AppInputForm.vue';
@@ -72,7 +72,7 @@ const emit = defineEmits<{
 }>();
 
 // --- STORES ---
-const store = useGeometrySolverStore();
+const store = useSocraticMathTeacherStore();
 const fileExplorerStore = useFileExplorerStore();
 const llmProviderConfigStore = useLLMProviderConfigStore();
 
@@ -83,7 +83,7 @@ const localAgentConfig = reactive<Record<string, string>>({});
 
 // --- DATA FETCHING ---
 const availableModels = computed(() => llmProviderConfigStore.models);
-const { result: appDetailResult, loading: isLoadingAppDetail, error: appDetailError, refetch: refetchAppDetail } = useQuery(GetApplicationDetail, { appId: "geometry_solver" }, { enabled: false });
+const { result: appDetailResult, loading: isLoadingAppDetail, error: appDetailError, refetch: refetchAppDetail } = useQuery(GetApplicationDetail, { appId: "socratic_math_teacher" }, { enabled: false });
 const requiredAgents = computed(() => {
   const agentsFromApi = appDetailResult.value?.getApplicationDetail?.requiredAgents;
   if (agentsFromApi && agentsFromApi.length > 0) {

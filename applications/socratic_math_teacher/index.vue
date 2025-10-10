@@ -18,12 +18,12 @@
 </template>
 
 <script setup lang="ts">
-import { useGeometrySolverStore } from './store';
+import { useSocraticMathTeacherStore } from './store';
 import ProblemInput from './components/ProblemInput.vue';
 import SolutionDisplay from './components/SolutionDisplay.vue';
 import type { ContextFilePath } from '~/types/conversation';
 
-const store = useGeometrySolverStore();
+const store = useSocraticMathTeacherStore();
 
 interface SubmitPayload {
   problemText: string;
