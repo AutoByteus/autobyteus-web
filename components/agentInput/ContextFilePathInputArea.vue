@@ -271,14 +271,37 @@ const onFileDrop = async (event: DragEvent) => {
 const onPaste = async (event: ClipboardEvent) => {
   if (!activeContextStore.activeAgentContext) return;
 
-  const items = event.clipboardData?.items;
+  const clipboardData = event.clipboardData;
+  if (!clipboardData) return;
+
+  const items = clipboardData.items;
   if (items) {
     const fileLikes = Array.from(items)
       .filter(item => item.kind === 'file')
       .map(item => item.getAsFile());
-    
-    if (fileLikes.length > 0) {
+
+    // Check if there are actual files to process
+    if (fileLikes.some(f => f !== null)) {
+      event.preventDefault();
       await processAndUploadFiles(fileLikes);
+      return; // Prioritize file pasting
+    }
+  }
+
+  // Fallback to handle pasting text paths if no files were found
+  const pastedText = clipboardData.getData('text/plain');
+  if (pastedText && pastedText.trim()) {
+    event.preventDefault();
+    const paths = pastedText.split(/\r?\n/).map(p => p.trim()).filter(Boolean);
+    
+    if (paths.length > 0) {
+      if (!isContextListExpanded.value) {
+        isContextListExpanded.value = true;
+      }
+      for (const path of paths) {
+        const fileType = await determineFileType(path);
+        activeContextStore.addContextFilePath({ path, type: fileType });
+      }
     }
   }
 };
