@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { useMutation, useApolloClient } from '@vue/apollo-composable'
 import {
   ListApplications,
-  GetApplicationDetail,
   GetApplicationConfiguration
 } from '~/graphql/queries/applicationQueries'
 import {
@@ -11,7 +10,6 @@ import {
 } from '~/graphql/mutations/applicationMutations'
 import type {
   ListApplicationsQuery,
-  GetApplicationDetailQuery,
   GetApplicationConfigurationQuery,
   RunApplicationMutation,
   SetApplicationConfigurationMutation
@@ -19,12 +17,10 @@ import type {
 
 // Define the shape of an application from the query result for easier use
 type ApplicationManifest = ListApplicationsQuery['listApplications'][0]
-type ApplicationDetail = GetApplicationDetailQuery['getApplicationDetail']
 
 export const useApplicationStore = defineStore('application', {
   state: () => ({
     applications: [] as ApplicationManifest[],
-    currentApplicationDetail: null as ApplicationDetail | null,
     loading: false,
     error: null as Error | null,
     isRunLoading: false,
@@ -61,28 +57,7 @@ export const useApplicationStore = defineStore('application', {
       }
     },
 
-    async fetchApplicationDetail(appId: string) {
-      this.loading = true
-      this.error = null
-      this.currentApplicationDetail = null
-
-      const { client } = useApolloClient()
-
-      try {
-        const { data } = await client.query<GetApplicationDetailQuery>({
-          query: GetApplicationDetail,
-          variables: { appId }
-        })
-        this.currentApplicationDetail = data.getApplicationDetail
-        return this.currentApplicationDetail
-      } catch (e: any) {
-        console.error(`Failed to fetch details for application ${appId}:`, e)
-        this.error = e
-        return null
-      } finally {
-        this.loading = false
-      }
-    },
+    // fetchApplicationDetail has been removed.
 
     async runApplication(appId: string, input: any) {
       this.isRunLoading = true

@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full h-full">
+  <div class="flex w-full h-full bg-white font-sans">
     <Suspense>
       <template #default>
         <component :is="applicationComponent" />

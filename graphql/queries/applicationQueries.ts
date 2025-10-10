@@ -8,19 +8,13 @@ export const ListApplications = gql`
       name
       description
       icon
-    }
-  }
-`
-
-export const GetApplicationDetail = gql`
-  query GetApplicationDetail($appId: String!) {
-    getApplicationDetail(appId: $appId) {
-      id
-      name
       requiredAgents
     }
   }
 `
+
+// GetApplicationDetail has been removed.
+// All necessary data is now fetched by ListApplications.
 
 export const GetApplicationConfiguration = gql`
   query GetApplicationConfiguration($appId: String!) {

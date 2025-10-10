@@ -51,13 +51,13 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, watch, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { useSocraticMathTeacherStore } from '../store';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
+import { useApplicationStore } from '~/stores/applicationStore';
 import type { ContextFilePath } from '~/types/conversation';
 import AppInputForm from './AppInputForm.vue';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
-import { useQuery } from '@vue/apollo-composable';
-import { GetApplicationDetail } from '~/graphql/queries/applicationQueries';
 
 // --- PROPS & EMITS ---
 const props = defineProps<{
@@ -75,31 +75,38 @@ const emit = defineEmits<{
 const store = useSocraticMathTeacherStore();
 const fileExplorerStore = useFileExplorerStore();
 const llmProviderConfigStore = useLLMProviderConfigStore();
+const applicationStore = useApplicationStore();
+const route = useRoute();
 
 // --- LOCAL STATE ---
 const problemText = ref('');
 const contextFiles = ref<ContextFilePath[]>([]);
 const localAgentConfig = reactive<Record<string, string>>({});
+const appId = route.params.id as string;
 
 // --- DATA FETCHING ---
 const availableModels = computed(() => llmProviderConfigStore.models);
-const { result: appDetailResult, loading: isLoadingAppDetail, error: appDetailError, refetch: refetchAppDetail } = useQuery(GetApplicationDetail, { appId: "socratic_math_teacher" }, { enabled: false });
-const requiredAgents = computed(() => {
-  const agentsFromApi = appDetailResult.value?.getApplicationDetail?.requiredAgents;
-  if (agentsFromApi && agentsFromApi.length > 0) {
-    return agentsFromApi;
+const currentApplication = computed(() => applicationStore.getApplicationById(appId));
+const requiredAgents = computed(() => currentApplication.value?.requiredAgents || []);
+
+const isLoadingConfig = computed(() => store.isConfigLoading || applicationStore.loading || llmProviderConfigStore.isLoadingModels);
+const loadingError = computed(() => {
+  if (applicationStore.error) {
+    return "Failed to load application details.";
   }
-  // Fallback to keys from the store's configuration
-  return Object.keys(store.agentLlmConfig);
+  if (!applicationStore.loading && !currentApplication.value) {
+    return `Application with ID '${appId}' not found.`;
+  }
+  return null;
 });
-const isLoadingConfig = computed(() => store.isConfigLoading || isLoadingAppDetail.value || llmProviderConfigStore.isLoadingModels);
-const loadingError = computed(() => appDetailError.value ? "Failed to load application details." : null);
 
 onMounted(() => {
+  // Ensure both providers and application data are fetched.
+  // The stores will prevent redundant network calls if data is already present.
   if (llmProviderConfigStore.models.length === 0) {
     llmProviderConfigStore.fetchProvidersWithModels();
   }
-  refetchAppDetail();
+  applicationStore.fetchApplications();
 });
 
 // --- STATE SYNC ---
