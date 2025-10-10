@@ -38,6 +38,13 @@ export interface ToolCallSegment {
   rawContent?: string; // Buffer for streaming raw content (JSON or XML)
 }
 
+// NEW BASH COMMAND SEGMENT TYPE
+export interface BashCommandSegment {
+  type: 'bash_command';
+  command: string;
+  description: string;
+}
+
 // NEW SEGMENT TYPE
 export interface SystemTaskNotificationSegment {
   type: 'system_task_notification';
@@ -71,6 +78,7 @@ export type AIResponseSegment =
   | FileSegment 
   | ThinkSegment
   | ToolCallSegment
+  | BashCommandSegment
   | SystemTaskNotificationSegment
   | MediaSegment
   | IframeSegment

@@ -17,6 +17,23 @@ export const GET_AVAILABLE_LLM_PROVIDERS_WITH_MODELS = gql`
         name
         value
         canonicalName
+        provider
+        runtime
+        hostUrl
+      }
+    }
+    availableAudioProvidersWithModels {
+      __typename
+      provider
+      models {
+        __typename
+        modelIdentifier
+        name
+        value
+        canonicalName
+        provider
+        runtime
+        hostUrl
       }
     }
   }

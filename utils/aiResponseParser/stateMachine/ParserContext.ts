@@ -1,5 +1,5 @@
 /* autobyteus-web/utils/aiResponseParser/stateMachine/ParserContext.ts */
-import type { AIResponseSegment, AIResponseTextSegment, FileSegment, ThinkSegment, ToolCallSegment, IframeSegment } from '../types';
+import type { AIResponseSegment, AIResponseTextSegment, FileSegment, ThinkSegment, ToolCallSegment, IframeSegment, BashCommandSegment } from '../types';
 import { getLanguage } from '../languageDetector';
 import type { State } from './State';
 import type { ToolParsingStrategy } from '../tool_parsing_strategies/base';
@@ -10,7 +10,7 @@ import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import { getToolParsingStrategy } from '../strategyProvider';
 import { StreamScanner } from './StreamScanner';
 
-type CurrentSegment = FileSegment | AIResponseTextSegment | ThinkSegment | ToolCallSegment | IframeSegment | null;
+type CurrentSegment = FileSegment | AIResponseTextSegment | ThinkSegment | ToolCallSegment | IframeSegment | BashCommandSegment | null;
 
 export class ParserContext {
   public segments: AIResponseSegment[];
@@ -116,6 +116,12 @@ export class ParserContext {
     this.currentSegment = null;
   }
   
+  addBashCommandSegment(command: string, description: string): void {
+    const newBashSegment: BashCommandSegment = { type: 'bash_command', command, description };
+    this.segments.push(newBashSegment);
+    this.currentSegment = null;
+  }
+
   appendToCurrentToolRawContent(char: string): void {
     if (this.currentSegment && this.currentSegment.type === 'tool_call' && this.currentSegment.status === 'parsing') {
         if(this.currentSegment.rawContent === undefined) {

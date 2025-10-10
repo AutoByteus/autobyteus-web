@@ -22,7 +22,11 @@ import type { Conversation } from '~/types/conversation';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
-import type { AgentTeamDefinition } from './agentDefinitionStore';
+import type { AgentTeamDefinition } from './agentTeamDefinitionStore';
+
+interface ResolvedMemberConfig extends TeamMemberConfigInput {
+  agentDefinitionId: string;
+}
 
 export const useAgentTeamRunStore = defineStore('agentTeamRun', {
   state: () => ({
@@ -132,6 +136,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
           messages: [],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
+          agentDefinitionId: configForMember.agentDefinitionId,
         };
         const agentState = new AgentRunState(configForMember.memberName, conversation);
         const agentConfig: AgentRunConfig = {
@@ -284,7 +289,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       }
     },
     
-    async _resolveMemberConfigs(profile: TeamLaunchProfile): Promise<TeamMemberConfigInput[]> {
+    async _resolveMemberConfigs(profile: TeamLaunchProfile): Promise<ResolvedMemberConfig[]> {
       const globalWorkspaceId = await this._resolveWorkspaceId(profile.globalConfig.workspaceConfig, "Team Default");
       const agentNodes = profile.teamDefinition.nodes.filter(n => n.referenceType === 'AGENT');
       
@@ -302,6 +307,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
 
           return {
             memberName: memberNode.memberName,
+            agentDefinitionId: memberNode.referenceId,
             llmModelIdentifier: override?.llmModelIdentifier || profile.globalConfig.llmModelIdentifier,
             workspaceId: finalWorkspaceId,
             autoExecuteTools: override?.autoExecuteTools ?? profile.globalConfig.autoExecuteTools,

@@ -138,7 +138,8 @@ yarn test
 ### Running Specific Tests
 To run all tests in a specific test file:
 ```bash
-yarn test tests/unit/utils/aiResponseParser/aiResponseSegmentParser.test.ts
+yarn test utils/aiResponseParser/tool_parsing_strategies/__tests__/xmlToolParsingStrategy.spec.ts
+
 ```
 To run a specific test within a file:
 ```bash
@@ -146,6 +147,19 @@ To run a specific test within a file:
 yarn test "tests/unit/utils/aiResponseParser/aiResponseSegmentParser.test.ts" -t "should parse text without implementation tags"
 # Run all tests matching a pattern
 yarn test "tests/unit/utils/aiResponseParser/aiResponseSegmentParser.test.ts" -t "should parse text"
+```
+
+### Component Testing Example (Provider API Manager)
+The Provider API Manager screen includes a Vitest component spec at `components/settings/__tests__/ProviderAPIKeyManager.spec.ts`. It mounts the component with a testing Pinia store to verify the LLM and audio model sections render correctly.
+
+Run just this spec:
+```bash
+yarn test components/settings/__tests__/ProviderAPIKeyManager.spec.ts --run
+```
+
+If your environment limits worker processes (e.g., containers without thread support), force a single-thread run:
+```bash
+yarn test components/settings/__tests__/ProviderAPIKeyManager.spec.ts --run --pool threads --maxWorkers 1 --no-file-parallelism --no-isolate
 ```
 
 ## GraphQL Codegen

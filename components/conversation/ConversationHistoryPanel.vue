@@ -84,6 +84,8 @@ import { computed, ref } from 'vue';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import ConversationList from '~/components/conversation/ConversationList.vue';
+import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
+import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -95,6 +97,8 @@ const emit = defineEmits<{
 
 const conversationHistoryStore = useConversationHistoryStore();
 const agentContextsStore = useAgentContextsStore();
+const agentLaunchProfileStore = useAgentLaunchProfileStore();
+const agentDefinitionStore = useAgentDefinitionStore();
 
 const localSearchQuery = ref('');
 
@@ -103,7 +107,48 @@ const panelConversations = computed(() => conversationHistoryStore.getConversati
 const handleActivateConversation = (conversationId: string) => {
   const conversationToLoad = panelConversations.value.find(conv => conv.id === conversationId);
   if (conversationToLoad) {
+    // --- CONTEXT SWITCH ORCHESTRATION ---
+    // Ensure a suitable single-agent launch profile is active before creating the context.
+    const agentDefId = conversationToLoad.agentDefinitionId;
+    let activeProfile = agentLaunchProfileStore.activeLaunchProfile;
+
+    // Check if we need to switch or create a new profile. This is the case if no profile is active,
+    // or if the active one is for a different agent definition.
+    if (!activeProfile || activeProfile.agentDefinition.id !== agentDefId) {
+      // Look for an existing, active profile that matches the agent definition of the historical conversation.
+      const suitableProfile = agentLaunchProfileStore.activeLaunchProfileList.find(
+        p => p.agentDefinition.id === agentDefId
+      );
+
+      if (suitableProfile) {
+        // A suitable profile exists, so we just need to activate it.
+        // This will switch the app's context to 'agent' mode.
+        agentLaunchProfileStore.setActiveLaunchProfile(suitableProfile.id);
+      } else {
+        // No suitable active profile found. We'll create a new, temporary, workspace-less profile.
+        const agentDef = agentDefinitionStore.getAgentDefinitionById(agentDefId);
+        if (agentDef) {
+          console.log(`No active launch profile for ${agentDef.name}. Creating a new temporary one to view history.`);
+          const newProfile = agentLaunchProfileStore.createLaunchProfile(
+            agentDef,
+            null, // workspaceId (this makes it a "workspace-less" profile)
+            'No Workspace',
+            'No Workspace',
+            {}
+          );
+          // Activating the new profile will switch the app's context to 'agent' mode.
+          agentLaunchProfileStore.setActiveLaunchProfile(newProfile.id);
+        } else {
+          console.error(`Could not find Agent Definition for ID: ${agentDefId} when trying to load conversation from history.`);
+          // Abort the operation if the agent definition is missing.
+          return;
+        }
+      }
+    }
+    
+    // Now that the application context is guaranteed to be correct, we can safely load the history.
     agentContextsStore.createContextFromHistory(conversationToLoad);
+    
   } else {
     console.error(`Failed to find conversation with ID ${conversationId} in history panel.`);
   }

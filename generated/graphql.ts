@@ -770,6 +770,7 @@ export type Query = {
   agentTeamDefinitions: Array<AgentTeamDefinition>;
   agentTeamInstance?: Maybe<AgentTeamInstance>;
   agentTeamInstances: Array<AgentTeamInstance>;
+  availableAudioProvidersWithModels: Array<ProviderWithModels>;
   availableInputProcessors: Array<ProcessorOption>;
   availableLlmProvidersWithModels: Array<ProviderWithModels>;
   availableLlmResponseProcessors: Array<ProcessorOption>;
@@ -1017,7 +1018,8 @@ export enum TaskStatus {
   Completed = 'COMPLETED',
   Failed = 'FAILED',
   InProgress = 'IN_PROGRESS',
-  NotStarted = 'NOT_STARTED'
+  NotStarted = 'NOT_STARTED',
+  Queued = 'QUEUED'
 }
 
 export type TeamMember = {
@@ -1464,7 +1466,7 @@ export type GetLlmProviderApiKeyQuery = { __typename?: 'Query', getLlmProviderAp
 export type GetAvailableLlmProvidersWithModelsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAvailableLlmProvidersWithModelsQuery = { __typename?: 'Query', availableLlmProvidersWithModels: Array<{ __typename: 'ProviderWithModels', provider: string, models: Array<{ __typename: 'ModelDetail', modelIdentifier: string, name: string, value: string, canonicalName: string }> }> };
+export type GetAvailableLlmProvidersWithModelsQuery = { __typename?: 'Query', availableLlmProvidersWithModels: Array<{ __typename: 'ProviderWithModels', provider: string, models: Array<{ __typename: 'ModelDetail', modelIdentifier: string, name: string, value: string, canonicalName: string, provider: string, runtime: string, hostUrl?: string | null }> }>, availableAudioProvidersWithModels: Array<{ __typename: 'ProviderWithModels', provider: string, models: Array<{ __typename: 'ModelDetail', modelIdentifier: string, name: string, value: string, canonicalName: string, provider: string, runtime: string, hostUrl?: string | null }> }> };
 
 export type GetMcpServersQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -3164,6 +3166,23 @@ export const GetAvailableLlmProvidersWithModelsDocument = gql`
       name
       value
       canonicalName
+      provider
+      runtime
+      hostUrl
+    }
+  }
+  availableAudioProvidersWithModels {
+    __typename
+    provider
+    models {
+      __typename
+      modelIdentifier
+      name
+      value
+      canonicalName
+      provider
+      runtime
+      hostUrl
     }
   }
 }
