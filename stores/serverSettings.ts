@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { useMutation, useQuery } from '@vue/apollo-composable'
+import { useMutation, useApolloClient } from '@vue/apollo-composable'
 import { GET_SERVER_SETTINGS } from '~/graphql/queries/server_settings_queries'
 import { UPDATE_SERVER_SETTING } from '~/graphql/mutations/server_settings_mutations'
 
@@ -23,62 +23,52 @@ export const useServerSettingsStore = defineStore('serverSettings', {
   },
   actions: {
     async fetchServerSettings() {
-      if (this.settings.length > 0) return; // Guard clause
+      if (this.settings.length > 0) return this.settings
+
       this.isLoading = true
       this.error = null
-      
-      const { onResult, onError } = useQuery(GET_SERVER_SETTINGS, null, {
-        // Use default 'cache-first' policy
-      })
-      
-      return new Promise((resolve, reject) => {
-        onResult(({ data }) => {
-          this.isLoading = false
-          if (data?.getServerSettings) {
-            this.settings = data.getServerSettings
-            resolve(data.getServerSettings)
-          } else {
-            this.settings = []
-            resolve([])
-          }
+
+      const { client } = useApolloClient()
+
+      try {
+        const { data } = await client.query({
+          query: GET_SERVER_SETTINGS
         })
-        
-        onError((error) => {
-          this.isLoading = false
-          this.error = error.message
-          console.error('Failed to fetch server settings:', error)
-          reject(error)
-        })
-      })
+
+        this.settings = data?.getServerSettings ?? []
+        return this.settings
+      } catch (error: any) {
+        this.error = error.message ?? 'Failed to fetch server settings'
+        console.error('Failed to fetch server settings:', error)
+        this.settings = []
+        throw error
+      } finally {
+        this.isLoading = false
+      }
     },
 
     async reloadServerSettings() {
       this.isLoading = true;
       this.error = null;
-      
-      const { onResult, onError } = useQuery(GET_SERVER_SETTINGS, null, {
-        fetchPolicy: 'network-only' // Force network fetch, bypassing cache
-      });
-      
-      return new Promise((resolve, reject) => {
-        onResult(({ data }) => {
-          this.isLoading = false;
-          if (data?.getServerSettings) {
-            this.settings = data.getServerSettings;
-            resolve(data.getServerSettings);
-          } else {
-            this.settings = [];
-            resolve([]);
-          }
+
+      const { client } = useApolloClient();
+
+      try {
+        const { data } = await client.query({
+          query: GET_SERVER_SETTINGS,
+          fetchPolicy: 'network-only' // Force network fetch, bypassing cache
         });
-        
-        onError((error) => {
-          this.isLoading = false;
-          this.error = error.message;
-          console.error('Failed to reload server settings:', error);
-          reject(error);
-        });
-      });
+
+        this.settings = data?.getServerSettings ?? [];
+        return this.settings;
+      } catch (error: any) {
+        this.error = error.message ?? 'Failed to reload server settings';
+        console.error('Failed to reload server settings:', error);
+        this.settings = [];
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
     },
     
     async updateServerSetting(key: string, value: string) {

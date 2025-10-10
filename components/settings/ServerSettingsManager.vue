@@ -38,6 +38,7 @@
                   <input
                     v-model="editedSettings[setting.key]"
                     type="text"
+                    :data-testid="`server-setting-value-${setting.key}`"
                     class="w-full mt-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition-colors duration-150 text-gray-900 placeholder-gray-500"
                     placeholder="Enter value"
                   >
@@ -50,6 +51,7 @@
                   <button
                     @click="saveIndividualSetting(setting.key)"
                     :disabled="!isSettingChanged(setting.key) || store.isUpdating"
+                    :data-testid="`server-setting-save-${setting.key}`"
                     class="px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
                   >
                     <span v-if="isUpdating[setting.key]" class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1 inline-block"></span>
@@ -116,7 +118,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, reactive } from 'vue'
+import { ref, onMounted, computed, reactive, watch } from 'vue'
 import { useServerSettingsStore } from '~/stores/serverSettings'
 
 const store = useServerSettingsStore()
@@ -165,16 +167,46 @@ const isSettingChanged = (key: string) => {
   return editedSettings[key] !== originalSettings[key]
 }
 
+watch(
+  () => store.settings,
+  (newSettings) => {
+    if (!Array.isArray(newSettings)) return
+
+    const seenKeys = new Set<string>()
+
+    newSettings.forEach((setting) => {
+      seenKeys.add(setting.key)
+
+      const hasEditedValue = Object.prototype.hasOwnProperty.call(editedSettings, setting.key)
+      const currentEdited = editedSettings[setting.key]
+      const currentOriginal = originalSettings[setting.key]
+
+      if (!hasEditedValue || currentEdited === currentOriginal) {
+        editedSettings[setting.key] = setting.value
+      }
+
+      originalSettings[setting.key] = setting.value
+
+      if (!(setting.key in isUpdating)) {
+        isUpdating[setting.key] = false
+      }
+    })
+
+    // Remove stale keys that no longer exist in the store
+    Object.keys(editedSettings).forEach((key) => {
+      if (!seenKeys.has(key)) {
+        delete editedSettings[key]
+        delete originalSettings[key]
+        delete isUpdating[key]
+      }
+    })
+  },
+  { immediate: true }
+)
+
 onMounted(async () => {
   try {
     await store.fetchServerSettings()
-    
-    // Initialize the edited and original settings
-    store.settings.forEach(setting => {
-      editedSettings[setting.key] = setting.value
-      originalSettings[setting.key] = setting.value
-      isUpdating[setting.key] = false
-    })
   } catch (error) {
     console.error('Failed to load server settings:', error)
     showNotification('Failed to load server settings', 'error')
