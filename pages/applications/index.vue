@@ -32,13 +32,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useQuery } from '@vue/apollo-composable';
-import { ListApplications } from '~/graphql/queries/applicationQueries';
+import { onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useApplicationStore } from '~/stores/applicationStore';
 import ApplicationCard from '~/components/applications/ApplicationCard.vue';
-import type { ListApplicationsQuery } from '~/generated/graphql';
 
-const { result, loading, error } = useQuery<ListApplicationsQuery>(ListApplications);
+const applicationStore = useApplicationStore();
 
-const applications = computed(() => result.value?.listApplications || []);
+// Use storeToRefs to maintain reactivity for state properties when destructuring.
+const { applications, loading, error } = storeToRefs(applicationStore);
+
+// Fetch applications when the component is mounted.
+// The store action has logic to prevent re-fetching if data is already present.
+onMounted(() => {
+  applicationStore.fetchApplications();
+});
 </script>

@@ -27,7 +27,7 @@ export const useSocraticMathTeacherStore = defineStore('socraticMathTeacherApp',
   // --- GETTERS ---
   const configSummary = computed(() => {
     return Object.entries(agentLlmConfig.value)
-      .map(([agent, model])]) => `${agent}: ${model.split('/').pop()}`)
+      .map(([agent, model]) => `${agent}: ${model.split('/').pop()}`)
       .join(', ');
   });
 
@@ -74,7 +74,7 @@ export const useSocraticMathTeacherStore = defineStore('socraticMathTeacherApp',
       // Optionally handle the error in the UI
     }
   }
-  
+
   async function solveAndAnimate(problemText: string, contextFiles: ContextFilePath[]) {
     isLoading.value = true;
     error.value = null;
@@ -109,7 +109,7 @@ export const useSocraticMathTeacherStore = defineStore('socraticMathTeacherApp',
       isLoading.value = false;
     }
   }
-  
+
   // Initialize config on store creation
   loadConfiguration();
 
