@@ -22,6 +22,7 @@ import type {
   ContextFileType,
   TaskNotificationModeEnum,
 } from '~/generated/graphql';
+import { useApplicationLaunchProfileStore } from './applicationLaunchProfileStore';
 
 
 function _resolveApplicationMemberConfigs(
@@ -43,18 +44,46 @@ export const useApplicationRunStore = defineStore('applicationRun', {
     isLaunching: false,
   }),
   actions: {
-    async launchApplication(launchConfig: ApplicationLaunchConfig): Promise<string> {
+    async createProfileAndLaunchApplication(launchConfig: ApplicationLaunchConfig): Promise<{ instanceId: string, profileId: string }> {
+      this.isLaunching = true;
+      try {
+        const appProfileStore = useApplicationLaunchProfileStore();
+
+        const newProfile = appProfileStore.createLaunchProfile(
+          launchConfig.appId,
+          launchConfig.teamDefinition,
+          {
+            name: launchConfig.profileName,
+            agentLlmConfig: launchConfig.agentLlmConfig,
+          }
+        );
+
+        const instanceId = await this.launchApplicationFromProfile(newProfile.id);
+        return { instanceId, profileId: newProfile.id };
+      } finally {
+        this.isLaunching = false;
+      }
+    },
+
+    async launchApplicationFromProfile(profileId: string): Promise<string> {
       this.isLaunching = true;
       try {
         const appContextStore = useApplicationContextStore();
+        const appProfileStore = useApplicationLaunchProfileStore();
+        
+        const profile = appProfileStore.profiles[profileId];
+        if (!profile) {
+          throw new Error(`Application launch profile with ID ${profileId} not found.`);
+        }
+
         const instanceId = uuidv4();
         const tempTeamId = `temp-app-team-${Date.now()}`;
 
-        const ephemeralProfile = {
-          id: `ephemeral-profile-${instanceId}`,
-          name: `${launchConfig.teamDefinition.name} (Application Run)`,
-          createdAt: new Date().toISOString(),
-          teamDefinition: launchConfig.teamDefinition,
+        const teamLaunchProfile = {
+          id: profile.id,
+          name: profile.name,
+          createdAt: profile.createdAt,
+          teamDefinition: profile.teamDefinition,
           globalConfig: {
             workspaceConfig: { mode: 'none' as const },
             llmModelIdentifier: '',
@@ -66,7 +95,7 @@ export const useApplicationRunStore = defineStore('applicationRun', {
         };
 
         const members = new Map<string, AgentContext>();
-        for (const agentNode of launchConfig.teamDefinition.nodes.filter(n => n.referenceType === 'AGENT')) {
+        for (const agentNode of profile.teamDefinition.nodes.filter(n => n.referenceType === 'AGENT')) {
           const memberName = agentNode.memberName;
           const conversation: Conversation = {
             id: `${tempTeamId}::${memberName}`,
@@ -77,21 +106,21 @@ export const useApplicationRunStore = defineStore('applicationRun', {
           };
           const agentState = new AgentRunState(memberName, conversation);
           const agentConfig: AgentRunConfig = {
-            launchProfileId: ephemeralProfile.id,
+            launchProfileId: profile.id,
             workspaceId: null,
-            llmModelIdentifier: launchConfig.agentLlmConfig[memberName],
+            llmModelIdentifier: profile.agentLlmConfig[memberName],
             autoExecuteTools: true,
             parseToolCalls: true,
-            useXmlToolFormat: ephemeralProfile.globalConfig.useXmlToolFormat,
+            useXmlToolFormat: teamLaunchProfile.globalConfig.useXmlToolFormat,
           };
           members.set(memberName, new AgentContext(agentConfig, agentState));
         }
         
         const teamContext: AgentTeamContext = {
           teamId: tempTeamId,
-          launchProfile: ephemeralProfile,
+          launchProfile: teamLaunchProfile,
           members: members,
-          focusedMemberName: launchConfig.teamDefinition.coordinatorMemberName,
+          focusedMemberName: profile.teamDefinition.coordinatorMemberName,
           currentPhase: 'UNINITIALIZED' as AgentOperationalPhase,
           isSubscribed: false,
           unsubscribe: undefined,
@@ -101,7 +130,8 @@ export const useApplicationRunStore = defineStore('applicationRun', {
         
         const runContext: ApplicationRunContext = {
           instanceId,
-          appId: launchConfig.appId,
+          appId: profile.appId,
+          launchProfileId: profile.id,
           teamContext,
         };
 
@@ -205,7 +235,6 @@ export const useApplicationRunStore = defineStore('applicationRun', {
 
       const teamId = runContext.teamContext.teamId;
 
-      // Only send a termination request if the team has been created on the backend
       if (!teamId.startsWith('temp-')) {
         try {
           const { mutate: terminateTeam } = useMutation(TerminateAgentTeamInstance);
@@ -215,7 +244,6 @@ export const useApplicationRunStore = defineStore('applicationRun', {
         }
       }
 
-      // Always clean up the frontend state
       appContextStore.removeRun(instanceId);
     }
   },

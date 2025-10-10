@@ -36,46 +36,34 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onUnmounted, toRef } from 'vue';
 import { useApplicationRunStore } from '~/stores/applicationRunStore';
 import { useApplicationContextStore } from '~/stores/applicationContextStore';
-import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
 import AppChatInput from './components/AppChatInput.vue';
 import ChatDisplay from './components/ChatDisplay.vue';
 import type { ContextFilePath } from '~/types/conversation';
-import type { AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
 
-const APP_ID = "socratic_math_teacher";
-const TEAM_DEFINITION_NAME = "Socratic Math Team";
+const props = defineProps<{
+  instanceId: string;
+}>();
+
+const emit = defineEmits<{
+  (e: 'reset'): void;
+}>();
 
 // Stores
 const applicationRunStore = useApplicationRunStore();
 const appContextStore = useApplicationContextStore();
-const agentTeamDefStore = useAgentTeamDefinitionStore();
 
 // Local State
-const instanceId = ref<string | null>(null);
-const teamDefinition = ref<AgentTeamDefinition | null>(null);
+const instanceId = toRef(props, 'instanceId');
 const error = ref<string | null>(null);
 const problemText = ref('');
 const contextFiles = ref<ContextFilePath[]>([]);
 
-
-onMounted(async () => {
-  await agentTeamDefStore.fetchAllAgentTeamDefinitions();
-  const def = agentTeamDefStore.getAgentTeamDefinitionByName(TEAM_DEFINITION_NAME);
-  if (!def) {
-    error.value = `Critical Error: Team Definition "${TEAM_DEFINITION_NAME}" not found.`;
-    console.error(error.value);
-  } else {
-    teamDefinition.value = def;
-  }
-});
-
-// Clean up the application run when the user navigates away
+// Clean up the application run when the user navigates away or resets
 onUnmounted(() => {
   if (instanceId.value) {
-    // Use the new termination logic for cleanup
     applicationRunStore.terminateApplication(instanceId.value);
   }
 });
@@ -88,9 +76,11 @@ const runContext = computed(() => {
 const teamContext = computed(() => runContext.value?.teamContext || null);
 
 const isLoading = computed(() => {
-  if (!teamDefinition.value) return true; // Loading dependencies
-  if (applicationRunStore.isLaunching) return true; // Actively launching
-  // Check the phase of the coordinator agent
+  // If there's no run context yet, we are effectively loading.
+  if (!runContext.value) return true;
+  // Also check if the store is in a launching state for initial message processing.
+  if (applicationRunStore.isLaunching) return true;
+  // Check the phase of the coordinator agent for subsequent messages.
   const coordinatorPhase = teamContext.value?.members.get(teamContext.value.focusedMemberName)?.state.currentPhase;
   if (coordinatorPhase && coordinatorPhase !== 'DONE' && coordinatorPhase !== 'UNINITIALIZED' && coordinatorPhase !== 'ERROR') {
       return true;
@@ -101,7 +91,7 @@ const isLoading = computed(() => {
 // Methods
 async function handleSubmit() {
   error.value = null;
-  if (isLoading.value || !problemText.value.trim()) return;
+  if (isLoading.value || !problemText.value.trim() || !instanceId.value) return;
   
   const payload = {
     problemText: problemText.value,
@@ -113,26 +103,9 @@ async function handleSubmit() {
   contextFiles.value = [];
   
   try {
-    let currentInstanceId = instanceId.value;
-
-    if (!currentInstanceId) {
-      if (!teamDefinition.value) throw new Error("Team definition not ready.");
-      
-      const agentLlmConfig = {};
-      teamDefinition.value.nodes.forEach(node => {
-        agentLlmConfig[node.memberName] = 'bedrock-claude-v2'; // Sensible default
-      });
-
-      currentInstanceId = await applicationRunStore.launchApplication({
-        appId: APP_ID,
-        teamDefinition: teamDefinition.value,
-        agentLlmConfig,
-      });
-      instanceId.value = currentInstanceId;
-    }
-
+    // The instance is already launched by the parent. We just send a message.
     await applicationRunStore.sendMessageToApplication(
-      currentInstanceId,
+      instanceId.value,
       payload.problemText,
       payload.contextFiles.map(cf => ({ path: cf.path, type: cf.type.toUpperCase() }))
     );
@@ -146,13 +119,10 @@ async function handleSubmit() {
 }
 
 function handleReset() {
+  // Terminate the backend instance and notify the parent to reset the view.
   if (instanceId.value) {
-    // Delegate termination to the store that handles backend communication
     applicationRunStore.terminateApplication(instanceId.value);
-    instanceId.value = null;
   }
-  error.value = null;
-  problemText.value = '';
-  contextFiles.value = [];
+  emit('reset');
 }
 </script>

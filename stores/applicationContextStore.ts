@@ -15,8 +15,8 @@ export const useApplicationContextStore = defineStore('applicationContext', {
     activeInstanceId: null,
   }),
   getters: {
-    getRun: (state) => (instanceId: string) => {
-      return state.activeRuns.get(instanceId);
+    getRun: (state) => (instanceId: string): ApplicationRunContext | null => {
+      return state.activeRuns.get(instanceId) || null;
     },
     activeRun(state): ApplicationRunContext | null {
       if (!state.activeInstanceId) return null;
