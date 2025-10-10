@@ -75,7 +75,8 @@ onMounted(async () => {
 // Clean up the application run when the user navigates away
 onUnmounted(() => {
   if (instanceId.value) {
-    appContextStore.removeRun(instanceId.value);
+    // Use the new termination logic for cleanup
+    applicationRunStore.terminateApplication(instanceId.value);
   }
 });
 
@@ -146,7 +147,8 @@ async function handleSubmit() {
 
 function handleReset() {
   if (instanceId.value) {
-    appContextStore.removeRun(instanceId.value);
+    // Delegate termination to the store that handles backend communication
+    applicationRunStore.terminateApplication(instanceId.value);
     instanceId.value = null;
   }
   error.value = null;

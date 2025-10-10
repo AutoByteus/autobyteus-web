@@ -3,7 +3,7 @@ import { useMutation, useSubscription } from '@vue/apollo-composable';
 import { v4 as uuidv4 } from 'uuid';
 import { useApplicationContextStore } from './applicationContextStore';
 import { processAgentTeamResponseEvent } from '~/services/agentTeamResponseProcessor';
-import { SendMessageToTeam } from '~/graphql/mutations/agentTeamInstanceMutations';
+import { SendMessageToTeam, TerminateAgentTeamInstance } from '~/graphql/mutations/agentTeamInstanceMutations';
 import { AgentTeamResponseSubscription } from '~/graphql/subscriptions/agentTeamResponseSubscription';
 import type { ApplicationLaunchConfig, ApplicationRunContext } from '~/types/application/ApplicationRun';
 import type { AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
@@ -59,8 +59,8 @@ export const useApplicationRunStore = defineStore('applicationRun', {
             workspaceConfig: { mode: 'none' as const },
             llmModelIdentifier: '',
             autoExecuteTools: true,
-            useXmlToolFormat: true, // Set to true by default as requested
-            taskNotificationMode: 'FULL' as const,
+            useXmlToolFormat: true,
+            taskNotificationMode: 'SYSTEM_EVENT_DRIVEN' as const,
           },
           memberOverrides: [],
         };
@@ -139,10 +139,6 @@ export const useApplicationRunStore = defineStore('applicationRun', {
             return acc;
         }, {} as Record<string, string>);
         
-        // **THE FIX IS HERE**: The helper function _resolveApplicationMemberConfigs already creates the correct structure for the API.
-        // The error you saw on the LAUNCH screen is because that screen uses a DIFFERENT mutation (CreateAgentTeamInstance)
-        // and is building its memberConfig payload incorrectly.
-        // This code here for lazy creation is now correct and safe.
         const memberConfigsForApi = isTemporary 
           ? _resolveApplicationMemberConfigs(teamContext.launchProfile.teamDefinition, agentLlmConfig) 
           : undefined;
@@ -191,7 +187,6 @@ export const useApplicationRunStore = defineStore('applicationRun', {
 
       onResult(({ data }) => {
         if (data?.agentTeamResponse) {
-          // The caller provides the context to the processor.
           processAgentTeamResponseEvent(teamContext, data.agentTeamResponse);
         }
       });
@@ -202,5 +197,26 @@ export const useApplicationRunStore = defineStore('applicationRun', {
         teamContext.isSubscribed = false;
       });
     },
+
+    async terminateApplication(instanceId: string) {
+      const appContextStore = useApplicationContextStore();
+      const runContext = appContextStore.getRun(instanceId);
+      if (!runContext) return;
+
+      const teamId = runContext.teamContext.teamId;
+
+      // Only send a termination request if the team has been created on the backend
+      if (!teamId.startsWith('temp-')) {
+        try {
+          const { mutate: terminateTeam } = useMutation(TerminateAgentTeamInstance);
+          await terminateTeam({ id: teamId });
+        } catch (error) {
+          console.error(`Error terminating application team ${teamId} on backend:`, error);
+        }
+      }
+
+      // Always clean up the frontend state
+      appContextStore.removeRun(instanceId);
+    }
   },
 });
