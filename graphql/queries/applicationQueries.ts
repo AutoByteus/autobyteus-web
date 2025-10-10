@@ -1,7 +1,7 @@
 import { gql } from 'graphql-tag'
 
 export const ListApplications = gql`
-  query ListApplications {
+  query listApplications {
     listApplications {
       __typename
       id
@@ -9,5 +9,21 @@ export const ListApplications = gql`
       description
       icon
     }
+  }
+`
+
+export const GetApplicationDetail = gql`
+  query GetApplicationDetail($appId: String!) {
+    getApplicationDetail(appId: $appId) {
+      id
+      name
+      requiredAgents
+    }
+  }
+`
+
+export const GetApplicationConfiguration = gql`
+  query GetApplicationConfiguration($appId: String!) {
+    getApplicationConfiguration(appId: $appId)
   }
 `

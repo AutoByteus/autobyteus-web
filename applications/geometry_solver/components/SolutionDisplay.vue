@@ -1,6 +1,15 @@
 <template>
   <div class="p-6 h-full flex flex-col bg-gray-50 border-l border-gray-200">
-    <h2 class="text-xl font-semibold text-gray-800 mb-4 flex-shrink-0">Solution & Animation</h2>
+    <div class="flex justify-between items-center mb-4 flex-shrink-0">
+        <h2 class="text-xl font-semibold text-gray-800">Solution & Animation</h2>
+        <button 
+            v-if="!isLoading && (solutionText || error)" 
+            @click="$emit('reset')"
+            class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+        >
+            Solve Another Problem
+        </button>
+    </div>
     
     <div v-if="isLoading" class="flex-1 flex flex-col items-center justify-center text-gray-600">
         <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
@@ -41,5 +50,9 @@ defineProps<{
   error: string | null;
   solutionText: string | null;
   animationUrl: string | null;
+}>();
+
+defineEmits<{
+  (e: 'reset'): void;
 }>();
 </script>

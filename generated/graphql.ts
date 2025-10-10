@@ -118,12 +118,22 @@ export type AgentUserInput = {
   contextFiles?: InputMaybe<Array<ContextFilePathInput>>;
 };
 
+export type ApplicationDetail = {
+  __typename?: 'ApplicationDetail';
+  description: Scalars['String']['output'];
+  icon?: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  requiredAgents: Array<Scalars['String']['output']>;
+};
+
 export type ApplicationManifest = {
   __typename?: 'ApplicationManifest';
   description: Scalars['String']['output'];
   icon?: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];
   name: Scalars['String']['output'];
+  requiredAgents: Array<Scalars['String']['output']>;
 };
 
 export type ApproveToolInvocationInput = {
@@ -518,6 +528,7 @@ export type Mutation = {
   runApplication: Scalars['JSON']['output'];
   sendAgentUserInput: SendAgentUserInputResult;
   sendMessageToTeam: SendMessageToTeamResult;
+  setApplicationConfiguration: Scalars['JSON']['output'];
   setLlmProviderApiKey: Scalars['String']['output'];
   syncPrompts: SyncPromptsResult;
   terminateAgentInstance: TerminateAgentInstanceResult;
@@ -654,6 +665,12 @@ export type MutationSendMessageToTeamArgs = {
 };
 
 
+export type MutationSetApplicationConfigurationArgs = {
+  appId: Scalars['String']['input'];
+  configData: Scalars['JSON']['input'];
+};
+
+
 export type MutationSetLlmProviderApiKeyArgs = {
   apiKey: Scalars['String']['input'];
   provider: Scalars['String']['input'];
@@ -781,6 +798,8 @@ export type Query = {
   availableToolNames: Array<Scalars['String']['output']>;
   availableWorkspaceDefinitions: Array<WorkspaceDefinition>;
   fileContent: Scalars['String']['output'];
+  getApplicationConfiguration?: Maybe<Scalars['JSON']['output']>;
+  getApplicationDetail?: Maybe<ApplicationDetail>;
   getConversationHistory: ConversationHistory;
   getLlmProviderApiKey?: Maybe<Scalars['String']['output']>;
   getModelsByProvider: Array<ProviderModels>;
@@ -823,6 +842,16 @@ export type QueryAgentTeamInstanceArgs = {
 export type QueryFileContentArgs = {
   filePath: Scalars['String']['input'];
   workspaceId: Scalars['String']['input'];
+};
+
+
+export type QueryGetApplicationConfigurationArgs = {
+  appId: Scalars['String']['input'];
+};
+
+
+export type QueryGetApplicationDetailArgs = {
+  appId: Scalars['String']['input'];
 };
 
 
@@ -1257,6 +1286,14 @@ export type RunApplicationMutationVariables = Exact<{
 
 export type RunApplicationMutation = { __typename?: 'Mutation', runApplication: any };
 
+export type SetApplicationConfigurationMutationVariables = Exact<{
+  appId: Scalars['String']['input'];
+  configData: Scalars['JSON']['input'];
+}>;
+
+
+export type SetApplicationConfigurationMutation = { __typename?: 'Mutation', setApplicationConfiguration: any };
+
 export type WriteFileContentMutationVariables = Exact<{
   workspaceId: Scalars['String']['input'];
   filePath: Scalars['String']['input'];
@@ -1429,6 +1466,20 @@ export type ListApplicationsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type ListApplicationsQuery = { __typename?: 'Query', listApplications: Array<{ __typename: 'ApplicationManifest', id: string, name: string, description: string, icon?: string | null }> };
+
+export type GetApplicationDetailQueryVariables = Exact<{
+  appId: Scalars['String']['input'];
+}>;
+
+
+export type GetApplicationDetailQuery = { __typename?: 'Query', getApplicationDetail?: { __typename?: 'ApplicationDetail', id: string, name: string, requiredAgents: Array<string> } | null };
+
+export type GetApplicationConfigurationQueryVariables = Exact<{
+  appId: Scalars['String']['input'];
+}>;
+
+
+export type GetApplicationConfigurationQuery = { __typename?: 'Query', getApplicationConfiguration?: any | null };
 
 export type GetConversationHistoryQueryVariables = Exact<{
   agentDefinitionId: Scalars['String']['input'];
@@ -2111,6 +2162,34 @@ export function useRunApplicationMutation(options: VueApolloComposable.UseMutati
   return VueApolloComposable.useMutation<RunApplicationMutation, RunApplicationMutationVariables>(RunApplicationDocument, options);
 }
 export type RunApplicationMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<RunApplicationMutation, RunApplicationMutationVariables>;
+export const SetApplicationConfigurationDocument = gql`
+    mutation SetApplicationConfiguration($appId: String!, $configData: JSON!) {
+  setApplicationConfiguration(appId: $appId, configData: $configData)
+}
+    `;
+
+/**
+ * __useSetApplicationConfigurationMutation__
+ *
+ * To run a mutation, you first call `useSetApplicationConfigurationMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useSetApplicationConfigurationMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useSetApplicationConfigurationMutation({
+ *   variables: {
+ *     appId: // value for 'appId'
+ *     configData: // value for 'configData'
+ *   },
+ * });
+ */
+export function useSetApplicationConfigurationMutation(options: VueApolloComposable.UseMutationOptions<SetApplicationConfigurationMutation, SetApplicationConfigurationMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<SetApplicationConfigurationMutation, SetApplicationConfigurationMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<SetApplicationConfigurationMutation, SetApplicationConfigurationMutationVariables>(SetApplicationConfigurationDocument, options);
+}
+export type SetApplicationConfigurationMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<SetApplicationConfigurationMutation, SetApplicationConfigurationMutationVariables>;
 export const WriteFileContentDocument = gql`
     mutation WriteFileContent($workspaceId: String!, $filePath: String!, $content: String!) {
   writeFileContent(
@@ -2976,7 +3055,7 @@ export function useGetAgentTeamDefinitionsLazyQuery(options: VueApolloComposable
 }
 export type GetAgentTeamDefinitionsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAgentTeamDefinitionsQuery, GetAgentTeamDefinitionsQueryVariables>;
 export const ListApplicationsDocument = gql`
-    query ListApplications {
+    query listApplications {
   listApplications {
     __typename
     id
@@ -3006,6 +3085,66 @@ export function useListApplicationsLazyQuery(options: VueApolloComposable.UseQue
   return VueApolloComposable.useLazyQuery<ListApplicationsQuery, ListApplicationsQueryVariables>(ListApplicationsDocument, {}, options);
 }
 export type ListApplicationsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<ListApplicationsQuery, ListApplicationsQueryVariables>;
+export const GetApplicationDetailDocument = gql`
+    query GetApplicationDetail($appId: String!) {
+  getApplicationDetail(appId: $appId) {
+    id
+    name
+    requiredAgents
+  }
+}
+    `;
+
+/**
+ * __useGetApplicationDetailQuery__
+ *
+ * To run a query within a Vue component, call `useGetApplicationDetailQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetApplicationDetailQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param variables that will be passed into the query
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetApplicationDetailQuery({
+ *   appId: // value for 'appId'
+ * });
+ */
+export function useGetApplicationDetailQuery(variables: GetApplicationDetailQueryVariables | VueCompositionApi.Ref<GetApplicationDetailQueryVariables> | ReactiveFunction<GetApplicationDetailQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetApplicationDetailQuery, GetApplicationDetailQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetApplicationDetailQuery, GetApplicationDetailQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetApplicationDetailQuery, GetApplicationDetailQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetApplicationDetailQuery, GetApplicationDetailQueryVariables>(GetApplicationDetailDocument, variables, options);
+}
+export function useGetApplicationDetailLazyQuery(variables?: GetApplicationDetailQueryVariables | VueCompositionApi.Ref<GetApplicationDetailQueryVariables> | ReactiveFunction<GetApplicationDetailQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetApplicationDetailQuery, GetApplicationDetailQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetApplicationDetailQuery, GetApplicationDetailQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetApplicationDetailQuery, GetApplicationDetailQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetApplicationDetailQuery, GetApplicationDetailQueryVariables>(GetApplicationDetailDocument, variables, options);
+}
+export type GetApplicationDetailQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetApplicationDetailQuery, GetApplicationDetailQueryVariables>;
+export const GetApplicationConfigurationDocument = gql`
+    query GetApplicationConfiguration($appId: String!) {
+  getApplicationConfiguration(appId: $appId)
+}
+    `;
+
+/**
+ * __useGetApplicationConfigurationQuery__
+ *
+ * To run a query within a Vue component, call `useGetApplicationConfigurationQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetApplicationConfigurationQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param variables that will be passed into the query
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetApplicationConfigurationQuery({
+ *   appId: // value for 'appId'
+ * });
+ */
+export function useGetApplicationConfigurationQuery(variables: GetApplicationConfigurationQueryVariables | VueCompositionApi.Ref<GetApplicationConfigurationQueryVariables> | ReactiveFunction<GetApplicationConfigurationQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetApplicationConfigurationQuery, GetApplicationConfigurationQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetApplicationConfigurationQuery, GetApplicationConfigurationQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetApplicationConfigurationQuery, GetApplicationConfigurationQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetApplicationConfigurationQuery, GetApplicationConfigurationQueryVariables>(GetApplicationConfigurationDocument, variables, options);
+}
+export function useGetApplicationConfigurationLazyQuery(variables?: GetApplicationConfigurationQueryVariables | VueCompositionApi.Ref<GetApplicationConfigurationQueryVariables> | ReactiveFunction<GetApplicationConfigurationQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetApplicationConfigurationQuery, GetApplicationConfigurationQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetApplicationConfigurationQuery, GetApplicationConfigurationQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetApplicationConfigurationQuery, GetApplicationConfigurationQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetApplicationConfigurationQuery, GetApplicationConfigurationQueryVariables>(GetApplicationConfigurationDocument, variables, options);
+}
+export type GetApplicationConfigurationQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetApplicationConfigurationQuery, GetApplicationConfigurationQueryVariables>;
 export const GetConversationHistoryDocument = gql`
     query GetConversationHistory($agentDefinitionId: String!, $page: Int, $pageSize: Int, $searchQuery: String) {
   getConversationHistory(

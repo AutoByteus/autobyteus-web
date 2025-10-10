@@ -5,3 +5,9 @@ export const RunApplication = gql`
     runApplication(appId: $appId, input: $input)
   }
 `
+
+export const SetApplicationConfiguration = gql`
+  mutation SetApplicationConfiguration($appId: String!, $configData: JSON!) {
+    setApplicationConfiguration(appId: $appId, configData: $configData)
+  }
+`
