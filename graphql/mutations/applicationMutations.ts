@@ -6,8 +6,4 @@ export const RunApplication = gql`
   }
 `
 
-export const SetApplicationConfiguration = gql`
-  mutation SetApplicationConfiguration($appId: String!, $configData: JSON!) {
-    setApplicationConfiguration(appId: $appId, configData: $configData)
-  }
-`
+// SetApplicationConfiguration has been removed.

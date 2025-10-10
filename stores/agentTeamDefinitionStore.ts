@@ -190,6 +190,10 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
     return (id: string) => agentTeamDefinitions.value.find(def => def.id === id) || null;
   });
 
+  const getAgentTeamDefinitionByName = computed(() => {
+    return (name: string) => agentTeamDefinitions.value.find(def => def.name === name) || null;
+  });
+
   return {
     agentTeamDefinitions,
     loading,
@@ -200,5 +204,6 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
     updateAgentTeamDefinition,
     deleteAgentTeamDefinition,
     getAgentTeamDefinitionById,
+    getAgentTeamDefinitionByName,
   };
 });

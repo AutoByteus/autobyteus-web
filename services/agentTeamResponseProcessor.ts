@@ -7,22 +7,15 @@ import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import { processAgentResponseEvent } from '~/services/agentResponseProcessor';
 import { handleTeamPhaseTransition } from './agentTeamResponseHandlers/teamStatusHandler';
 import { handleTasksAdded, handleTaskStatusUpdated } from './agentTeamResponseHandlers/taskBoardHandler';
-import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
+// No longer importing any stores. It is now completely decoupled.
 
 /**
  * Main dispatcher for processing all agent team response events.
+ * This function is now a pure utility that requires the context to be injected.
+ * @param teamContext - The specific AgentTeamContext this event belongs to.
  * @param event - The `GraphQLAgentTeamStreamEvent` from the subscription.
  */
-export function processAgentTeamResponseEvent(event: GraphQLAgentTeamStreamEvent): void {
-  const teamContextsStore = useAgentTeamContextsStore();
-  // Find the context from any profile, not just the active one.
-  const teamContext = teamContextsStore.getTeamContextById(event.teamId);
-
-  if (!teamContext) {
-    console.warn(`Received event for an unknown or inactive team with ID: ${event.teamId}. Ignoring.`);
-    return;
-  }
-
+export function processAgentTeamResponseEvent(teamContext: AgentTeamContext, event: GraphQLAgentTeamStreamEvent): void {
   const data = event.data;
 
   switch (data.__typename) {

@@ -183,7 +183,11 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
 
       onResult(({ data }) => {
         if (data?.agentTeamResponse) {
-          processAgentTeamResponseEvent(data.agentTeamResponse);
+          // The caller must provide the context to the processor.
+          const currentContext = teamContextsStore.getTeamContextById(data.agentTeamResponse.teamId);
+          if (currentContext) {
+            processAgentTeamResponseEvent(currentContext, data.agentTeamResponse);
+          }
         }
       });
 

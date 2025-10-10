@@ -9,6 +9,7 @@
       <AppProblemInputTextArea
         :model-value="problemText"
         @update:model-value="emit('update:problemText', $event)"
+        @submit="emit('submit')"
       />
     </div>
   </div>
@@ -28,5 +29,6 @@ const emit = defineEmits<{
   (e: 'update:problemText', value: string): void;
   (e: 'update:contextFiles', value: ContextFilePath[]): void;
   (e: 'open-file', file: ContextFilePath): void;
+  (e: 'submit'): void;
 }>();
 </script>
