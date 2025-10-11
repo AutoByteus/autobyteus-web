@@ -1,15 +1,6 @@
 <template>
   <div class="prompt-marketplace">
-    <!-- Prompt Comparison View (Modal) -->
-    <PromptCompare
-      v-if="comparisonMode"
-      :promptIds="selectedPromptsForComparison"
-      :promptCategory="comparisonCategory"
-      :promptName="comparisonName"
-      @close="exitComparisonMode"
-    />
-
-    <!-- Header with title, sync button, and model filter -->
+    <!-- Header with title, sync button, and other controls -->
     <div class="flex flex-col gap-4 mb-6">
       <div class="flex justify-between items-center">
         <h2 class="text-xl font-semibold text-gray-800">Prompt Marketplace</h2>
@@ -68,22 +59,22 @@
               v-model="searchQuery"
               type="text"
               class="block w-full p-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Search name, description, content..."
+              placeholder="Search name, category, content..."
             />
           </div>
         </div>
-
-        <!-- Model Filter Dropdown -->
+        
+        <!-- Category Filter Dropdown -->
         <div class="relative min-w-[200px]">
-          <label for="modelFilter" class="block text-sm font-medium text-gray-700 mb-1">Filter by Model</label>
+          <label for="categoryFilter" class="block text-sm font-medium text-gray-700 mb-1">Filter by Category</label>
           <select
-            id="modelFilter"
-            v-model="selectedModelFilter"
+            id="categoryFilter"
+            v-model="selectedCategoryFilter"
             class="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="">All Models</option>
-            <option v-for="model in availableModels" :key="model" :value="model">
-              {{ model }}
+            <option value="">All Categories</option>
+            <option v-for="category in uniqueCategories" :key="category" :value="category">
+              {{ category }}
             </option>
           </select>
         </div>
@@ -267,7 +258,7 @@
       </div>
       
       <div 
-        v-for="category in uniqueCategories.filter(c => c !== 'Uncategorized')" 
+        v-for="category in Object.keys(promptsByCategory).filter(c => c !== 'Uncategorized')" 
         :key="category"
         class="pt-2"
       >
@@ -286,7 +277,7 @@
       </div>
     </div>
 
-    <!-- Group by Name & Category View with Compare feature -->
+    <!-- Group by Name & Category View -->
     <div v-else class="space-y-8">
       <div 
         v-for="(promptGroup, groupKey) in promptsByNameAndCategory" 
@@ -294,22 +285,13 @@
         class="bg-white rounded-lg p-4 border"
       >
         <!-- Group header -->
-        <div v-if="promptGroup.length > 1" class="border-b pb-3 mb-4">
+        <div class="border-b pb-3 mb-4">
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-medium text-gray-900">{{ promptGroup[0].name }}</h3>
             <div class="flex items-center gap-3">
               <span class="px-3 py-1 text-sm rounded-full bg-gray-100 text-gray-700">
-                {{ promptGroup[0].category }}
+                {{ promptGroup[0].category || 'Uncategorized' }}
               </span>
-              <button 
-                @click="startCompareMode(promptGroup)"
-                class="flex items-center px-3 py-1 text-sm rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                </svg>
-                Compare Versions
-              </button>
             </div>
           </div>
           <p v-if="promptGroup[0].description" class="text-sm text-gray-600 mt-2">
@@ -317,53 +299,18 @@
           </p>
         </div>
 
-        <!-- Selection mode UI -->
-        <div v-if="isSelectingForComparison && currentComparisonGroup === groupKey" class="mb-4 bg-blue-50 p-3 rounded-lg">
-          <div class="flex justify-between items-center">
-            <p class="text-sm text-blue-700">
-              <span class="font-medium">Select prompts to compare:</span> 
-              {{ selectedPromptsForComparison.length }} selected
-            </p>
-            <div class="flex gap-2">
-              <button 
-                @click="cancelComparisonSelection"
-                class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button 
-                @click="confirmComparisonSelection"
-                :disabled="selectedPromptsForComparison.length < 2"
-                class="px-3 py-1 text-sm rounded-md"
-                :class="[
-                  selectedPromptsForComparison.length < 2 
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                ]"
-              >
-                Compare Selected
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Group prompts -->
-        <div :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'space-y-3'">
+        <!-- Group prompts (showing only latest version) -->
+        <div v-if="promptGroup.length > 0">
           <div
-            v-for="prompt in promptGroup"
-            :key="prompt.id"
             class="transition-opacity"
-            :class="{ 'opacity-70 hover:opacity-100': !prompt.isActive && !isSelectingForComparison }"
+            :class="{ 'opacity-70 hover:opacity-100': !promptGroup[0].isActive }"
           >
             <PromptCard
-              :prompt="prompt"
-              :isSelected="selectedPromptId === prompt.id"
-              :showDeleteButton="!isSelectingForComparison"
-              :isSelectionMode="isSelectingForComparison && currentComparisonGroup === groupKey"
-              :isPromptSelectedForCompare="selectedPromptsForComparison.includes(prompt.id)"
-              @select="isSelectingForComparison ? togglePromptSelection(prompt.id) : viewStore.showPromptDetails(prompt.id)"
-              @delete="openDeleteConfirm(prompt.id)"
-              @toggle-compare-selection="togglePromptSelection(prompt.id)"
+              :prompt="promptGroup[0]"
+              :isSelected="selectedPromptId === promptGroup[0].id"
+              :showDeleteButton="true"
+              @select="viewStore.showPromptDetails(promptGroup[0].id)"
+              @delete="openDeleteConfirm(promptGroup[0].id)"
             />
           </div>
         </div>
@@ -373,25 +320,36 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, ref, watch, onBeforeUnmount } from 'vue';
+import { onMounted, computed, ref, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { usePromptStore } from '~/stores/promptStore';
 import { usePromptEngineeringViewStore } from '~/stores/promptEngineeringViewStore';
-import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import PromptCard from '~/components/promptEngineering/PromptCard.vue';
-import PromptCompare from '~/components/promptEngineering/PromptCompare.vue';
 
-const props = defineProps<{ selectedPromptId: string | null }>();
+interface Prompt {
+  id: string;
+  name: string;
+  category: string;
+  promptContent: string;
+  description?: string | null;
+  suitableForModels?: string | null;
+  version: number;
+  createdAt: string;
+  parentPromptId?: string | null;
+  isActive: boolean;
+}
+
+
+defineProps<{ selectedPromptId: string | null }>();
 defineEmits<{ (e: 'select-prompt', id: string): void }>();
 
 const promptStore = usePromptStore();
 const viewStore = usePromptEngineeringViewStore();
-const llmStore = useLLMProviderConfigStore();
 const { prompts, loading, error, syncing, syncResult, deleteResult } = storeToRefs(promptStore);
-const { canonicalModels: availableModels } = storeToRefs(llmStore);
 
-// Search query
+// Search and filter state
 const searchQuery = ref('');
+const selectedCategoryFilter = ref('');
 
 // Local loading state for the reload button
 const reloading = ref(false);
@@ -399,33 +357,40 @@ const reloading = ref(false);
 // Base UI state
 const showDeleteConfirm = ref(false);
 const promptToDelete = ref<string | null>(null);
-const selectedModelFilter = ref('');
 const groupingOption = ref('nameAndCategory'); // Default to Name & Category grouping
 const viewMode = ref('grid'); // 'grid' or 'compact'
-
-// Comparison mode state
-const comparisonMode = ref(false);
-const isSelectingForComparison = ref(false);
-const currentComparisonGroup = ref('');
-const selectedPromptsForComparison = ref<string[]>([]);
-const comparisonCategory = ref('');
-const comparisonName = ref('');
 
 // Timers for auto-dismissing notifications
 let syncNotificationTimer: number | null = null;
 let deleteNotificationTimer: number | null = null;
 
-// Filter prompts based on model compatibility and search query
-const filteredPrompts = computed(() => {
-  let filtered = prompts.value;
+// NEW: Computed property to get only the latest version of each prompt
+const latestVersionPrompts = computed(() => {
+  const latestPromptsMap = new Map<string, Prompt>();
 
-  // Filter by model compatibility
-  if (selectedModelFilter.value) {
-    filtered = filtered.filter(prompt => {
-      if (!prompt.suitableForModels) return false;
-      const modelList = prompt.suitableForModels.split(',').map(model => model.trim());
-      return modelList.includes(selectedModelFilter.value);
-    });
+  prompts.value.forEach(prompt => {
+    const key = `${prompt.name}::${prompt.category || 'Uncategorized'}`;
+    const existing = latestPromptsMap.get(key);
+
+    if (!existing || prompt.version > existing.version) {
+      latestPromptsMap.set(key, prompt);
+    }
+  });
+
+  return Array.from(latestPromptsMap.values());
+});
+
+// Filter prompts based on category and search query
+const filteredPrompts = computed(() => {
+  let filtered = latestVersionPrompts.value; // Use latest versions as the source
+
+  // Filter by category
+  if (selectedCategoryFilter.value) {
+    if (selectedCategoryFilter.value === 'Uncategorized') {
+      filtered = filtered.filter(p => !p.category);
+    } else {
+      filtered = filtered.filter(p => p.category === selectedCategoryFilter.value);
+    }
   }
   
   // Filter by search query
@@ -435,17 +400,18 @@ const filteredPrompts = computed(() => {
       const inName = prompt.name.toLowerCase().includes(lowerCaseQuery);
       const inDescription = prompt.description?.toLowerCase().includes(lowerCaseQuery) || false;
       const inContent = prompt.promptContent.toLowerCase().includes(lowerCaseQuery);
-      return inName || inDescription || inContent;
+      const inCategory = prompt.category?.toLowerCase().includes(lowerCaseQuery) || false;
+      return inName || inDescription || inContent || inCategory;
     });
   }
   
   return filtered;
 });
 
-// Extract unique categories from filtered prompts
+// Extract unique categories from all prompts (not just filtered) for the dropdown
 const uniqueCategories = computed(() => {
   const categories = new Set<string>();
-  filteredPrompts.value.forEach(prompt => {
+  prompts.value.forEach(prompt => {
     const category = prompt.category || 'Uncategorized';
     categories.add(category);
   });
@@ -461,12 +427,6 @@ const uniqueCategories = computed(() => {
 const promptsByCategory = computed(() => {
   const grouped: Record<string, any[]> = {};
   
-  // Initialize empty arrays for each category
-  uniqueCategories.value.forEach(category => {
-    grouped[category] = [];
-  });
-  
-  // Group prompts by their category
   filteredPrompts.value.forEach(prompt => {
     const categoryKey = prompt.category || 'Uncategorized';
     if (!grouped[categoryKey]) {
@@ -475,22 +435,29 @@ const promptsByCategory = computed(() => {
     grouped[categoryKey].push(prompt);
   });
   
-  return grouped;
+  // Sort categories
+  const sortedGrouped: Record<string, any[]> = {};
+  Object.keys(grouped).sort((a,b) => {
+      if (a === 'Uncategorized') return 1;
+      if (b === 'Uncategorized') return -1;
+      return a.localeCompare(b);
+    }).forEach(key => {
+      sortedGrouped[key] = grouped[key];
+    });
+
+  return sortedGrouped;
 });
+
 
 // Group prompts by name and category for the alternative view
 const promptsByNameAndCategory = computed(() => {
   const grouped: Record<string, any[]> = {};
   filteredPrompts.value.forEach(prompt => {
-    const key = `${prompt.name}::${prompt.category}`;
+    const key = `${prompt.name}::${prompt.category || 'Uncategorized'}`;
     if (!grouped[key]) {
       grouped[key] = [];
     }
     grouped[key].push(prompt);
-  });
-  // Sort prompts within each group by version descending
-  Object.values(grouped).forEach(group => {
-    group.sort((a, b) => b.version - a.version);
   });
   return grouped;
 });
@@ -552,49 +519,9 @@ const clearDeleteResult = () => {
   promptStore.clearDeleteResult();
 };
 
-// Comparison Mode Functions
-const startCompareMode = (promptGroup: any[]) => {
-  isSelectingForComparison.value = true;
-  currentComparisonGroup.value = `${promptGroup[0].name}::${promptGroup[0].category}`;
-  selectedPromptsForComparison.value = [];
-};
-
-const cancelComparisonSelection = () => {
-  isSelectingForComparison.value = false;
-  currentComparisonGroup.value = '';
-  selectedPromptsForComparison.value = [];
-};
-
-const confirmComparisonSelection = () => {
-  if (selectedPromptsForComparison.value.length < 2) return;
-  const groupKey = currentComparisonGroup.value;
-  const [name, category] = groupKey.split('::');
-  comparisonName.value = name;
-  comparisonCategory.value = category;
-  comparisonMode.value = true;
-};
-
-const exitComparisonMode = () => {
-  comparisonMode.value = false;
-  cancelComparisonSelection();
-};
-
-const togglePromptSelection = (id: string) => {
-  const index = selectedPromptsForComparison.value.indexOf(id);
-  if (index > -1) {
-    selectedPromptsForComparison.value.splice(index, 1);
-  } else {
-    selectedPromptsForComparison.value.push(id);
-  }
-};
-
 onMounted(() => {
-  // Always fetch all prompts on mount by passing null
+  // Always fetch all prompts on mount
   promptStore.fetchPrompts(null);
-  
-  if (llmStore.providersWithModels.length === 0) {
-    llmStore.fetchProvidersWithModels();
-  }
 });
 
 onBeforeUnmount(() => {
