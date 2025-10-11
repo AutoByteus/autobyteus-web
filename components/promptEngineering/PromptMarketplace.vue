@@ -1,5 +1,14 @@
 <template>
   <div class="prompt-marketplace">
+    <!-- Prompt Comparison View (Modal) -->
+    <PromptCompare
+      v-if="comparisonMode"
+      :promptIds="selectedPromptsForComparison"
+      :promptCategory="comparisonCategory"
+      :promptName="comparisonName"
+      @close="exitComparisonMode"
+    />
+
     <!-- Header with title, sync button, and other controls -->
     <div class="flex flex-col gap-4 mb-6">
       <div class="flex justify-between items-center">
@@ -228,7 +237,7 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="filteredPrompts.length === 0" class="text-center py-16">
+    <div v-else-if="Object.keys(groupedPrompts).length === 0" class="text-center py-16">
       <div class="text-gray-500">
         <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -239,78 +248,108 @@
         </p>
       </div>
     </div>
-
-    <!-- Group by Category View -->
-    <div v-else-if="groupingOption === 'category'" class="space-y-6">
-      <div v-if="promptsByCategory['Uncategorized']?.length">
-        <h3 class="text-lg font-medium text-gray-800 mb-4">Uncategorized</h3>
-        <div :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'">
-          <PromptCard
-            v-for="prompt in promptsByCategory['Uncategorized']"
-            :key="prompt.id"
-            :prompt="prompt"
-            :isSelected="selectedPromptId === prompt.id"
-            :showDeleteButton="true"
-            @select="viewStore.showPromptDetails(prompt.id)"
-            @delete="openDeleteConfirm(prompt.id)"
-          />
+    
+    <!-- Views -->
+    <div v-else>
+      <!-- Group by Category View (Flat list of latest versions) -->
+      <div v-if="groupingOption === 'category'" class="space-y-6">
+        <div 
+          v-for="(categoryPrompts, category) in groupedPromptsByCategory" 
+          :key="category"
+          class="pt-2"
+        >
+          <h3 class="text-lg font-medium text-gray-800 mb-4 pb-2 border-b">{{ category }}</h3>
+          <div :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'">
+            <PromptCard
+              v-for="prompt in categoryPrompts"
+              :key="prompt.id"
+              :prompt="prompt"
+              :isSelected="selectedPromptId === prompt.id"
+              :showDeleteButton="true"
+              @select="viewStore.showPromptDetails(prompt.id)"
+              @delete="openDeleteConfirm(prompt.id)"
+            />
+          </div>
         </div>
       </div>
-      
-      <div 
-        v-for="category in Object.keys(promptsByCategory).filter(c => c !== 'Uncategorized')" 
-        :key="category"
-        class="pt-2"
-      >
-        <h3 class="text-lg font-medium text-gray-800 mb-4 pb-2 border-b">{{ category }}</h3>
-        <div :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'">
-          <PromptCard
-            v-for="prompt in promptsByCategory[category]"
-            :key="prompt.id"
-            :prompt="prompt"
-            :isSelected="selectedPromptId === prompt.id"
-            :showDeleteButton="true"
-            @select="viewStore.showPromptDetails(prompt.id)"
-            @delete="openDeleteConfirm(prompt.id)"
-          />
-        </div>
-      </div>
-    </div>
 
-    <!-- Group by Name & Category View -->
-    <div v-else class="space-y-8">
-      <div 
-        v-for="(promptGroup, groupKey) in promptsByNameAndCategory" 
-        :key="groupKey"
-        class="bg-white rounded-lg p-4 border"
-      >
-        <!-- Group header -->
-        <div class="border-b pb-3 mb-4">
-          <div class="flex items-center justify-between">
-            <h3 class="text-lg font-medium text-gray-900">{{ promptGroup[0].name }}</h3>
-            <div class="flex items-center gap-3">
-              <span class="px-3 py-1 text-sm rounded-full bg-gray-100 text-gray-700">
-                {{ promptGroup[0].category || 'Uncategorized' }}
-              </span>
+      <!-- Group by Name & Category (Visible Variants) -->
+      <div v-else class="space-y-8">
+        <div 
+          v-for="(variants, groupKey) in groupedPrompts" 
+          :key="groupKey"
+          class="bg-white rounded-lg p-4 border"
+        >
+          <!-- Group header -->
+          <div class="border-b pb-3 mb-4">
+            <div class="flex items-start justify-between">
+              <div>
+                <h3 class="text-lg font-medium text-gray-900">{{ variants[0].name }}</h3>
+                <p v-if="variants[0].description" class="text-sm text-gray-600 mt-1 line-clamp-2">
+                  {{ variants[0].description }}
+                </p>
+              </div>
+              <div class="flex items-center gap-3 flex-shrink-0 ml-4">
+                <span class="px-3 py-1 text-sm rounded-full bg-gray-100 text-gray-700">
+                  {{ variants[0].category || 'Uncategorized' }}
+                </span>
+                <button 
+                  v-if="variants.length > 1"
+                  @click="startCompareMode(groupKey, variants)"
+                  class="flex items-center px-3 py-1 text-sm rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  Compare Variants
+                </button>
+              </div>
             </div>
           </div>
-          <p v-if="promptGroup[0].description" class="text-sm text-gray-600 mt-2">
-            {{ promptGroup[0].description }}
-          </p>
-        </div>
 
-        <!-- Group prompts (showing only latest version) -->
-        <div v-if="promptGroup.length > 0">
-          <div
-            class="transition-opacity"
-            :class="{ 'opacity-70 hover:opacity-100': !promptGroup[0].isActive }"
-          >
+           <!-- Compare Selection Bar -->
+          <div v-if="isSelectingForComparison(groupKey)" class="mb-4 bg-blue-50 p-3 rounded-lg">
+            <div class="flex justify-between items-center">
+              <p class="text-sm text-blue-700">
+                <span class="font-medium">Select prompts to compare:</span> 
+                {{ selectedPromptsForComparison.length }} selected
+              </p>
+              <div class="flex gap-2">
+                <button 
+                  @click="cancelComparisonSelection"
+                  class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  @click="confirmComparisonSelection"
+                  :disabled="selectedPromptsForComparison.length < 2"
+                  class="px-3 py-1 text-sm rounded-md"
+                  :class="[
+                    selectedPromptsForComparison.length < 2 
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  ]"
+                >
+                  Compare Selected
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- List of Variant Cards -->
+          <div class="space-y-4">
             <PromptCard
-              :prompt="promptGroup[0]"
-              :isSelected="selectedPromptId === promptGroup[0].id"
-              :showDeleteButton="true"
-              @select="viewStore.showPromptDetails(promptGroup[0].id)"
-              @delete="openDeleteConfirm(promptGroup[0].id)"
+              v-for="variant in variants"
+              :key="variant.id"
+              :prompt="variant"
+              :isSelected="selectedPromptId === variant.id"
+              :showDeleteButton="!isSelectingForComparison(groupKey)"
+              :isSelectionMode="isSelectingForComparison(groupKey)"
+              :isPromptSelectedForCompare="selectedPromptsForComparison.includes(variant.id)"
+              @select="isSelectingForComparison(groupKey) ? togglePromptSelection(variant.id) : viewStore.showPromptDetails(variant.id)"
+              @delete="openDeleteConfirm(variant.id)"
+              @toggle-compare-selection="togglePromptSelection(variant.id)"
             />
           </div>
         </div>
@@ -325,6 +364,7 @@ import { storeToRefs } from 'pinia';
 import { usePromptStore } from '~/stores/promptStore';
 import { usePromptEngineeringViewStore } from '~/stores/promptEngineeringViewStore';
 import PromptCard from '~/components/promptEngineering/PromptCard.vue';
+import PromptCompare from '~/components/promptEngineering/PromptCompare.vue';
 
 interface Prompt {
   id: string;
@@ -338,7 +378,6 @@ interface Prompt {
   parentPromptId?: string | null;
   isActive: boolean;
 }
-
 
 defineProps<{ selectedPromptId: string | null }>();
 defineEmits<{ (e: 'select-prompt', id: string): void }>();
@@ -357,34 +396,23 @@ const reloading = ref(false);
 // Base UI state
 const showDeleteConfirm = ref(false);
 const promptToDelete = ref<string | null>(null);
-const groupingOption = ref('nameAndCategory'); // Default to Name & Category grouping
-const viewMode = ref('grid'); // 'grid' or 'compact'
+const groupingOption = ref('nameAndCategory'); 
+const viewMode = ref('grid'); // This is now cosmetic for category view, as name&cat view is always a list.
+
+// Comparison mode state
+const comparisonMode = ref(false);
+const currentComparisonGroup = ref<string | null>(null);
+const selectedPromptsForComparison = ref<string[]>([]);
+const comparisonCategory = ref('');
+const comparisonName = ref('');
 
 // Timers for auto-dismissing notifications
 let syncNotificationTimer: number | null = null;
 let deleteNotificationTimer: number | null = null;
 
-// NEW: Computed property to get only the latest version of each prompt
-const latestVersionPrompts = computed(() => {
-  const latestPromptsMap = new Map<string, Prompt>();
-
-  prompts.value.forEach(prompt => {
-    const key = `${prompt.name}::${prompt.category || 'Uncategorized'}`;
-    const existing = latestPromptsMap.get(key);
-
-    if (!existing || prompt.version > existing.version) {
-      latestPromptsMap.set(key, prompt);
-    }
-  });
-
-  return Array.from(latestPromptsMap.values());
-});
-
-// Filter prompts based on category and search query
 const filteredPrompts = computed(() => {
-  let filtered = latestVersionPrompts.value; // Use latest versions as the source
+  let filtered = prompts.value;
 
-  // Filter by category
   if (selectedCategoryFilter.value) {
     if (selectedCategoryFilter.value === 'Uncategorized') {
       filtered = filtered.filter(p => !p.category);
@@ -393,73 +421,80 @@ const filteredPrompts = computed(() => {
     }
   }
   
-  // Filter by search query
   if (searchQuery.value.trim()) {
     const lowerCaseQuery = searchQuery.value.trim().toLowerCase();
-    filtered = filtered.filter(prompt => {
-      const inName = prompt.name.toLowerCase().includes(lowerCaseQuery);
-      const inDescription = prompt.description?.toLowerCase().includes(lowerCaseQuery) || false;
-      const inContent = prompt.promptContent.toLowerCase().includes(lowerCaseQuery);
-      const inCategory = prompt.category?.toLowerCase().includes(lowerCaseQuery) || false;
-      return inName || inDescription || inContent || inCategory;
-    });
+    filtered = filtered.filter(prompt => 
+      prompt.name.toLowerCase().includes(lowerCaseQuery) ||
+      (prompt.description?.toLowerCase().includes(lowerCaseQuery) || false) ||
+      prompt.promptContent.toLowerCase().includes(lowerCaseQuery) ||
+      (prompt.category?.toLowerCase().includes(lowerCaseQuery) || false)
+    );
   }
   
   return filtered;
 });
 
-// Extract unique categories from all prompts (not just filtered) for the dropdown
-const uniqueCategories = computed(() => {
-  const categories = new Set<string>();
-  prompts.value.forEach(prompt => {
-    const category = prompt.category || 'Uncategorized';
-    categories.add(category);
-  });
-  const sorted = Array.from(categories).sort();
-  // Ensure 'Uncategorized' is at the end if it exists
-  if (sorted.includes('Uncategorized')) {
-    return [...sorted.filter(c => c !== 'Uncategorized'), 'Uncategorized'];
-  }
-  return sorted;
-});
-
-// Group filtered prompts by category
-const promptsByCategory = computed(() => {
-  const grouped: Record<string, any[]> = {};
+// New grouping logic for Name & Category view
+const groupedPrompts = computed(() => {
+  const groups: Record<string, Prompt[]> = {};
   
-  filteredPrompts.value.forEach(prompt => {
-    const categoryKey = prompt.category || 'Uncategorized';
-    if (!grouped[categoryKey]) {
-      grouped[categoryKey] = [];
-    }
-    grouped[categoryKey].push(prompt);
-  });
-  
-  // Sort categories
-  const sortedGrouped: Record<string, any[]> = {};
-  Object.keys(grouped).sort((a,b) => {
-      if (a === 'Uncategorized') return 1;
-      if (b === 'Uncategorized') return -1;
-      return a.localeCompare(b);
-    }).forEach(key => {
-      sortedGrouped[key] = grouped[key];
-    });
-
-  return sortedGrouped;
-});
-
-
-// Group prompts by name and category for the alternative view
-const promptsByNameAndCategory = computed(() => {
-  const grouped: Record<string, any[]> = {};
+  // First, group all prompts by name and category
   filteredPrompts.value.forEach(prompt => {
     const key = `${prompt.name}::${prompt.category || 'Uncategorized'}`;
-    if (!grouped[key]) {
-      grouped[key] = [];
+    if (!groups[key]) {
+      groups[key] = [];
     }
-    grouped[key].push(prompt);
+    groups[key].push(prompt);
   });
-  return grouped;
+
+  const processedGroups: Record<string, Prompt[]> = {};
+  for (const key in groups) {
+    const promptList = groups[key];
+    
+    // Find the latest version for each unique `suitableForModels`
+    const latestVariantsMap = new Map<string, Prompt>();
+    promptList.forEach(p => {
+      const modelsKey = p.suitableForModels || 'None';
+      const existing = latestVariantsMap.get(modelsKey);
+      if (!existing || p.version > existing.version) {
+        latestVariantsMap.set(modelsKey, p);
+      }
+    });
+    
+    const variants = Array.from(latestVariantsMap.values()).sort((a,b) => b.version - a.version);
+    
+    if (variants.length > 0) {
+      processedGroups[key] = variants;
+    }
+  }
+
+  return processedGroups;
+});
+
+// Grouping for the simple "Group by Category" view
+const groupedPromptsByCategory = computed(() => {
+  const groups: Record<string, Prompt[]> = {};
+  
+  Object.values(groupedPrompts.value).forEach(variants => {
+    // We only show the top variant in the category view for simplicity
+    const primaryVariant = variants[0];
+    if (primaryVariant) {
+      const categoryKey = primaryVariant.category || 'Uncategorized';
+      if (!groups[categoryKey]) {
+        groups[categoryKey] = [];
+      }
+      groups[categoryKey].push(primaryVariant);
+    }
+  });
+  
+  return groups;
+});
+
+
+const uniqueCategories = computed(() => {
+  const categories = new Set<string>();
+  prompts.value.forEach(p => categories.add(p.category || 'Uncategorized'));
+  return Array.from(categories).sort();
 });
 
 // Functions
@@ -467,21 +502,15 @@ const handleReload = async () => {
   reloading.value = true;
   try {
     await promptStore.reloadPrompts();
-  } catch(e) {
-    console.error("Failed to reload prompts:", e);
-  } finally {
-    reloading.value = false;
-  }
+  } catch(e) { console.error("Failed to reload prompts:", e); } 
+  finally { reloading.value = false; }
 };
 
 const syncPrompts = async () => {
   await promptStore.syncPrompts();
   if (syncResult.value) {
-    // Auto-dismiss after 5 seconds
     if (syncNotificationTimer) clearTimeout(syncNotificationTimer);
-    syncNotificationTimer = window.setTimeout(() => {
-      promptStore.clearSyncResult();
-    }, 5000);
+    syncNotificationTimer = window.setTimeout(() => promptStore.clearSyncResult(), 5000);
   }
 };
 
@@ -504,11 +533,8 @@ const confirmDelete = async () => {
   if (promptToDelete.value) {
     await promptStore.deletePrompt(promptToDelete.value);
     if (deleteResult.value) {
-      // Auto-dismiss after 5 seconds
       if (deleteNotificationTimer) clearTimeout(deleteNotificationTimer);
-      deleteNotificationTimer = window.setTimeout(() => {
-        promptStore.clearDeleteResult();
-      }, 5000);
+      deleteNotificationTimer = window.setTimeout(() => promptStore.clearDeleteResult(), 5000);
     }
   }
   cancelDelete();
@@ -519,8 +545,47 @@ const clearDeleteResult = () => {
   promptStore.clearDeleteResult();
 };
 
+// Comparison Mode Functions
+const isSelectingForComparison = (groupKey: string) => {
+  return currentComparisonGroup.value === groupKey;
+}
+
+const startCompareMode = (groupKey: string, variants: Prompt[]) => {
+  currentComparisonGroup.value = groupKey;
+  // Pre-select the top two variants if available
+  selectedPromptsForComparison.value = variants.slice(0, 2).map(p => p.id);
+};
+
+const cancelComparisonSelection = () => {
+  currentComparisonGroup.value = null;
+  selectedPromptsForComparison.value = [];
+};
+
+const confirmComparisonSelection = () => {
+  if (selectedPromptsForComparison.value.length < 2) return;
+  if (!currentComparisonGroup.value) return;
+  
+  const [name, category] = currentComparisonGroup.value.split('::');
+  comparisonName.value = name;
+  comparisonCategory.value = category === 'Uncategorized' ? '' : category;
+  comparisonMode.value = true;
+};
+
+const exitComparisonMode = () => {
+  comparisonMode.value = false;
+  cancelComparisonSelection();
+};
+
+const togglePromptSelection = (id: string) => {
+  const index = selectedPromptsForComparison.value.indexOf(id);
+  if (index > -1) {
+    selectedPromptsForComparison.value.splice(index, 1);
+  } else {
+    selectedPromptsForComparison.value.push(id);
+  }
+};
+
 onMounted(() => {
-  // Always fetch all prompts on mount
   promptStore.fetchPrompts(null);
 });
 
@@ -533,5 +598,11 @@ onBeforeUnmount(() => {
 <style scoped>
 .prompt-marketplace {
   padding: 2rem;
+}
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 </style>
