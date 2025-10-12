@@ -24,10 +24,6 @@ import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
 import type { AgentTeamDefinition } from './agentTeamDefinitionStore';
 
-interface ResolvedMemberConfig extends TeamMemberConfigInput {
-  agentDefinitionId: string;
-}
-
 export const useAgentTeamRunStore = defineStore('agentTeamRun', {
   state: () => ({
     isLaunching: false,
@@ -293,7 +289,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       }
     },
     
-    async _resolveMemberConfigs(profile: TeamLaunchProfile): Promise<ResolvedMemberConfig[]> {
+    async _resolveMemberConfigs(profile: TeamLaunchProfile): Promise<TeamMemberConfigInput[]> {
       const globalWorkspaceId = await this._resolveWorkspaceId(profile.globalConfig.workspaceConfig, "Team Default");
       const agentNodes = profile.teamDefinition.nodes.filter(n => n.referenceType === 'AGENT');
       

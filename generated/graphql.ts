@@ -1033,6 +1033,7 @@ export type TeamMember = {
 };
 
 export type TeamMemberConfigInput = {
+  agentDefinitionId: Scalars['String']['input'];
   autoExecuteTools: Scalars['Boolean']['input'];
   llmModelIdentifier: Scalars['String']['input'];
   memberName: Scalars['String']['input'];
