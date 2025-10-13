@@ -20,6 +20,7 @@
             v-for="app in applications"
             :key="app.id"
             :application="app"
+            @launch="handleLaunchRequest"
           />
         </div>
         <div v-else class="text-center bg-gray-50 rounded-lg py-12 px-6 border border-gray-200">
@@ -30,23 +31,46 @@
         </div>
       </div>
     </div>
+    
+    <!-- Launch Configuration Modal -->
+    <ApplicationLaunchConfigModal
+        :show="showLaunchModal"
+        :application="appToLaunch"
+        @close="showLaunchModal = false"
+        @success="onLaunchSuccess"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useApplicationStore } from '~/stores/applicationStore';
+import { useApplicationStore, type ApplicationManifest } from '~/stores/applicationStore';
 import ApplicationCard from '~/components/applications/ApplicationCard.vue';
+import ApplicationLaunchConfigModal from '~/components/applications/ApplicationLaunchConfigModal.vue';
 
 const applicationStore = useApplicationStore();
+const router = useRouter();
 
 // Use storeToRefs to maintain reactivity for state properties when destructuring.
 const { applications, loading, error } = storeToRefs(applicationStore);
 
+// State for the launch modal
+const showLaunchModal = ref(false);
+const appToLaunch = ref<ApplicationManifest | null>(null);
+
 // Fetch applications when the component is mounted.
-// The store action has logic to prevent re-fetching if data is already present.
 onMounted(() => {
   applicationStore.fetchApplications();
 });
+
+function handleLaunchRequest(app: ApplicationManifest) {
+    appToLaunch.value = app;
+    showLaunchModal.value = true;
+}
+
+function onLaunchSuccess(payload: { appId: string, instanceId: string }) {
+    showLaunchModal.value = false;
+    router.push(`/applications/${payload.appId}?instanceId=${payload.instanceId}`);
+}
 </script>

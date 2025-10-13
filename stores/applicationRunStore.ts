@@ -23,17 +23,30 @@ import type {
   TaskNotificationModeEnum,
 } from '~/generated/graphql';
 import { useApplicationLaunchProfileStore } from './applicationLaunchProfileStore';
+import type { ApplicationLaunchProfile } from '~/types/application/ApplicationLaunchProfile';
 
+
+function _resolveAgentLlmConfig(profile: ApplicationLaunchProfile): Record<string, string> {
+  const finalConfig: Record<string, string> = {};
+  const agentMembers = profile.teamDefinition.nodes.filter(n => n.referenceType === 'AGENT');
+
+  for (const member of agentMembers) {
+    finalConfig[member.memberName] = 
+      profile.memberLlmConfigOverrides[member.memberName] || profile.globalLlmModelIdentifier;
+  }
+  return finalConfig;
+}
 
 function _resolveApplicationMemberConfigs(
-  teamDefinition: AgentTeamDefinition,
-  agentLlmConfig: Record<string, string>
+  profile: ApplicationLaunchProfile
 ): TeamMemberConfigInput[] {
-  return teamDefinition.nodes
+  const resolvedLlmConfig = _resolveAgentLlmConfig(profile);
+  
+  return profile.teamDefinition.nodes
     .filter(n => n.referenceType === 'AGENT')
     .map(memberNode => ({
       memberName: memberNode.memberName,
-      llmModelIdentifier: agentLlmConfig[memberNode.memberName],
+      llmModelIdentifier: resolvedLlmConfig[memberNode.memberName],
       workspaceId: null,
       autoExecuteTools: true,
     }));
@@ -54,7 +67,8 @@ export const useApplicationRunStore = defineStore('applicationRun', {
           launchConfig.teamDefinition,
           {
             name: launchConfig.profileName,
-            agentLlmConfig: launchConfig.agentLlmConfig,
+            globalLlmModelIdentifier: launchConfig.globalLlmModelIdentifier,
+            memberLlmConfigOverrides: launchConfig.memberLlmConfigOverrides,
           }
         );
 
@@ -86,14 +100,15 @@ export const useApplicationRunStore = defineStore('applicationRun', {
           teamDefinition: profile.teamDefinition,
           globalConfig: {
             workspaceConfig: { mode: 'none' as const },
-            llmModelIdentifier: '',
+            llmModelIdentifier: profile.globalLlmModelIdentifier,
             autoExecuteTools: true,
             useXmlToolFormat: true,
             taskNotificationMode: 'SYSTEM_EVENT_DRIVEN' as const,
           },
-          memberOverrides: [],
+          memberOverrides: [], // Application profiles don't have these complex overrides yet
         };
 
+        const resolvedLlmConfig = _resolveAgentLlmConfig(profile);
         const members = new Map<string, AgentContext>();
         for (const agentNode of profile.teamDefinition.nodes.filter(n => n.referenceType === 'AGENT')) {
           const memberName = agentNode.memberName;
@@ -108,7 +123,7 @@ export const useApplicationRunStore = defineStore('applicationRun', {
           const agentConfig: AgentRunConfig = {
             launchProfileId: profile.id,
             workspaceId: null,
-            llmModelIdentifier: profile.agentLlmConfig[memberName],
+            llmModelIdentifier: resolvedLlmConfig[memberName],
             autoExecuteTools: true,
             parseToolCalls: true,
             useXmlToolFormat: teamLaunchProfile.globalConfig.useXmlToolFormat,
@@ -164,13 +179,12 @@ export const useApplicationRunStore = defineStore('applicationRun', {
       const isTemporary = teamContext.teamId.startsWith('temp-');
 
       try {
-        const agentLlmConfig = Array.from(teamContext.members.values()).reduce((acc, member) => {
-            acc[member.state.agentId] = member.config.llmModelIdentifier;
-            return acc;
-        }, {} as Record<string, string>);
+        const appProfileStore = useApplicationLaunchProfileStore();
+        const profile = appProfileStore.profiles[runContext.launchProfileId];
+        if (!profile) throw new Error(`Launch profile ${runContext.launchProfileId} not found for sending message.`);
         
         const memberConfigsForApi = isTemporary 
-          ? _resolveApplicationMemberConfigs(teamContext.launchProfile.teamDefinition, agentLlmConfig) 
+          ? _resolveApplicationMemberConfigs(profile) 
           : undefined;
 
         const variables: SendMessageToTeamMutationVariables = {

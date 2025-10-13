@@ -11,6 +11,8 @@ export interface ApplicationLaunchProfile {
   appId: string;
   // A snapshot of the team definition at the time of profile creation
   teamDefinition: AgentTeamDefinition;
-  // The core configuration, mapping agent member names to their chosen LLM identifiers
-  agentLlmConfig: Record<string, string>;
+  // The default LLM model for all members
+  globalLlmModelIdentifier: string;
+  // Per-member overrides for the LLM model
+  memberLlmConfigOverrides: Record<string, string>; // Maps memberName to modelIdentifier
 }

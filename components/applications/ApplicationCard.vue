@@ -1,6 +1,6 @@
 <template>
-  <NuxtLink
-    :to="`/applications/${application.id}`"
+  <div
+    @click="$emit('launch', application)"
     class="block bg-white rounded-lg border border-gray-200 p-5 transition-all duration-200 hover:shadow-md hover:border-blue-400 cursor-pointer"
   >
     <div>
@@ -12,7 +12,7 @@
       </div>
       <p class="text-sm text-gray-600 mt-1 h-10 line-clamp-2">{{ application.description }}</p>
     </div>
-  </NuxtLink>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -22,5 +22,9 @@ type Application = ListApplicationsQuery['listApplications'][0];
 
 defineProps<{
   application: Application;
+}>();
+
+defineEmits<{
+  (e: 'launch', app: Application): void;
 }>();
 </script>

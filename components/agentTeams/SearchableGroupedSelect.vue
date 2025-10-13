@@ -85,7 +85,8 @@ export interface GroupedOption {
   items: SelectItem[];
 }
 
-const props = withDefaults(defineProps<{  modelValue: string | null;
+const props = withDefaults(defineProps<{
+  modelValue: string | null;
   options: GroupedOption[];
   placeholder?: string;
   searchPlaceholder?: string;

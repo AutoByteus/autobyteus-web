@@ -21,7 +21,17 @@ export const useApplicationLaunchProfileStore = defineStore('applicationLaunchPr
         if (typeof window === 'undefined') return;
         const storedProfiles = localStorage.getItem(APPLICATION_LAUNCH_PROFILE_STORAGE_KEY);
         if (storedProfiles) {
-          this.profiles = JSON.parse(storedProfiles);
+          const parsedProfiles = JSON.parse(storedProfiles);
+          const validProfiles: Record<string, ApplicationLaunchProfile> = {};
+          
+          // Filter out old-format profiles to ensure only valid ones are loaded.
+          for (const key in parsedProfiles) {
+            const profile = parsedProfiles[key];
+            if (profile && typeof profile.globalLlmModelIdentifier === 'string') {
+              validProfiles[key] = profile;
+            }
+          }
+          this.profiles = validProfiles;
         }
       } catch (error) {
         console.error("Failed to load application launch profiles from localStorage", error);
@@ -43,7 +53,8 @@ export const useApplicationLaunchProfileStore = defineStore('applicationLaunchPr
       teamDefinition: AgentTeamDefinition,
       launchConfig: {
         name: string;
-        agentLlmConfig: Record<string, string>;
+        globalLlmModelIdentifier: string;
+        memberLlmConfigOverrides: Record<string, string>;
       }
     ): ApplicationLaunchProfile {
       const profileId = uuidv4();
@@ -53,7 +64,8 @@ export const useApplicationLaunchProfileStore = defineStore('applicationLaunchPr
         createdAt: new Date().toISOString(),
         appId: appId,
         teamDefinition: JSON.parse(JSON.stringify(teamDefinition)), // Deep copy snapshot
-        agentLlmConfig: JSON.parse(JSON.stringify(launchConfig.agentLlmConfig)),
+        globalLlmModelIdentifier: launchConfig.globalLlmModelIdentifier,
+        memberLlmConfigOverrides: JSON.parse(JSON.stringify(launchConfig.memberLlmConfigOverrides)),
       };
 
       this.profiles[profileId] = newProfile;
@@ -63,8 +75,6 @@ export const useApplicationLaunchProfileStore = defineStore('applicationLaunchPr
     
     deleteLaunchProfile(profileId: string) {
       if (this.profiles[profileId]) {
-        // In a more complex UI, we would check if any active runs are using this profile.
-        // For now, this direct deletion is sufficient.
         delete this.profiles[profileId];
         this.saveLaunchProfiles();
       }
@@ -90,12 +100,12 @@ export const useApplicationLaunchProfileStore = defineStore('applicationLaunchPr
 
     activeLaunchProfiles(): ApplicationLaunchProfile[] {
       const runningIds = this._runningProfileIds;
-      return this.allLaunchProfiles.filter(p => runningIds.has(p.id));
+      return this.allLaunchProfiles.filter(p => p.id !== undefined && runningIds.has(p.id));
     },
     
     inactiveLaunchProfiles(): ApplicationLaunchProfile[] {
       const runningIds = this._runningProfileIds;
-      return this.allLaunchProfiles.filter(p => !runningIds.has(p.id));
+      return this.allLaunchProfiles.filter(p => p.id !== undefined && !runningIds.has(p.id));
     },
   }
 });

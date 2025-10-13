@@ -10,7 +10,10 @@ export interface ApplicationLaunchConfig {
   appId: string;
   profileName: string; // Name for the new launch profile
   teamDefinition: AgentTeamDefinition;
-  agentLlmConfig: Record<string, string>; // Maps memberName to modelIdentifier
+  // --- Start: New Structure ---
+  globalLlmModelIdentifier: string;
+  memberLlmConfigOverrides: Record<string, string>; // Maps memberName to modelIdentifier
+  // --- End: New Structure ---
 }
 
 /**
