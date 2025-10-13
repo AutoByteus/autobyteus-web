@@ -34,6 +34,7 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
   state: () => ({
     providersWithModels: [] as ProviderWithModels[],
     audioProvidersWithModels: [] as ProviderWithModels[],
+    imageProvidersWithModels: [] as ProviderWithModels[],
     providerConfigs: {} as Record<string, LLMProviderConfig>,
     isLoadingModels: false,
     isReloadingModels: false,
@@ -48,6 +49,9 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
     },
     audioModels(state): string[] {
       return state.audioProvidersWithModels.flatMap(p => p.models.map(m => m.modelIdentifier));
+    },
+    imageModels(state): string[] {
+      return state.imageProvidersWithModels.flatMap(p => p.models.map(m => m.modelIdentifier));
     },
     providersWithModelsForSelection(state): ProviderWithModels[] {
       return state.providersWithModels.filter(p => p.models && p.models.length > 0);
@@ -121,12 +125,14 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
 
         this.providersWithModels = data?.availableLlmProvidersWithModels ?? [];
         this.audioProvidersWithModels = data?.availableAudioProvidersWithModels ?? [];
+        this.imageProvidersWithModels = data?.availableImageProvidersWithModels ?? [];
         this.hasFetchedProviders = true;
         return this.providersWithModels;
       } catch (error) {
         console.error('Failed to fetch providers and models:', error);
         this.providersWithModels = [];
         this.audioProvidersWithModels = [];
+        this.imageProvidersWithModels = [];
         throw error;
       } finally {
         this.isLoadingModels = false;
@@ -145,12 +151,14 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
 
         this.providersWithModels = data?.availableLlmProvidersWithModels ?? [];
         this.audioProvidersWithModels = data?.availableAudioProvidersWithModels ?? [];
+        this.imageProvidersWithModels = data?.availableImageProvidersWithModels ?? [];
         this.hasFetchedProviders = true;
         return this.providersWithModels;
       } catch (error) {
         console.error('Failed to reload providers and models:', error);
         this.providersWithModels = [];
         this.audioProvidersWithModels = [];
+        this.imageProvidersWithModels = [];
         throw error;
       } finally {
         this.isReloadingModels = false;

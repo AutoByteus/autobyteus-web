@@ -71,13 +71,31 @@ describe('ProviderAPIKeyManager', () => {
         ],
       },
     ]
+    store.imageProvidersWithModels = [
+      {
+        provider: 'OPENAI',
+        models: [
+          {
+            modelIdentifier: 'dall-e-3',
+            name: 'DALL-E 3',
+            value: 'dall-e-3',
+            canonicalName: 'dall-e-3',
+            provider: 'OPENAI',
+            runtime: 'api',
+            hostUrl: null,
+          },
+        ],
+      },
+    ]
 
     await flushPromises()
 
     expect(wrapper.text()).toContain('LLM Models')
     expect(wrapper.text()).toContain('Audio Models')
+    expect(wrapper.text()).toContain('Image Models')
     expect(wrapper.text()).toContain('gpt-4o')
     expect(wrapper.text()).toContain('whisper-1')
+    expect(wrapper.text()).toContain('dall-e-3')
   })
 
   it('shows an empty state message when no models exist', async () => {

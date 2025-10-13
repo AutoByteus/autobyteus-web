@@ -148,6 +148,20 @@
                 </div>
               </div>
             </div>
+
+            <div v-if="availableImageModels.length > 0">
+              <h4 class="text-md font-medium text-gray-700 mb-2">Image Models</h4>
+              <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                <div 
+                  v-for="model in availableImageModels" 
+                  :key="`image-${model}`"
+                  class="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center"
+                >
+                  <span class="i-heroicons-photo-20-solid w-4 h-4 text-blue-600 mr-2"></span>
+                  <span class="text-sm font-medium text-gray-800 truncate">{{ model }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -176,7 +190,8 @@ const {
   models: llmModels, 
   audioModels, 
   isReloadingModels, 
-  providers 
+  providers,
+  imageModels,
 } = storeToRefs(store)
 
 const loading = ref(true)
@@ -191,8 +206,11 @@ const providerConfigs = ref<Record<string, { apiKey?: string }>>({})
 // Computed properties for available model lists
 const availableLlmModels = computed(() => llmModels.value || [])
 const availableAudioModels = computed(() => audioModels.value || [])
+const availableImageModels = computed(() => imageModels.value || [])
 const hasAnyModels = computed(() =>
-  availableLlmModels.value.length > 0 || availableAudioModels.value.length > 0
+  availableLlmModels.value.length > 0 || 
+  availableAudioModels.value.length > 0 ||
+  availableImageModels.value.length > 0
 )
 
 const refreshModels = async () => {
