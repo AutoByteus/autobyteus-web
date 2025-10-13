@@ -6,11 +6,13 @@ import type {
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import { processAgentResponseEvent } from '~/services/agentResponseProcessor';
 import { handleTeamPhaseTransition } from './agentTeamResponseHandlers/teamStatusHandler';
-import { handleTasksAdded, handleTaskStatusUpdated } from './agentTeamResponseHandlers/taskBoardHandler';
+import { handleTasksAdded, handleTaskStatusUpdated } from './agentTeamResponseHandlers/taskPlanHandler';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 
 /**
  * Main dispatcher for processing all agent team response events.
+ * This function is now a pure utility that requires the context to be injected.
+ * @param teamContext - The specific AgentTeamContext this event belongs to.
  * @param event - The `GraphQLAgentTeamStreamEvent` from the subscription.
  */
 export function processAgentTeamResponseEvent(event: GraphQLAgentTeamStreamEvent): void {

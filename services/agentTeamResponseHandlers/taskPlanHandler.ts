@@ -1,4 +1,4 @@
-// file: autobyteus-web/services/agentTeamResponseHandlers/taskBoardHandler.ts
+// file: autobyteus-web/services/agentTeamResponseHandlers/taskPlanHandler.ts
 import type { GraphQLTasksAddedEvent, GraphQLTaskStatusUpdatedEvent } from '~/generated/graphql';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import type { Task } from '~/types/taskManagement';

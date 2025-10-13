@@ -1,6 +1,6 @@
 <template>
   <div class="p-4 bg-white h-full flex flex-col">
-    <h3 class="text-base font-semibold text-gray-900 mb-3 flex-shrink-0">Task Board</h3>
+    <h3 class="text-base font-semibold text-gray-900 mb-3 flex-shrink-0">Task Plan</h3>
     <div v-if="!tasks || tasks.length === 0" class="text-center text-sm text-gray-500 py-8 px-4 bg-gray-100 rounded-lg">
       No task plan has been published yet.
     </div>
@@ -48,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-// file: autobyteus-web/components/workspace/TaskBoardDisplay.vue
+// file: autobyteus-web/components/workspace/TaskPlanDisplay.vue
 import { computed } from 'vue';
 import type { Task, TaskStatus } from '~/types/taskManagement';
 
