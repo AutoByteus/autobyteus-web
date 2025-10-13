@@ -20,7 +20,7 @@
         <button 
           @click.stop="toggleMaximize" 
           @mousedown.stop 
-          :title="isMaximized ? 'Restore Panel' : 'Maximize Task Board'"
+          :title="isMaximized ? 'Restore Panel' : 'Maximize Task Plan'"
           class="p-1 bg-white rounded-full text-gray-600 hover:text-gray-900 shadow-md hover:shadow-lg transition-all duration-200"
         >
           <svg 
@@ -40,9 +40,9 @@
         </button>
       </div>
 
-      <!-- Task Board Display Section -->
+      <!-- Task Plan Display Section -->
       <div class="flex-grow overflow-hidden min-h-0">
-        <TaskBoardDisplay 
+        <TaskPlanDisplay 
           :tasks="activeTeamContext?.taskPlan" 
           :statuses="activeTeamContext?.taskStatuses" 
         />
@@ -55,7 +55,7 @@
 import { computed } from 'vue';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import TeamMembersPanel from '~/components/workspace/TeamMembersPanel.vue';
-import TaskBoardDisplay from '~/components/workspace/TaskBoardDisplay.vue';
+import TaskPlanDisplay from '~/components/workspace/TaskPlanDisplay.vue';
 import { useVerticalResize } from '~/composables/useVerticalResize';
 
 const teamContextsStore = useAgentTeamContextsStore();
