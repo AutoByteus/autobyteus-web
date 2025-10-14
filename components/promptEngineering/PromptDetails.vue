@@ -1,5 +1,33 @@
 <template>
   <div class="fixed inset-0 bg-white z-50 overflow-auto">
+    <!-- Delete confirmation dialog -->
+    <div v-if="showDeleteConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+      <div class="bg-white p-6 rounded-lg shadow-lg max-w-md">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Delete Prompt</h3>
+        <p class="text-gray-700 mb-6">Are you sure you want to delete this prompt? This action cannot be undone and will remove this version permanently.</p>
+        <div class="flex justify-end space-x-3">
+          <button 
+            @click="cancelDelete" 
+            :disabled="isDeleting"
+            class="px-4 py-2 border rounded-md hover:bg-gray-50 disabled:bg-gray-100"
+          >
+            Cancel
+          </button>
+          <button 
+            @click="confirmDelete"
+            :disabled="isDeleting"
+            class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-red-400 flex items-center"
+          >
+            <svg v-if="isDeleting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ isDeleting ? 'Deleting...' : 'Delete' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="max-w-6xl mx-auto px-6 py-8">
       <!-- Header with back button and actions -->
       <div class="flex justify-between items-center mb-6">
@@ -64,6 +92,15 @@
                   d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
               Copy Prompt
+            </button>
+             <button
+              @click="openDeleteConfirm"
+              class="flex items-center px-4 py-2 text-red-700 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+            >
+               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete
             </button>
           </template>
         </div>
@@ -244,6 +281,8 @@ const relatedPrompts = ref<any[]>([]);
 const isEditing = ref(false);
 const isSaving = ref(false);
 const promptContentTextarea = ref<HTMLTextAreaElement | null>(null);
+const showDeleteConfirm = ref(false);
+const isDeleting = ref(false);
 
 const formData = reactive({
   name: '',
@@ -326,6 +365,32 @@ async function setActivePrompt() {
     isSaving.value = false;
   }
 }
+
+// Delete functions
+function openDeleteConfirm() {
+  showDeleteConfirm.value = true;
+}
+
+function cancelDelete() {
+  showDeleteConfirm.value = false;
+}
+
+async function confirmDelete() {
+  if (!prompt.value) return;
+  isDeleting.value = true;
+  try {
+    await promptStore.deletePrompt(prompt.value.id);
+    // The marketplace will show the notification from the store's deleteResult
+    viewStore.showMarketplace();
+  } catch (err) {
+    console.error("Failed to delete prompt:", err);
+    // Optionally show an error toast
+  } finally {
+    isDeleting.value = false;
+    showDeleteConfirm.value = false;
+  }
+}
+
 
 // Comparison mode state
 const comparisonMode = ref(false);

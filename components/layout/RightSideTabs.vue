@@ -11,6 +11,9 @@
       <div v-if="activeTab === 'teamMembers'" class="h-full">
         <TeamOverviewPanel />
       </div>
+      <div v-if="activeTab === 'todoList'" class="h-full">
+        <TodoListPanel :todos="activeContextStore.currentTodoList" />
+      </div>
       <div v-if="activeTab === 'terminal'" class="h-full">
         <Terminal />
       </div>
@@ -24,18 +27,22 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
+import { useActiveContextStore } from '~/stores/activeContextStore';
 import TabList from '~/components/tabs/TabList.vue';
 import TeamOverviewPanel from '~/components/workspace/TeamOverviewPanel.vue';
+import TodoListPanel from '~/components/workspace/TodoListPanel.vue';
 import Terminal from '~/components/workspace/Terminal.vue';
 import VncViewer from '~/components/workspace/VncViewer.vue';
 
-type TabName = 'teamMembers' | 'terminal' | 'vnc';
+type TabName = 'teamMembers' | 'terminal' | 'vnc' | 'todoList';
 
 const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
+const activeContextStore = useActiveContextStore();
 const activeTab = ref<TabName>('terminal');
 
 const allTabs = [
   { name: 'teamMembers' as TabName, label: 'Team', requires: 'team' },
+  { name: 'todoList' as TabName, label: 'To-Do', requires: 'agent' },
   { name: 'terminal' as TabName, label: 'Terminal', requires: 'any' },
   { name: 'vnc' as TabName, label: 'VNC Viewer', requires: 'any' },
 ];
@@ -55,8 +62,10 @@ const handleTabSelect = (tabName: string) => {
 watch(() => selectedLaunchProfileStore.selectedProfileType, (newType) => {
   if (newType === 'team') {
     activeTab.value = 'teamMembers';
-  } else if (newType === 'agent' && activeTab.value === 'teamMembers') {
-    activeTab.value = 'terminal';
+  } else if (newType === 'agent') {
+    // If the new profile type is 'agent', switch to the 'todoList' tab by default.
+    // If the todo list is empty, the panel will show a "no todos" message.
+    activeTab.value = 'todoList';
   }
 }, { immediate: true });
 
@@ -67,6 +76,14 @@ watch(visibleTabs, (newVisibleTabs) => {
     activeTab.value = newVisibleTabs[0].name;
   }
 });
+
+// Watch the ToDo list for the active agent. If it becomes populated, switch to the To-Do tab.
+watch(() => activeContextStore.currentTodoList, (newTodoList) => {
+  if (selectedLaunchProfileStore.selectedProfileType === 'agent' && newTodoList.length > 0 && activeTab.value !== 'todoList') {
+    activeTab.value = 'todoList';
+  }
+});
+
 </script>
 
 <style scoped>

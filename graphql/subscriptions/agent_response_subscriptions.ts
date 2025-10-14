@@ -72,6 +72,13 @@ export const AgentResponseSubscription = gql`
           senderId
           content
         }
+        ... on GraphQLToDoListUpdateData {
+          todos {
+            description
+            todoId
+            status
+          }
+        }
       }
     }
   }
