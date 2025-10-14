@@ -6,7 +6,7 @@ import type {
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import { processAgentResponseEvent } from '~/services/agentResponseProcessor';
 import { handleTeamPhaseTransition } from './agentTeamResponseHandlers/teamStatusHandler';
-import { handleTasksAdded, handleTaskStatusUpdated } from './agentTeamResponseHandlers/taskPlanHandler';
+import { handleTasksCreated, handleTaskStatusUpdated } from './agentTeamResponseHandlers/taskPlanHandler';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 
 /**
@@ -40,8 +40,8 @@ export function processAgentTeamResponseEvent(event: GraphQLAgentTeamStreamEvent
       handleSubTeamEventRebroadcast(data, teamContext);
       break;
     
-    case 'GraphQLTasksAddedEvent':
-      handleTasksAdded(data, teamContext);
+    case 'GraphQLTasksCreatedEvent':
+      handleTasksCreated(data, teamContext);
       break;
 
     case 'GraphQLTaskStatusUpdatedEvent':

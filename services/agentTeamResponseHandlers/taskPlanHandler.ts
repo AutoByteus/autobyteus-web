@@ -1,5 +1,5 @@
 // file: autobyteus-web/services/agentTeamResponseHandlers/taskPlanHandler.ts
-import type { GraphQLTasksAddedEvent, GraphQLTaskStatusUpdatedEvent } from '~/generated/graphql';
+import type { GraphQLTasksCreatedEvent, GraphQLTaskStatusUpdatedEvent } from '~/generated/graphql';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import type { Task } from '~/types/taskManagement';
 import { TaskStatus } from '~/types/taskManagement';
@@ -15,11 +15,11 @@ function mapGqlTaskToLocal(gqlTask: any): Task {
   };
 }
 
-export function handleTasksAdded(
-  data: GraphQLTasksAddedEvent,
+export function handleTasksCreated(
+  data: GraphQLTasksCreatedEvent,
   teamContext: AgentTeamContext
 ): void {
-  console.log(`Tasks added for team ${teamContext.teamId}`);
+  console.log(`Tasks created for team ${teamContext.teamId}`);
   if (data.tasks) {
     // If a plan already exists, this adds to it. Otherwise, it initializes it.
     if (!teamContext.taskPlan) {
