@@ -97,11 +97,31 @@
       <div v-else-if="prompt" class="bg-white rounded-lg border p-6">
         <!-- Title and metadata (not editable) -->
         <div class="flex justify-between items-start">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900 mb-2">{{ prompt.name }}</h1>
+            <div class="flex-1">
+                <div v-if="isEditing" class="grid gap-4 mb-4 md:grid-cols-2">
+                  <div class="flex flex-col">
+                    <label for="prompt-name-input" class="text-sm font-medium text-gray-700 mb-1">Prompt Name</label>
+                    <input
+                      id="prompt-name-input"
+                      v-model="formData.name"
+                      type="text"
+                      class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div class="flex flex-col">
+                    <label for="prompt-category-input" class="text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <input
+                      id="prompt-category-input"
+                      v-model="formData.category"
+                      type="text"
+                      class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                <h1 v-else class="text-2xl font-bold text-gray-900 mb-2">{{ prompt.name }}</h1>
                 <div class="flex items-center gap-4 mb-6">
                 <span class="inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
-                    {{ prompt.category }}
+                    {{ isEditing ? formData.category : prompt.category }}
                 </span>
                 <span class="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
                     v{{ prompt.version }}
@@ -226,6 +246,8 @@ const isSaving = ref(false);
 const promptContentTextarea = ref<HTMLTextAreaElement | null>(null);
 
 const formData = reactive({
+  name: '',
+  category: '',
   description: '',
   promptContent: '',
   suitableForModels: [] as string[],
@@ -242,6 +264,8 @@ function adjustTextareaHeight() {
 // Edit mode functions
 function startEditing() {
   if (!prompt.value) return;
+  formData.name = prompt.value.name || '';
+  formData.category = prompt.value.category || '';
   formData.description = prompt.value.description || '';
   formData.promptContent = prompt.value.promptContent || '';
   formData.suitableForModels = modelList.value;
@@ -260,11 +284,17 @@ async function saveChanges() {
   if (!prompt.value) return;
   isSaving.value = true;
   try {
+    if (!formData.name.trim() || !formData.category.trim()) {
+      throw new Error('Prompt name and category are required');
+    }
     const updatedPrompt = await promptStore.updatePrompt(
       prompt.value.id,
       formData.promptContent,
       formData.description,
-      formData.suitableForModels.join(', ')
+      formData.suitableForModels.join(', '),
+      undefined,
+      formData.name,
+      formData.category
     );
     // Update local prompt data with the response from the store
     if (updatedPrompt) {

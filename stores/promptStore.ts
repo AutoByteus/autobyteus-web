@@ -196,14 +196,16 @@ export const usePromptStore = defineStore('prompt', {
       promptContent?: string,
       description?: string,
       suitableForModels?: string,
-      isActive?: boolean
+      isActive?: boolean,
+      name?: string,
+      category?: string,
     ) {
       try {
         const { mutate } = useMutation(UPDATE_PROMPT, {
             refetchQueries: [{ query: GetAgentCustomizationOptions }]
         });
         const response = await mutate({
-          input: { id, promptContent, description, suitableForModels, isActive },
+          input: { id, promptContent, description, suitableForModels, isActive, name, category },
         });
 
         if (response?.data?.updatePrompt) {
