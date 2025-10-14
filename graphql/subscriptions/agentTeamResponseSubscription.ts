@@ -90,7 +90,7 @@ const nestedTeamEventFragment = gql`
           }
         }
       }
-      ... on GraphQLTasksAddedEvent {
+      ... on GraphQLTasksCreatedEvent {
         teamId
         tasks {
           taskId

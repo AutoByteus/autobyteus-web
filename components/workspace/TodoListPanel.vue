@@ -29,11 +29,11 @@
 
     <!-- To-Do List -->
     <ul
-      v-if="sortedTodos.length"
+      v-if="decoratedTodos.length"
       class="mt-4 border-t border-gray-200 flex-1 overflow-y-auto -mx-4"
     >
       <li
-        v-for="todo in sortedTodos"
+        v-for="todo in decoratedTodos"
         :key="todo.todoId"
         class="px-4 py-3 flex items-center justify-between gap-4 border-b border-gray-100 last:border-b-0"
       >
@@ -109,17 +109,6 @@ const decoratedTodos = computed<DecoratedToDo[]>(() => {
       ...todo,
       meta: baseStatusMeta[todo.status] ?? baseStatusMeta[ToDoStatus.PENDING]
     };
-  });
-});
-
-const sortedTodos = computed<DecoratedToDo[]>(() => {
-  return [...decoratedTodos.value].sort((a, b) => {
-    const orderMap: Record<ToDoStatus, number> = {
-      [ToDoStatus.IN_PROGRESS]: 0,
-      [ToDoStatus.PENDING]: 1,
-      [ToDoStatus.DONE]: 2
-    };
-    return orderMap[a.status] - orderMap[b.status];
   });
 });
 
