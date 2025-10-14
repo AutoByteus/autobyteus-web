@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { useQuery } from '@vue/apollo-composable';
+import { useApolloClient } from '@vue/apollo-composable';
 import { GetAgentCustomizationOptions } from '~/graphql/queries/agentCustomizationOptionsQueries';
+import type { GetAgentCustomizationOptionsQuery } from '~/generated/graphql';
 
 interface PromptCategory {
   __typename?: 'PromptCategory';
@@ -27,34 +28,36 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
   
   const loading = ref(false);
   const error = ref<any>(null);
+  const { client } = useApolloClient();
 
   // Actions
-  function fetchAllAvailableOptions() {
-    const { onResult, onError, loading: queryLoading } = useQuery(
-      GetAgentCustomizationOptions,
-      null,
-    );
+  async function fetchAllAvailableOptions() {
+    loading.value = true;
+    error.value = null;
+    try {
+      const { data, errors } = await client.query<GetAgentCustomizationOptionsQuery>({
+        query: GetAgentCustomizationOptions,
+      });
 
-    loading.value = queryLoading.value;
-
-    onResult(result => {
-      if (result.data) {
-        toolNames.value = result.data.availableToolNames || [];
-        inputProcessors.value = result.data.availableInputProcessors || [];
-        llmResponseProcessors.value = result.data.availableLlmResponseProcessors || [];
-        systemPromptProcessors.value = result.data.availableSystemPromptProcessors || [];
-        toolExecutionResultProcessors.value = result.data.availableToolExecutionResultProcessors || [];
-        phaseHooks.value = result.data.availablePhaseHooks || [];
-        promptCategories.value = result.data.availablePromptCategories || [];
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map(e => e.message).join(', '));
       }
+      
+      if (data) {
+        toolNames.value = data.availableToolNames || [];
+        inputProcessors.value = data.availableInputProcessors || [];
+        llmResponseProcessors.value = data.availableLlmResponseProcessors || [];
+        systemPromptProcessors.value = data.availableSystemPromptProcessors || [];
+        toolExecutionResultProcessors.value = data.availableToolExecutionResultProcessors || [];
+        phaseHooks.value = data.availablePhaseHooks || [];
+        promptCategories.value = data.availablePromptCategories || [];
+      }
+    } catch (e) {
+      error.value = e;
+      console.error("Failed to fetch agent definition options:", e);
+    } finally {
       loading.value = false;
-    });
-
-    onError(err => {
-      error.value = err;
-      loading.value = false;
-      console.error("Failed to fetch agent definition options:", err);
-    });
+    }
   }
 
   return {
