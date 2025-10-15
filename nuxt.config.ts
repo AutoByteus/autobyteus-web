@@ -4,12 +4,17 @@ import { applyElectronConfig } from './nuxt.electron.config'
 // Fixed server port for internal server
 const INTERNAL_SERVER_PORT = 29695
 
+// Define the target for the development proxy.
+// Use the internal Docker URL if provided, otherwise default for non-Docker local dev.
+const proxyTarget = process.env.NUXT_DEV_PROXY_URL || 'http://localhost:8000';
+
 // Configure default server URLs for non-Electron builds
+// These should be relative paths for the browser to use
 const defaultServerUrls = {
-  graphqlBaseUrl: process.env.NUXT_PUBLIC_GRAPHQL_BASE_URL || 'http://localhost:8000/graphql',
-  restBaseUrl: process.env.NUXT_PUBLIC_REST_BASE_URL || 'http://localhost:8000/rest',
-  wsBaseUrl: process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8000/graphql',
-  transcriptionWsEndpoint: process.env.NUXT_PUBLIC_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8000/ws/transcribe'
+  graphqlBaseUrl: process.env.NUXT_PUBLIC_GRAPHQL_BASE_URL || '/graphql',
+  restBaseUrl: process.env.NUXT_PUBLIC_REST_BASE_URL || '/rest',
+  wsBaseUrl: process.env.NUXT_PUBLIC_WS_BASE_URL || '/graphql',
+  transcriptionWsEndpoint: process.env.NUXT_PUBLIC_TRANSCRIPTION_WS_ENDPOINT || '/ws/transcribe'
 }
 
 // For Electron builds, always use the internal server port
@@ -26,6 +31,7 @@ const serverUrls = process.env.BUILD_TARGET === 'electron' ? electronServerUrls 
 console.log('Nuxt config: Build target:', process.env.BUILD_TARGET || 'browser')
 console.log('Nuxt config: GraphQL URL:', serverUrls.graphqlBaseUrl)
 console.log('Nuxt config: REST URL:', serverUrls.restBaseUrl)
+console.log('Nuxt config: Proxy Target:', proxyTarget)
 
 const baseConfig = {
   ssr: false,
@@ -58,11 +64,11 @@ const baseConfig = {
     },
     devProxy: process.env.NODE_ENV === 'development' ? {
       '/graphql': {
-        target: serverUrls.graphqlBaseUrl,
+        target: `${proxyTarget}/graphql`,
         changeOrigin: true,
       },
       '/rest': {
-        target: serverUrls.restBaseUrl,
+        target: `${proxyTarget}/rest`,
         changeOrigin: true,
       }
     } : {}
@@ -116,9 +122,7 @@ const baseConfig = {
   apollo: {
     clients: {
       default: {
-        httpEndpoint: process.env.NODE_ENV === 'development' 
-          ? '/graphql'
-          : serverUrls.graphqlBaseUrl,
+        httpEndpoint: '/graphql', // Always use a relative path in development
         wsEndpoint: serverUrls.wsBaseUrl,
         websocketsOnly: false,
         // Enable in-memory cache and set default fetch policy
