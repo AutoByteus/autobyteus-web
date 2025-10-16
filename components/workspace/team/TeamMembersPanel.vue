@@ -59,7 +59,7 @@
 import { computed, ref } from 'vue';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
-import AgentStatusDisplay from '~/components/workspace/AgentStatusDisplay.vue';
+import AgentStatusDisplay from '~/components/workspace/agent/AgentStatusDisplay.vue';
 import AgentDeleteConfirmDialog from '~/components/agents/AgentDeleteConfirmDialog.vue';
 
 const teamContextsStore = useAgentTeamContextsStore();

@@ -127,7 +127,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, toRefs } from 'vue';
 import { useAgentDefinitionStore, type AgentDefinition } from '~/stores/agentDefinitionStore';
-import WorkspaceConfigModal from '~/components/workspace/WorkspaceConfigModal.vue';
+import WorkspaceConfigModal from '~/components/workspace/config/WorkspaceConfigModal.vue';
 import AgentDeleteConfirmDialog from '~/components/agents/AgentDeleteConfirmDialog.vue';
 
 const props = defineProps<{ agentId: string }>();

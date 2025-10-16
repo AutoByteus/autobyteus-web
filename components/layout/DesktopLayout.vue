@@ -112,8 +112,8 @@ import { usePanelResize } from '~/composables/usePanelResize'
 import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
 import FileContentViewer from '~/components/fileExplorer/FileContentViewer.vue'
-import AgentWorkspaceView from '~/components/workspace/AgentWorkspaceView.vue'
-import TeamWorkspaceView from '~/components/workspace/TeamWorkspaceView.vue' // Import Team View
+import AgentWorkspaceView from '~/components/workspace/agent/AgentWorkspaceView.vue'
+import TeamWorkspaceView from '~/components/workspace/team/TeamWorkspaceView.vue' // Import Team View
 import RightSideTabs from './RightSideTabs.vue'
 import LaunchProfilePanel from '~/components/launchProfiles/LaunchProfilePanel.vue'
 

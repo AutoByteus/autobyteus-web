@@ -1,21 +1,7 @@
 <template>
   <div class="h-full bg-white p-4 flex flex-col">
-    <!-- Header -->
-    <div class="flex items-start justify-between gap-4 flex-shrink-0">
-      <div class="flex items-center gap-3">
-        <span class="i-heroicons-clipboard-document-list-20-solid w-7 h-7 text-indigo-500"></span>
-        <div>
-          <h2 class="text-base font-semibold text-gray-900">To-Do List</h2>
-          <p class="text-xs text-gray-500">Live view of the agent’s current plan.</p>
-        </div>
-      </div>
-      <span class="text-sm font-medium text-gray-600 whitespace-nowrap">
-        {{ completedCount }} / {{ totalTodos }} done
-      </span>
-    </div>
-
     <!-- Progress Bar -->
-    <div class="mt-4 flex-shrink-0">
+    <div v-if="totalTodos > 0" class="flex-shrink-0">
       <div class="h-2 w-full rounded-full bg-gray-200 overflow-hidden">
         <div
           class="h-full rounded-full bg-blue-600 transition-all duration-300"
@@ -56,7 +42,7 @@
     <!-- Empty State -->
     <div
       v-else
-      class="mt-4 flex-1 flex items-center justify-center text-center bg-gray-50 rounded-lg"
+      class="flex-1 flex items-center justify-center text-center bg-gray-50 rounded-lg"
     >
       <div class="px-4 py-8">
         <span class="i-heroicons-clipboard-document-check-20-solid w-10 h-10 text-gray-300 mx-auto"></span>
@@ -123,9 +109,6 @@ const progressPercent = computed(() => {
 const progressWidth = computed(() => `${progressPercent.value}%`);
 
 const progressLabel = computed(() => {
-  if (totalTodos.value === 0) {
-    return 'No tasks yet — create a to-do list to get started.';
-  }
   return `${completedCount.value} of ${totalTodos.value} tasks done (${progressPercent.value}%)`;
 });
 </script>

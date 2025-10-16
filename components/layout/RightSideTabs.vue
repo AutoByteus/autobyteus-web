@@ -29,10 +29,10 @@ import { ref, computed, watch } from 'vue';
 import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
 import { useActiveContextStore } from '~/stores/activeContextStore';
 import TabList from '~/components/tabs/TabList.vue';
-import TeamOverviewPanel from '~/components/workspace/TeamOverviewPanel.vue';
-import TodoListPanel from '~/components/workspace/TodoListPanel.vue';
-import Terminal from '~/components/workspace/Terminal.vue';
-import VncViewer from '~/components/workspace/VncViewer.vue';
+import TeamOverviewPanel from '~/components/workspace/team/TeamOverviewPanel.vue';
+import TodoListPanel from '~/components/workspace/agent/TodoListPanel.vue';
+import Terminal from '~/components/workspace/tools/Terminal.vue';
+import VncViewer from '~/components/workspace/tools/VncViewer.vue';
 
 type TabName = 'teamMembers' | 'terminal' | 'vnc' | 'todoList';
 

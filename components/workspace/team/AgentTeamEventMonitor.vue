@@ -19,7 +19,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
-import AgentEventMonitor from '~/components/workspace/AgentEventMonitor.vue';
+import AgentEventMonitor from '~/components/workspace/agent/AgentEventMonitor.vue';
 
 const teamContextsStore = useAgentTeamContextsStore();
 

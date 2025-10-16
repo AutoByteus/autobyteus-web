@@ -87,7 +87,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useAgentDefinitionStore, type AgentDefinition } from '~/stores/agentDefinitionStore';
 import AgentCard from '~/components/agents/AgentCard.vue';
-import WorkspaceConfigModal from '~/components/workspace/WorkspaceConfigModal.vue';
+import WorkspaceConfigModal from '~/components/workspace/config/WorkspaceConfigModal.vue';
 
 const emit = defineEmits(['navigate']);
 

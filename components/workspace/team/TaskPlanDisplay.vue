@@ -48,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-// file: autobyteus-web/components/workspace/TaskPlanDisplay.vue
+// file: autobyteus-web/components/workspace/team/TaskPlanDisplay.vue
 import { computed } from 'vue';
 import type { Task, TaskStatus } from '~/types/taskManagement';
 

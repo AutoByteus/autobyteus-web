@@ -244,7 +244,7 @@ import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
 import type { TeamLaunchProfile, WorkspaceLaunchConfig, TeamMemberConfigOverride, GroupedOption } from '~/types/TeamLaunchProfile';
-import WorkspaceConfigForm from '~/components/workspace/WorkspaceConfigForm.vue';
+import WorkspaceConfigForm from '~/components/workspace/config/WorkspaceConfigForm.vue';
 import InlineSearchableGroupedList from '~/components/agentTeams/InlineSearchableGroupedList.vue';
 
 const props = defineProps<{

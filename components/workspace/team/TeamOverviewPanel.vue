@@ -54,8 +54,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
-import TeamMembersPanel from '~/components/workspace/TeamMembersPanel.vue';
-import TaskPlanDisplay from '~/components/workspace/TaskPlanDisplay.vue';
+import TeamMembersPanel from '~/components/workspace/team/TeamMembersPanel.vue';
+import TaskPlanDisplay from '~/components/workspace/team/TaskPlanDisplay.vue';
 import { useVerticalResize } from '~/composables/useVerticalResize';
 
 const teamContextsStore = useAgentTeamContextsStore();

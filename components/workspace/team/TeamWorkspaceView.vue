@@ -44,10 +44,10 @@ import { computed, ref } from 'vue';
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
 import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
-import TeamStatusDisplay from '~/components/workspace/TeamStatusDisplay.vue';
-import AgentTeamEventMonitorTabs from '~/components/workspace/AgentTeamEventMonitorTabs.vue';
-import AgentTeamEventMonitor from '~/components/workspace/AgentTeamEventMonitor.vue';
-import WorkspaceHeaderActions from '~/components/workspace/WorkspaceHeaderActions.vue';
+import TeamStatusDisplay from '~/components/workspace/team/TeamStatusDisplay.vue';
+import AgentTeamEventMonitorTabs from '~/components/workspace/team/AgentTeamEventMonitorTabs.vue';
+import AgentTeamEventMonitor from '~/components/workspace/team/AgentTeamEventMonitor.vue';
+import WorkspaceHeaderActions from '~/components/workspace/common/WorkspaceHeaderActions.vue';
 import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
 
