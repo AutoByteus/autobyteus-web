@@ -71,7 +71,7 @@
     "@pinia/nuxt": "^0.5.1",
     "@pinia/testing": "^0.1.7",
     "@tailwindcss/typography": "^0.5.15",
-    "@types/electron-builder": "^5.0.1",
+    "@types/electron-builder": "^2.8.2",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^22.0.0",
     "@types/to-ico": "^1.1.3",

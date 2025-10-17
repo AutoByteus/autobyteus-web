@@ -2702,7 +2702,7 @@
   dependencies:
     "@types/ms" "*"
 
-"@types/electron-builder@^5.0.1":
+"@types/electron-builder@^2.8.2":
   version "2.8.2"
   resolved "https://registry.yarnpkg.com/@types/electron-builder/-/electron-builder-2.8.2.tgz#c2011f953d97cd955f5426289c2299422b2f2757"
   integrity sha512-9Q3xeI1rT9slqTUKF4yYSQfYMSHy7TAuEMxuLl41Rh1itZGxwIMlR+YvUmlvnbKbVeSoLPM+CLAehz5mpYmydg==

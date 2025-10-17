@@ -3,29 +3,46 @@ import { applyElectronConfig } from './nuxt.electron.config'
 
 // Fixed server port for internal server
 const INTERNAL_SERVER_PORT = 29695
+const isDevelopment = process.env.NODE_ENV === 'development'
+const isElectronBuild = process.env.BUILD_TARGET === 'electron'
 
-// Configure default server URLs for non-Electron builds
-const defaultServerUrls = {
-  graphqlBaseUrl: process.env.NUXT_PUBLIC_GRAPHQL_BASE_URL || 'http://localhost:8000/graphql',
-  restBaseUrl: process.env.NUXT_PUBLIC_REST_BASE_URL || 'http://localhost:8000/rest',
-  wsBaseUrl: process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8000/graphql',
-  transcriptionWsEndpoint: process.env.NUXT_PUBLIC_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8000/ws/transcribe'
+// --- Server URL Configuration ---
+
+// Define backend URLs with clear precedence for different environments.
+// 1. Environment variables are for the Docker dev environment or local overrides.
+// 2. 'localhost:8000' is the default for standard local development.
+const backendProxyUrl = process.env.NUXT_DEV_PROXY_URL || 'http://localhost:8000'
+
+let serverUrls = {
+  graphqlBaseUrl: '',
+  restBaseUrl: '',
+  wsBaseUrl: '',
+  transcriptionWsEndpoint: ''
+};
+
+if (isElectronBuild) {
+  serverUrls = {
+    graphqlBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/graphql`,
+    restBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/rest`,
+    wsBaseUrl: `ws://localhost:${INTERNAL_SERVER_PORT}/graphql`,
+    transcriptionWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/transcribe`
+  };
+} else if (isDevelopment) {
+  serverUrls = {
+    graphqlBaseUrl: '/graphql',
+    restBaseUrl: '/rest',
+    wsBaseUrl: process.env.BACKEND_WS_BASE_URL || 'ws://localhost:8000/graphql',
+    transcriptionWsEndpoint: process.env.BACKEND_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8000/ws/transcribe'
+  };
+} else {
+  // Read from our custom-named environment variables to prevent automatic overrides.
+  serverUrls = {
+    graphqlBaseUrl: process.env.BACKEND_GRAPHQL_BASE_URL || 'http://localhost:8000/graphql',
+    restBaseUrl: process.env.BACKEND_REST_BASE_URL || 'http://localhost:8000/rest',
+    wsBaseUrl: process.env.BACKEND_WS_BASE_URL || 'ws://localhost:8000/graphql',
+    transcriptionWsEndpoint: process.env.BACKEND_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8000/ws/transcribe'
+  };
 }
-
-// For Electron builds, always use the internal server port
-const electronServerUrls = {
-  graphqlBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/graphql`,
-  restBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/rest`,
-  wsBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/graphql`,
-  transcriptionWsEndpoint: `http://localhost:${INTERNAL_SERVER_PORT}/transcribe`
-}
-
-// Select server URLs based on build target
-const serverUrls = process.env.BUILD_TARGET === 'electron' ? electronServerUrls : defaultServerUrls
-
-console.log('Nuxt config: Build target:', process.env.BUILD_TARGET || 'browser')
-console.log('Nuxt config: GraphQL URL:', serverUrls.graphqlBaseUrl)
-console.log('Nuxt config: REST URL:', serverUrls.restBaseUrl)
 
 const baseConfig = {
   ssr: false,
@@ -44,7 +61,6 @@ const baseConfig = {
     '@nuxt/test-utils/module'
   ],
 
-  // Add global middleware
   routeRules: {
     '/workspace/**': { middleware: ['workspace'] },
     '/': { middleware: ['workspace'] }
@@ -56,14 +72,16 @@ const baseConfig = {
       dir: 'dist',
       publicDir: 'dist/public'
     },
-    devProxy: process.env.NODE_ENV === 'development' ? {
+    devProxy: isDevelopment ? {
       '/graphql': {
-        target: serverUrls.graphqlBaseUrl,
+        target: `${backendProxyUrl}/graphql`,
         changeOrigin: true,
+        followRedirects: true,
       },
       '/rest': {
-        target: serverUrls.restBaseUrl,
+        target: `${backendProxyUrl}/rest`,
         changeOrigin: true,
+        followRedirects: true,
       }
     } : {}
   },
@@ -84,19 +102,16 @@ const baseConfig = {
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
     },
     build: {
-      target: 'es2022', // Added to support top-level await
+      target: 'es2022',
     },
   },
 
   runtimeConfig: {
     public: {
-      // Use server URLs based on the build target
       graphqlBaseUrl: serverUrls.graphqlBaseUrl,
       restBaseUrl: serverUrls.restBaseUrl,
       wsBaseUrl: serverUrls.wsBaseUrl,
       googleSpeechApiKey: process.env.GOOGLE_SPEECH_API_KEY || '',
-      
-      // Removed VNC configuration from runtimeConfig as it is now handled via server settings
       
       audio: {
         targetSampleRate: 16000,
@@ -116,12 +131,9 @@ const baseConfig = {
   apollo: {
     clients: {
       default: {
-        httpEndpoint: process.env.NODE_ENV === 'development' 
-          ? '/graphql'
-          : serverUrls.graphqlBaseUrl,
+        httpEndpoint: serverUrls.graphqlBaseUrl,
         wsEndpoint: serverUrls.wsBaseUrl,
         websocketsOnly: false,
-        // Enable in-memory cache and set default fetch policy
         inMemoryCacheOptions: {},
         defaultOptions: {
           watchQuery: {
@@ -147,7 +159,6 @@ const baseConfig = {
   compatibilityDate: '2024-07-22',
 
   build: {
-    // Add noVNC to transpile so that Babel processes it
     transpile: [
       '@xenova/transformers',
     ],

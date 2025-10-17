@@ -16,8 +16,9 @@ export function getServerBaseUrl(): string {
     return `http://localhost:${INTERNAL_SERVER_PORT}`;
   }
   
-  // Not in Electron, use environment variables or fall back to default port 8000
-  return process.env.NUXT_PUBLIC_REST_BASE_URL?.replace('/rest', '') || 'http://localhost:8000';
+  // For browser builds, derive from runtime config.
+  const config = useRuntimeConfig();
+  return config.public.restBaseUrl.replace('/rest', '');
 }
 
 /**
@@ -28,10 +29,12 @@ export function isElectronEnvironment(): boolean {
 }
 
 /**
- * Get all server URLs as an object
+ * Get all server URLs as an object.
+ * This function acts as a single source of truth for API endpoints at runtime.
  */
 export function getServerUrls() {
-  // In Electron context, we always try the internal port first
+  // In Electron context, we have a special runtime environment and must use the internal port.
+  // This check MUST come first as it's a runtime detection.
   if (isElectronEnvironment()) {
     const baseUrl = `http://localhost:${INTERNAL_SERVER_PORT}`;
     return {
@@ -43,17 +46,19 @@ export function getServerUrls() {
     };
   }
   
-  // Not in Electron, use environment variables
-  const graphqlUrl = process.env.NUXT_PUBLIC_GRAPHQL_BASE_URL || 'http://localhost:8000/graphql';
-  const restUrl = process.env.NUXT_PUBLIC_REST_BASE_URL || 'http://localhost:8000/rest';
-  const wsUrl = process.env.NUXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8000/graphql';
-  const transcriptionUrl = process.env.NUXT_PUBLIC_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8000/ws/transcribe';
+  // For all browser-based contexts (dev and prod), we now rely on the Nuxt runtimeConfig.
+  // The logic to decide between relative and absolute URLs is handled in nuxt.config.ts.
+  const config = useRuntimeConfig();
+  const restUrl = config.public.restBaseUrl;
   
+  // The health URL needs to be constructed correctly depending on whether the restUrl is relative or absolute.
+  const healthUrl = restUrl.startsWith('/') ? `${restUrl}/health` : new URL('/health', restUrl).href;
+
   return {
-    graphql: graphqlUrl,
+    graphql: config.public.graphqlBaseUrl,
     rest: restUrl,
-    ws: wsUrl,
-    transcription: transcriptionUrl,
-    health: `${restUrl}/health`
+    ws: config.public.wsBaseUrl,
+    transcription: config.public.audio.transcriptionWsEndpoint,
+    health: healthUrl,
   };
 }
