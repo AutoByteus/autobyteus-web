@@ -26,7 +26,8 @@ import highlightService from '~/services/highlightService';
 // Import PrismJS theme if not globally imported or handled by markdownItPrism/Nuxt config
 import 'prismjs/themes/prism.css'; // Or your theme, e.g., prism-okaidia.css
 
-const props = defineProps<{  content: string;
+const props = defineProps<{
+  content: string;
 }>();
 
 const contentRef = computed(() => props.content);
@@ -116,9 +117,8 @@ watch(segments, applyPostRenderEffects, { deep: true }); // Re-apply if segments
 }
 
 .markdown-renderer-segments .markdown-body code[class*="language-"] {
-  white-space: pre;
-  word-break: normal;
-  word-wrap: normal;
+  white-space: pre-wrap;
+  word-wrap: break-word;
   font-family: 'Fira Code', monospace;
   font-size: 14px;
   line-height: 1.5;

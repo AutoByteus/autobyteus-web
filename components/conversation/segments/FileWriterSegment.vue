@@ -23,7 +23,7 @@
     <div class="flex items-center bg-gray-50 dark:bg-gray-700/50 p-2 border-b border-gray-200 dark:border-gray-600">
         <button
           @click="toggleExpand"
-          class="mr-2 p-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors focus:outline-none"
+          class="mr-2 p-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors focus:outline-none flex-shrink-0"
           :aria-expanded="isExpanded"
           aria-label="Toggle file content"
         >
@@ -43,7 +43,7 @@
             />
           </svg>
         </button>
-        <span class="font-mono text-sm text-gray-700 dark:text-gray-300 truncate" :title="segment.arguments.path">
+        <span class="font-mono text-sm text-gray-700 dark:text-gray-300 break-all" :title="segment.arguments.path">
           File: {{ segment.arguments.path }}
         </span>
     </div>

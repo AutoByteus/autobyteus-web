@@ -3,7 +3,7 @@
     <MarkdownRenderer v-if="isMarkdownFile" :content="content" class="markdown-body prose dark:prose-invert prose-gray max-w-none" />
     <pre
       v-else
-      :class="`language-${language} w-full overflow-x-auto my-0`"
+      :class="`language-${language} w-full my-0`"
     ><code
       v-html="highlightedCode"
       :class="`language-${language}`"
@@ -20,7 +20,8 @@ import { getLanguage } from '~/utils/aiResponseParser/languageDetector';
 import type { FileSegment } from '~/utils/aiResponseParser/types';
 import 'prismjs/themes/prism.css'; // Ensure PrismJS theme is available
 
-const props = defineProps<{  path: string;
+const props = defineProps<{
+  path: string;
   content: string;
 }>();
 
@@ -59,9 +60,8 @@ const highlightedCode = computed(() => {
 }
 
 .file-display-container code[class*="language-"] {
-  white-space: pre;
-  word-break: normal;
-  word-wrap: normal;
+  white-space: pre-wrap;
+  word-wrap: break-word;
   font-family: 'Fira Code', monospace;
   font-size: 14px;
   line-height: 1.5;

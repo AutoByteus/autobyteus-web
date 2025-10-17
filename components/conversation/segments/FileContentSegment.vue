@@ -2,11 +2,11 @@
   <div class="overflow-x-auto mb-4">
     <!-- Header with file name and Apply / Reapply button -->
     <div class="flex justify-between items-center bg-gray-200 p-2 rounded-t-md">
-      <div class="flex items-center">
+      <div class="flex items-center min-w-0">
         <!-- expand / collapse button -->
         <button
           @click="toggleExpand"
-          class="mr-2 p-1 rounded hover:bg-gray-300 transition-colors focus:outline-none"
+          class="mr-2 p-1 rounded hover:bg-gray-300 transition-colors focus:outline-none flex-shrink-0"
           :aria-expanded="isExpanded"
           aria-label="Toggle file content"
         >
@@ -26,7 +26,7 @@
             />
           </svg>
         </button>
-        <span class="font-bold">File: {{ fileSegment.path }}</span>
+        <span class="font-bold break-all">File: {{ fileSegment.path }}</span>
       </div>
 
       <!-- Apply / Reapply button -->
@@ -103,7 +103,8 @@ import type { FileSegment } from '~/utils/aiResponseParser/types';
 /* Props & Stores                                                             */
 /* -------------------------------------------------------------------------- */
 
-const props = defineProps<{  fileSegment: FileSegment;
+const props = defineProps<{
+  fileSegment: FileSegment;
   conversationId: string;
   messageIndex: number;
 }>();
