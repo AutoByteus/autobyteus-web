@@ -20,32 +20,35 @@
     </div>
 
     <!-- Sub-header for file content, with expand/collapse button -->
-    <div class="flex items-center bg-gray-50 dark:bg-gray-700/50 p-2 border-b border-gray-200 dark:border-gray-600">
-        <button
-          @click="toggleExpand"
-          class="mr-2 p-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors focus:outline-none flex-shrink-0"
-          :aria-expanded="isExpanded"
-          aria-label="Toggle file content"
-        >
-          <svg
-            class="w-4 h-4 transform transition-transform text-gray-600 dark:text-gray-400"
-            :class="{ 'rotate-90': isExpanded }"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
+    <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 p-2 border-b border-gray-200 dark:border-gray-600">
+        <div class="flex items-center min-w-0">
+          <button
+            @click="toggleExpand"
+            class="mr-2 p-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors focus:outline-none flex-shrink-0"
+            :aria-expanded="isExpanded"
+            aria-label="Toggle file content"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
-        </button>
-        <span class="font-mono text-sm text-gray-700 dark:text-gray-300 break-all" :title="segment.arguments.path">
-          File: {{ segment.arguments.path }}
-        </span>
+            <svg
+              class="w-4 h-4 transform transition-transform text-gray-600 dark:text-gray-400"
+              :class="{ 'rotate-90': isExpanded }"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+          <span class="font-mono text-sm text-gray-700 dark:text-gray-300 break-all" :title="segment.arguments.path">
+            File: {{ segment.arguments.path }}
+          </span>
+        </div>
+        <CopyButton v-if="segment.arguments.content" :text-to-copy="segment.arguments.content" />
     </div>
 
     <!-- Collapsed content preview -->
@@ -99,6 +102,7 @@ import { computed, h, ref } from 'vue';
 import type { ToolCallSegment } from '~/utils/aiResponseParser/types';
 import { useAgentRunStore } from '~/stores/agentRunStore';
 import FileDisplay from '~/components/conversation/segments/renderer/FileDisplay.vue';
+import CopyButton from '~/components/common/CopyButton.vue';
 import { BeakerIcon, CheckCircleIcon, ClockIcon, CodeBracketIcon, ExclamationCircleIcon, HandRaisedIcon, XCircleIcon } from '@heroicons/vue/24/solid';
 
 const props = defineProps<{

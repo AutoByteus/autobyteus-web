@@ -14,7 +14,9 @@
         </span>
       </div>
       
-      <div class="flex items-center space-x-1 flex-shrink-0">
+      <div class="flex items-center space-x-2 flex-shrink-0">
+        <!-- Copy Button -->
+        <CopyButton v-if="segment.isComplete" :text-to-copy="segment.content" />
         <!-- View Mode Toggle Button -->
         <button
           v-if="segment.isComplete"
@@ -95,6 +97,7 @@ import type { IframeSegment } from '~/utils/aiResponseParser/types';
 import { CodeBracketSquareIcon, ChevronDownIcon, ArrowsPointingOutIcon, CodeBracketIcon, EyeIcon } from '@heroicons/vue/24/outline';
 import FullScreenIframeModal from '~/components/common/FullScreenIframeModal.vue';
 import FileDisplay from '~/components/conversation/segments/renderer/FileDisplay.vue';
+import CopyButton from '~/components/common/CopyButton.vue';
 
 const props = defineProps<{
   segment: IframeSegment;

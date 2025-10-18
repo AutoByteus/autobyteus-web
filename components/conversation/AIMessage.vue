@@ -27,7 +27,7 @@
         />
         <template v-else-if="segment.type === 'tool_call'">
           <FileWriterSegment
-            v-if="segment.toolName === 'FileWriter'"
+            v-if="isWriteFileTool(segment.toolName)"
             :segment="segment"
             :conversation-id="agentId"
           />
@@ -76,6 +76,8 @@ const props = defineProps<{
   agentId: string;
   messageIndex: number;
 }>();
+
+const isWriteFileTool = (toolName: string) => toolName === 'write_file' || toolName === 'FileWriter';
 </script>
 
 <style scoped>
