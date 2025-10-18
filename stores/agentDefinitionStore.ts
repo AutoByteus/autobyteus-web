@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { useMutation, useApolloClient, gql } from '@vue/apollo-composable';
+import { useMutation, useApolloClient } from '@vue/apollo-composable';
 import { GetAgentDefinitions } from '~/graphql/queries/agentDefinitionQueries';
 import { CreateAgentDefinition, UpdateAgentDefinition, DeleteAgentDefinition } from '~/graphql/mutations/agentDefinitionMutations';
 import type { GetAgentDefinitionsQuery } from '~/generated/graphql';

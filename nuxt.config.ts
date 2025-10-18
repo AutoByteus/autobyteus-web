@@ -66,27 +66,28 @@ const baseConfig = {
     '/': { middleware: ['workspace'] }
   },
 
+  // In development, HTTP requests are proxied via vite.server.proxy
   nitro: {
     preset: 'static',
     output: {
       dir: 'dist',
       publicDir: 'dist/public'
-    },
-    devProxy: isDevelopment ? {
-      '/graphql': {
-        target: `${backendProxyUrl}/graphql`,
-        changeOrigin: true,
-        followRedirects: true,
-      },
-      '/rest': {
-        target: `${backendProxyUrl}/rest`,
-        changeOrigin: true,
-        followRedirects: true,
-      }
-    } : {}
+    }
   },
 
   vite: {
+    server: {
+      proxy: isDevelopment ? {
+        '/graphql': {
+          target: backendProxyUrl,
+          changeOrigin: true,
+        },
+        '/rest': {
+          target: backendProxyUrl,
+          changeOrigin: true,
+        }
+      } : undefined,
+    },
     assetsInclude: ['**/*.jpeg', '**/*.jpg', '**/*.png', '**/*.svg'],
     worker: {
       format: 'es',
@@ -107,6 +108,7 @@ const baseConfig = {
   },
 
   runtimeConfig: {
+    // backendUrl is no longer needed as we use Vite's dev proxy
     public: {
       graphqlBaseUrl: serverUrls.graphqlBaseUrl,
       restBaseUrl: serverUrls.restBaseUrl,
