@@ -30,7 +30,7 @@
       </div>
 
       <!-- Action Buttons -->
-      <div class="flex items-center space-x-2">
+      <div class="flex items-center space-x-3">
         <CopyButton :text-to-copy="fileSegment.originalContent" />
         <button
           @click="handleApply"

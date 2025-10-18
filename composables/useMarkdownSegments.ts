@@ -1,4 +1,5 @@
-import { computed, Ref } from 'vue';
+import { computed } from 'vue';
+import type { Ref } from 'vue';
 import MarkdownIt from 'markdown-it';
 import DOMPurify from 'dompurify';
 import { generateDiagramId } from '~/utils/plantUMLCache';
