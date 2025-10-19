@@ -8,10 +8,8 @@ const isElectronBuild = process.env.BUILD_TARGET === 'electron'
 
 // --- Server URL Configuration ---
 
-// Define backend URLs with clear precedence for different environments.
-// 1. Environment variables are for the Docker dev environment or local overrides.
-// 2. 'localhost:8000' is the default for standard local development.
-const backendProxyUrl = process.env.NUXT_DEV_PROXY_URL || 'http://localhost:8000'
+// For local and Docker development, the Vite proxy forwards API requests to the backend server.
+const backendProxyUrl = 'http://localhost:8000'
 
 let serverUrls = {
   graphqlBaseUrl: '',
