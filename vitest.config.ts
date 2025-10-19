@@ -4,7 +4,12 @@ import path from 'path'
 export default defineVitestConfig({
   test: {
     globals: true,
-    environment: 'jsdom',
+    environment: 'nuxt', // integrates Nuxt runtime, composables, and auto-imports
+    environmentOptions: {
+      nuxt: {
+        domEnvironment: 'happy-dom', // or 'jsdom'
+      },
+    },
   },
   resolve: {
     alias: {

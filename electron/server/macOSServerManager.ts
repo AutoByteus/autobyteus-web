@@ -6,6 +6,7 @@ import isDev from 'electron-is-dev'
 import { StdioOptions } from 'child_process'
 import { BaseServerManager } from './baseServerManager'
 import { logger } from '../logger'
+import { getLocalIp } from '../utils/networkUtils'
 
 export class MacOSServerManager extends BaseServerManager {
   private executableInsideApp: string = ''
@@ -53,10 +54,16 @@ export class MacOSServerManager extends BaseServerManager {
       }
     }
     
+    // Dynamically determine the host IP, falling back to localhost if needed.
+    const hostIp = getLocalIp() || 'localhost'
+    const publicServerUrl = `http://${hostIp}:${this.serverPort}`
+
     const env = {
       ...process.env,
       PORT: this.serverPort.toString(),
-      SERVER_PORT: this.serverPort.toString()
+      SERVER_PORT: this.serverPort.toString(),
+      // Explicitly provide the server with its public-facing URL.
+      AUTOBYTEUS_SERVER_HOST: publicServerUrl
     }
 
     const options = {
@@ -66,6 +73,7 @@ export class MacOSServerManager extends BaseServerManager {
     }
 
     logger.info(`Starting server with port: ${this.serverPort}`)
+    logger.info(`Setting AUTOBYTEUS_SERVER_HOST to: ${publicServerUrl}`)
     logger.info(`Working directory: ${this.serverDir}`)
     logger.info(`App data directory: ${this.appDataDir}`)
     
