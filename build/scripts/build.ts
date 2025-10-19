@@ -45,7 +45,7 @@ const options: Configuration = {
   extraMetadata: {
     main: "dist/electron/main.js"
   },
-  asar: false,
+  asar: true,
   // Default icon for all platforms
   icon: 'build/icons/512x512.png',
   // Include the resources directory which contains the server

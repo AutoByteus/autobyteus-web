@@ -8,5 +8,11 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true
-  }
+  },
+  "include": ["**/*.ts"],
+  "exclude": [
+    "**/__tests__/**",
+    "**/*.spec.ts",
+    "vitest.config.ts"
+  ]
 }
