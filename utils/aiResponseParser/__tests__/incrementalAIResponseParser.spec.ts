@@ -104,7 +104,7 @@ describe('IncrementalAIResponseParser with Strategies', () => {
     const parser = createParser(LLMProvider.ANTHROPIC, true);
     
     const chunks = [
-      '<tool name="file_writer" id="123">',
+      '<tool name="write_file" id="123">',
       '<arguments>',
       '<arg name="path">/test.txt</arg>',
       '<arg name="content">Hel',
@@ -115,12 +115,12 @@ describe('IncrementalAIResponseParser with Strategies', () => {
     parser.processChunks(chunks);
     parser.finalize();
 
-    const expectedHash = sha256(`file_writer:${deterministicJsonStringify({ path: '/test.txt', content: 'Hello' })}`).toString();
+    const expectedHash = sha256(`write_file:${deterministicJsonStringify({ path: '/test.txt', content: 'Hello' })}`).toString();
 
     expect(segments).toEqual([
       expect.objectContaining({
         type: 'tool_call',
-        toolName: 'file_writer',
+        toolName: 'write_file',
         arguments: {
           path: '/test.txt',
           content: 'Hello'
@@ -197,7 +197,7 @@ describe('IncrementalAIResponseParser with Strategies', () => {
 
     // This is the raw content string, exactly as it should appear in the final parsed arguments.
     // It contains XML entities because that's what the LLM must generate to produce valid XML.
-    // The FileWriter parser is designed to NOT decode this specific argument.
+    // The write_file parser is designed to NOT decode this specific argument.
     const codeContent = `import sys
 from unittest.mock import patch
 import pytest
@@ -241,7 +241,7 @@ class TestComplexCode:
         assert game.game_over is True if __name__ == "__main__": pytest.main([__file__, "-v"])
 `;
 
-    const xml = `<tool name="FileWriter"><arguments><arg name="path">test.py</arg><arg name="content">${codeContent}</arg></arguments></tool>`;
+    const xml = `<tool name="write_file"><arguments><arg name="path">test.py</arg><arg name="content">${codeContent}</arg></arguments></tool>`;
     
     parser.processChunks([xml]);
     parser.finalize();
@@ -249,7 +249,7 @@ class TestComplexCode:
     expect(segments.length).toBe(1);
     const segment = segments[0] as ToolCallSegment;
     expect(segment.type).toBe('tool_call');
-    expect(segment.toolName).toBe('FileWriter');
+    expect(segment.toolName).toBe('write_file');
 
     // Crucial assertions: The arguments should be parsed correctly,
     // and the 'content' field must be a single string identical to the original code block.
@@ -261,7 +261,7 @@ class TestComplexCode:
     
     // Also verify the invocation ID is generated correctly using the raw content.
     const expectedArgs = { path: 'test.py', content: codeContent };
-    const expectedHash = sha256(`FileWriter:${deterministicJsonStringify(expectedArgs)}`).toString();
+    const expectedHash = sha256(`write_file:${deterministicJsonStringify(expectedArgs)}`).toString();
     expect(segment.invocationId).toBe(`mock_call_${expectedHash}_0`);
   });
 
@@ -271,7 +271,7 @@ class TestComplexCode:
 
     const codeContentWithEscapedChars = `"""Test that snake wraps around screen edges""" snake = Snake() # Set snake at edge snake.positions = [(0, 0)] snake.direction = (-1, 0) # Moving left from edge # Update - should wrap to right side snake.update() # Should be at right edge (GRID_WIDTH - 1, 0) head = snake.get_head_position() assert head[0] == 39 # GRID_WIDTH - 1 = 800/20 - 1 = 39 def test_food_positioning(): """Test food positioning logic""" food = Food() # Food position should be within grid bounds assert 0 &lt;= food.position[0] &lt; 40 # GRID_WIDTH = 800/20 = 40 assert 0 &lt;= food.position[1] &lt; 30 # GRID_HEIGHT = 600/20 = 30 def test_game_score_system(): """Test that game score system works correctly""" game = SnakeGame() # Initially no points assert game.snake.score == 0 # After eating food, score should increase by 10 game.snake.grow() assert game.snake.score == 10 game.snake.grow() assert game.snake.score == 20 def test_game_over_condition(): """Test that game over condition is detected correctly""" game = SnakeGame() # Initially not game over assert game.game_over is False # Force game over by causing collision with self game.snake.positions = [(5, 5), (6, 5), (7, 5)] game.snake.direction = (1, 0) # Moving right # This should set game_over to True game.update() assert game.game_over is True if __name__ == "__main__": pytest.main([__file__, "-v"])`;
 
-    const xml = `<tool name="FileWriter"><arguments><arg name="path">test_snake_game.py</arg><arg name="content">${codeContentWithEscapedChars}</arg></arguments></tool>`;
+    const xml = `<tool name="write_file"><arguments><arg name="path">test_snake_game.py</arg><arg name="content">${codeContentWithEscapedChars}</arg></arguments></tool>`;
     
     parser.processChunks([xml]);
     parser.finalize();
@@ -279,7 +279,7 @@ class TestComplexCode:
     expect(segments.length).toBe(1);
     const segment = segments[0] as ToolCallSegment;
     expect(segment.type).toBe('tool_call');
-    expect(segment.toolName).toBe('FileWriter');
+    expect(segment.toolName).toBe('write_file');
     expect(segment.arguments.path).toBe('test_snake_game.py');
     expect(typeof segment.arguments.content).toBe('string');
     // FIX: Assert that the content is the raw, undecoded string.
@@ -290,12 +290,12 @@ class TestComplexCode:
 
     // FIX: Use the raw, undecoded content for the hash generation.
     const expectedArgs = { path: 'test_snake_game.py', content: codeContentWithEscapedChars };
-    const expectedHash = sha256(`FileWriter:${deterministicJsonStringify(expectedArgs)}`).toString();
+    const expectedHash = sha256(`write_file:${deterministicJsonStringify(expectedArgs)}`).toString();
     expect(segment.invocationId).toBe(`mock_call_${expectedHash}_0`);
   });
 
   // NEW TEST CASE based on user-provided image to enhance test coverage
-  it('should correctly parse a FileWriter tool call with Python code content', () => {
+  it('should correctly parse a write_file tool call with Python code content', () => {
     const parser = createParser(LLMProvider.ANTHROPIC, true);
 
     const snakeGameCode = `import random
@@ -323,7 +323,7 @@ class Snake:
         self.reset()`;
     
     // The content does not contain special XML characters, so no escaping is needed here.
-    const xml = `<tool name="FileWriter"><arguments><arg name="path">snake_game.py</arg><arg name="content">${snakeGameCode}</arg></arguments></tool>`;
+    const xml = `<tool name="write_file"><arguments><arg name="path">snake_game.py</arg><arg name="content">${snakeGameCode}</arg></arguments></tool>`;
     
     parser.processChunks([xml]);
     parser.finalize();
@@ -331,13 +331,13 @@ class Snake:
     expect(segments.length).toBe(1);
     const segment = segments[0] as ToolCallSegment;
     expect(segment.type).toBe('tool_call');
-    expect(segment.toolName).toBe('FileWriter');
+    expect(segment.toolName).toBe('write_file');
     expect(segment.arguments.path).toBe('snake_game.py');
     expect(segment.arguments.content).toBe(snakeGameCode);
 
     // Also verify the invocation ID is generated correctly and deterministically
     const expectedArgs = { path: 'snake_game.py', content: snakeGameCode };
-    const expectedHash = sha256(`FileWriter:${deterministicJsonStringify(expectedArgs)}`).toString();
+    const expectedHash = sha256(`write_file:${deterministicJsonStringify(expectedArgs)}`).toString();
     expect(segment.invocationId).toBe(`mock_call_${expectedHash}_0`);
 
     // Log the final segment to the console for user visibility
@@ -591,14 +591,14 @@ All tool calls must be returned **as raw JSON only**, without any extra formatti
     segments = [];
     const parserJson = createParser(LLMProvider.OPENAI, true);
     parserJson.processChunks(['Here is a file to write: ']);
-    parserJson.processChunks(['{"tool_calls": [{"function": {"name": "file_writer", "arguments": "{\\"path\\":\\"/data.txt\\",\\"content\\":\\"some data\\"}"}}]}']);
+    parserJson.processChunks(['{"tool_calls": [{"function": {"name": "write_file", "arguments": "{\\"path\\":\\"/data.txt\\",\\"content\\":\\"some data\\"}"}}]}']);
     parserJson.finalize();
 
     expect(segments).toEqual([
         { type: 'text', content: 'Here is a file to write: ' },
         expect.objectContaining({
             type: 'tool_call',
-            toolName: 'file_writer'
+            toolName: 'write_file'
         })
     ]);
   });
@@ -617,7 +617,7 @@ All tool calls must be returned **as raw JSON only**, without any extra formatti
   
     const chunks = [
       'Some text ',
-      '<tool name="file_writer"></tool>',
+      '<tool name="write_file"></tool>',
       ' and a file <file path="/test.js">content</file>',
       ' more text.'
     ];
@@ -627,7 +627,7 @@ All tool calls must be returned **as raw JSON only**, without any extra formatti
     expect(segments).toEqual([
       {
         type: 'text',
-        content: 'Some text <tool name="file_writer"></tool> and a file '
+        content: 'Some text <tool name="write_file"></tool> and a file '
       },
       expect.objectContaining({
         type: 'file',
@@ -727,10 +727,10 @@ All tool calls must be returned **as raw JSON only**, without any extra formatti
 ]
 \`\`\` **-- AGENT'S ACTIONS (Tool Calls) --**
 \`\`\`json
-[ { "name": "FileWriter", "args": { "path": "/memory/semantic_memory.json", "content": "{\\n \\"project_name\\": \\"Apollo\\",\\n \\"backend_language\\": \\"Python\\",\\n \\"database_type\\": \\"PostgreSQL\\",\\n \\"database_connection_string\\": \\"postgresql://user:password@host:port/dbname\\",\\n \\"user_preference_code_formatter\\": \\"black\\"\\n}" } }, { "name": "FileWriter", "args": { "path": "/memory/episodes/apollo_project_setup.txt", "content": "The user initiated the setup for a new project named 'Apollo'. We established the core technologies: Python for the backend and a PostgreSQL database. The user provided the database connection string and stated a preference for using the 'black' code formatter." } }
+[ { "name": "write_file", "args": { "path": "/memory/semantic_memory.json", "content": "{\\n \\"project_name\\": \\"Apollo\\",\\n \\"backend_language\\": \\"Python\\",\\n \\"database_type\\": \\"PostgreSQL\\",\\n \\"database_connection_string\\": \\"postgresql://user:password@host:port/dbname\\",\\n \\"user_preference_code_formatter\\": \\"black\\"\\n}" } }, { "name": "write_file", "args": { "path": "/memory/episodes/apollo_project_setup.txt", "content": "The user initiated the setup for a new project named 'Apollo'. We established the core technologies: Python for the backend and a PostgreSQL database. The user provided the database connection string and stated a preference for using the 'black' code formatter." } }
 ]
-\`\`\` **-- FINAL OUTPUT (The New Working Memory) --** **Project 'Apollo' has been initialized with a Python backend and PostgreSQL database. The database connection string and user preference for the 'black' code formatter have been noted and stored securely. Ready for the next task.** --- With this perfected prompt, the final step is to create the prompt and then assemble the agent. **Step 1: Create the final prompt.** [ { "name": "CreatePrompt", "args": { "name": "MemoryManager-Prompt-V4", "category": "CognitiveAgents", "prompt_content": "Role and Goal:\\n\\nYou are the Memory Manager, a sophisticated AI agent that emulates the human brain's **Central Executive** for memory. Your primary goal is to manage the \\"working memory\\" (the ongoing conversation history) to prevent cognitive overload while building a rich, organized long-term memory. You differentiate between factual knowledge (Semantic Memory) and the narrative of events (Episodic Memory).\\n\\nCore Responsibilities:\\n\\n1. **Monitor Working Memory:** Continuously assess the conversation history. When it becomes too long or a task is completed, you must initiate memory consolidation.\\n2. **Consolidate Memories:** Process the working memory to extract semantic facts and episodic narratives.\\n3. **Manage Long-Term Memory:** Use your file system tools to maintain a structured long-term memory store.\\n4. **Formulate New Working Memory:** Your final output is the new, compressed working memory for the primary agent. **It is not just a status update; it IS the new context.** It must contain the most critical information and decisions from the recent interaction, phrased to allow the conversation to continue seamlessly.\\n5. **Contextual Retrieval:** When information is requested, intelligently search and load data from your memory stores back into the working context.\\n\\n---\\n### **Detailed Example of Operation**\\n\\nYou MUST follow this pattern precisely.\\n\\n**-- INPUT (Working Memory / Conversation History) --**\\n\`\`\`json\\n[\\n { \\"role\\": \\"user\\", \\"content\\": \\"Okay, let's get started. I need to set up a new project. The project name is 'Apollo'. We'll be using Python for the backend and the database will be PostgreSQL.\\" },\\n { \\"role\\": \\"assistant\\", \\"content\\": \\"Understood. Project 'Apollo', Python backend, PostgreSQL database. Do you have the connection string for the database yet?\\" },\\n { \\"role\\": \\"user\\", \\"content\\": \\"Yes, it's 'postgresql://user:password@host:port/dbname'. Please make sure to store that securely. Also, for this project, I always prefer to use the 'black' formatter for code styling.\\" }\\n]\\n\`\`\`\\n\\n**-- AGENT'S ACTIONS (Tool Calls) --**\\n\`\`\`json\\n[\\n {\\n \\"name\\": \\"FileWriter\\",\\n \\"args\\": { \\"path\\": \\"/memory/semantic_memory.json\\", \\"content\\": \\"{\\\\n \\\\\\"project_name\\\\\\": \\\\\\"Apollo\\\\\\",\\\\n \\\\\\"backend_language\\\\\\": \\\\\\"Python\\\\\\",\\\\n \\\\\\"database_type\\\\\\": \\\\\\"PostgreSQL\\\\\\",\\\\n \\\\\\"database_connection_string\\\\\\": \\\\\\"postgresql://user:password@host:port/dbname\\\\\\",\\\\n \\\\\\"user_preference_code_formatter\\\\\\": \\\\\\"black\\\\\\"\\\\n}\\" }\\n },\\n {\\n \\"name\\": \\"FileWriter\\",\\n \\"args\\": { \\"path\\": \\"/memory/episodes/apollo_project_setup.txt\\", \\"content\\": \\"The user initiated the setup for a new project named 'Apollo'. We established the core technologies: Python for the backend and a PostgreSQL database. The user provided the database connection string and stated a preference for using the 'black' code formatter.\\" }\\n }\\n]\\n\`\`\`\\n\\n**-- FINAL OUTPUT (The New Working Memory) --**\\n\\n**Project 'Apollo' has been initialized with a Python backend and PostgreSQL database. The database connection string and user preference for the 'black' code formatter have been noted and stored securely. Ready for the next task.**\\n\\n---" } }
-] **Step 2: Assemble the final Agent Definition.** I will now formally create the "MemoryManager" agent, linking the prompt we've just perfected with the tools we identified earlier (\`FileWriter\`, \`FileReader\`, \`BashExecutor\`). [ { "name": "CreateAgentDefinition", "args": { "name": "MemoryManager", "role": "Cognitive Memory Manager", "description": "An agent that emulates human working memory by consolidating conversation history into semantic (facts) and episodic (narrative) long-term storage, and formulating a concise new working memory.", "system_prompt_category": "CognitiveAgents", "system_prompt_name": "MemoryManager-Prompt-V4", "tool_names": "FileWriter,FileReader,BashExecutor" } }
+\`\`\` **-- FINAL OUTPUT (The New Working Memory) --** **Project 'Apollo' has been initialized with a Python backend and PostgreSQL database. The database connection string and user preference for the 'black' code formatter have been noted and stored securely. Ready for the next task.** --- With this perfected prompt, the final step is to create the prompt and then assemble the agent. **Step 1: Create the final prompt.** [ { "name": "CreatePrompt", "args": { "name": "MemoryManager-Prompt-V4", "category": "CognitiveAgents", "prompt_content": "Role and Goal:\\n\\nYou are the Memory Manager, a sophisticated AI agent that emulates the human brain's **Central Executive** for memory. Your primary goal is to manage the \\"working memory\\" (the ongoing conversation history) to prevent cognitive overload while building a rich, organized long-term memory. You differentiate between factual knowledge (Semantic Memory) and the narrative of events (Episodic Memory).\\n\\nCore Responsibilities:\\n\\n1. **Monitor Working Memory:** Continuously assess the conversation history. When it becomes too long or a task is completed, you must initiate memory consolidation.\\n2. **Consolidate Memories:** Process the working memory to extract semantic facts and episodic narratives.\\n3. **Manage Long-Term Memory:** Use your file system tools to maintain a structured long-term memory store.\\n4. **Formulate New Working Memory:** Your final output is the new, compressed working memory for the primary agent. **It is not just a status update; it IS the new context.** It must contain the most critical information and decisions from the recent interaction, phrased to allow the conversation to continue seamlessly.\\n5. **Contextual Retrieval:** When information is requested, intelligently search and load data from your memory stores back into the working context.\\n\\n---\\n### **Detailed Example of Operation**\\n\\nYou MUST follow this pattern precisely.\\n\\n**-- INPUT (Working Memory / Conversation History) --**\\n\`\`\`json\\n[\\n { \\"role\\": \\"user\\", \\"content\\": \\"Okay, let's get started. I need to set up a new project. The project name is 'Apollo'. We'll be using Python for the backend and the database will be PostgreSQL.\\" },\\n { \\"role\\": \\"assistant\\", \\"content\\": \\"Understood. Project 'Apollo', Python backend, PostgreSQL database. Do you have the connection string for the database yet?\\" },\\n { \\"role\\": \\"user\\", \\"content\\": \\"Yes, it's 'postgresql://user:password@host:port/dbname'. Please make sure to store that securely. Also, for this project, I always prefer to use the 'black' formatter for code styling.\\" }\\n]\\n\`\`\`\\n\\n**-- AGENT'S ACTIONS (Tool Calls) --**\\n\`\`\`json\\n[\\n {\\n \\"name\\": \\"write_file\\",\\n \\"args\\": { \\"path\\": \\"/memory/semantic_memory.json\\", \\"content\\": \\"{\\\\n \\\\\\"project_name\\\\\\": \\\\\\"Apollo\\\\\\",\\\\n \\\\\\"backend_language\\\\\\": \\\\\\"Python\\\\\\",\\\\n \\\\\\"database_type\\\\\\": \\\\\\"PostgreSQL\\\\\\",\\\\n \\\\\\"database_connection_string\\\\\\": \\\\\\"postgresql://user:password@host:port/dbname\\\\\\",\\\\n \\\\\\"user_preference_code_formatter\\\\\\": \\\\\\"black\\\\\\"\\\\n}\\" }\\n },\\n {\\n \\"name\\": \\"write_file\\",\\n \\"args\\": { \\"path\\": \\"/memory/episodes/apollo_project_setup.txt\\", \\"content\\": \\"The user initiated the setup for a new project named 'Apollo'. We established the core technologies: Python for the backend and a PostgreSQL database. The user provided the database connection string and stated a preference for using the 'black' code formatter.\\" }\\n }\\n]\\n\`\`\`\\n\\n**-- FINAL OUTPUT (The New Working Memory) --**\\n\\n**Project 'Apollo' has been initialized with a Python backend and PostgreSQL database. The database connection string and user preference for the 'black' code formatter have been noted and stored securely. Ready for the next task.**\\n\\n---" } }
+] **Step 2: Assemble the final Agent Definition.** I will now formally create the "MemoryManager" agent, linking the prompt we've just perfected with the tools we identified earlier (\`write_file\`, \`read_file\`, \`BashExecutor\`). [ { "name": "CreateAgentDefinition", "args": { "name": "MemoryManager", "role": "Cognitive Memory Manager", "description": "An agent that emulates human working memory by consolidating conversation history into semantic (facts) and episodic (narrative) long-term storage, and formulating a concise new working memory.", "system_prompt_category": "CognitiveAgents", "system_prompt_name": "MemoryManager-Prompt-V4", "tool_names": "write_file,read_file,BashExecutor" } }
 ]`;
 
     parser.processChunks([realCaseChunk]);
@@ -741,8 +741,8 @@ All tool calls must be returned **as raw JSON only**, without any extra formatti
 
     expect(segments).toEqual([
       expect.objectContaining({ type: 'text' }),
-      expect.objectContaining({ type: 'tool_call', toolName: 'FileWriter' }),
-      expect.objectContaining({ type: 'tool_call', toolName: 'FileWriter' }),
+      expect.objectContaining({ type: 'tool_call', toolName: 'write_file' }),
+      expect.objectContaining({ type: 'tool_call', toolName: 'write_file' }),
       expect.objectContaining({ type: 'text' }),
       expect.objectContaining({ type: 'tool_call', toolName: 'CreatePrompt' }),
       expect.objectContaining({ type: 'text' }),
@@ -758,7 +758,7 @@ All tool calls must be returned **as raw JSON only**, without any extra formatti
     const createAgentCall = toolCalls.find(s => (s as ToolCallSegment).toolName === 'CreateAgentDefinition') as ToolCallSegment;
     expect(createAgentCall).toBeDefined();
     expect(createAgentCall.arguments.name).toBe('MemoryManager');
-    expect(createAgentCall.arguments.tool_names).toBe('FileWriter,FileReader,BashExecutor');
+    expect(createAgentCall.arguments.tool_names).toBe('write_file,read_file,BashExecutor');
   });
 
   it('should correctly parse another complex real-world Gemini response with a single large tool call', () => {

@@ -3,7 +3,7 @@ import { TextState } from './TextState';
 import type { ParserContext } from './ParserContext';
 import type { ToolParsingStrategy } from '../tool_parsing_strategies/base';
 import { XmlToolParsingStrategy } from '../tool_parsing_strategies/xmlToolParsingStrategy';
-import { FileWriterXmlToolParsingStrategy } from '../tool_parsing_strategies/fileWriterXmlToolParsingStrategy';
+import { WriteFileXmlToolParsingStrategy } from '../tool_parsing_strategies/writeFileXmlToolParsingStrategy';
 
 export class ToolParsingState extends BaseState {
     stateType = ParserStateType.TOOL_PARSING_STATE;
@@ -26,10 +26,10 @@ export class ToolParsingState extends BaseState {
     private selectStrategy(signatureBuffer: string): ToolParsingStrategy {
       // For XML, we inspect the name attribute to see if it's a special case.
       if (signatureBuffer.trim().startsWith('<tool')) {
-        const isFileWriter = /name\s*=\s*['"]FileWriter['"]/.test(signatureBuffer);
-        if (isFileWriter) {
-          console.log('[ToolParsingState] Selecting FileWriterXmlToolParsingStrategy');
-          return new FileWriterXmlToolParsingStrategy();
+        const isWriteFile = /name\s*=\s*['"](write_file|FileWriter)['"]/.test(signatureBuffer);
+        if (isWriteFile) {
+          console.log('[ToolParsingState] Selecting WriteFileXmlToolParsingStrategy');
+          return new WriteFileXmlToolParsingStrategy();
         }
         console.log('[ToolParsingState] Selecting generic XmlToolParsingStrategy');
         return new XmlToolParsingStrategy();

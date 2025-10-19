@@ -47,9 +47,9 @@ describe('ToolParsingState', () => {
   });
 
   describe('Strategy Selection', () => {
-    it('should select FileWriterXmlToolParsingStrategy and parse raw content correctly', () => {
+    it('should select WriteFileXmlToolParsingStrategy and parse raw content correctly', () => {
       const rawContent = '<div>\n  <p>This is raw text, not nested XML.</p>\n</div>';
-      const stream = `<tool name="FileWriter"><arguments><arg name="content">${rawContent}</arg></arguments></tool>`;
+      const stream = `<tool name="write_file"><arguments><arg name="content">${rawContent}</arg></arguments></tool>`;
       
       machine.appendChunks([stream]);
       machine.run();
@@ -58,7 +58,7 @@ describe('ToolParsingState', () => {
       expect(segments.length).toBe(1);
       const toolSegment = segments[0] as ToolCallSegment;
       expect(toolSegment.type).toBe('tool_call');
-      expect(toolSegment.toolName).toBe('FileWriter');
+      expect(toolSegment.toolName).toBe('write_file');
       // Key assertion: The content is treated as a single, raw string because the correct strategy was chosen.
       expect(toolSegment.arguments.content).toBe(rawContent);
     });

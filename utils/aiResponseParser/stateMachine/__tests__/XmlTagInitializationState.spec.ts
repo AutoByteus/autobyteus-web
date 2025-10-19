@@ -63,7 +63,12 @@ describe('XmlTagInitializationState', () => {
     expect(context.currentState.stateType).toBe(ParserStateType.BASH_PARSING_STATE);
   });
   
-  it('should transition to ToolParsingState for a <tool name="FileWriter"> tag', () => {
+  it('should transition to ToolParsingState for a <tool name="write_file"> tag', () => {
+    context = runMachine('<tool name="write_file">');
+    expect(context.currentState.stateType).toBe(ParserStateType.TOOL_PARSING_STATE);
+  });
+
+  it('should treat legacy <tool name="FileWriter"> tag as write_file', () => {
     context = runMachine('<tool name="FileWriter">');
     expect(context.currentState.stateType).toBe(ParserStateType.TOOL_PARSING_STATE);
   });

@@ -10,9 +10,8 @@ const entityMap: { [key: string]: string } = {
   '&apos;': "'"
 };
 const entityRegex = /&[a-zA-Z0-9#]+;/g;
-//do nothing decode to match backend behavior
 function decodeEntities(text: string): string {
-  return text;
+  return text.replace(entityRegex, (entity) => entityMap[entity] || entity);
 }
 
 type State = 'OUTSIDE_TAG' | 'INSIDE_TAG' | 'INSIDE_COMMENT';
