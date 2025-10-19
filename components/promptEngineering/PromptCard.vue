@@ -35,12 +35,12 @@
       <div class="flex-grow">
         <!-- Card Header -->
         <div class="flex items-start gap-2 mb-3">
-          <h3 class="text-lg font-medium text-gray-900 flex-grow truncate">{{ prompt.name }}</h3>
-          <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600 whitespace-nowrap">
+          <h3 class="text-lg font-medium text-gray-900 flex-grow truncate min-w-0">{{ prompt.name }}</h3>
+          <span class="flex-shrink-0 px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600 whitespace-nowrap">
             v{{ prompt.version }}
           </span>
           <span 
-            class="px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap"
+            class="flex-shrink-0 px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap"
             :class="prompt.isActive ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'"
           >
             {{ prompt.isActive ? 'Active' : 'Inactive' }}

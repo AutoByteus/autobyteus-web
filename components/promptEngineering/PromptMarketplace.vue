@@ -8,7 +8,7 @@
       :promptName="comparisonName"
       @close="exitComparisonMode"
     />
-
+    
     <!-- Header with title, sync button, and other controls -->
     <div class="flex flex-col gap-4 mb-6">
       <div class="flex justify-between items-center">
@@ -87,17 +87,20 @@
             </option>
           </select>
         </div>
-        
-        <!-- Grouping Options -->
+
+        <!-- Prompt Name Filter Dropdown -->
         <div class="relative min-w-[200px]">
-          <label for="groupingOption" class="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+          <label for="promptNameFilter" class="block text-sm font-medium text-gray-700 mb-1">Filter by Name</label>
           <select
-            id="groupingOption"
-            v-model="groupingOption"
-            class="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            id="promptNameFilter"
+            v-model="selectedPromptNameFilter"
+            :disabled="!selectedCategoryFilter"
+            class="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
           >
-            <option value="nameAndCategory">Group by Name & Category</option>
-            <option value="category">Group by Category</option>
+            <option value="">All Names</option>
+            <option v-for="name in promptNamesInCategory" :key="name" :value="name">
+              {{ name }}
+            </option>
           </select>
         </div>
         
@@ -237,7 +240,7 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="Object.keys(groupedPrompts).length === 0" class="text-center py-16">
+    <div v-else-if="Object.keys(promptsGroupedByCategoryAndName).length === 0" class="text-center py-16">
       <div class="text-gray-500">
         <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -249,54 +252,74 @@
       </div>
     </div>
     
-    <!-- Views -->
-    <div v-else>
-      <!-- Group by Category View (Flat list of latest versions) -->
-      <div v-if="groupingOption === 'category'" class="space-y-6">
-        <div 
-          v-for="(categoryPrompts, category) in groupedPromptsByCategory" 
-          :key="category"
-          class="pt-2"
-        >
-          <h3 class="text-lg font-medium text-gray-800 mb-4 pb-2 border-b">{{ category }}</h3>
-          <div :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'">
-            <PromptCard
-              v-for="prompt in categoryPrompts"
-              :key="prompt.id"
-              :prompt="prompt"
-              :isSelected="selectedPromptId === prompt.id"
-              :showDeleteButton="true"
-              @select="viewStore.showPromptDetails(prompt.id)"
-              @delete="openDeleteConfirm(prompt.id)"
-            />
-          </div>
-        </div>
-      </div>
-
-      <!-- Group by Name & Category (Visible Variants) -->
-      <div v-else class="space-y-8">
-        <div 
-          v-for="(variants, groupKey) in groupedPrompts" 
-          :key="groupKey"
-          class="bg-white rounded-lg p-4 border"
-        >
-          <!-- Group header -->
-          <div class="border-b pb-3 mb-4">
-            <div class="flex items-start justify-between">
-              <div>
-                <h3 class="text-lg font-medium text-gray-900">{{ variants[0].name }}</h3>
-                <p v-if="variants[0].description" class="text-sm text-gray-600 mt-1 line-clamp-2">
-                  {{ variants[0].description }}
+    <!-- Main View (Group by Category with Variant Sub-groups) -->
+    <div v-else class="space-y-8">
+      <div 
+        v-for="(promptGroups, category) in promptsGroupedByCategoryAndName" 
+        :key="category"
+      >
+        <h3 class="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b">{{ category }}</h3>
+        
+        <div class="space-y-6">
+          <div v-for="(variants, groupKey) in promptGroups" :key="groupKey">
+            <!-- Sub-header for Prompt Name (for compact view) -->
+            <div v-if="viewMode === 'compact'" class="flex items-center justify-between mb-4">
+              <h4 class="text-lg font-medium text-gray-900">{{ variants[0].name }}</h4>
+              <button 
+                v-if="variants.length > 1"
+                @click="startCompareMode(groupKey, variants)"
+                class="flex items-center px-3 py-1 text-sm rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                Compare Variants
+              </button>
+            </div>
+            
+            <!-- Compare Selection Bar -->
+            <div v-if="isSelectingForComparison(groupKey)" class="mb-4 bg-blue-50 p-3 rounded-lg">
+              <div class="flex justify-between items-center">
+                <p class="text-sm text-blue-700">
+                  <span class="font-medium">Select prompts to compare:</span> 
+                  {{ selectedPromptsForComparison.length }} selected
                 </p>
+                <div class="flex gap-2">
+                  <button 
+                    @click="cancelComparisonSelection"
+                    class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    @click="confirmComparisonSelection"
+                    :disabled="selectedPromptsForComparison.length < 2"
+                    class="px-3 py-1 text-sm rounded-md"
+                    :class="[
+                      selectedPromptsForComparison.length < 2 
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    ]"
+                  >
+                    Compare Selected
+                  </button>
+                </div>
               </div>
-              <div class="flex items-center gap-3 flex-shrink-0 ml-4">
-                <span class="px-3 py-1 text-sm rounded-full bg-gray-100 text-gray-700">
-                  {{ variants[0].category || 'Uncategorized' }}
-                </span>
+            </div>
+
+            <!-- Grid of variants -->
+            <div :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'space-y-4'">
+              <!-- Grid-specific header -->
+              <div 
+                v-if="viewMode === 'grid' && (!selectedPromptNameFilter || variants.length > 1)"
+                class="col-span-1 md:col-span-2 flex items-center justify-between"
+              >
+                <h4 v-if="!selectedPromptNameFilter" class="text-lg font-medium text-gray-900">{{ variants[0].name }}</h4>
                 <button 
                   v-if="variants.length > 1"
                   @click="startCompareMode(groupKey, variants)"
                   class="flex items-center px-3 py-1 text-sm rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                  :class="{ 'ml-auto': selectedPromptNameFilter }"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -304,53 +327,20 @@
                   Compare Variants
                 </button>
               </div>
-            </div>
-          </div>
 
-           <!-- Compare Selection Bar -->
-          <div v-if="isSelectingForComparison(groupKey)" class="mb-4 bg-blue-50 p-3 rounded-lg">
-            <div class="flex justify-between items-center">
-              <p class="text-sm text-blue-700">
-                <span class="font-medium">Select prompts to compare:</span> 
-                {{ selectedPromptsForComparison.length }} selected
-              </p>
-              <div class="flex gap-2">
-                <button 
-                  @click="cancelComparisonSelection"
-                  class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button 
-                  @click="confirmComparisonSelection"
-                  :disabled="selectedPromptsForComparison.length < 2"
-                  class="px-3 py-1 text-sm rounded-md"
-                  :class="[
-                    selectedPromptsForComparison.length < 2 
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  ]"
-                >
-                  Compare Selected
-                </button>
-              </div>
+              <PromptCard
+                v-for="variant in variants"
+                :key="variant.id"
+                :prompt="variant"
+                :isSelected="selectedPromptId === variant.id"
+                :showDeleteButton="!isSelectingForComparison(groupKey)"
+                :isSelectionMode="isSelectingForComparison(groupKey)"
+                :isPromptSelectedForCompare="selectedPromptsForComparison.includes(variant.id)"
+                @select="isSelectingForComparison(groupKey) ? togglePromptSelection(variant.id) : viewStore.showPromptDetails(variant.id)"
+                @delete="openDeleteConfirm(variant.id)"
+                @toggle-compare-selection="togglePromptSelection(variant.id)"
+              />
             </div>
-          </div>
-          
-          <!-- List of Variant Cards -->
-          <div class="space-y-4">
-            <PromptCard
-              v-for="variant in variants"
-              :key="variant.id"
-              :prompt="variant"
-              :isSelected="selectedPromptId === variant.id"
-              :showDeleteButton="!isSelectingForComparison(groupKey)"
-              :isSelectionMode="isSelectingForComparison(groupKey)"
-              :isPromptSelectedForCompare="selectedPromptsForComparison.includes(variant.id)"
-              @select="isSelectingForComparison(groupKey) ? togglePromptSelection(variant.id) : viewStore.showPromptDetails(variant.id)"
-              @delete="openDeleteConfirm(variant.id)"
-              @toggle-compare-selection="togglePromptSelection(variant.id)"
-            />
           </div>
         </div>
       </div>
@@ -359,7 +349,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, ref, onBeforeUnmount } from 'vue';
+import { onMounted, computed, ref, onBeforeUnmount, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { usePromptStore } from '~/stores/promptStore';
 import { usePromptEngineeringViewStore } from '~/stores/promptEngineeringViewStore';
@@ -389,6 +379,7 @@ const { prompts, loading, error, syncing, syncResult, deleteResult } = storeToRe
 // Search and filter state
 const searchQuery = ref('');
 const selectedCategoryFilter = ref('');
+const selectedPromptNameFilter = ref('');
 
 // Local loading state for the reload button
 const reloading = ref(false);
@@ -396,8 +387,7 @@ const reloading = ref(false);
 // Base UI state
 const showDeleteConfirm = ref(false);
 const promptToDelete = ref<string | null>(null);
-const groupingOption = ref('nameAndCategory'); 
-const viewMode = ref('grid'); // This is now cosmetic for category view, as name&cat view is always a list.
+const viewMode = ref<'grid' | 'compact'>('grid');
 
 // Comparison mode state
 const comparisonMode = ref(false);
@@ -410,9 +400,26 @@ const comparisonName = ref('');
 let syncNotificationTimer: number | null = null;
 let deleteNotificationTimer: number | null = null;
 
+// When category changes, reset the prompt name filter
+watch(selectedCategoryFilter, () => {
+  selectedPromptNameFilter.value = '';
+});
+
+const promptNamesInCategory = computed(() => {
+  if (!selectedCategoryFilter.value) {
+    return [];
+  }
+  const names = new Set<string>();
+  prompts.value
+    .filter(p => (p.category || 'Uncategorized') === selectedCategoryFilter.value)
+    .forEach(p => names.add(p.name));
+  return Array.from(names).sort();
+});
+
 const filteredPrompts = computed(() => {
   let filtered = prompts.value;
 
+  // 1. Filter by category
   if (selectedCategoryFilter.value) {
     if (selectedCategoryFilter.value === 'Uncategorized') {
       filtered = filtered.filter(p => !p.category);
@@ -420,7 +427,13 @@ const filteredPrompts = computed(() => {
       filtered = filtered.filter(p => p.category === selectedCategoryFilter.value);
     }
   }
+
+  // 2. Filter by prompt name
+  if (selectedPromptNameFilter.value) {
+    filtered = filtered.filter(p => p.name === selectedPromptNameFilter.value);
+  }
   
+  // 3. Filter by search query
   if (searchQuery.value.trim()) {
     const lowerCaseQuery = searchQuery.value.trim().toLowerCase();
     filtered = filtered.filter(prompt => 
@@ -434,11 +447,10 @@ const filteredPrompts = computed(() => {
   return filtered;
 });
 
-// New grouping logic for Name & Category view
+// Grouping logic for Name & Category view
 const groupedPrompts = computed(() => {
   const groups: Record<string, Prompt[]> = {};
   
-  // First, group all prompts by name and category
   filteredPrompts.value.forEach(prompt => {
     const key = `${prompt.name}::${prompt.category || 'Uncategorized'}`;
     if (!groups[key]) {
@@ -451,7 +463,6 @@ const groupedPrompts = computed(() => {
   for (const key in groups) {
     const promptList = groups[key];
     
-    // Find the latest version for each unique `suitableForModels`
     const latestVariantsMap = new Map<string, Prompt>();
     promptList.forEach(p => {
       const modelsKey = p.suitableForModels || 'None';
@@ -471,23 +482,20 @@ const groupedPrompts = computed(() => {
   return processedGroups;
 });
 
-// Grouping for the simple "Group by Category" view
-const groupedPromptsByCategory = computed(() => {
-  const groups: Record<string, Prompt[]> = {};
-  
-  Object.values(groupedPrompts.value).forEach(variants => {
-    // We only show the top variant in the category view for simplicity
-    const primaryVariant = variants[0];
-    if (primaryVariant) {
-      const categoryKey = primaryVariant.category || 'Uncategorized';
-      if (!groups[categoryKey]) {
-        groups[categoryKey] = [];
+const promptsGroupedByCategoryAndName = computed(() => {
+  const result: Record<string, Record<string, Prompt[]>> = {};
+
+  for (const groupKey in groupedPrompts.value) {
+    const variants = groupedPrompts.value[groupKey];
+    if (variants.length > 0) {
+      const category = variants[0].category || 'Uncategorized';
+      if (!result[category]) {
+        result[category] = {};
       }
-      groups[categoryKey].push(primaryVariant);
+      result[category][groupKey] = variants;
     }
-  });
-  
-  return groups;
+  }
+  return result;
 });
 
 
@@ -598,11 +606,5 @@ onBeforeUnmount(() => {
 <style scoped>
 .prompt-marketplace {
   padding: 2rem;
-}
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 </style>
