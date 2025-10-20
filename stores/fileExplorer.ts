@@ -1,5 +1,5 @@
 import { defineStore, storeToRefs } from 'pinia'
-import { useQuery, useMutation } from '@vue/apollo-composable'
+import { useApolloClient, useMutation } from '@vue/apollo-composable'
 import { GetFileContent, SearchFiles } from '~/graphql/queries/file_explorer_queries'
 import { 
   WriteFileContent, 
@@ -331,34 +331,27 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       if (!workspaceId) throw new Error("No active workspace session");
 
       try {
-        const { onResult, onError } = useQuery<GetFileContentQuery, GetFileContentQueryVariables>(
-          GetFileContent,
-          { workspaceId, filePath },
-          { fetchPolicy: 'network-only' }
-        );
-
-        return new Promise((resolve, reject) => {
-          onResult((result) => {
-            if (result.data) {
-              const content = result.data.fileContent ?? '';
-              if (file) {
-                file.content = content;
-                file.isLoading = false;
-              }
-              resolve(content);
-            }
-          });
-
-          onError((error) => {
-            console.error('Failed to fetch file content', error);
-            if (file) {
-              file.error = error.message;
-              file.isLoading = false;
-            }
-            reject(error);
-          });
+        const { client } = useApolloClient();
+        const { data, errors } = await client.query<GetFileContentQuery, GetFileContentQueryVariables>({
+          query: GetFileContent,
+          variables: { workspaceId, filePath },
+          fetchPolicy: 'network-only'
         });
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+        
+        if (data) {
+          const content = data.fileContent ?? '';
+          if (file) {
+            file.content = content;
+            file.isLoading = false;
+          }
+          return content;
+        }
       } catch (error) {
+        console.error('Failed to fetch file content', error);
         if (file) {
           file.error = error instanceof Error ? error.message : 'Failed to fetch file content';
           file.isLoading = false;
@@ -634,34 +627,30 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
       
       try {
-        const { onResult, onError } = useQuery<SearchFilesQuery, SearchFilesQueryVariables>(
-          SearchFiles,
-          { workspaceId, query }
-        );
-
-        return new Promise<void>((resolve, reject) => {
-          onResult((result) => {
-            if (result.data?.searchFiles) {
-              const matchedPaths = result.data.searchFiles;
-              wsState.searchResults = matchedPaths.map(path => {
-                return findFileByPath(workspaceStore.currentWorkspaceTree?.children || [], path);
-              }).filter((file): file is NonNullable<typeof file> => file !== null);
-            }
-            wsState.searchLoading = false;
-            resolve();
-          });
-
-          onError((error) => {
-            console.error('Error searching files:', error);
-            wsState.searchError = error.message;
-            wsState.searchLoading = false;
-            reject(error);
-          });
+        const { client } = useApolloClient();
+        const { data, errors } = await client.query<SearchFilesQuery, SearchFilesQueryVariables>({
+          query: SearchFiles,
+          variables: { workspaceId, query }
         });
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+
+        if (data?.searchFiles) {
+          const matchedPaths = data.searchFiles;
+          wsState.searchResults = matchedPaths.map(path => {
+            return findFileByPath(workspaceStore.currentWorkspaceTree?.children || [], path);
+          }).filter((file): file is NonNullable<typeof file> => file !== null);
+        } else {
+          wsState.searchResults = [];
+        }
       } catch (error) {
+        console.error('Error searching files:', error);
         wsState.searchError = error instanceof Error ? error.message : 'An unknown error occurred';
-        wsState.searchLoading = false;
         throw error;
+      } finally {
+        wsState.searchLoading = false;
       }
     },
     

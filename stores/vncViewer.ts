@@ -26,7 +26,7 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
 
   const vncServerUrl = computed(() => {
     // Use the utility function or directly access serverSettingsStore.getSettingByKey
-    let url = getServerSetting('AUTOBYTEUS_VNC_SERVER_URL', 'localhost:6080');
+    let url = getServerSetting('AUTOBYTEUS_VNC_SERVER_URL', 'localhost:5900');
     
     if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
       url = `ws://${url}`;
