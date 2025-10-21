@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { useMutation, useSubscription } from '@vue/apollo-composable';
+import { useApolloClient, useSubscription } from '@vue/apollo-composable';
 import { v4 as uuidv4 } from 'uuid';
 import { useApplicationContextStore } from './applicationContextStore';
 import { processAgentTeamResponseEvent } from '~/services/agentTeamResponseProcessor';
@@ -175,10 +175,10 @@ export const useApplicationRunStore = defineStore('applicationRun', {
         contextFilePaths: contextPaths.map(p => ({path: p.path, type: p.type as any}))
       });
 
-      const { mutate: sendMessage } = useMutation<SendMessageToTeamMutation, SendMessageToTeamMutationVariables>(SendMessageToTeam);
       const isTemporary = teamContext.teamId.startsWith('temp-');
 
       try {
+        const { client } = useApolloClient();
         const appProfileStore = useApplicationLaunchProfileStore();
         const profile = appProfileStore.profiles[runContext.launchProfileId];
         if (!profile) throw new Error(`Launch profile ${runContext.launchProfileId} not found for sending message.`);
@@ -199,11 +199,19 @@ export const useApplicationRunStore = defineStore('applicationRun', {
           }
         };
 
-        const result = await sendMessage(variables);
-        const permanentId = result?.data?.sendMessageToTeam?.teamId;
+        const { data, errors } = await client.mutate<SendMessageToTeamMutation, SendMessageToTeamMutationVariables>({
+          mutation: SendMessageToTeam,
+          variables,
+        });
 
-        if (!result?.data?.sendMessageToTeam?.success || !permanentId) {
-          throw new Error(result?.data?.sendMessageToTeam?.message || 'Failed to send message.');
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+
+        const permanentId = data?.sendMessageToTeam?.teamId;
+
+        if (!data?.sendMessageToTeam?.success || !permanentId) {
+          throw new Error(data?.sendMessageToTeam?.message || 'Failed to send message.');
         }
 
         if (isTemporary) {
@@ -251,8 +259,11 @@ export const useApplicationRunStore = defineStore('applicationRun', {
 
       if (!teamId.startsWith('temp-')) {
         try {
-          const { mutate: terminateTeam } = useMutation(TerminateAgentTeamInstance);
-          await terminateTeam({ id: teamId });
+          const { client } = useApolloClient();
+          await client.mutate({
+            mutation: TerminateAgentTeamInstance,
+            variables: { id: teamId },
+          });
         } catch (error) {
           console.error(`Error terminating application team ${teamId} on backend:`, error);
         }

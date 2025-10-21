@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { useMutation, useApolloClient } from '@vue/apollo-composable';
+import { useApolloClient } from '@vue/apollo-composable';
 import { GET_TOOLS, GET_TOOLS_GROUPED_BY_CATEGORY } from '~/graphql/queries/toolQueries';
 import { GET_MCP_SERVERS, PREVIEW_MCP_SERVER_TOOLS } from '~/graphql/queries/mcpServerQueries';
 import { 
@@ -229,12 +229,20 @@ export const useToolManagementStore = defineStore('toolManagement', {
         this.loading = true;
         this.error = null;
         try {
-            const { mutate } = useMutation(CONFIGURE_MCP_SERVER);
-            const response = await mutate({ input });
-            if (response?.data?.configureMcpServer) {
+            const { client } = useApolloClient();
+            const { data, errors } = await client.mutate({
+                mutation: CONFIGURE_MCP_SERVER,
+                variables: { input },
+            });
+
+            if (errors && errors.length > 0) {
+                throw new Error(errors.map(e => e.message).join(', '));
+            }
+
+            if (data?.configureMcpServer) {
                 await this.fetchMcpServers();
                 // We no longer expect discovered_tools here
-                return response.data.configureMcpServer;
+                return data.configureMcpServer;
             }
             throw new Error('Failed to configure MCP server: No data returned');
         } catch (e) {
@@ -249,14 +257,21 @@ export const useToolManagementStore = defineStore('toolManagement', {
       this.loading = true;
       this.error = null;
       try {
-        const { mutate } = useMutation(DELETE_MCP_SERVER);
-        const response = await mutate({ serverId });
+        const { client } = useApolloClient();
+        const { data, errors } = await client.mutate({
+          mutation: DELETE_MCP_SERVER,
+          variables: { serverId },
+        });
         
-        if (response?.data?.deleteMcpServer) {
-          if (response.data.deleteMcpServer.success) {
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+        
+        if (data?.deleteMcpServer) {
+          if (data.deleteMcpServer.success) {
             await this.fetchMcpServers();
           }
-          return response.data.deleteMcpServer;
+          return data.deleteMcpServer;
         }
         throw new Error('Failed to delete MCP server: No data returned');
       } catch (e) {
@@ -271,15 +286,21 @@ export const useToolManagementStore = defineStore('toolManagement', {
       this.loading = true;
       this.error = null;
       try {
-        const { mutate } = useMutation(DISCOVER_AND_REGISTER_MCP_SERVER_TOOLS);
-        const response = await mutate({ serverId });
-        if (response?.data?.discoverAndRegisterMcpServerTools) {
-          if (response.data.discoverAndRegisterMcpServerTools.success) {
+        const { client } = useApolloClient();
+        const { data, errors } = await client.mutate({
+          mutation: DISCOVER_AND_REGISTER_MCP_SERVER_TOOLS,
+          variables: { serverId },
+        });
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+        if (data?.discoverAndRegisterMcpServerTools) {
+          if (data.discoverAndRegisterMcpServerTools.success) {
             // On success, refresh the tools for this server
             await this.fetchToolsForServer(serverId);
           }
           // Return the full result so the UI can show messages
-          return response.data.discoverAndRegisterMcpServerTools;
+          return data.discoverAndRegisterMcpServerTools;
         }
         throw new Error('Failed to discover tools: No data returned');
       } catch (e) {
@@ -294,14 +315,20 @@ export const useToolManagementStore = defineStore('toolManagement', {
       this.loading = true;
       this.error = null;
       try {
-        const { mutate } = useMutation(IMPORT_MCP_SERVER_CONFIGS);
-        const response = await mutate({ jsonString });
-        if (response?.data?.importMcpServerConfigs) {
+        const { client } = useApolloClient();
+        const { data, errors } = await client.mutate({
+          mutation: IMPORT_MCP_SERVER_CONFIGS,
+          variables: { jsonString },
+        });
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+        if (data?.importMcpServerConfigs) {
           // Refresh the list of servers if at least one was successfully imported.
-          if (response.data.importMcpServerConfigs.imported_count > 0) {
+          if (data.importMcpServerConfigs.imported_count > 0) {
             await this.fetchMcpServers();
           }
-          return response.data.importMcpServerConfigs;
+          return data.importMcpServerConfigs;
         }
         throw new Error('Failed to import configs: No data returned');
       } catch (e) {

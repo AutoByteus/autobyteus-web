@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { useMutation, useApolloClient } from '@vue/apollo-composable'
+import { useApolloClient } from '@vue/apollo-composable'
 import { GET_SERVER_SETTINGS } from '~/graphql/queries/server_settings_queries'
 import { UPDATE_SERVER_SETTING } from '~/graphql/mutations/server_settings_mutations'
 
@@ -75,31 +75,34 @@ export const useServerSettingsStore = defineStore('serverSettings', {
       this.isUpdating = true
       this.error = null
       
-      const { mutate } = useMutation(UPDATE_SERVER_SETTING)
+      const { client } = useApolloClient()
       
       try {
-        const result = await mutate({
-          key,
-          value
+        const { data, errors } = await client.mutate({
+          mutation: UPDATE_SERVER_SETTING,
+          variables: { key, value }
         })
         
-        const responseMessage = result?.data?.updateServerSetting
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '))
+        }
+        
+        const responseMessage = data?.updateServerSetting
         
         if (responseMessage && responseMessage.includes("successfully")) {
           // Reload settings from server to ensure state is consistent
           await this.reloadServerSettings();
-          this.isUpdating = false
           return true
         }
         
-        this.isUpdating = false
         this.error = responseMessage || 'Failed to update server setting'
         throw new Error(responseMessage || 'Failed to update server setting')
       } catch (error: any) {
-        this.isUpdating = false
         this.error = error.message
         console.error(`Failed to update server setting ${key}:`, error)
         throw error
+      } finally {
+        this.isUpdating = false
       }
     }
   }

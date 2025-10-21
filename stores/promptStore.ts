@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { useApolloClient, useMutation } from '@vue/apollo-composable';
+import { useApolloClient } from '@vue/apollo-composable';
 import { GET_PROMPTS, GET_PROMPT_BY_ID } from '~/graphql/queries/prompt_queries';
 import { CREATE_PROMPT, UPDATE_PROMPT, ADD_NEW_PROMPT_REVISION, SYNC_PROMPTS, DELETE_PROMPT, MARK_ACTIVE_PROMPT } from '~/graphql/mutations/prompt_mutations';
 import { GetAgentCustomizationOptions } from '~/graphql/queries/agentCustomizationOptionsQueries';
@@ -140,18 +140,21 @@ export const usePromptStore = defineStore('prompt', () => {
     isForAgentTeam?: boolean,
   ) {
     try {
-      const { mutate } = useMutation(CREATE_PROMPT, {
+      const { data, errors } = await client.mutate({
+        mutation: CREATE_PROMPT,
+        variables: { input: { name, category, promptContent, description, suitableForModels, isForAgentTeam } },
         refetchQueries: [
           { query: GET_PROMPTS },
           { query: GetAgentCustomizationOptions }
         ]
       });
-      const response = await mutate({
-        input: { name, category, promptContent, description, suitableForModels, isForAgentTeam },
-      });
 
-      if (response?.data?.createPrompt) {
-        const newPrompt = response.data.createPrompt;
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map(e => e.message).join(', '));
+      }
+
+      if (data?.createPrompt) {
+        const newPrompt = data.createPrompt;
         prompts.value = [...prompts.value, newPrompt];
         return newPrompt;
       }
@@ -172,15 +175,18 @@ export const usePromptStore = defineStore('prompt', () => {
     category?: string,
   ) {
     try {
-      const { mutate } = useMutation(UPDATE_PROMPT, {
+      const { data, errors } = await client.mutate({
+        mutation: UPDATE_PROMPT,
+        variables: { input: { id, promptContent, description, suitableForModels, isActive, name, category } },
         refetchQueries: [{ query: GetAgentCustomizationOptions }]
       });
-      const response = await mutate({
-        input: { id, promptContent, description, suitableForModels, isActive, name, category },
-      });
 
-      if (response?.data?.updatePrompt) {
-        const updatedPrompt = response.data.updatePrompt;
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map(e => e.message).join(', '));
+      }
+
+      if (data?.updatePrompt) {
+        const updatedPrompt = data.updatePrompt;
         const index = prompts.value.findIndex(p => p.id === updatedPrompt.id);
         if (index !== -1) {
           const newPrompts = [...prompts.value];
@@ -201,15 +207,18 @@ export const usePromptStore = defineStore('prompt', () => {
     newPromptContent: string,
   ) {
     try {
-      const { mutate } = useMutation(ADD_NEW_PROMPT_REVISION, {
+      const { data, errors } = await client.mutate({
+        mutation: ADD_NEW_PROMPT_REVISION,
+        variables: { input: { id, newPromptContent } },
         refetchQueries: [{ query: GET_PROMPTS }]
       });
-      const response = await mutate({
-        input: { id, newPromptContent },
-      });
 
-      if (response?.data?.addNewPromptRevision) {
-        return response.data.addNewPromptRevision;
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map(e => e.message).join(', '));
+      }
+
+      if (data?.addNewPromptRevision) {
+        return data.addNewPromptRevision;
       }
       throw new Error('Failed to add new prompt revision: No data returned');
     } catch (e: any) {
@@ -220,13 +229,18 @@ export const usePromptStore = defineStore('prompt', () => {
 
   async function setActivePrompt(promptId: string) {
     try {
-      const { mutate } = useMutation(MARK_ACTIVE_PROMPT, {
+      const { data, errors } = await client.mutate({
+        mutation: MARK_ACTIVE_PROMPT,
+        variables: { input: { id: promptId } },
         refetchQueries: [{ query: GET_PROMPTS }]
       });
-      const response = await mutate({ input: { id: promptId } });
 
-      if (response?.data?.markActivePrompt) {
-        return response.data.markActivePrompt;
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map(e => e.message).join(', '));
+      }
+
+      if (data?.markActivePrompt) {
+        return data.markActivePrompt;
       }
       throw new Error('Failed to mark prompt as active: No data returned');
     } catch (e: any) {
@@ -241,16 +255,20 @@ export const usePromptStore = defineStore('prompt', () => {
     syncResult.value = null;
 
     try {
-      const { mutate } = useMutation(SYNC_PROMPTS, {
+      const { data, errors } = await client.mutate({
+        mutation: SYNC_PROMPTS,
         refetchQueries: [
           { query: GET_PROMPTS },
           { query: GetAgentCustomizationOptions }
         ]
       });
-      const response = await mutate();
 
-      if (response?.data?.syncPrompts) {
-        syncResult.value = response.data.syncPrompts;
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map(e => e.message).join(', '));
+      }
+
+      if (data?.syncPrompts) {
+        syncResult.value = data.syncPrompts;
         return syncResult.value;
       }
       throw new Error('Failed to sync prompts: No data returned');
@@ -268,18 +286,21 @@ export const usePromptStore = defineStore('prompt', () => {
     deleteResult.value = null;
 
     try {
-      const { mutate } = useMutation(DELETE_PROMPT, {
+      const { data, errors } = await client.mutate({
+        mutation: DELETE_PROMPT,
+        variables: { input: { id } },
         refetchQueries: [
           { query: GET_PROMPTS },
           { query: GetAgentCustomizationOptions }
         ]
       });
-      const response = await mutate({
-        input: { id },
-      });
 
-      if (response?.data?.deletePrompt) {
-        deleteResult.value = response.data.deletePrompt;
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map(e => e.message).join(', '));
+      }
+
+      if (data?.deletePrompt) {
+        deleteResult.value = data.deletePrompt;
         if (deleteResult.value.success) {
           prompts.value = prompts.value.filter(p => p.id !== id);
         }

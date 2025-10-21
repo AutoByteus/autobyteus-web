@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { useMutation } from '@vue/apollo-composable'
+import { useApolloClient } from '@vue/apollo-composable'
 import { EXECUTE_BASH_COMMANDS } from '~/graphql/mutations/workspace_mutations'
 import type {
   ExecuteBashCommandsMutation,
@@ -43,19 +43,25 @@ export const useBashCommandStore = defineStore('bashCommand', {
       delete this.commandResults[commandKey];
 
       try {
-        const { mutate: executeBashCommandsMutation } = useMutation<ExecuteBashCommandsMutation, ExecuteBashCommandsMutationVariables>(EXECUTE_BASH_COMMANDS);
+        const { client } = useApolloClient();
         
-        const result = await executeBashCommandsMutation({
-          workspaceId,
-          command
+        const { data, errors } = await client.mutate<ExecuteBashCommandsMutation, ExecuteBashCommandsMutationVariables>({
+          mutation: EXECUTE_BASH_COMMANDS,
+          variables: {
+            workspaceId,
+            command
+          }
         });
         
-        if (result?.data?.executeBashCommands) {
-          const { success, message } = result.data.executeBashCommands;
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+        
+        if (data?.executeBashCommands) {
+          const { success, message } = data.executeBashCommands;
           this.commandResults[commandKey] = { success, message };
         } else {
-          const errorMessage = result?.errors?.map(e => e.message).join(', ') || 'Failed to execute bash command: No data returned.';
-          throw new Error(errorMessage);
+          throw new Error('Failed to execute bash command: No data returned.');
         }
       } catch (error) {
         const errorMessage = (error as Error).message;

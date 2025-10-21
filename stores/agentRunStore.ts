@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { useMutation, useSubscription } from '@vue/apollo-composable';
+import { useApolloClient, useSubscription } from '@vue/apollo-composable';
 import { SendAgentUserInput, TerminateAgentInstance, ApproveToolInvocation } from '~/graphql/mutations/agentMutations';
 import { AgentResponseSubscription } from '~/graphql/subscriptions/agent_response_subscriptions';
 import type {
@@ -67,25 +67,32 @@ export const useAgentRunStore = defineStore('agentRun', {
 
 
       currentAgent.isSending = true;
-      const { mutate: sendAgentUserInputMutation } = useMutation<SendAgentUserInputMutation, SendAgentUserInputMutationVariables>(SendAgentUserInput);
 
       try {
-        const result = await sendAgentUserInputMutation({
-          input: {
-            userInput: {
-              content: currentAgent.requirement,
-              contextFiles: currentAgent.contextFilePaths.map(cf => ({ path: cf.path, type: cf.type.toUpperCase() as ContextFileType })),
-            },
-            agentId: isNewAgent ? null : agentId,
-            agentDefinitionId: state.conversation.agentDefinitionId,
-            workspaceId: config.workspaceId,
-            llmModelIdentifier: config.llmModelIdentifier,
-            autoExecuteTools: config.autoExecuteTools,
-            useXmlToolFormat: config.useXmlToolFormat,
+        const { client } = useApolloClient();
+        const { data, errors } = await client.mutate<SendAgentUserInputMutation, SendAgentUserInputMutationVariables>({
+          mutation: SendAgentUserInput,
+          variables: {
+            input: {
+              userInput: {
+                content: currentAgent.requirement,
+                contextFiles: currentAgent.contextFilePaths.map(cf => ({ path: cf.path, type: cf.type.toUpperCase() as ContextFileType })),
+              },
+              agentId: isNewAgent ? null : agentId,
+              agentDefinitionId: state.conversation.agentDefinitionId,
+              workspaceId: config.workspaceId,
+              llmModelIdentifier: config.llmModelIdentifier,
+              autoExecuteTools: config.autoExecuteTools,
+              useXmlToolFormat: config.useXmlToolFormat,
+            }
           }
         });
 
-        const permanentAgentId = result?.data?.sendAgentUserInput?.agentId;
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+
+        const permanentAgentId = data?.sendAgentUserInput?.agentId;
         if (!permanentAgentId) {
           throw new Error('Failed to send user input: No agentId returned.');
         }
@@ -166,9 +173,16 @@ export const useAgentRunStore = defineStore('agentRun', {
      * @description Sends the user's approval or denial for a tool call to the backend.
      */
     async postToolExecutionApproval(agentId: string, invocationId: string, isApproved: boolean, reason: string | null = null) {
-      const { mutate: approveToolInvocationMutation } = useMutation<ApproveToolInvocationMutation, ApproveToolInvocationMutationVariables>(ApproveToolInvocation);
       try {
-        await approveToolInvocationMutation({ input: { agentId, invocationId, isApproved, reason }});
+        const { client } = useApolloClient();
+        const { errors } = await client.mutate<ApproveToolInvocationMutation, ApproveToolInvocationMutationVariables>({
+          mutation: ApproveToolInvocation,
+          variables: { input: { agentId, invocationId, isApproved, reason } },
+        });
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
         
         const agentContextsStore = useAgentContextsStore();
         const agent = agentContextsStore.getAgentContextById(agentId);
@@ -205,8 +219,11 @@ export const useAgentRunStore = defineStore('agentRun', {
       
       if (options.terminate && !agentIdToClose.startsWith('temp-')) {
         try {
-          const { mutate: terminateAgentInstanceMutation } = useMutation(TerminateAgentInstance);
-          await terminateAgentInstanceMutation({ id: agentIdToClose });
+          const { client } = useApolloClient();
+          await client.mutate({
+            mutation: TerminateAgentInstance,
+            variables: { id: agentIdToClose },
+          });
         } catch (error) {
           console.error('Error closing agent on backend:', error);
         }

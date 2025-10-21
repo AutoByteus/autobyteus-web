@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { useMutation, useApolloClient } from '@vue/apollo-composable'
+import { useApolloClient } from '@vue/apollo-composable'
 import { ListApplications } from '~/graphql/queries/applicationQueries'
 import { RunApplication } from '~/graphql/mutations/applicationMutations'
 import type {
@@ -55,25 +55,28 @@ export const useApplicationStore = defineStore('application', {
       this.runError = null
       this.lastRunResult = null
 
-      const { mutate, onDone, onError } = useMutation<RunApplicationMutation>(RunApplication)
+      const { client } = useApolloClient()
 
-      return new Promise((resolve, reject) => {
-        onDone(result => {
-          this.isRunLoading = false
-          const runResult = result.data?.runApplication
-          this.lastRunResult = runResult
-          resolve(runResult)
+      try {
+        const { data, errors } = await client.mutate<RunApplicationMutation>({
+          mutation: RunApplication,
+          variables: { appId, input }
         })
 
-        onError(error => {
-          this.isRunLoading = false
-          this.runError = error
-          console.error(`Error running application ${appId}:`, error)
-          reject(error)
-        })
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '))
+        }
 
-        mutate({ appId, input })
-      })
+        const runResult = data?.runApplication
+        this.lastRunResult = runResult
+        return runResult
+      } catch (error: any) {
+        this.runError = error
+        console.error(`Error running application ${appId}:`, error)
+        throw error
+      } finally {
+        this.isRunLoading = false
+      }
     },
 
     // fetchApplicationConfiguration and setApplicationConfiguration actions have been removed.

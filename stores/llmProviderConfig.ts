@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { useMutation, useApolloClient } from '@vue/apollo-composable'
+import { useApolloClient } from '@vue/apollo-composable'
 import { 
   GET_LLM_PROVIDER_API_KEY, 
   GET_AVAILABLE_LLM_PROVIDERS_WITH_MODELS
@@ -167,11 +167,18 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
 
     async reloadModels() {
       this.isReloadingModels = true;
-      const { mutate } = useMutation(RELOAD_LLM_MODELS);
       
       try {
-        const result = await mutate();
-        const responseMessage = result?.data?.reloadLlmModels;
+        const { client } = useApolloClient();
+        const { data, errors } = await client.mutate({
+          mutation: RELOAD_LLM_MODELS,
+        });
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+
+        const responseMessage = data?.reloadLlmModels;
         
         if (responseMessage && responseMessage.includes("successfully")) {
           // After successful reload, fetch the updated models
@@ -189,15 +196,18 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
     },
 
     async setLLMProviderApiKey(provider: string, apiKey: string) {
-      const { mutate } = useMutation(SET_LLM_PROVIDER_API_KEY)
-      
       try {
-        const result = await mutate({
-          provider,
-          apiKey,
-        })
+        const { client } = useApolloClient();
+        const { data, errors } = await client.mutate({
+          mutation: SET_LLM_PROVIDER_API_KEY,
+          variables: { provider, apiKey },
+        });
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
         
-        const responseMessage = result?.data?.setLlmProviderApiKey;
+        const responseMessage = data?.setLlmProviderApiKey;
         
         if (responseMessage && responseMessage.includes("successfully")) {
           if (!this.providerConfigs[provider]) {

@@ -1,5 +1,5 @@
 import { defineStore, storeToRefs } from 'pinia'
-import { useApolloClient, useMutation } from '@vue/apollo-composable'
+import { useApolloClient } from '@vue/apollo-composable'
 import { GetFileContent, SearchFiles } from '~/graphql/queries/file_explorer_queries'
 import { 
   WriteFileContent, 
@@ -376,7 +376,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
      * @private
      */
     async _writeFileCore(workspaceId: string, filePath: string, content: string) {
-      const { mutate } = useMutation<WriteFileContentMutation, WriteFileContentMutationVariables>(WriteFileContent);
+      const { client } = useApolloClient();
       const wsState = this._getOrCreateCurrentWorkspaceState();
       
       // "Tag" this file to ignore the incoming subscription event echo for 'modify'
@@ -387,9 +387,17 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }, 5000);
 
       try {
-        const result = await mutate({ workspaceId, filePath, content });
+        const { data, errors } = await client.mutate<WriteFileContentMutation, WriteFileContentMutationVariables>({
+          mutation: WriteFileContent,
+          variables: { workspaceId, filePath, content },
+        });
       
-        if (result?.data?.writeFileContent) {
+        if (errors && errors.length > 0) {
+          wsState.filesToIgnoreNextModify.delete(filePath);
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+
+        if (data?.writeFileContent) {
           // Optimistic update: the mutation was successful, so update our local state immediately.
           const file = wsState.openFiles.find(f => f.path === filePath);
           if (file) {
@@ -398,12 +406,9 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
           // Let the subscription handle the tree change event to avoid double-processing.
           // The subscription will call handleFileSystemChange, which will now intelligently
           // ignore the 'modify' event for this file path.
-          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.writeFileContent);
+          const changeEvent: FileSystemChangeEvent = JSON.parse(data.writeFileContent);
           const workspaceStore = useWorkspaceStore();
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
-        } else if (result?.errors) {
-          wsState.filesToIgnoreNextModify.delete(filePath); // Clean up tag on error
-          throw new Error(result.errors.map(e => e.message).join(', '));
         } else {
           wsState.filesToIgnoreNextModify.delete(filePath); // Clean up tag on error
           throw new Error('An unknown error occurred while writing the file.');
@@ -479,18 +484,25 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       if (!workspaceId) throw new Error("No active workspace session");
 
       try {
-        const { mutate } = useMutation<DeleteFileOrFolderMutation, DeleteFileOrFolderMutationVariables>(DeleteFileOrFolder);
-        const result = await mutate({ workspaceId, path: filePath });
+        const { client } = useApolloClient();
+        const { data, errors } = await client.mutate<DeleteFileOrFolderMutation, DeleteFileOrFolderMutationVariables>({
+          mutation: DeleteFileOrFolder,
+          variables: { workspaceId, path: filePath },
+        });
 
-        if (result?.data?.deleteFileOrFolder) {
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+
+        if (data?.deleteFileOrFolder) {
           if (wsState.openFiles.some(f => f.path === filePath)) this.closeFile(filePath);
           wsState.openFiles = wsState.openFiles.filter(file => !file.path.startsWith(filePath + '/'));
           
-          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.deleteFileOrFolder);
+          const changeEvent: FileSystemChangeEvent = JSON.parse(data.deleteFileOrFolder);
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
         }
         wsState.deleteLoading[filePath] = false;
-        return result;
+        return data;
       } catch (err) {
         console.error('Failed to delete file/folder:', err);
         wsState.deleteError[filePath] = err instanceof Error ? err.message : 'An unknown error occurred';
@@ -508,12 +520,19 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
       if (!workspaceId) throw new Error("No active workspace session");
     
-      const { mutate } = useMutation<RenameFileOrFolderMutation, RenameFileOrFolderMutationVariables>(RenameFileOrFolder);
     
       try {
-        const result = await mutate({ workspaceId, targetPath, newName });
+        const { client } = useApolloClient();
+        const { data, errors } = await client.mutate<RenameFileOrFolderMutation, RenameFileOrFolderMutationVariables>({
+          mutation: RenameFileOrFolder,
+          variables: { workspaceId, targetPath, newName },
+        });
     
-        if (result?.data?.renameFileOrFolder) {
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+    
+        if (data?.renameFileOrFolder) {
           const segments = targetPath.split('/');
           segments[segments.length - 1] = newName;
           const newPath = segments.join('/');
@@ -526,12 +545,12 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
             wsState.activeFile = newPath;
           }
     
-          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.renameFileOrFolder);
+          const changeEvent: FileSystemChangeEvent = JSON.parse(data.renameFileOrFolder);
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
         }
     
         wsState.renameLoading[targetPath] = false;
-        return result;
+        return data;
       } catch (err) {
         console.error('Failed to rename file/folder:', err);
         wsState.renameError[targetPath] = err instanceof Error ? err.message : 'An unknown error occurred';
@@ -549,12 +568,18 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
       if (!workspaceId) throw new Error("No active workspace session");
       
-      const { mutate } = useMutation<MoveFileOrFolderMutation, MoveFileOrFolderMutationVariables>(MoveFileOrFolder);
-    
       try {
-        const result = await mutate({ workspaceId, sourcePath, destinationPath });
+        const { client } = useApolloClient();
+        const { data, errors } = await client.mutate<MoveFileOrFolderMutation, MoveFileOrFolderMutationVariables>({
+          mutation: MoveFileOrFolder,
+          variables: { workspaceId, sourcePath, destinationPath },
+        });
     
-        if (result?.data?.moveFileOrFolder) {
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+    
+        if (data?.moveFileOrFolder) {
           const file = wsState.openFiles.find(f => f.path === sourcePath);
           if (file) {
             file.path = destinationPath;
@@ -562,12 +587,12 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
           if (wsState.activeFile === sourcePath) {
             wsState.activeFile = destinationPath;
           }
-    
-          const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.moveFileOrFolder);
+   
+          const changeEvent: FileSystemChangeEvent = JSON.parse(data.moveFileOrFolder);
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
         }
         wsState.moveLoading[sourcePath] = false;
-        return result;
+        return data;
     
       } catch (err) {
         console.error('Failed to move file/folder:', err);
@@ -586,17 +611,23 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
       if (!workspaceId) throw new Error("No active workspace session");
 
-      const { mutate } = useMutation<CreateFileOrFolderMutation, CreateFileOrFolderMutationVariables>(CreateFileOrFolder);
-
       try {
-        const result = await mutate({ workspaceId, path, isFile });
+        const { client } = useApolloClient();
+        const { data, errors } = await client.mutate<CreateFileOrFolderMutation, CreateFileOrFolderMutationVariables>({
+          mutation: CreateFileOrFolder,
+          variables: { workspaceId, path, isFile },
+        });
 
-        if (result?.data?.createFileOrFolder) {
-            const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.createFileOrFolder);
+        if (errors && errors.length > 0) {
+            throw new Error(errors.map(e => e.message).join(', '));
+        }
+
+        if (data?.createFileOrFolder) {
+            const changeEvent: FileSystemChangeEvent = JSON.parse(data.createFileOrFolder);
             workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
         }
         wsState.createLoading[path] = false;
-        return result;
+        return data;
 
       } catch(err) {
         console.error('Failed to create file/folder:', err);

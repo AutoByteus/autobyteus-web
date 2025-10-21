@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { useMutation, useApolloClient } from '@vue/apollo-composable';
+import { useApolloClient } from '@vue/apollo-composable';
 import { GetAgentTeamDefinitions } from '~/graphql/queries/agentTeamDefinitionQueries';
 import { CreateAgentTeamDefinition, UpdateAgentTeamDefinition, DeleteAgentTeamDefinition } from '~/graphql/mutations/agentTeamDefinitionMutations';
 import type { 
@@ -105,24 +105,29 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
   }
 
   async function createAgentTeamDefinition(input: CreateAgentTeamDefinitionInput): Promise<AgentTeamDefinition | null> {
-    const { mutate } = useMutation<CreateAgentTeamDefinitionMutation, CreateAgentTeamDefinitionMutationVariables>(CreateAgentTeamDefinition, {
-      refetchQueries: [{ query: GetAgentTeamDefinitions }]
-    });
-    
     try {
       const cleanedInput = JSON.parse(JSON.stringify(input));
       if (cleanedInput.nodes) {
         cleanedInput.nodes.forEach((node: any) => delete node.__typename);
       }
 
-      const result = await mutate({ input: cleanedInput });
-      if (result?.data?.createAgentTeamDefinition) {
+      const { data, errors } = await client.mutate<CreateAgentTeamDefinitionMutation, CreateAgentTeamDefinitionMutationVariables>({
+        mutation: CreateAgentTeamDefinition,
+        variables: { input: cleanedInput },
+        refetchQueries: [{ query: GetAgentTeamDefinitions }]
+      });
+
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map(e => e.message).join(', '));
+      }
+
+      if (data?.createAgentTeamDefinition) {
         // The refetch will update the cache and trigger reactivity.
         // We need to wait for the data to be available in the store.
         await client.query({ query: GetAgentTeamDefinitions, fetchPolicy: 'network-only' }).then(({ data }) => {
             agentTeamDefinitions.value = (data.agentTeamDefinitions || []) as AgentTeamDefinition[];
         });
-        return getAgentTeamDefinitionById.value(result.data.createAgentTeamDefinition.id);
+        return getAgentTeamDefinitionById.value(data.createAgentTeamDefinition.id);
       }
       return null;
     } catch (e) {
@@ -133,22 +138,27 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
   }
 
   async function updateAgentTeamDefinition(input: UpdateAgentTeamDefinitionInput): Promise<AgentTeamDefinition | null> {
-    const { mutate } = useMutation<UpdateAgentTeamDefinitionMutation, UpdateAgentTeamDefinitionMutationVariables>(UpdateAgentTeamDefinition, {
-        refetchQueries: [{ query: GetAgentTeamDefinitions }] // Refetching as mutation response is minimal
-    });
-
     try {
       const cleanedInput = JSON.parse(JSON.stringify(input));
       if (cleanedInput.nodes) {
         cleanedInput.nodes.forEach((node: any) => delete node.__typename);
       }
 
-      const result = await mutate({ input: cleanedInput });
-      if (result?.data?.updateAgentTeamDefinition) {
+      const { data, errors } = await client.mutate<UpdateAgentTeamDefinitionMutation, UpdateAgentTeamDefinitionMutationVariables>({
+        mutation: UpdateAgentTeamDefinition,
+        variables: { input: cleanedInput },
+        refetchQueries: [{ query: GetAgentTeamDefinitions }]
+      });
+
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map(e => e.message).join(', '));
+      }
+
+      if (data?.updateAgentTeamDefinition) {
         await client.query({ query: GetAgentTeamDefinitions, fetchPolicy: 'network-only' }).then(({ data }) => {
             agentTeamDefinitions.value = (data.agentTeamDefinitions || []) as AgentTeamDefinition[];
         });
-        return getAgentTeamDefinitionById.value(result.data.updateAgentTeamDefinition.id);
+        return getAgentTeamDefinitionById.value(data.updateAgentTeamDefinition.id);
       }
       return null;
     } catch (e) {
@@ -159,25 +169,30 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
   }
   
   async function deleteAgentTeamDefinition(id: string): Promise<boolean> {
-    const { mutate } = useMutation<DeleteAgentTeamDefinitionMutation, DeleteAgentTeamDefinitionMutationVariables>(DeleteAgentTeamDefinition, {
-      update: (cache) => {
-        cache.modify({
-          fields: {
-            agentTeamDefinitions(existingDefs: any[], { readField }) {
-              const newDefs = existingDefs.filter(defRef => readField('id', defRef) !== id);
-              agentTeamDefinitions.value = newDefs; // Update local state
-              return newDefs;
-            }
-          }
-        });
-        cache.evict({ id: cache.identify({ __typename: 'AgentTeamDefinition', id }) });
-        cache.gc();
-      }
-    });
-    
     try {
-      const result = await mutate({ id });
-      return !!result?.data?.deleteAgentTeamDefinition?.success;
+      const { data, errors } = await client.mutate<DeleteAgentTeamDefinitionMutation, DeleteAgentTeamDefinitionMutationVariables>({
+        mutation: DeleteAgentTeamDefinition,
+        variables: { id },
+        update: (cache) => {
+          cache.modify({
+            fields: {
+              agentTeamDefinitions(existingDefs: any[], { readField }) {
+                const newDefs = existingDefs.filter(defRef => readField('id', defRef) !== id);
+                agentTeamDefinitions.value = newDefs; // Update local state
+                return newDefs;
+              }
+            }
+          });
+          cache.evict({ id: cache.identify({ __typename: 'AgentTeamDefinition', id }) });
+          cache.gc();
+        }
+      });
+
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map(e => e.message).join(', '));
+      }
+
+      return !!data?.deleteAgentTeamDefinition?.success;
     } catch (e) {
       error.value = e;
       console.error("Failed to delete agent team definition:", e);

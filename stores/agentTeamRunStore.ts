@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { useMutation, useSubscription } from '@vue/apollo-composable';
+import { useApolloClient, useSubscription } from '@vue/apollo-composable';
 import { TerminateAgentTeamInstance, SendMessageToTeam } from '~/graphql/mutations/agentTeamInstanceMutations';
 import { AgentTeamResponseSubscription } from '~/graphql/subscriptions/agentTeamResponseSubscription';
 import type {
@@ -204,8 +204,11 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       if (teamId.startsWith('temp-')) return;
 
       try {
-        const { mutate: terminateTeam } = useMutation(TerminateAgentTeamInstance);
-        await terminateTeam({ id: teamId });
+        const { client } = useApolloClient();
+        await client.mutate({
+          mutation: TerminateAgentTeamInstance,
+          variables: { id: teamId },
+        });
       } catch (error) {
         console.error(`Error terminating team ${teamId} on backend:`, error);
       }
@@ -232,11 +235,10 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
         contextFilePaths: contextPaths.map(p => ({path: p.path, type: p.type as any}))
       });
 
-      const { mutate: sendMessage } = useMutation<SendMessageToTeamMutation, SendMessageToTeamMutationVariables>(SendMessageToTeam);
-      
       const isTemporary = activeTeam.teamId.startsWith('temp-');
       
       try {
+        const { client } = useApolloClient();
         let variables: SendMessageToTeamMutationVariables;
         const taskNotificationMode = activeTeam.launchProfile.globalConfig.taskNotificationMode as TaskNotificationModeEnum;
         const useXmlToolFormat = activeTeam.launchProfile.globalConfig.useXmlToolFormat;
@@ -267,11 +269,18 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
           };
         }
 
-        const result = await sendMessage(variables);
-        const permanentId = result?.data?.sendMessageToTeam?.teamId;
+        const { data, errors } = await client.mutate<SendMessageToTeamMutation, SendMessageToTeamMutationVariables>({
+          mutation: SendMessageToTeam,
+          variables,
+        });
+        const permanentId = data?.sendMessageToTeam?.teamId;
 
-        if (!result?.data?.sendMessageToTeam?.success || !permanentId) {
-          throw new Error(result?.data?.sendMessageToTeam?.message || 'Failed to send message.');
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+
+        if (!data?.sendMessageToTeam?.success || !permanentId) {
+          throw new Error(data?.sendMessageToTeam?.message || 'Failed to send message.');
         }
 
         if (isTemporary) {

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { useMutation, useSubscription, useApolloClient } from '@vue/apollo-composable'
+import { useSubscription, useApolloClient } from '@vue/apollo-composable'
 import { CreateWorkspace } from '~/graphql/mutations/workspace_mutations'
 import { GetAvailableWorkspaceDefinitions, GetAllWorkspaces } from '~/graphql/queries/workspace_queries'
 import { FileSystemChangedSubscription } from '~/graphql/subscriptions/fileSystemSubscription'
@@ -66,21 +66,24 @@ export const useWorkspaceStore = defineStore('workspace', {
     async createWorkspace(workspaceTypeName: string, config: Record<string, any>): Promise<string> {
       this.loading = true;
       this.error = null;
-      const { mutate } = useMutation<CreateWorkspaceMutation, CreateWorkspaceMutationVariables>(CreateWorkspace);
+      const { client } = useApolloClient();
       try {
-        const result = await mutate({
-          input: {
-            workspaceTypeName: workspaceTypeName,
-            config: config
+        const { data, errors } = await client.mutate<CreateWorkspaceMutation, CreateWorkspaceMutationVariables>({
+          mutation: CreateWorkspace,
+          variables: {
+            input: {
+              workspaceTypeName: workspaceTypeName,
+              config: config
+            }
           }
         });
 
-        if (result?.errors) {
-          throw new Error(result.errors.map(e => e.message).join(', '));
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
         }
 
-        if (result?.data?.createWorkspace) {
-          const newWorkspace = result.data.createWorkspace;
+        if (data?.createWorkspace) {
+          const newWorkspace = data.createWorkspace;
           
           const treeNode = convertJsonToTreeNode(newWorkspace.fileExplorer);
           const nodeIdToNode = createNodeIdToNodeDictionary(treeNode);
