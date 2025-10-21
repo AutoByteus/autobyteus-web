@@ -11,6 +11,17 @@
         >
           <XMarkIcon class="w-5 h-5" />
         </button>
+
+        <!-- Copy URL Button -->
+        <button
+          v-if="audioUrl"
+          @click="handleCopyUrl"
+          :title="copyButtonTitle"
+          class="absolute top-2 right-10 p-1 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+        >
+          <CheckIcon v-if="copyButtonState === 'copied'" class="w-5 h-5 text-green-500" />
+          <ClipboardDocumentIcon v-else class="w-5 h-5" />
+        </button>
         
         <!-- Header -->
         <div class="flex items-center mb-4">
@@ -39,9 +50,10 @@
 </template>
 
 <script setup lang="ts">
-import { XMarkIcon, MusicalNoteIcon } from '@heroicons/vue/24/solid';
+import { ref, computed } from 'vue';
+import { XMarkIcon, MusicalNoteIcon, ClipboardDocumentIcon, CheckIcon } from '@heroicons/vue/24/solid';
 
-defineProps<{
+const props = defineProps<{
   visible: boolean;
   audioUrl: string | null;
 }>();
@@ -50,8 +62,26 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
+const copyButtonState = ref<'idle' | 'copied'>('idle');
+const copyButtonTitle = computed(() => copyButtonState.value === 'idle' ? 'Copy URL' : 'Copied!');
+
 const closeModal = () => {
   emit('close');
+};
+
+const handleCopyUrl = async () => {
+  if (!props.audioUrl || copyButtonState.value === 'copied') return;
+
+  try {
+    await navigator.clipboard.writeText(props.audioUrl);
+    copyButtonState.value = 'copied';
+    setTimeout(() => {
+      copyButtonState.value = 'idle';
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to copy URL: ', err);
+    alert('Failed to copy URL to clipboard.');
+  }
 };
 </script>
 

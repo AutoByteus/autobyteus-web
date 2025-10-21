@@ -9,22 +9,48 @@
     tabindex="0"
     ref="modalContainer"
   >
-    <!-- Modal Box: Added min-h-[75vh] to make it utilize more screen height -->
+    <!-- Modal Box -->
     <div 
-      class="relative bg-white dark:bg-zinc-800 p-4 rounded-lg shadow-xl 
+      class="group relative bg-white dark:bg-zinc-800 p-4 rounded-lg shadow-xl 
              w-full max-w-[95vw] h-full max-h-[95vh] min-h-[75vh] 
              flex flex-col"
     >
-      <!-- Close Button -->
-      <button
-        @click="closeModalAndReset"
-        aria-label="Close"
-        class="absolute -top-3 -right-3 text-white bg-zinc-700 hover:bg-zinc-900 dark:bg-zinc-900 dark:hover:bg-zinc-700 rounded-full p-2 z-20"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" class="w-5 h-5 fill-current">
-          <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z"/>
-        </svg>
-      </button>
+      <!-- Top-right Controls: Appear on hover -->
+      <div class="absolute top-3 right-3 z-20 flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <button
+            v-if="imageUrl && (currentScale !== 1 || imageScrollContainer && (imageScrollContainer.scrollLeft !== 0 || imageScrollContainer.scrollTop !== 0))"
+            @click="resetImageState"
+            title="Reset View"
+            class="p-2 text-white bg-zinc-700/70 hover:bg-zinc-800/90 backdrop-blur-sm rounded-full transition-colors"
+        >
+            <ArrowUturnLeftIcon class="w-5 h-5" />
+        </button>
+        <button
+            v-if="imageUrl"
+            @click="handleCopyUrl"
+            :title="copyButtonTitle"
+            class="p-2 text-white bg-zinc-700/70 hover:bg-zinc-800/90 backdrop-blur-sm rounded-full transition-colors"
+        >
+            <CheckIcon v-if="copyButtonState === 'copied'" class="w-5 h-5 text-green-400" />
+            <ClipboardDocumentIcon v-else class="w-5 h-5" />
+        </button>
+        <button
+            v-if="imageUrl"
+            @click="handleDownload"
+            title="Download"
+            class="p-2 text-white bg-zinc-700/70 hover:bg-zinc-800/90 backdrop-blur-sm rounded-full transition-colors"
+        >
+            <ArrowDownTrayIcon class="w-5 h-5" />
+        </button>
+        <button
+          @click="closeModalAndReset"
+          title="Close"
+          aria-label="Close"
+          class="p-2 text-white bg-zinc-700/70 hover:bg-zinc-800/90 backdrop-blur-sm rounded-full transition-colors"
+        >
+          <XMarkIcon class="w-5 h-5" />
+        </button>
+      </div>
 
       <!-- Image container for zooming and scrolling -->
       <div 
@@ -49,32 +75,19 @@
           No image to display.
         </div>
       </div>
-
-      <!-- Controls: Download and Reset Zoom -->
-      <div v-if="imageUrl" class="mt-3 flex justify-center items-center space-x-3 flex-shrink-0">
-         <button
-            @click="handleDownload"
-            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="w-4 h-4 fill-current inline-block mr-2 -mt-1"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32V274.7l-73.4-73.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l128 128c12.5 12.5 32.8 12.5 45.3 0l128-128c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L288 274.7V32zM64 352c-17.7 0-32 14.3-32 32v64c0 17.7 14.3 32 32 32H448c17.7 0 32-14.3 32-32V384c0-17.7-14.3-32-32-32H64z"/></svg>
-            Download
-        </button>
-        <button
-            v-if="currentScale !== 1 || imageScrollContainer && (imageScrollContainer.scrollLeft !== 0 || imageScrollContainer.scrollTop !== 0)"
-            @click="resetImageState"
-            title="Reset View"
-            class="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 rounded-md transition-colors"
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 10L3 3m0 7v-7h7" /></svg>
-            Reset View <span v-if="currentScale !==1">({{ Math.round(currentScale * 100) }}%)</span>
-        </button>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
+import { ref, watch, nextTick, onMounted, onBeforeUnmount, computed } from 'vue';
+import { 
+  XMarkIcon, 
+  ArrowDownTrayIcon, 
+  ClipboardDocumentIcon, 
+  CheckIcon, 
+  ArrowUturnLeftIcon 
+} from '@heroicons/vue/24/solid';
 
 const props = defineProps<{
   visible: boolean;
@@ -101,6 +114,9 @@ const ZOOM_SENSITIVITY = 0.1;
 const isDragging = ref(false);
 const lastDragPosition = ref<{ x: number; y: number } | null>(null);
 
+const copyButtonState = ref<'idle' | 'copied'>('idle');
+const copyButtonTitle = computed(() => copyButtonState.value === 'idle' ? 'Copy URL' : 'Copied!');
+
 const resetImageState = () => {
   currentScale.value = 1;
   if (imageScrollContainer.value) {
@@ -117,10 +133,25 @@ const handleDownload = () => {
   if (props.imageUrl) {
     const a = document.createElement('a');
     a.href = props.imageUrl;
-    a.download = props.downloadFilename || 'diagram.png';
+    a.download = props.downloadFilename || 'image.png';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  }
+};
+
+const handleCopyUrl = async () => {
+  if (!props.imageUrl || copyButtonState.value === 'copied') return;
+
+  try {
+    await navigator.clipboard.writeText(props.imageUrl);
+    copyButtonState.value = 'copied';
+    setTimeout(() => {
+      copyButtonState.value = 'idle';
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to copy URL: ', err);
+    alert('Failed to copy URL to clipboard.');
   }
 };
 

@@ -11,9 +11,21 @@
         >
           <XMarkIcon class="w-5 h-5" />
         </button>
+
+        <!-- Copy URL Button -->
+        <button
+          v-if="videoUrl"
+          @click="handleCopyUrl"
+          :title="copyButtonTitle"
+          aria-label="Copy URL"
+          class="absolute -top-3 right-12 text-white bg-zinc-800 hover:bg-zinc-900 rounded-full p-2 z-20"
+        >
+          <CheckIcon v-if="copyButtonState === 'copied'" class="w-5 h-5 text-green-400" />
+          <ClipboardDocumentIcon v-else class="w-5 h-5" />
+        </button>
         
         <!-- Video Player -->
-        <div class="flex-grow flex items-center justify-center overflow-hidden">
+        <div class="flex-grow flex items-center justify-center overflow-hidden p-4">
           <video
             v-if="videoUrl"
             :src="videoUrl"
@@ -33,9 +45,10 @@
 </template>
 
 <script setup lang="ts">
-import { XMarkIcon } from '@heroicons/vue/24/solid';
+import { ref, computed } from 'vue';
+import { XMarkIcon, ClipboardDocumentIcon, CheckIcon } from '@heroicons/vue/24/solid';
 
-defineProps<{
+const props = defineProps<{
   visible: boolean;
   videoUrl: string | null;
 }>();
@@ -44,8 +57,26 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
+const copyButtonState = ref<'idle' | 'copied'>('idle');
+const copyButtonTitle = computed(() => copyButtonState.value === 'idle' ? 'Copy URL' : 'Copied!');
+
 const closeModal = () => {
   emit('close');
+};
+
+const handleCopyUrl = async () => {
+  if (!props.videoUrl || copyButtonState.value === 'copied') return;
+
+  try {
+    await navigator.clipboard.writeText(props.videoUrl);
+    copyButtonState.value = 'copied';
+    setTimeout(() => {
+      copyButtonState.value = 'idle';
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to copy URL: ', err);
+    alert('Failed to copy URL to clipboard.');
+  }
 };
 </script>
 

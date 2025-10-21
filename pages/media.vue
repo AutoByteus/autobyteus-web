@@ -110,12 +110,23 @@
     <FullScreenImageModal
       :visible="isImageModalVisible"
       :image-url="selectedMediaUrl"
+      :download-filename="selectedMediaFile?.filename"
       @close="closeModals"
       @next="showNextImage"
       @previous="showPreviousImage"
     />
-    <FullScreenVideoModal :visible="isVideoModalVisible" :video-url="selectedMediaUrl" @close="closeModals" />
-    <FullScreenAudioModal :visible="isAudioModalVisible" :audio-url="selectedMediaUrl" @close="closeModals" />
+    <FullScreenVideoModal 
+      :visible="isVideoModalVisible" 
+      :video-url="selectedMediaUrl" 
+      :download-filename="selectedMediaFile?.filename"
+      @close="closeModals" 
+    />
+    <FullScreenAudioModal 
+      :visible="isAudioModalVisible" 
+      :audio-url="selectedMediaUrl" 
+      :download-filename="selectedMediaFile?.filename"
+      @close="closeModals" 
+    />
     <ConfirmationModal
       :show="showConfirmDelete"
       title="Confirm Deletion"
@@ -141,6 +152,7 @@ import { VideoCameraIcon, MusicalNoteIcon, DocumentTextIcon, QuestionMarkCircleI
 const store = useMediaLibraryStore();
 
 const selectedMediaUrl = ref<string | null>(null);
+const selectedMediaFile = ref<MediaFile | null>(null);
 const isImageModalVisible = ref(false);
 const isVideoModalVisible = ref(false);
 const isAudioModalVisible = ref(false);
@@ -164,6 +176,7 @@ const getIconForCategory = (category: string) => {
 
 const openMedia = (file: MediaFile) => {
   selectedMediaUrl.value = file.url;
+  selectedMediaFile.value = file;
   switch (file.category) {
     case 'images':
       isImageModalVisible.value = true;
@@ -178,6 +191,7 @@ const openMedia = (file: MediaFile) => {
       // For documents or others, open in a new tab
       window.open(file.url, '_blank');
       selectedMediaUrl.value = null;
+      selectedMediaFile.value = null;
       break;
   }
 };
@@ -189,6 +203,7 @@ const closeModals = () => {
   // Delay clearing URL to prevent content flash during modal close animation
   setTimeout(() => {
     selectedMediaUrl.value = null;
+    selectedMediaFile.value = null;
   }, 300);
 };
 
