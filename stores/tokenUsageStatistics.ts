@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { useQuery } from '@vue/apollo-composable';
+import { useApolloClient } from '@vue/apollo-composable';
 import { GET_TOKEN_USAGE_STATISTICS } from '~/graphql/queries/token_usage_statistics_queries';
 import type {
   GetUsageStatisticsInPeriodQuery,
@@ -32,48 +32,44 @@ export const useTokenUsageStatisticsStore = defineStore('tokenUsageStatistics', 
     async fetchStatistics(startTime: string, endTime: string): Promise<TokenUsageStatistic[]> {
       this.loading = true;
       this.error = null;
-      
       try {
-        const { onResult, onError } = useQuery<
+        const { client } = useApolloClient();
+        const { data, errors } = await client.query<
           GetUsageStatisticsInPeriodQuery,
           GetUsageStatisticsInPeriodQueryVariables
-        >(GET_TOKEN_USAGE_STATISTICS, 
-          {
+        >({
+          query: GET_TOKEN_USAGE_STATISTICS,
+          variables: {
             startTime,
             endTime,
           },
-          {
-            fetchPolicy: 'network-only',
-          }
-        );
-
-        return new Promise((resolve, reject) => {
-          onResult(({ data }) => {
-            if (data?.usageStatisticsInPeriod) {
-              this.statistics = data.usageStatisticsInPeriod.map((stat) => ({
-                llmModel: stat.llmModel,
-                promptTokens: stat.promptTokens,
-                assistantTokens: stat.assistantTokens,
-                promptCost: stat.promptCost,
-                assistantCost: stat.assistantCost,
-                totalCost: stat.totalCost
-              }));
-              resolve(this.statistics);
-            }
-            this.loading = false;
-          });
-
-          onError((error) => {
-            this.error = error.message;
-            console.error('Failed to fetch token usage statistics:', error);
-            this.loading = false;
-            reject(error);
-          });
+          fetchPolicy: 'network-only',
         });
-      } catch (error) {
-        this.loading = false;
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+
+        if (data?.usageStatisticsInPeriod) {
+          this.statistics = data.usageStatisticsInPeriod.map((stat) => ({
+            llmModel: stat.llmModel,
+            promptTokens: stat.promptTokens,
+            assistantTokens: stat.assistantTokens,
+            promptCost: stat.promptCost,
+            assistantCost: stat.assistantCost,
+            totalCost: stat.totalCost
+          }));
+        } else {
+          this.statistics = [];
+        }
+
+        return this.statistics;
+      } catch (error: any) {
         this.error = error instanceof Error ? error.message : 'An unknown error occurred';
+        console.error('Failed to fetch token usage statistics:', error);
         throw error;
+      } finally {
+        this.loading = false;
       }
     }
   },

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { useQuery, useMutation } from '@vue/apollo-composable';
+import { useMutation, useApolloClient } from '@vue/apollo-composable';
 import { GET_TOOLS, GET_TOOLS_GROUPED_BY_CATEGORY } from '~/graphql/queries/toolQueries';
 import { GET_MCP_SERVERS, PREVIEW_MCP_SERVER_TOOLS } from '~/graphql/queries/mcpServerQueries';
 import { 
@@ -8,6 +8,15 @@ import {
   DISCOVER_AND_REGISTER_MCP_SERVER_TOOLS,
   IMPORT_MCP_SERVER_CONFIGS
 } from '~/graphql/mutations/mcpServerMutations';
+import type {
+  GetToolsQuery,
+  GetToolsQueryVariables,
+  GetToolsGroupedByCategoryQuery,
+  GetToolsGroupedByCategoryQueryVariables,
+  GetMcpServersQuery,
+  PreviewMcpServerToolsQuery,
+  PreviewMcpServerToolsQueryVariables,
+} from '~/generated/graphql';
 
 // --- Interfaces ---
 
@@ -103,29 +112,26 @@ export const useToolManagementStore = defineStore('toolManagement', {
       this.loading = true;
       this.error = null;
       try {
-        const { onResult, onError } = useQuery(GET_TOOLS_GROUPED_BY_CATEGORY, { origin: 'LOCAL' }, { fetchPolicy: 'network-only' });
-        
-        return new Promise<void>((resolve, reject) => {
-          onResult(result => {
-            if (result.data) {
-              this.localToolsByCategory = result.data.toolsGroupedByCategory;
-              // Also update the flat list for any components that might still use it.
-              this.localTools = result.data.toolsGroupedByCategory.flatMap((group: ToolCategoryGroup) => group.tools);
-            }
-            this.loading = false;
-            resolve();
-          });
-          onError(err => {
-            this.error = err;
-            this.loading = false;
-            console.error("Failed to fetch grouped local tools:", err);
-            reject(err);
-          });
+        const { client } = useApolloClient();
+        const { data, errors } = await client.query<GetToolsGroupedByCategoryQuery, GetToolsGroupedByCategoryQueryVariables>({
+          query: GET_TOOLS_GROUPED_BY_CATEGORY,
+          variables: { origin: 'LOCAL' },
+          fetchPolicy: 'network-only',
         });
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+
+        const groups = (data?.toolsGroupedByCategory ?? []) as ToolCategoryGroup[];
+        this.localToolsByCategory = groups;
+        this.localTools = groups.flatMap(group => group.tools);
       } catch (e) {
         this.error = e;
-        this.loading = false;
+        console.error("Failed to fetch grouped local tools:", e);
         throw e;
+      } finally {
+        this.loading = false;
       }
     },
 
@@ -133,27 +139,24 @@ export const useToolManagementStore = defineStore('toolManagement', {
       this.loading = true;
       this.error = null;
       try {
-        const { onResult, onError } = useQuery(GET_MCP_SERVERS, null, { fetchPolicy: 'network-only' });
-        
-        return new Promise<void>((resolve, reject) => {
-          onResult(result => {
-            if (result.data) {
-              this.mcpServers = result.data.mcpServers;
-            }
-            this.loading = false;
-            resolve();
-          });
-          onError(err => {
-            this.error = err;
-            this.loading = false;
-            console.error("Failed to fetch MCP servers:", err);
-            reject(err);
-          });
+        const { client } = useApolloClient();
+        const { data, errors } = await client.query<GetMcpServersQuery>({
+          query: GET_MCP_SERVERS,
+          fetchPolicy: 'network-only',
         });
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+
+        const servers = (data?.mcpServers ?? []) as McpServer[];
+        this.mcpServers = servers;
       } catch (e) {
         this.error = e;
-        this.loading = false;
+        console.error("Failed to fetch MCP servers:", e);
         throw e;
+      } finally {
+        this.loading = false;
       }
     },
 
@@ -161,30 +164,28 @@ export const useToolManagementStore = defineStore('toolManagement', {
       this.loading = true;
       this.error = null;
       try {
-        const { onResult, onError } = useQuery(GET_TOOLS, { sourceServerId: serverId }, { fetchPolicy: 'network-only' });
-        
-        return new Promise<void>((resolve, reject) => {
-          onResult(result => {
-            if (result.data) {
-              // Use Vue's $patch for reactive updates to nested properties
-              this.$patch(state => {
-                state.toolsByServerId[serverId] = result.data.tools;
-              });
-            }
-            this.loading = false;
-            resolve();
-          });
-          onError(err => {
-            this.error = err;
-            this.loading = false;
-            console.error(`Failed to fetch tools for server ${serverId}:`, err);
-            reject(err);
-          });
+        const { client } = useApolloClient();
+        const { data, errors } = await client.query<GetToolsQuery, GetToolsQueryVariables>({
+          query: GET_TOOLS,
+          variables: { sourceServerId: serverId },
+          fetchPolicy: 'network-only',
+        });
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+
+        const tools = (data?.tools ?? []) as Tool[];
+        // Use Vue's $patch for reactive updates to nested properties
+        this.$patch(state => {
+          state.toolsByServerId[serverId] = tools;
         });
       } catch (e) {
         this.error = e;
-        this.loading = false;
+        console.error(`Failed to fetch tools for server ${serverId}:`, e);
         throw e;
+      } finally {
+        this.loading = false;
       }
     },
     
@@ -193,34 +194,34 @@ export const useToolManagementStore = defineStore('toolManagement', {
         this.previewResult = null;
         this.error = null;
         try {
-            const { onResult, onError } = useQuery(PREVIEW_MCP_SERVER_TOOLS, { input }, { fetchPolicy: 'network-only' });
-            return new Promise<void>((resolve, reject) => {
-                onResult(result => {
-                    if (result.data) {
-                        this.previewResult = {
-                            tools: result.data.previewMcpServerTools,
-                            isError: false,
-                            message: ''
-                        };
-                    }
-                    this.loading = false;
-                    resolve();
-                });
-                onError(err => {
-                    this.error = err;
-                    this.previewResult = {
-                        tools: [],
-                        isError: true,
-                        message: err.graphQLErrors[0]?.message || 'An unknown error occurred.'
-                    };
-                    this.loading = false;
-                    reject(err);
-                });
+            const { client } = useApolloClient();
+            const { data, errors } = await client.query<PreviewMcpServerToolsQuery, PreviewMcpServerToolsQueryVariables>({
+                query: PREVIEW_MCP_SERVER_TOOLS,
+                variables: { input },
+                fetchPolicy: 'network-only',
             });
+
+            if (errors && errors.length > 0) {
+                const message = errors.map(e => e.message).join(', ');
+                throw new Error(message);
+            }
+
+            this.previewResult = {
+                tools: (data?.previewMcpServerTools ?? []) as Tool[],
+                isError: false,
+                message: ''
+            };
         } catch(e) {
             this.error = e;
-            this.loading = false;
+            const graphQlMessage = (e as any)?.graphQLErrors?.[0]?.message;
+            this.previewResult = {
+                tools: [],
+                isError: true,
+                message: graphQlMessage || (e instanceof Error ? e.message : 'An unknown error occurred.')
+            };
             throw e;
+        } finally {
+            this.loading = false;
         }
     },
     

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { useQuery } from '@vue/apollo-composable';
+import { useApolloClient } from '@vue/apollo-composable';
 import { GET_CONVERSATION_HISTORY } from '~/graphql/queries/conversation_queries';
 import type { GetConversationHistoryQuery, GetConversationHistoryQueryVariables } from '~/generated/graphql';
 import type { Conversation, UserMessage, AIMessage } from '~/types/conversation';
@@ -51,36 +51,29 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
         searchQuery: this.searchQuery || null, // Pass search query to variables
       };
 
-      // `useQuery` should be called within a component's setup,
-      // but for stores, we can manage it this way.
-      // A better approach in a real app might be to refactor this into a composable.
-      const { onResult, onError } = useQuery<GetConversationHistoryQuery, GetConversationHistoryQueryVariables>(
-        GET_CONVERSATION_HISTORY,
-        variables,
-        {
+      try {
+        const { client } = useApolloClient();
+        const { data, errors } = await client.query<GetConversationHistoryQuery, GetConversationHistoryQueryVariables>({
+          query: GET_CONVERSATION_HISTORY,
+          variables,
           fetchPolicy: 'network-only',
+        });
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
         }
-      );
 
-      return new Promise<void>((resolve) => {
-        onResult((result) => {
-          if (result.loading) return;
-          if (result.data?.getConversationHistory) {
-            const { conversations, totalPages, currentPage } = result.data.getConversationHistory;
-            this.conversations = conversations.map(conv => this.mapToConversation(conv));
-            this.totalPages = totalPages;
-            this.currentPage = currentPage;
-          }
-          this.loading = false;
-          resolve();
-        });
-
-        onError((error) => {
-          this.error = error.message || 'An error occurred while fetching conversation history.';
-          this.loading = false;
-          resolve(); // Resolve promise even on error
-        });
-      });
+        if (data?.getConversationHistory) {
+          const { conversations, totalPages, currentPage } = data.getConversationHistory;
+          this.conversations = conversations.map(conv => this.mapToConversation(conv));
+          this.totalPages = totalPages;
+          this.currentPage = currentPage;
+        }
+      } catch (error: any) {
+        this.error = error?.message || 'An error occurred while fetching conversation history.';
+      } finally {
+        this.loading = false;
+      }
     },
     async performSearch(query: string) {
       this.searchQuery = query;

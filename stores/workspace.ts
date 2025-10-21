@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { useMutation, useQuery, useSubscription } from '@vue/apollo-composable'
+import { useMutation, useSubscription, useApolloClient } from '@vue/apollo-composable'
 import { CreateWorkspace } from '~/graphql/mutations/workspace_mutations'
 import { GetAvailableWorkspaceDefinitions, GetAllWorkspaces } from '~/graphql/queries/workspace_queries'
 import { FileSystemChangedSubscription } from '~/graphql/subscriptions/fileSystemSubscription'
@@ -111,77 +111,83 @@ export const useWorkspaceStore = defineStore('workspace', {
       }
     },
     async fetchAvailableWorkspaceTypes() {
-      if (this.availableWorkspaceTypes.length > 0) return Promise.resolve();
+      if (this.availableWorkspaceTypes.length > 0) return;
       this.loading = true;
       this.error = null;
-      const { onResult, onError } = useQuery<GetAvailableWorkspaceDefinitionsQuery>(GetAvailableWorkspaceDefinitions, null, { fetchPolicy: 'network-only' });
-
-      return new Promise<void>((resolve, reject) => {
-        onResult(result => {
-          if (result.data) {
-            this.availableWorkspaceTypes = result.data.availableWorkspaceDefinitions.map(def => ({
-              name: def.workspaceTypeName,
-              description: def.description,
-              config_schema: {
-                parameters: def.configSchema.map(param => ({
-                  name: param.name,
-                  param_type: param.type,
-                  description: param.description,
-                  required: param.required,
-                  default_value: param.defaultValue,
-                }))
-              }
-            }));
-          }
-          this.loading = false;
-          resolve();
+      try {
+        const { client } = useApolloClient();
+        const { data, errors } = await client.query<GetAvailableWorkspaceDefinitionsQuery>({
+          query: GetAvailableWorkspaceDefinitions,
+          fetchPolicy: 'network-only',
         });
 
-        onError(error => {
-          console.error("Failed to fetch available workspace types:", error);
-          this.error = error;
-          this.loading = false;
-          reject(error);
-        });
-      });
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+
+        if (data?.availableWorkspaceDefinitions) {
+          this.availableWorkspaceTypes = data.availableWorkspaceDefinitions.map(def => ({
+            name: def.workspaceTypeName,
+            description: def.description,
+            config_schema: {
+              parameters: def.configSchema.map(param => ({
+                name: param.name,
+                param_type: param.type,
+                description: param.description,
+                required: param.required,
+                default_value: param.defaultValue,
+              }))
+            }
+          }));
+        }
+      } catch (error: any) {
+        console.error("Failed to fetch available workspace types:", error);
+        this.error = error;
+        throw error;
+      } finally {
+        this.loading = false;
+      }
     },
     async fetchAllWorkspaces() {
-      if (this.workspacesFetched) return Promise.resolve();
+      if (this.workspacesFetched) return;
       this.loading = true;
       this.error = null;
-      const { onResult, onError } = useQuery<GetAllWorkspacesQuery>(GetAllWorkspaces, null, { fetchPolicy: 'network-only' });
+      try {
+        const { client } = useApolloClient();
+        const { data, errors } = await client.query<GetAllWorkspacesQuery>({
+          query: GetAllWorkspaces,
+          fetchPolicy: 'network-only',
+        });
 
-      return new Promise<void>((resolve, reject) => {
-          onResult(result => {
-              if (result.data) {
-                  result.data.workspaces.forEach(ws => {
-                      const treeNode = convertJsonToTreeNode(ws.fileExplorer);
-                      const nodeIdToNode = createNodeIdToNodeDictionary(treeNode);
-                      this.workspaces[ws.workspaceId] = {
-                          workspaceId: ws.workspaceId,
-                          name: ws.name,
-                          fileExplorer: treeNode,
-                          nodeIdToNode: nodeIdToNode,
-                          workspaceTypeName: ws.workspaceTypeName,
-                          workspaceConfig: ws.config,
-                          absolutePath: ws.absolutePath,
-                      };
-                      // Subscribe to changes for each fetched workspace
-                      this.subscribeToWorkspaceChanges(ws.workspaceId);
-                  });
-                  this.workspacesFetched = true;
-              }
-              this.loading = false;
-              resolve();
-          });
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
 
-          onError(error => {
-              console.error("Failed to fetch all workspaces:", error);
-              this.error = error;
-              this.loading = false;
-              reject(error);
+        if (data?.workspaces) {
+          data.workspaces.forEach(ws => {
+            const treeNode = convertJsonToTreeNode(ws.fileExplorer);
+            const nodeIdToNode = createNodeIdToNodeDictionary(treeNode);
+            this.workspaces[ws.workspaceId] = {
+              workspaceId: ws.workspaceId,
+              name: ws.name,
+              fileExplorer: treeNode,
+              nodeIdToNode: nodeIdToNode,
+              workspaceTypeName: ws.workspaceTypeName,
+              workspaceConfig: ws.config,
+              absolutePath: ws.absolutePath,
+            };
+            // Subscribe to changes for each fetched workspace
+            this.subscribeToWorkspaceChanges(ws.workspaceId);
           });
-      });
+          this.workspacesFetched = true;
+        }
+      } catch (error: any) {
+        console.error("Failed to fetch all workspaces:", error);
+        this.error = error;
+        throw error;
+      } finally {
+        this.loading = false;
+      }
     },
     handleFileSystemChange(workspaceId: string, event: FileSystemChangeEvent) {
       const workspace = this.workspaces[workspaceId];
