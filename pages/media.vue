@@ -107,7 +107,13 @@
     <ToastContainer />
 
     <!-- Modals -->
-    <FullScreenImageModal :visible="isImageModalVisible" :image-url="selectedMediaUrl" @close="closeModals" />
+    <FullScreenImageModal
+      :visible="isImageModalVisible"
+      :image-url="selectedMediaUrl"
+      @close="closeModals"
+      @next="showNextImage"
+      @previous="showPreviousImage"
+    />
     <FullScreenVideoModal :visible="isVideoModalVisible" :video-url="selectedMediaUrl" @close="closeModals" />
     <FullScreenAudioModal :visible="isAudioModalVisible" :audio-url="selectedMediaUrl" @close="closeModals" />
     <ConfirmationModal
@@ -123,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useMediaLibraryStore, type MediaFile } from '~/stores/mediaLibraryStore';
 import FullScreenImageModal from '~/components/common/FullScreenImageModal.vue';
 import FullScreenVideoModal from '~/components/common/FullScreenVideoModal.vue';
@@ -140,6 +146,8 @@ const isVideoModalVisible = ref(false);
 const isAudioModalVisible = ref(false);
 const fileToDelete = ref<MediaFile | null>(null);
 const showConfirmDelete = ref(false);
+
+const imageFiles = computed(() => store.files.filter(f => f.category === 'images'));
 
 onMounted(() => {
   store.fetchMedia();
@@ -205,5 +213,23 @@ const confirmDelete = async () => {
   } finally {
     cancelDelete();
   }
+};
+
+const showNextImage = () => {
+  if (!selectedMediaUrl.value || imageFiles.value.length === 0) return;
+  const currentIndex = imageFiles.value.findIndex(f => f.url === selectedMediaUrl.value);
+  if (currentIndex === -1) return;
+
+  const nextIndex = (currentIndex + 1) % imageFiles.value.length;
+  openMedia(imageFiles.value[nextIndex]);
+};
+
+const showPreviousImage = () => {
+  if (!selectedMediaUrl.value || imageFiles.value.length === 0) return;
+  const currentIndex = imageFiles.value.findIndex(f => f.url === selectedMediaUrl.value);
+  if (currentIndex === -1) return;
+
+  const prevIndex = (currentIndex - 1 + imageFiles.value.length) % imageFiles.value.length;
+  openMedia(imageFiles.value[prevIndex]);
 };
 </script>
