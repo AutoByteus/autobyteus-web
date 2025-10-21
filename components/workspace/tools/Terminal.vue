@@ -23,7 +23,6 @@ const workspaceStore = useWorkspaceStore();
 let resizeObserver: ResizeObserver | null = null;
 
 const currentConversationId = ref<string>('default-conversation');
-const currentMessageIndex = ref<number>(0);
 
 const commandHistory = ref<string[]>([]);
 const historyIndex = ref<number>(0);
@@ -54,22 +53,26 @@ const handleCommand = async (command: string) => {
     writePrompt();
     return;
   }
+  
+  // Generate a unique key for each command to avoid conflicts and race conditions.
+  const commandKey = `${currentConversationId.value}:${Date.now()}`;
 
   try {
-    // We execute the command but the result is handled by the store,
-    // here we just need to display the output in the terminal as well.
-    // For now, we will use a separate store action for terminal execution if needed,
-    // or let's just execute and show the result.
+    // Execute the command using the unique key.
     await bashCommandStore.executeBashCommand(
       workspaceId,
       command,
-      currentConversationId.value, // This is a generic ID for terminal commands
-      Date.now() // Use timestamp for a unique index for terminal commands
+      commandKey
     );
-    const result = bashCommandStore.commandResults[currentConversationId.value]?.[Object.keys(bashCommandStore.commandResults[currentConversationId.value] || {}).pop() as any];
     
-    if (result) {
+    // Retrieve the result using the same unique key.
+    const result = bashCommandStore.commandResults[commandKey];
+    
+    // Safely access the message property and display it.
+    if (result && typeof result.message === 'string') {
         terminalInstance.value.writeln(result.message);
+    } else if (result && !result.success) {
+        terminalInstance.value.writeln(`Error: ${result.message || 'Command failed with no output.'}`);
     }
 
   } catch (error) {
