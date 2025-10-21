@@ -4,6 +4,8 @@
     class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4"
     @click.self="closeModalAndReset"
     @keydown.esc="closeModalAndReset"
+    @keydown.left.prevent="emit('previous')"
+    @keydown.right.prevent="emit('next')"
     tabindex="0"
     ref="modalContainer"
   >
@@ -74,13 +76,17 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 
-const props = defineProps<{  visible: boolean;
+const props = defineProps<{
+  visible: boolean;
   imageUrl: string | null;
   altText?: string;
   downloadFilename?: string;
 }>();
 
-const emit = defineEmits<{  (e: 'close'): void;
+const emit = defineEmits<{
+  (e: 'close'): void;
+  (e: 'next'): void;
+  (e: 'previous'): void;
 }>();
 
 const modalContainer = ref<HTMLElement | null>(null);
