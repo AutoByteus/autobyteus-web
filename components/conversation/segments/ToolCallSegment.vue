@@ -40,7 +40,7 @@
 
     <!-- Approval Buttons -->
     <div v-if="segment.status === 'awaiting-approval'" class="flex items-center justify-end space-x-2 mb-3">
-      <button @click="onDeny" class="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors">Deny</button>
+      <button @click="showDenyModal" class="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors">Deny</button>
       <button @click="onApprove" class="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors">Approve</button>
     </div>
     
@@ -69,13 +69,20 @@
         <pre class="mt-2 text-xs text-red-800 dark:text-red-200 bg-red-50 dark:bg-gray-800 p-2 rounded overflow-auto whitespace-pre-wrap"><code>{{ prettyError }}</code></pre>
       </details>
     </div>
+    
+    <ToolCallRejectionModal
+      :visible="isRejectionModalVisible"
+      @close="isRejectionModalVisible = false"
+      @confirm="handleDenyConfirm"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { ToolCallSegment } from '~/utils/aiResponseParser/types';
 import { useAgentRunStore } from '~/stores/agentRunStore';
+import ToolCallRejectionModal from './ToolCallRejectionModal.vue';
 
 const props = defineProps<{
   segment: ToolCallSegment;
@@ -83,6 +90,7 @@ const props = defineProps<{
 }>();
 
 const agentRunStore = useAgentRunStore();
+const isRejectionModalVisible = ref(false);
 
 /**
  * Pretty-prints a value. If the value is a string that represents a JSON object or array,
@@ -143,8 +151,14 @@ const onApprove = () => {
   agentRunStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, true);
 };
 
-const onDeny = () => {
-  agentRunStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, false, 'User denied execution.');
+const showDenyModal = () => {
+  isRejectionModalVisible.value = true;
+};
+
+const handleDenyConfirm = (reason?: string) => {
+  const finalReason = reason || 'User denied execution without providing a reason.';
+  agentRunStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, false, finalReason);
+  isRejectionModalVisible.value = false;
 };
 </script>
 

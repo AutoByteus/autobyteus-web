@@ -14,7 +14,7 @@
       
       <!-- Right side: Approval Buttons -->
       <div v-if="segment.status === 'awaiting-approval'" class="flex items-center justify-end space-x-2">
-        <button @click="onDeny" class="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors">Deny</button>
+        <button @click="showDenyModal" class="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors">Deny</button>
         <button @click="onApprove" class="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors">Approve</button>
       </div>
     </div>
@@ -94,6 +94,14 @@
         </details>
       </div>
     </div>
+    
+    <ToolCallRejectionModal
+      :visible="isRejectionModalVisible"
+      title="Reject File Write Operation"
+      message="Please provide a reason for rejecting this file write operation."
+      @close="isRejectionModalVisible = false"
+      @confirm="handleDenyConfirm"
+    />
   </div>
 </template>
 
@@ -103,6 +111,7 @@ import type { ToolCallSegment } from '~/utils/aiResponseParser/types';
 import { useAgentRunStore } from '~/stores/agentRunStore';
 import FileDisplay from '~/components/conversation/segments/renderer/FileDisplay.vue';
 import CopyButton from '~/components/common/CopyButton.vue';
+import ToolCallRejectionModal from './ToolCallRejectionModal.vue';
 import { BeakerIcon, CheckCircleIcon, ClockIcon, CodeBracketIcon, ExclamationCircleIcon, HandRaisedIcon, XCircleIcon } from '@heroicons/vue/24/solid';
 
 const props = defineProps<{
@@ -111,6 +120,7 @@ const props = defineProps<{
 }>();
 
 const agentRunStore = useAgentRunStore();
+const isRejectionModalVisible = ref(false);
 
 // --- State for expand/collapse functionality ---
 const isExpanded = ref(false);
@@ -146,8 +156,14 @@ const onApprove = () => {
   agentRunStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, true);
 };
 
-const onDeny = () => {
-  agentRunStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, false, 'User denied execution.');
+const showDenyModal = () => {
+  isRejectionModalVisible.value = true;
+};
+
+const handleDenyConfirm = (reason?: string) => {
+  const finalReason = reason || 'User denied file write operation without providing a reason.';
+  agentRunStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, false, finalReason);
+  isRejectionModalVisible.value = false;
 };
 </script>
 
