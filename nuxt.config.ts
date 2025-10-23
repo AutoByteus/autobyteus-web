@@ -45,6 +45,11 @@ if (isElectronBuild) {
 const baseConfig = {
   ssr: false,
 
+  // Disable Nuxt DevTools floating icon
+  devtools: {
+    enabled: false
+  },
+
   css: [
     '@fortawesome/fontawesome-svg-core/styles.css'
   ],
