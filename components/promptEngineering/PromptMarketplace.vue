@@ -264,7 +264,7 @@
           <div v-for="(variants, groupKey) in promptGroups" :key="groupKey">
             <!-- Sub-header for Prompt Name (for compact view) -->
             <div v-if="viewMode === 'compact'" class="flex items-center justify-between mb-4">
-              <h4 class="text-lg font-medium text-gray-900">{{ variants[0].name }}</h4>
+              <h4 class="text-lg font-medium text-gray-900">{{ variants.name }}</h4>
               <button 
                 v-if="variants.length > 1"
                 @click="startCompareMode(groupKey, variants)"
@@ -314,7 +314,7 @@
                 v-if="viewMode === 'grid' && (!selectedPromptNameFilter || variants.length > 1)"
                 class="col-span-1 md:col-span-2 flex items-center justify-between"
               >
-                <h4 v-if="!selectedPromptNameFilter" class="text-lg font-medium text-gray-900">{{ variants[0].name }}</h4>
+                <h4 v-if="!selectedPromptNameFilter" class="text-lg font-medium text-gray-900">{{ variants.name }}</h4>
                 <button 
                   v-if="variants.length > 1"
                   @click="startCompareMode(groupKey, variants)"
@@ -463,19 +463,32 @@ const groupedPrompts = computed(() => {
   for (const key in groups) {
     const promptList = groups[key];
     
-    const latestVariantsMap = new Map<string, Prompt>();
+    // Group prompts by suitableForModels to handle variants
+    const promptsByModels = new Map<string, Prompt[]>();
     promptList.forEach(p => {
-      const modelsKey = p.suitableForModels || 'None';
-      const existing = latestVariantsMap.get(modelsKey);
-      if (!existing || p.version > existing.version) {
-        latestVariantsMap.set(modelsKey, p);
-      }
+        const modelsKey = p.suitableForModels || 'None';
+        if (!promptsByModels.has(modelsKey)) {
+            promptsByModels.set(modelsKey, []);
+        }
+        promptsByModels.get(modelsKey)!.push(p);
     });
-    
-    const variants = Array.from(latestVariantsMap.values()).sort((a,b) => b.version - a.version);
+
+    // For each model group, find the active prompt, or fall back to the latest version
+    const variants: Prompt[] = [];
+    for (const modelPrompts of promptsByModels.values()) {
+        if (modelPrompts.length === 0) continue;
+
+        let chosenPrompt = modelPrompts.find(p => p.isActive);
+        if (!chosenPrompt) {
+            chosenPrompt = modelPrompts.reduce((latest, current) => {
+                return current.version > latest.version ? current : latest;
+            });
+        }
+        variants.push(chosenPrompt);
+    }
     
     if (variants.length > 0) {
-      processedGroups[key] = variants;
+      processedGroups[key] = variants.sort((a, b) => b.version - a.version);
     }
   }
 
@@ -488,7 +501,7 @@ const promptsGroupedByCategoryAndName = computed(() => {
   for (const groupKey in groupedPrompts.value) {
     const variants = groupedPrompts.value[groupKey];
     if (variants.length > 0) {
-      const category = variants[0].category || 'Uncategorized';
+      const category = variants.category || 'Uncategorized';
       if (!result[category]) {
         result[category] = {};
       }
