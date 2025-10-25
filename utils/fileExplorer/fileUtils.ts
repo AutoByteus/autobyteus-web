@@ -127,6 +127,37 @@ function handleDeleteChange(nodeIdToNode: Record<string, TreeNode>, change: Dele
 }
 
 /**
+ * Recursively updates the file paths of all descendants of a given node.
+ * This is necessary when a parent folder is renamed or moved.
+ * @param node The parent node whose children need updating.
+ * @param oldBasePath The old path prefix of the parent node.
+ * @param newBasePath The new path prefix of the parent node.
+ */
+function updateDescendantPaths(node: TreeNode, oldBasePath: string, newBasePath: string): void {
+  if (node.is_file || !node.children) {
+    return; // Only applies to folders with children
+  }
+
+  node.children.forEach(child => {
+    const oldChildPath = child.path; // Capture the original path before modification
+    
+    // Replace the start of the child's path
+    if (child.path.startsWith(oldBasePath + '/')) {
+      const relativePart = child.path.substring(oldBasePath.length);
+      child.path = newBasePath + relativePart;
+    } else {
+      console.warn(`Child path "${child.path}" did not match old base path "${oldBasePath}".`);
+      // No change if it doesn't match
+    }
+
+    // Recurse if it's a folder
+    if (!child.is_file) {
+      updateDescendantPaths(child, oldChildPath, child.path); // Use captured old path and new path for recursion
+    }
+  });
+}
+
+/**
  * Optimized rename operation that maintains sort order efficiently.
  * Removes node from current position and reinserts in correct sorted position.
  */
@@ -141,6 +172,9 @@ function handleRenameChange(nodeIdToNode: Record<string, TreeNode>, change: Rena
     throw new Error(`Parent node with id ${change.parent_id} not found`)
   }
 
+  const oldPath = node.path;
+  const newPath = change.node.path;
+
   // Remove the node from its current position
   const currentIndex = parentNode.children.findIndex(child => child.id === node.id)
   if (currentIndex === -1) {
@@ -150,7 +184,10 @@ function handleRenameChange(nodeIdToNode: Record<string, TreeNode>, change: Rena
   
   // Update the node's properties
   node.name = change.node.name
-  node.path = change.node.path
+  node.path = newPath
+
+  // Update paths of all children recursively
+  updateDescendantPaths(node, oldPath, newPath);
   
   // Reinsert the node in its new sorted position using efficient addChild
   parentNode.addChild(node)
@@ -168,10 +205,16 @@ function handleMoveChange(nodeIdToNode: Record<string, TreeNode>, change: MoveCh
     throw new Error('One or more nodes not found during move operation')
   }
 
+  const oldPath = node.path;
+  const newPath = change.node.path;
+
   oldParent.children = oldParent.children.filter(child => child.id !== node.id)
   
   node.name = change.node.name
-  node.path = change.node.path
+  node.path = newPath
+
+  // Update paths of all children recursively
+  updateDescendantPaths(node, oldPath, newPath);
   
   newParent.addChild(node)
 }

@@ -12,7 +12,8 @@ import type {
   AddChange,
   DeleteChange,
   RenameChange,
-  ModifyChange
+  ModifyChange,
+  MoveChange
 } from '~/types/fileSystemChangeTypes'
 
 describe('fileUtils', () => {
@@ -149,6 +150,61 @@ describe('fileUtils', () => {
       expect(nodeIdToNode['file1-id'].name).toBe('renamedFile.txt')
       expect(nodeIdToNode['file1-id'].path).toBe('root/renamedFile.txt')
     })
+
+    it('should handle rename change and update child paths', () => {
+      const folderToRename = nodeIdToNode['folderA-id'];
+      expect(folderToRename.children[0].path).toBe('root/folderA/file2.txt');
+    
+      const renamedNode = new TreeNode('folderA_renamed', 'root/folderA_renamed', false, [], 'folderA-id');
+      const renameChange: RenameChange = {
+        type: 'rename',
+        node: renamedNode,
+        parent_id: 'root-id'
+      };
+      const event: FileSystemChangeEvent = { changes: [renameChange] };
+    
+      handleFileSystemChange(rootNode, nodeIdToNode, event);
+    
+      const renamedFolderInTree = nodeIdToNode['folderA-id'];
+      expect(renamedFolderInTree.name).toBe('folderA_renamed');
+      expect(renamedFolderInTree.path).toBe('root/folderA_renamed');
+      
+      // THE CRITICAL CHECK:
+      expect(renamedFolderInTree.children[0].path).toBe('root/folderA_renamed/file2.txt');
+    });
+
+    it('should handle move change and update child paths', () => {
+      // Create a new target folder
+      const targetFolder = new TreeNode('targetFolder', 'root/targetFolder', false, [], 'targetFolder-id');
+      nodeIdToNode['targetFolder-id'] = targetFolder;
+      rootNode.addChild(targetFolder);
+  
+      const folderToMove = nodeIdToNode['folderA-id'];
+      expect(folderToMove.children[0].path).toBe('root/folderA/file2.txt');
+  
+      // The node in the event has the new path
+      const movedNode = new TreeNode('folderA', 'root/targetFolder/folderA', false, [], 'folderA-id');
+  
+      const moveChange: MoveChange = {
+          type: 'move',
+          node: movedNode,
+          old_parent_id: 'root-id',
+          new_parent_id: 'targetFolder-id'
+      };
+      const event: FileSystemChangeEvent = { changes: [moveChange] };
+  
+      handleFileSystemChange(rootNode, nodeIdToNode, event);
+      
+      const movedFolderInTree = nodeIdToNode['folderA-id'];
+      expect(movedFolderInTree.path).toBe('root/targetFolder/folderA');
+      
+      // THE CRITICAL CHECK:
+      expect(movedFolderInTree.children[0].path).toBe('root/targetFolder/folderA/file2.txt');
+  
+      // Check parents
+      expect(rootNode.children.find(c => c.id === 'folderA-id')).toBeUndefined();
+      expect(targetFolder.children.find(c => c.id === 'folderA-id')).toBeDefined();
+    });
 
     it('should handle modify change without altering the tree', () => {
       const originalTreeJson = JSON.stringify(rootNode); // Snapshot of tree before change
