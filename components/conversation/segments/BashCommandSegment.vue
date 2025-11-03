@@ -44,12 +44,36 @@
     
     <!-- Output/Error Display -->
     <div v-if="wasExecuted && commandResult" class="p-3 rounded-b bg-black/30 text-sm font-mono border border-t-0 border-zinc-700">
-      <div v-if="!commandResult.success" class="text-red-400">
-        <p class="font-bold">Error:</p>
+      <div v-if="!commandResult.success" class="text-red-400 relative group">
+        <div class="flex items-center justify-between">
+            <p class="font-bold">Error:</p>
+            <button
+              v-if="commandResult.message"
+              @click="handleCopyOutput"
+              title="Use as Input"
+              class="absolute top-1 right-1 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-700 hover:bg-zinc-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-zinc-300">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+            </button>
+        </div>
         <pre class="whitespace-pre-wrap mt-1">{{ commandResult.message }}</pre>
       </div>
-      <div v-else class="text-zinc-300">
-         <p class="font-bold text-green-400">Output:</p>
+      <div v-else class="text-zinc-300 relative group">
+        <div class="flex items-center justify-between">
+            <p class="font-bold text-green-400">Output:</p>
+            <button
+              v-if="commandResult.message"
+              @click="handleCopyOutput"
+              title="Use as Input"
+              class="absolute top-1 right-1 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-700 hover:bg-zinc-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-zinc-300">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+            </button>
+        </div>
         <pre class="whitespace-pre-wrap mt-1">{{ commandResult.message || '(No output)' }}</pre>
       </div>
     </div>
@@ -60,6 +84,7 @@
 import { computed, ref, watchEffect } from 'vue';
 import { useBashCommandStore } from '~/stores/bashCommand';
 import { useWorkspaceStore } from '~/stores/workspace';
+import { useActiveContextStore } from '~/stores/activeContextStore';
 
 const props = defineProps<{
   command: string;
@@ -71,6 +96,7 @@ const props = defineProps<{
 
 const bashCommandStore = useBashCommandStore();
 const workspaceStore = useWorkspaceStore();
+const activeContextStore = useActiveContextStore();
 const wasExecuted = ref(false);
 
 // Create a unique key for this specific command segment instance.
@@ -108,6 +134,12 @@ const handleExecute = async () => {
     props.command,
     commandKey.value,
   );
+};
+
+const handleCopyOutput = () => {
+  if (commandResult.value?.message) {
+    activeContextStore.updateRequirement(commandResult.value.message);
+  }
 };
 </script>
 
