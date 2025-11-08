@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed, shallowRef } from 'vue';
 import { useRuntimeConfig } from 'nuxt/app';
-import RFB from '~/lib/novnc/core/rfb'; // Local ESM import
+import RFB from '~/lib/novnc/core/rfb';
 
 // Import the server settings store to dynamically fetch VNC configuration
 import { useServerSettingsStore } from '~/stores/serverSettings';
@@ -100,7 +100,7 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
         credentials: { password: password.value },
         shared: true,
         scaleViewport: true,
-        resizeSession: true,
+        resizeSession: false,
         viewOnly: viewOnly.value, // Set initial viewOnly state
         qualityLevel: 6,
         compressionLevel: 0,
@@ -117,7 +117,6 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
         console.log('[vncViewerStore] Successfully connected to VNC server.');
         if (rfb.value) {
           rfb.value.scaleViewport = true;
-          rfb.value.resizeSession = true;
           window.dispatchEvent(new Event('resize')); // Force resize to apply scaling
         }
       });
