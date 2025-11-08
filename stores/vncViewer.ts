@@ -85,7 +85,12 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
 
     if (rfb.value) {
       console.log('[vncViewerStore] Cleaning up existing RFB instance before new connection attempt.');
-      disconnect(); // Ensure proper cleanup via store's disconnect
+      try {
+        rfb.value.disconnect();
+      } catch (e) {
+        console.warn('[vncViewerStore] Error disconnecting existing RFB instance:', e);
+      }
+      cleanupConnection();
     }
 
     connectionStatus.value = 'connecting';
@@ -96,7 +101,7 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
       const wsUrl = `${vncServerUrl.value}${vncPath.value}`;
       console.log(`[vncViewerStore] Attempting to connect to VNC at: ${wsUrl}`);
 
-      rfb.value = new RFB(container.value, wsUrl, {
+      const sessionRfb = new RFB(container.value, wsUrl, {
         credentials: { password: password.value },
         shared: true,
         scaleViewport: true,
@@ -109,9 +114,11 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
         background: '#1e1e1e',
       });
 
-      rfb.value.viewOnly = viewOnly.value; // Ensure viewOnly is explicitly set post-construction
+      rfb.value = sessionRfb;
+      sessionRfb.viewOnly = viewOnly.value; // Ensure viewOnly is explicitly set post-construction
 
-      rfb.value.addEventListener('connect', () => {
+      sessionRfb.addEventListener('connect', () => {
+        if (rfb.value !== sessionRfb) return;
         connectionStatus.value = 'connected';
         errorMessage.value = '';
         console.log('[vncViewerStore] Successfully connected to VNC server.');
@@ -121,7 +128,8 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
         }
       });
 
-      rfb.value.addEventListener('disconnect', (e: any) => { // Use 'any' for event detail if specific type is unknown/complex
+      sessionRfb.addEventListener('disconnect', (e: any) => { // Use 'any' for event detail if specific type is unknown/complex
+        if (rfb.value !== sessionRfb) return;
         const reason = e.detail?.reason || 'Disconnected unexpectedly';
         if (!e.detail?.clean) {
           errorMessage.value = reason;
@@ -130,15 +138,18 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
           console.log('[vncViewerStore] VNC disconnected cleanly.');
           errorMessage.value = 'Disconnected.'; // Set a generic disconnected message
         }
+        connectionStatus.value = 'disconnected';
         cleanupConnection();
       });
 
-      rfb.value.addEventListener('credentialsrequired', () => {
+      sessionRfb.addEventListener('credentialsrequired', () => {
+        if (rfb.value !== sessionRfb) return;
         console.log('[vncViewerStore] VNC credentialsrequired event.');
         if (rfb.value) rfb.value.sendCredentials({ password: password.value });
       });
 
-      rfb.value.addEventListener('resize', () => {
+      sessionRfb.addEventListener('resize', () => {
+        if (rfb.value !== sessionRfb) return;
         console.log('[vncViewerStore] VNC resize event received from server.');
       });
 

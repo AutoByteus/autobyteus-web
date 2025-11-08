@@ -14,14 +14,14 @@
         <div class="controls flex items-center space-x-2">
           <button 
             v-if="!vncStore.isConnected && !vncStore.isConnecting"
-            @click="vncStore.connect" 
+            @click="handleConnectClick" 
             class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
           >
             Connect
           </button>
           <button 
             v-if="vncStore.isConnected"
-            @click="vncStore.disconnect" 
+            @click="handleDisconnectClick" 
             class="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
           >
             Disconnect
@@ -74,15 +74,18 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, nextTick, watch } from 'vue'; // Added watch
+import { onMounted, onBeforeUnmount, ref, nextTick, watch } from 'vue';
 import { useVncViewerStore } from '~/stores/vncViewer';
 import { useServerSettingsStore } from '~/stores/serverSettings'; // Added import
 import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/vue/24/outline';
 
 const vncStore = useVncViewerStore();
-const serverSettingsStore = useServerSettingsStore(); // Added instance
+const serverSettingsStore = useServerSettingsStore();
 const screen = ref<HTMLElement | null>(null);
 const isMaximized = ref(false);
+const autoConnectEnabled = ref(true);
+let settingsWatchStop: (() => void) | null = null;
+let connectTimer: ReturnType<typeof setTimeout> | null = null;
 
 const toggleMaximize = () => {
   isMaximized.value = !isMaximized.value;
@@ -90,11 +93,33 @@ const toggleMaximize = () => {
   // The resizing of the container element should be sufficient for the noVNC instance to adapt.
 };
 
+const clearPendingConnection = () => {
+  settingsWatchStop?.();
+  settingsWatchStop = null;
+  if (connectTimer) {
+    clearTimeout(connectTimer);
+    connectTimer = null;
+  }
+};
+
+const handleConnectClick = () => {
+  autoConnectEnabled.value = true;
+  vncStore.connect();
+};
+
+const handleDisconnectClick = () => {
+  autoConnectEnabled.value = false;
+  clearPendingConnection();
+  vncStore.disconnect();
+};
+
 
 // Handle window resize
 const handleWindowResize = () => {
+  if (!vncStore.isConnected) {
+    return;
+  }
   console.log('VNC Viewer: Window resize event triggered');
-  // Potential future enhancement: if rfb instance exists, call rfb.resize() or similar if needed
 };
 
 onMounted(() => {
@@ -106,9 +131,14 @@ onMounted(() => {
       vncStore.setContainer(screen.value); // Set container once screen element is available
       
       const attemptConnection = () => {
+        if (!autoConnectEnabled.value) {
+          console.log('VNC Viewer: Auto-connect disabled, skipping connection attempt.');
+          return;
+        }
         // The 300ms delay can help ensure the container's dimensions are fully settled in the DOM,
         // which might be important for noVNC's initial scaling.
-        setTimeout(() => {
+        connectTimer = setTimeout(() => {
+          connectTimer = null;
           // Check if component is still mounted before connecting
           if (screen.value) { // screen.value being non-null implies component is still mounted effectively
              console.log('VNC Viewer: Attempting VNC connection via vncStore.connect()');
@@ -122,11 +152,13 @@ onMounted(() => {
       // Check current state of server settings before attempting to connect
       if (serverSettingsStore.isLoading) {
         console.log('VNC Viewer: Server settings are currently loading. Waiting for completion.');
-        const unwatch = watch(() => serverSettingsStore.isLoading, (newIsLoading) => {
+        settingsWatchStop?.();
+        settingsWatchStop = watch(() => serverSettingsStore.isLoading, (newIsLoading) => {
           if (!newIsLoading) { // Finished loading
             console.log('VNC Viewer: Server settings finished loading. Proceeding with connection attempt.');
             attemptConnection();
-            unwatch(); // Clean up watcher once done
+            settingsWatchStop?.();
+            settingsWatchStop = null;
           }
         });
       } else { 
@@ -152,6 +184,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   console.log('VNC Viewer: Component unmounting');
   window.removeEventListener('resize', handleWindowResize);
+  clearPendingConnection();
+  autoConnectEnabled.value = false;
   vncStore.disconnect(); // Always disconnect when component is unmounted
 });
 </script>
