@@ -29,7 +29,7 @@
           ]"
         >
           <span v-if="isInProgress" class="flex items-center">
-            <svg class="animate-spin -ml-1 mr-1 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg class="animate-spin -ml-1 mr-1 h-3 w-3" xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5_373 0 0 5_373 0 12h4zm2 5_291A7_962 7_962 0 014 12H0c0 3_042 1_135 5_824 3 7_938l3-2_647z"></path>
             </svg>
@@ -44,6 +44,7 @@
     
     <!-- Output/Error Display -->
     <div v-if="wasExecuted && commandResult" class="p-3 rounded-b bg-black/30 text-sm font-mono border border-t-0 border-zinc-700">
+      <!-- Error Display -->
       <div v-if="!commandResult.success" class="text-red-400 relative group">
         <div class="flex items-center justify-between">
             <p class="font-bold">Error:</p>
@@ -53,18 +54,21 @@
               title="Use as Input"
               class="absolute top-1 right-1 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-700 hover:bg-zinc-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-zinc-300">
+              <svg xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-zinc-300">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
               </svg>
             </button>
         </div>
         <pre class="whitespace-pre-wrap mt-1">{{ commandResult.message }}</pre>
       </div>
+      
+      <!-- Success Output Display -->
       <div v-else class="text-zinc-300 relative group">
         <div class="flex items-center justify-between">
             <p class="font-bold text-green-400">Output:</p>
-            <button
-              v-if="commandResult.message"
+             <!-- The 'Use as Input' button is now always visible for short outputs or expanded long outputs -->
+             <button
+              v-if="commandResult.message && (!isLongOutput || isOutputExpanded)"
               @click="handleCopyOutput"
               title="Use as Input"
               class="absolute top-1 right-1 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-700 hover:bg-zinc-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -74,7 +78,30 @@
               </svg>
             </button>
         </div>
-        <pre class="whitespace-pre-wrap mt-1">{{ commandResult.message || '(No output)' }}</pre>
+        
+        <!-- Short Output -->
+        <pre v-if="!isLongOutput" class="whitespace-pre-wrap mt-1">{{ commandResult.message || '(No output)' }}</pre>
+        
+        <!-- Long, Collapsible Output -->
+        <div v-else>
+          <!-- Collapsed View -->
+          <div v-if="!isOutputExpanded">
+            <pre class="whitespace-pre-wrap mt-1">{{ outputPreview }}</pre>
+            <button @click="toggleOutputExpansion" class="text-indigo-400 hover:text-indigo-300 text-xs mt-2">
+              Show More...
+            </button>
+          </div>
+          
+          <!-- Expanded View -->
+          <div v-else>
+            <div class="max-h-96 overflow-y-auto mt-1 border border-zinc-700 rounded p-2 bg-black/30">
+              <pre class="whitespace-pre-wrap">{{ commandResult.message }}</pre>
+            </div>
+            <button @click="toggleOutputExpansion" class="text-indigo-400 hover:text-indigo-300 text-xs mt-2">
+              Show Less
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -112,12 +139,36 @@ const commandResult = computed(() =>
 
 const isDisabled = computed(() => isInProgress.value);
 
+// --- New state and logic for collapsible output ---
+const isOutputExpanded = ref(false);
+const OUTPUT_COLLAPSE_THRESHOLD = 15; // Number of lines to show before collapsing
+
+const outputLines = computed(() => commandResult.value?.message?.split('\n') || []);
+const isLongOutput = computed(() => outputLines.value.length > OUTPUT_COLLAPSE_THRESHOLD);
+
+const outputPreview = computed(() => {
+  return outputLines.value.slice(0, OUTPUT_COLLAPSE_THRESHOLD).join('\n') + '\n...';
+});
+
+const toggleOutputExpansion = () => {
+  isOutputExpanded.value = !isOutputExpanded.value;
+};
+// --- End new logic ---
+
 // Check if a result already exists in the store for this command (e.g., after reloading a conversation)
 watchEffect(() => {
   if (bashCommandStore.getApplyCommandResult(commandKey.value)) {
     wasExecuted.value = true;
   }
 });
+
+// Reset expansion state if the command is re-run
+watchEffect(() => {
+  if (isInProgress.value) {
+    isOutputExpanded.value = false;
+  }
+});
+
 
 const handleExecute = async () => {
   const workspaceId = workspaceStore.activeWorkspace?.workspaceId;

@@ -528,6 +528,7 @@ export type Mutation = {
   markActivePrompt: Prompt;
   moveFileOrFolder: Scalars['String']['output'];
   reloadLlmModels: Scalars['String']['output'];
+  reloadToolSchema: ReloadToolSchemaResult;
   renameFileOrFolder: Scalars['String']['output'];
   runApplication: Scalars['JSON']['output'];
   sendAgentUserInput: SendAgentUserInputResult;
@@ -642,6 +643,11 @@ export type MutationMoveFileOrFolderArgs = {
   destinationPath: Scalars['String']['input'];
   sourcePath: Scalars['String']['input'];
   workspaceId: Scalars['String']['input'];
+};
+
+
+export type MutationReloadToolSchemaArgs = {
+  name: Scalars['String']['input'];
 };
 
 
@@ -901,6 +907,13 @@ export type QueryTotalCostInPeriodArgs = {
 export type QueryUsageStatisticsInPeriodArgs = {
   endTime: Scalars['DateTime']['input'];
   startTime: Scalars['DateTime']['input'];
+};
+
+export type ReloadToolSchemaResult = {
+  __typename?: 'ReloadToolSchemaResult';
+  message: Scalars['String']['output'];
+  success: Scalars['Boolean']['output'];
+  tool?: Maybe<ToolDefinitionDetail>;
 };
 
 export type SendAgentUserInputInput = {
@@ -1414,6 +1427,13 @@ export type UpdateServerSettingMutationVariables = Exact<{
 
 
 export type UpdateServerSettingMutation = { __typename?: 'Mutation', updateServerSetting: string };
+
+export type ReloadToolSchemaMutationVariables = Exact<{
+  name: Scalars['String']['input'];
+}>;
+
+
+export type ReloadToolSchemaMutation = { __typename?: 'Mutation', reloadToolSchema: { __typename?: 'ReloadToolSchemaResult', success: boolean, message: string, tool?: { __typename: 'ToolDefinitionDetail', name: string, description: string, origin: ToolOriginEnum, category: string, argumentSchema?: { __typename: 'ToolArgumentSchema', parameters: Array<{ __typename: 'ToolParameterDefinition', name: string, paramType: ToolParameterTypeEnum, description: string, required: boolean, defaultValue?: string | null, enumValues?: Array<string> | null }> } | null } | null } };
 
 export type CreateWorkspaceMutationVariables = Exact<{
   input: CreateWorkspaceInput;
@@ -2748,6 +2768,55 @@ export function useUpdateServerSettingMutation(options: VueApolloComposable.UseM
   return VueApolloComposable.useMutation<UpdateServerSettingMutation, UpdateServerSettingMutationVariables>(UpdateServerSettingDocument, options);
 }
 export type UpdateServerSettingMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<UpdateServerSettingMutation, UpdateServerSettingMutationVariables>;
+export const ReloadToolSchemaDocument = gql`
+    mutation ReloadToolSchema($name: String!) {
+  reloadToolSchema(name: $name) {
+    success
+    message
+    tool {
+      __typename
+      name
+      description
+      origin
+      category
+      argumentSchema {
+        __typename
+        parameters {
+          __typename
+          name
+          paramType
+          description
+          required
+          defaultValue
+          enumValues
+        }
+      }
+    }
+  }
+}
+    `;
+
+/**
+ * __useReloadToolSchemaMutation__
+ *
+ * To run a mutation, you first call `useReloadToolSchemaMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useReloadToolSchemaMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useReloadToolSchemaMutation({
+ *   variables: {
+ *     name: // value for 'name'
+ *   },
+ * });
+ */
+export function useReloadToolSchemaMutation(options: VueApolloComposable.UseMutationOptions<ReloadToolSchemaMutation, ReloadToolSchemaMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<ReloadToolSchemaMutation, ReloadToolSchemaMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<ReloadToolSchemaMutation, ReloadToolSchemaMutationVariables>(ReloadToolSchemaDocument, options);
+}
+export type ReloadToolSchemaMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<ReloadToolSchemaMutation, ReloadToolSchemaMutationVariables>;
 export const CreateWorkspaceDocument = gql`
     mutation CreateWorkspace($input: CreateWorkspaceInput!) {
   createWorkspace(input: $input) {

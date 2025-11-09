@@ -8,6 +8,7 @@ import {
   DISCOVER_AND_REGISTER_MCP_SERVER_TOOLS,
   IMPORT_MCP_SERVER_CONFIGS
 } from '~/graphql/mutations/mcpServerMutations';
+import { RELOAD_TOOL_SCHEMA } from '~/graphql/mutations/toolMutations';
 import type {
   GetToolsQuery,
   GetToolsQueryVariables,
@@ -16,6 +17,8 @@ import type {
   GetMcpServersQuery,
   PreviewMcpServerToolsQuery,
   PreviewMcpServerToolsQueryVariables,
+  ReloadToolSchemaMutation,
+  ReloadToolSchemaMutationVariables,
 } from '~/generated/graphql';
 
 // --- Interfaces ---
@@ -333,6 +336,75 @@ export const useToolManagementStore = defineStore('toolManagement', {
         throw new Error('Failed to import configs: No data returned');
       } catch (e) {
         this.error = e;
+        throw e;
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    async reloadToolSchema(toolName: string) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const { client } = useApolloClient();
+        const { data, errors } = await client.mutate<ReloadToolSchemaMutation, ReloadToolSchemaMutationVariables>({
+          mutation: RELOAD_TOOL_SCHEMA,
+          variables: { name: toolName },
+        });
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+        
+        const result = data?.reloadToolSchema;
+        if (!result) {
+          throw new Error("No response from server on schema reload.");
+        }
+
+        if (result.success && result.tool) {
+          const updatedTool = result.tool as Tool;
+          
+          // 1. Update in localTools (flat list) using immutable pattern
+          const localToolIndex = this.localTools.findIndex(t => t.name === toolName);
+          if (localToolIndex !== -1) {
+            const newLocalTools = [...this.localTools];
+            newLocalTools[localToolIndex] = updatedTool;
+            this.localTools = newLocalTools;
+          }
+
+          // 2. Update in localToolsByCategory (grouped list) using immutable pattern
+          this.localToolsByCategory = this.localToolsByCategory.map(group => {
+            const toolIndex = group.tools.findIndex(t => t.name === toolName);
+            if (toolIndex !== -1) {
+              const newTools = [...group.tools];
+              newTools[toolIndex] = updatedTool;
+              return { ...group, tools: newTools };
+            }
+            return group;
+          });
+          
+          // 3. Update in toolsByServerId (for MCP tools) using immutable pattern
+          for (const serverId in this.toolsByServerId) {
+            const tools = this.toolsByServerId[serverId];
+            const toolIndex = tools.findIndex(t => t.name === toolName);
+            if (toolIndex !== -1) {
+              const newTools = [...tools];
+              newTools[toolIndex] = updatedTool;
+              this.toolsByServerId[serverId] = newTools;
+              break;
+            }
+          }
+        }
+        
+        return {
+          success: result.success,
+          message: result.message,
+          tool: result.tool as Tool | null,
+        };
+
+      } catch (e) {
+        this.error = e;
+        console.error(`Failed to reload schema for tool ${toolName}:`, e);
         throw e;
       } finally {
         this.loading = false;

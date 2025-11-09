@@ -61,7 +61,16 @@
       </div>
       
       <!-- Footer -->
-      <div class="p-4 bg-gray-50 border-t text-right">
+      <div class="p-4 bg-gray-50 border-t flex justify-end items-center space-x-3">
+        <button 
+            @click="reloadSchema" 
+            :disabled="isReloading"
+            class="px-4 py-2 bg-white border border-gray-300 rounded-md hover:bg-gray-50 text-base font-medium inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span v-if="isReloading" class="i-heroicons-arrow-path-20-solid w-5 h-5 animate-spin mr-2"></span>
+          <span v-else class="i-heroicons-arrow-path-20-solid w-5 h-5 mr-2"></span>
+          {{ isReloading ? 'Reloading...' : 'Reload Schema' }}
+        </button>
         <button @click="close" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
           Close
         </button>
@@ -71,14 +80,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { useToolManagementStore } from '~/stores/toolManagementStore';
+import { useToasts, type ToastType } from '~/composables/useToasts';
 import type { Tool } from '~/stores/toolManagementStore';
 
-const props = defineProps<{  show: boolean;
+const props = defineProps<{
+  show: boolean;
   tool: Tool | null;
 }>();
 
 const emit = defineEmits(['close']);
+const store = useToolManagementStore();
+const { addToast } = useToasts();
+const isReloading = ref(false);
 
 const close = () => {
   emit('close');
@@ -87,4 +102,22 @@ const close = () => {
 const parameters = computed(() => {
   return props.tool?.argumentSchema?.parameters || [];
 });
+
+const reloadSchema = async () => {
+  if (!props.tool) return;
+  isReloading.value = true;
+  try {
+    const result = await store.reloadToolSchema(props.tool.name);
+    addToast(result.message, result.success ? 'success' : 'error');
+    if (result.success && result.tool) {
+      // The store has updated the tool object, and since `props.tool` is reactive,
+      // the `parameters` computed property will automatically update.
+      // We can emit an event if the parent needs to know, but for now, it's self-contained.
+    }
+  } catch (e: any) {
+    addToast(`Failed to reload schema: ${e.message}`, 'error');
+  } finally {
+    isReloading.value = false;
+  }
+};
 </script>
