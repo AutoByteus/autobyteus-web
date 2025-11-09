@@ -189,16 +189,6 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
     }
   }
 
-  function sendCtrlAltDel() {
-    if (rfb.value && connectionStatus.value === 'connected' && !viewOnly.value) {
-      console.log('[vncViewerStore] Sending Ctrl+Alt+Del.');
-      rfb.value.sendCtrlAltDel();
-    } else {
-      console.warn('[vncViewerStore] Cannot send Ctrl+Alt+Del. Not connected, in view-only mode, or no RFB instance.',
-        { isConnected: isConnected.value, viewOnly: viewOnly.value, hasRfb: !!rfb.value });
-    }
-  }
-
   function toggleViewOnly() {
     viewOnly.value = !viewOnly.value;
     console.log(`[vncViewerStore] View-only mode toggled to: ${viewOnly.value ? 'enabled' : 'disabled'}`);
@@ -219,7 +209,6 @@ export const useVncViewerStore = defineStore('vncViewer', () => {
     setContainer,
     connect,
     disconnect,
-    sendCtrlAltDel,
     toggleViewOnly,
   };
 });

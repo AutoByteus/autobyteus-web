@@ -26,19 +26,11 @@
           >
             Disconnect
           </button>
-          <button 
-            @click="vncStore.sendCtrlAltDel" 
-            class="px-2 py-1 text-xs bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
-            :disabled="!vncStore.isConnected || vncStore.viewOnly"
-            title="Send Ctrl+Alt+Del"
-          >
-            Ctrl+Alt+Del
-          </button>
           <button
             @click="toggleMaximize"
             class="px-2 py-1 text-xs bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
             :disabled="!vncStore.isConnected"
-            :title="isMaximized ? 'Restore View' : 'Maximize View'"
+            :title="isMaximized ? 'Restore View (Esc)' : 'Maximize View'"
           >
             <ArrowsPointingInIcon v-if="isMaximized" class="w-4 h-4" />
             <ArrowsPointingOutIcon v-else class="w-4 h-4" />
@@ -92,6 +84,20 @@ const toggleMaximize = () => {
   // We assume noVNC will auto-resize with its container. 
   // The resizing of the container element should be sufficient for the noVNC instance to adapt.
 };
+
+const handleKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') {
+    isMaximized.value = false;
+  }
+};
+
+watch(isMaximized, (newValue) => {
+  if (newValue) {
+    window.addEventListener('keydown', handleKeydown);
+  } else {
+    window.removeEventListener('keydown', handleKeydown);
+  }
+});
 
 const clearPendingConnection = () => {
   settingsWatchStop?.();
@@ -184,6 +190,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   console.log('VNC Viewer: Component unmounting');
   window.removeEventListener('resize', handleWindowResize);
+  window.removeEventListener('keydown', handleKeydown);
   clearPendingConnection();
   autoConnectEnabled.value = false;
   vncStore.disconnect(); // Always disconnect when component is unmounted
