@@ -53,6 +53,10 @@ const options: Configuration = {
     {
       from: "resources/server",
       to: "server"
+    },
+    {
+      from: "build/icons",
+      to: "icons"
     }
   ],
   // Default artifact name pattern

@@ -14,6 +14,19 @@ const serverStatusManager = new ServerStatusManager(serverManager);
 let mainWindow: BrowserWindow | null
 let isQuitting = false; // Flag to prevent multiple shutdown attempts
 
+function getWindowIcon(): string {
+  const iconFile = '512x512.png'
+  const prodPath = path.join(process.resourcesPath, 'icons', iconFile)
+  const devPath = path.join(__dirname, '..', '..', 'build', 'icons', iconFile)
+  const resolvedPath = app.isPackaged ? prodPath : devPath
+
+  if (!fsSync.existsSync(resolvedPath)) {
+    logger.warn(`Window icon not found at ${resolvedPath}. Falling back to Electron default.`)
+  }
+
+  return resolvedPath
+}
+
 /**
  * Create the main application window.
  */
@@ -29,6 +42,7 @@ function createWindow() {
     mainWindow = new BrowserWindow({
       width: 1200,
       height: 800,
+      icon: getWindowIcon(),
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
         nodeIntegration: false,
