@@ -13,14 +13,7 @@
         <h3 class="font-medium text-gray-900">{{ tool.name }}</h3>
       </div>
       <p class="text-sm text-gray-500 mb-4 line-clamp-2">{{ tool.description }}</p>
-      <div class="flex justify-between items-center">
-        <span 
-          class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium" 
-          :class="isLocal ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800'"
-        >
-          {{ source }}
-        </span>
-      </div>
+      <!-- The redundant source badge has been removed from here. -->
     </div>
   </div>
 </template>
