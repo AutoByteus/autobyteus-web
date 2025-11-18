@@ -19,59 +19,57 @@
     </div>
 
     <!-- Controls container with border top for separation -->
-    <div ref="controlsRef" class="flex flex-col sm:flex-row justify-end items-center p-3 bg-gray-50 border-t border-gray-200 space-y-3 sm:space-y-0 sm:space-x-2">
-      <!-- All controls are now grouped on the right -->
-      <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-2">
-        <!-- Unified Model and Settings Selector -->
-        <GroupedSelect
-          class="min-w-[240px]"
-          v-model="selectedModel"
-          v-model:autoExecuteTools="autoExecuteTools"
-          v-model:parseToolCalls="parseToolCalls"
-          v-model:useXmlToolFormat="useXmlToolFormat"
-          :options="groupedModelOptions"
-          :loading="isLoadingModels"
-          :disabled="isLoadingModels || !activeContextStore.activeAgentContext"
-          placeholder="Select a model"
-        />
+    <div ref="controlsRef" class="flex flex-col sm:flex-row sm:flex-wrap justify-end items-center p-3 bg-gray-50 border-t border-gray-200 gap-2">
+      <!-- Unified Model and Settings Selector -->
+      <GroupedSelect
+        class="min-w-[240px] w-full sm:w-auto"
+        v-model="selectedModel"
+        v-model:autoExecuteTools="autoExecuteTools"
+        v-model:parseToolCalls="parseToolCalls"
+        v-model:useXmlToolFormat="useXmlToolFormat"
+        :options="groupedModelOptions"
+        :loading="isLoadingModels"
+        :disabled="isLoadingModels || !activeContextStore.activeAgentContext"
+        placeholder="Select a model"
+      />
 
-        <AudioRecorder
+      <AudioRecorder
+        :disabled="true"
+        title="Voice input is coming soon"
+        class="w-full sm:w-auto"
+      />
+      
+      <div class="flex w-full sm:w-auto flex-col sm:flex-row gap-2">
+        <button
+          @click="handleSearchContext"
           :disabled="true"
-          title="Voice input is coming soon"
-        />
-        
-        <div class="flex flex-col sm:flex-row gap-3 sm:gap-2">
-          <button
-            @click="handleSearchContext"
-            :disabled="true"
-            title="Context-aware search is coming soon"
-            class="flex items-center justify-center px-4 py-2.5 bg-green-500 text-white text-sm font-medium rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
-          >
-            <svg v-if="isSearching" class="animate-spin h-4 w-4 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-            </svg>
-            <svg v-else class="h-4 w-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <span class="whitespace-nowrap">{{ isSearching ? 'Searching...' : 'Search Context' }}</span>
-          </button>
+          title="Context-aware search is coming soon"
+          class="flex items-center justify-center px-4 py-2.5 bg-green-500 text-white text-sm font-medium rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px] w-full sm:w-auto"
+        >
+          <svg v-if="isSearching" class="animate-spin h-4 w-4 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <svg v-else class="h-4 w-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span class="whitespace-nowrap">{{ isSearching ? 'Searching...' : 'Search Context' }}</span>
+        </button>
 
-          <button 
-            @click="handleSend"
-            :disabled="isSending || !internalRequirement.trim() || !activeContextStore.activeAgentContext"
-            class="flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
-          >
-            <svg v-if="isSending" class="animate-spin h-4 w-4 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-            </svg>
-            <svg v-else class="h-4 w-4 mr-2 flex-shrink-0" fill="none" viewBox="0 0 20 20">
-              <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
-            </svg>
-            <span class="whitespace-nowrap">{{ isSending ? 'Sending...' : 'Send' }}</span>
-          </button>
-        </div>
+        <button 
+          @click="handleSend"
+          :disabled="isSending || !internalRequirement.trim() || !activeContextStore.activeAgentContext"
+          class="flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px] w-full sm:w-auto"
+        >
+          <svg v-if="isSending" class="animate-spin h-4 w-4 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <svg v-else class="h-4 w-4 mr-2 flex-shrink-0" fill="none" viewBox="0 0 20 20">
+            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
+          </svg>
+          <span class="whitespace-nowrap">{{ isSending ? 'Sending...' : 'Send' }}</span>
+        </button>
       </div>
     </div>
   </div>
