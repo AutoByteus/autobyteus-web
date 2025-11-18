@@ -20,7 +20,7 @@
         <div 
           v-if="isFileExplorerOpen"
           :style="{ width: fileExplorerWidth + 'px' }" 
-          class="bg-white p-0 shadow flex flex-col min-h-0 relative"
+          class="bg-white p-0 shadow flex flex-col min-h-0 relative border-r border-gray-200"
         >
           <div class="flex-1 overflow-auto min-w-0">
             <FileExplorer />
@@ -161,13 +161,13 @@ const activeLaunchProfileHasWorkspace = computed(() => !!workspaceStore.activeWo
 /* Minimize Panel Animation */
 .panel-minimize-enter-active,
 .panel-minimize-leave-active {
-  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  transform-origin: left center;
+  transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms;
+  overflow: hidden;
 }
 
 .panel-minimize-enter-from,
 .panel-minimize-leave-to {
-  transform: translateX(-100%) scale(0.9);
+  width: 0 !important;
   opacity: 0;
 }
 </style>
