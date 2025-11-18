@@ -2,54 +2,38 @@
   <div 
     class="flex flex-col bg-gray-800 text-white h-full w-fit relative z-20"
   >
-    <!-- Smart Logo Container -->
-    <div class="px-2 py-2 flex items-center justify-center" style="height: 56px;">
-      <button
-        @click="handleLogoClick"
-        :disabled="logoState === 'BRAND_LOGO'"
-        class="p-2 rounded-md transition-colors group"
-        :class="{
-          'text-gray-300 hover:bg-gray-700 hover:text-white': logoState !== 'BRAND_LOGO',
-          'cursor-default': logoState === 'BRAND_LOGO'
-        }"
-        :title="logoTitle"
-      >
-        <transition name="icon-fade" mode="out-in">
-          <div v-if="logoState === 'BRAND_LOGO'" key="brand">
-            <img 
-              src="/autobyteus-icon.svg"
-              alt="AutoByteus Icon" 
-              class="w-8 h-8"
-            />
-          </div>
-          <svg v-else-if="logoState === 'UNCOLLAPSE_ONE'" key="uncollapse-one" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="15" y1="3" x2="15" y2="21"></line>
-          </svg>
-          <svg v-else-if="logoState === 'UNCOLLAPSE_MANY'" key="uncollapse-many" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="9" y1="3" x2="9" y2="21"></line>
-            <line x1="15" y1="3" x2="15" y2="21"></line>
-          </svg>
-        </transition>
-      </button>
-    </div>
+    <!-- Logo Container Removed -->
     
     <!-- Main Navigation -->
-    <nav class="flex-1 px-2 mt-4">
+    <nav class="flex-1 px-2 pt-4">
       <ul class="space-y-2">
         <!-- Main workspace/agent view -->
         <li class="relative">
           <NuxtLink 
             to="/workspace"
+            @click="handleWorkspaceClick"
             class="flex justify-center items-center p-3 rounded-md hover:text-blue-300 hover:bg-gray-700 transition-colors group relative"
-            :class="{'bg-blue-600 text-white': $route.path === '/workspace'}"
+            :class="[
+              {'bg-blue-600 text-white': $route.path === '/workspace'},
+              {'cursor-default': $route.path === '/workspace' && workspaceIconState === 'DEFAULT_ICON'}
+            ]"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.898 20.562L16.25 22.5l-.648-1.938a3.375 3.375 0 00-2.456-2.456L11.25 18l1.938-.648a3.375 3.375 0 002.456-2.456L16.25 13l.648 1.938a3.375 3.375 0 002.456 2.456L21 18l-1.938.648a3.375 3.375 0 00-2.456 2.456z" />
-            </svg>
+            <transition name="icon-fade" mode="out-in">
+              <!-- Default Workspace Icon -->
+              <svg v-if="workspaceIconState === 'DEFAULT_ICON'" key="default" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.898 20.562L16.25 22.5l-.648-1.938a3.375 3.375 0 00-2.456-2.456L11.25 18l1.938-.648a3.375 3.375 0 002.456-2.456L16.25 13l.648 1.938a3.375 3.375 0 002.456 2.456L21 18l-1.938.648a3.375 3.375 0 00-2.456 2.456z" />
+              </svg>
+              <!-- Uncollapse One Icon (Single Chevron) -->
+              <svg v-else-if="workspaceIconState === 'UNCOLLAPSE_ONE'" key="uncollapse-one" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+              <!-- Uncollapse Many Icon (Double Chevron) -->
+              <svg v-else-if="workspaceIconState === 'UNCOLLAPSE_MANY'" key="uncollapse-many" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" />
+              </svg>
+            </transition>
             <span class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
-              Workspace
+              {{ workspaceTooltip }}
             </span>
           </NuxtLink>
         </li>
@@ -166,17 +150,25 @@ import { useWorkspaceStore } from '~/stores/workspace';
 const layoutStore = useWorkspaceLeftPanelLayoutStore();
 const { panels } = storeToRefs(layoutStore);
 const workspaceStore = useWorkspaceStore();
+const route = useRoute();
+const router = useRouter();
 
 const isProfilePanelOpen = computed(() => panels.value.launchProfile.isOpen);
 const isFileExplorerOpen = computed(() => panels.value.fileExplorer.isOpen);
 const activeLaunchProfileHasWorkspace = computed(() => !!workspaceStore.activeWorkspace);
 
-const logoState = computed(() => {
+const effectiveFileExplorerOpen = computed(() => !activeLaunchProfileHasWorkspace.value || isFileExplorerOpen.value);
+
+const workspaceIconState = computed(() => {
+  if (route.path !== '/workspace') {
+    return 'DEFAULT_ICON';
+  }
+
   const profileOpen = isProfilePanelOpen.value;
-  const explorerOpen = !activeLaunchProfileHasWorkspace.value || isFileExplorerOpen.value;
+  const explorerOpen = effectiveFileExplorerOpen.value;
 
   if (profileOpen && explorerOpen) {
-    return 'BRAND_LOGO';
+    return 'DEFAULT_ICON';
   } else if (!profileOpen && !explorerOpen) {
     return 'UNCOLLAPSE_MANY';
   } else {
@@ -184,20 +176,37 @@ const logoState = computed(() => {
   }
 });
 
-const logoTitle = computed(() => {
-  switch(logoState.value) {
+const workspaceTooltip = computed(() => {
+  if (route.path !== '/workspace' || workspaceIconState.value === 'DEFAULT_ICON') {
+    return 'Workspace';
+  }
+
+  switch(workspaceIconState.value) {
     case 'UNCOLLAPSE_MANY': return 'Show panels';
     case 'UNCOLLAPSE_ONE':
       if (!isProfilePanelOpen.value) return 'Show Profiles';
-      if (!isFileExplorerOpen.value) return 'Show Explorer';
-      return '';
-    default: return 'Home';
+      if (!effectiveFileExplorerOpen.value) return 'Show Explorer';
+      return 'Workspace';
+    default: return 'Workspace';
   }
 });
 
-function handleLogoClick() {
+function handleWorkspaceClick(event: MouseEvent) {
+  // If not on workspace page, allow normal navigation
+  if (route.path !== '/workspace') {
+    return;
+  }
+
+  // If on workspace page, prevent navigation and handle panel toggling
+  event.preventDefault();
+
   const profileOpen = isProfilePanelOpen.value;
-  const explorerOpen = !activeLaunchProfileHasWorkspace.value || isFileExplorerOpen.value;
+  const explorerOpen = effectiveFileExplorerOpen.value;
+  
+  // If both are open, do nothing (matching original disabled logo behavior)
+  if (workspaceIconState.value === 'DEFAULT_ICON') {
+    return;
+  }
 
   // If both are collapsed, open explorer first.
   if (!profileOpen && !explorerOpen) {
