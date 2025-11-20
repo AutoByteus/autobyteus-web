@@ -129,36 +129,55 @@
       </div>
     </div>
 
-    <div class="border-top-footer border-t p-2 flex items-center gap-3 text-sm text-gray-700">
-      <div class="flex-1"></div>
-
-      <div class="flex items-center gap-2">
-        <button
-          class="p-2 rounded border border-gray-300 bg-white shadow-sm hover:bg-gray-100"
-          @click.stop="toggleZenMode"
-          :title="isZenMode ? 'Restore' : 'Maximize'"
-        >
-          <ArrowsPointingOutIcon v-if="!isZenMode" class="h-5 w-5 text-gray-700" />
-          <ArrowsPointingInIcon v-else class="h-5 w-5 text-gray-700" />
-        </button>
-
-        <template v-if="activeFileData?.type === 'Text' && isPreviewableText">
-          <button
-            class="px-3 py-1 rounded border border-gray-300 bg-white shadow-sm hover:bg-gray-100"
-            :class="{ 'bg-blue-100 border-blue-300 text-blue-800': activeFileMode === 'edit' }"
-            @click.stop="setMode('edit')"
-          >Edit</button>
-          <button
-            class="px-3 py-1 rounded border border-gray-300 bg-white shadow-sm hover:bg-gray-100"
-            :class="{ 'bg-blue-100 border-blue-300 text-blue-800': activeFileMode === 'preview' }"
-            @click.stop="() => { setMode('preview'); enterZen(); }"
-          >Preview</button>
-        </template>
+    <!-- Redesigned Footer with Colors -->
+    <div class="border-t border-gray-200 bg-gray-50 px-4 py-3 flex items-center justify-between shrink-0 gap-4">
+      <!-- Left: Context Hint -->
+      <div class="flex items-center min-w-0">
+        <div v-if="isFullscreenMode" class="hidden sm:flex items-center gap-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md border border-gray-200">
+          <span>Press</span>
+          <kbd class="font-sans font-semibold text-gray-700 bg-white border border-gray-200 rounded px-1 min-w-[20px] text-center shadow-sm">Esc</kbd>
+          <span>to minimize</span>
+        </div>
       </div>
 
-      <small v-if="isFullscreenMode" class="font-medium whitespace-nowrap">
-        Press <kbd class="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded">Esc</kbd> to minimize
-      </small>
+      <!-- Right: Actions Group -->
+      <div class="flex items-center gap-4">
+        
+        <!-- Edit/Preview Segmented Control -->
+        <div v-if="activeFileData?.type === 'Text' && isPreviewableText" class="flex p-1 bg-gray-200/80 rounded-lg border border-gray-200">
+          <button
+            class="px-4 py-1.5 text-xs font-medium rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            :class="activeFileMode === 'edit' 
+              ? 'bg-blue-600 text-white shadow-md' 
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300/60'"
+            @click.stop="setMode('edit')"
+          >
+            Edit
+          </button>
+          <button
+            class="px-4 py-1.5 text-xs font-medium rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            :class="activeFileMode === 'preview' 
+              ? 'bg-blue-600 text-white shadow-md' 
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300/60'"
+            @click.stop="setMode('preview')"
+          >
+            Preview
+          </button>
+        </div>
+
+        <!-- Divider -->
+        <div v-if="activeFileData?.type === 'Text' && isPreviewableText" class="h-5 w-px bg-gray-300 hidden sm:block"></div>
+
+        <!-- Maximize Toggle -->
+        <button
+          class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          @click.stop="toggleZenMode"
+          :title="isZenMode ? 'Restore view' : 'Maximize view'"
+        >
+          <ArrowsPointingOutIcon v-if="!isZenMode" class="h-5 w-5" />
+          <ArrowsPointingInIcon v-else class="h-5 w-5" />
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -223,9 +242,6 @@ const isPreviewableText = computed(() => {
 
 const activeFileMode = computed(() => activeFileData.value?.mode ?? 'edit')
 const toggleZenMode = () => fileContentDisplayModeStore.toggleZenMode()
-const enterZen = () => {
-  if (!isZenMode.value) fileContentDisplayModeStore.toggleZenMode()
-}
 
 const activeViewerComponent = computed(() => {
   const file = activeFileData.value
