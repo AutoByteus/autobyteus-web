@@ -29,7 +29,8 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import {
   PencilSquareIcon,
   TrashIcon,
-  PlusIcon
+  PlusIcon,
+  EyeIcon
 } from '@heroicons/vue/24/outline'
 
 interface ContextMenuPosition {
@@ -40,6 +41,7 @@ interface ContextMenuPosition {
 interface Props {
   visible: boolean
   position: ContextMenuPosition
+  showPreview?: boolean
 }
 
 const props = defineProps<Props>()
@@ -48,33 +50,48 @@ const emit = defineEmits<{
   (e: 'delete'): void
   (e: 'add-file'): void
   (e: 'add-folder'): void
+  (e: 'preview'): void
 }>()
 
 const menuRef = ref<HTMLElement | null>(null)
 
-// We've added "Add File" and "Add Folder" items
-const menuItems = [
-  {
-    label: 'Add File',
-    icon: PlusIcon,
-    action: () => emit('add-file')
-  },
-  {
-    label: 'Add Folder',
-    icon: PlusIcon,
-    action: () => emit('add-folder')
-  },
-  {
-    label: 'Rename',
-    icon: PencilSquareIcon,
-    action: () => emit('rename')
-  },
-  {
-    label: 'Delete',
-    icon: TrashIcon,
-    action: () => emit('delete')
+// We build the menu dynamically to conditionally include Preview
+const menuItems = computed(() => {
+  const items = [] as Array<{ label: string; icon: any; action: () => void }>
+
+  if (props.showPreview) {
+    items.push({
+      label: 'Open Preview',
+      icon: EyeIcon,
+      action: () => emit('preview')
+    })
   }
-]
+
+  items.push(
+    {
+      label: 'Add File',
+      icon: PlusIcon,
+      action: () => emit('add-file')
+    },
+    {
+      label: 'Add Folder',
+      icon: PlusIcon,
+      action: () => emit('add-folder')
+    },
+    {
+      label: 'Rename',
+      icon: PencilSquareIcon,
+      action: () => emit('rename')
+    },
+    {
+      label: 'Delete',
+      icon: TrashIcon,
+      action: () => emit('delete')
+    }
+  )
+
+  return items
+})
 
 const menuStyle = computed(() => {
   if (!menuRef.value) {

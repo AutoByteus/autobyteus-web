@@ -34,9 +34,12 @@ import { getServerUrls } from '~/utils/serverConfig'
 // --- NEW TYPES FOR MULTI-CONTENT SUPPORT ---
 export type FileDataType = 'Text' | 'Image' | 'Audio' | 'Video' | 'Unsupported';
 
+export type FileOpenMode = 'edit' | 'preview';
+
 export interface OpenFileState {
   path: string;
   type: FileDataType;
+  mode: FileOpenMode;
   content: string | null; // For text files
   url: string | null;     // For media files
   isLoading: boolean;
@@ -211,6 +214,14 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     },
 
     async openFile(filePath: string) {
+      return this._openFileWithMode(filePath, 'edit');
+    },
+
+    async openFilePreview(filePath: string) {
+      return this._openFileWithMode(filePath, 'preview');
+    },
+
+    async _openFileWithMode(filePath: string, mode: FileOpenMode) {
       console.log(`[FileExplorer] Opening file: ${filePath}`);
       const wsState = this._getOrCreateCurrentWorkspaceState();
       const serverStore = useServerStore();
@@ -221,10 +232,11 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       if (!existingFile) {
           const fileType = await determineFileType(filePath);
           console.log(`[FileExplorer] Determined file type for "${filePath}": ${fileType}`);
-          
+
           const newFileState: OpenFileState = {
               path: filePath,
               type: fileType,
+              mode,
               content: null,
               url: null,
               isLoading: true,
@@ -289,12 +301,23 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
                   }
               }
           }
+      } else {
+          // If already open, just update the desired mode
+          existingFile.mode = mode;
       }
-      
+
       wsState.activeFile = filePath;
       const fileContentDisplayModeStore = useFileContentDisplayModeStore();
       fileContentDisplayModeStore.showFullscreen();
   },
+
+    setFileMode(filePath: string, mode: FileOpenMode) {
+      const wsState = this._getOrCreateCurrentWorkspaceState();
+      const file = wsState.openFiles.find(f => f.path === filePath);
+      if (file) {
+        file.mode = mode;
+      }
+    },
 
     closeFile(filePath: string) {
       const wsState = this._getOrCreateCurrentWorkspaceState();

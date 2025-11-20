@@ -78,10 +78,12 @@
     <FileContextMenu
       :visible="showContextMenu"
       :position="contextMenuPosition"
+      :show-preview="isPreviewable"
       @rename="startRename"
       @delete="promptDelete"
       @add-file="promptAddFile"
       @add-folder="promptAddFolder"
+      @preview="openPreview"
     />
 
     <!-- Delete confirmation -->
@@ -125,6 +127,12 @@ const contextMenuPosition = ref({ top: 0, left: 0 })
 const showDeleteConfirm = ref(false)
 const isDragOver = ref(false)
 const isGlobalDragging = ref(false)
+
+const isPreviewable = computed(() => {
+  if (!props.file.is_file) return false
+  const lower = props.file.name.toLowerCase()
+  return lower.endsWith('.md') || lower.endsWith('.markdown') || lower.endsWith('.html') || lower.endsWith('.htm')
+})
 
 const showAddDialog = ref(false)
 const addFileMode = ref(true)
@@ -181,6 +189,11 @@ const handleClick = () => {
   } else {
     fileExplorerStore.toggleFolder(props.file.path)
   }
+}
+
+const openPreview = () => {
+  if (!props.file.is_file) return
+  fileExplorerStore.openFilePreview(props.file.path)
 }
 
 const handleContextMenu = (event: MouseEvent) => {
