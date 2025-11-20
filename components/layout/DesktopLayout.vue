@@ -34,7 +34,7 @@
 
     <!-- Content Area -->
     <div v-if="isFullscreenMode" 
-      class="bg-white p-0 shadow flex flex-col min-h-0 flex-1 min-w-[200px] max-w-[calc(100%-200px)]"
+      class="bg-white p-0 shadow flex flex-col min-h-0 flex-1 min-w-[200px]"
     >
       <div class="flex-1 overflow-auto relative">
         <FileContentViewer />
