@@ -376,10 +376,13 @@ const promptStore = usePromptStore();
 const viewStore = usePromptEngineeringViewStore();
 const { prompts, loading, error, syncing, syncResult, deleteResult } = storeToRefs(promptStore);
 
-// Search and filter state
-const searchQuery = ref('');
-const selectedCategoryFilter = ref('');
-const selectedPromptNameFilter = ref('');
+// Search and filter state - PERSISTED IN PINIA STORE
+const { 
+  marketplaceSearchQuery: searchQuery, 
+  marketplaceCategoryFilter: selectedCategoryFilter, 
+  marketplaceNameFilter: selectedPromptNameFilter, 
+  marketplaceViewMode: viewMode 
+} = storeToRefs(viewStore);
 
 // Local loading state for the reload button
 const reloading = ref(false);
@@ -387,7 +390,6 @@ const reloading = ref(false);
 // Base UI state
 const showDeleteConfirm = ref(false);
 const promptToDelete = ref<string | null>(null);
-const viewMode = ref<'grid' | 'compact'>('grid');
 
 // Comparison mode state
 const comparisonMode = ref(false);

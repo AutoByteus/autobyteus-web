@@ -1,16 +1,26 @@
 import { defineStore } from 'pinia';
 
 type ViewMode = 'marketplace' | 'create' | 'details';
+type MarketplaceViewMode = 'grid' | 'compact';
 
 interface PromptEngineeringViewState {
   currentView: ViewMode;
   selectedPromptId: string | null;
+  // Marketplace persistent state
+  marketplaceSearchQuery: string;
+  marketplaceCategoryFilter: string;
+  marketplaceNameFilter: string;
+  marketplaceViewMode: MarketplaceViewMode;
 }
 
 export const usePromptEngineeringViewStore = defineStore('promptEngineeringView', {
   state: (): PromptEngineeringViewState => ({
     currentView: 'marketplace',
     selectedPromptId: null,
+    marketplaceSearchQuery: '',
+    marketplaceCategoryFilter: '',
+    marketplaceNameFilter: '',
+    marketplaceViewMode: 'grid',
   }),
   actions: {
     showMarketplace() {
@@ -23,13 +33,16 @@ export const usePromptEngineeringViewStore = defineStore('promptEngineeringView'
     },
     showPromptDetails(promptId: string) {
       this.selectedPromptId = promptId;
-      // The view will be 'details' via a getter/watcher on selectedPromptId,
-      // or we can set it explicitly. For clarity, let's keep it implicit
-      // via the main page component's logic.
     },
     closePromptDetails() {
       this.selectedPromptId = null;
       this.currentView = 'marketplace';
+    },
+    resetMarketplaceFilters() {
+      this.marketplaceSearchQuery = '';
+      this.marketplaceCategoryFilter = '';
+      this.marketplaceNameFilter = '';
+      this.marketplaceViewMode = 'grid';
     }
   },
   getters: {
