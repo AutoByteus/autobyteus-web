@@ -57,6 +57,39 @@ describe('MarkdownRenderer', () => {
     expect(wrapper.html()).toContain('katex');
   });
 
+  it('renders KaTeX inside math fence', () => {
+    const wrapper = mount(MarkdownRenderer, {
+      props: {
+        content: '```math\nLet y = \\\\frac{1}{2}x^2.\n```'
+      }
+    });
+    const html = wrapper.html();
+    expect(html).toContain('md-panel');
+    expect(html).toContain('katex');
+  });
+
+  it('renders KaTeX for inline math fence', () => {
+    const wrapper = mount(MarkdownRenderer, {
+      props: {
+        content: '```math-inline\nCompute \\\\int_0^1 x^2 dx.\n```'
+      }
+    });
+    const html = wrapper.html();
+    expect(html).toContain('md-panel');
+    expect(html).toContain('katex');
+  });
+
+  it('renders KaTeX for latex alias fence', () => {
+    const wrapper = mount(MarkdownRenderer, {
+      props: {
+        content: '```latex\nE = mc^2\n```'
+      }
+    });
+    const html = wrapper.html();
+    expect(html).toContain('md-panel');
+    expect(html).toContain('katex');
+  });
+
   it('should render plantuml diagram with loading state', () => {
     const wrapper = mount(MarkdownRenderer, {
       props: {

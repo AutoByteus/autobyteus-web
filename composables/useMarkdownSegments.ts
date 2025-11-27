@@ -3,6 +3,7 @@ import type { Ref } from 'vue';
 import MarkdownIt from 'markdown-it';
 import DOMPurify from 'dompurify';
 import { katex } from '@mdit/plugin-katex';
+import katexLib from 'katex';
 import { generateDiagramId } from '~/utils/plantUMLCache';
 import { normalizeMath } from '~/utils/markdownMath';
 import { markdownItPrism } from '~/utils/markdownItPrism'; // Keep using this for non-PlantUML code blocks
@@ -57,6 +58,27 @@ export const useMarkdownSegments = (markdownSource: Ref<string> | string) => {
   })
   .use(markdownItPrism) // Prism for syntax highlighting of normal code blocks
   .use(katex, katexOptions); // KaTeX for rendering math tokens
+
+  // Custom fence rule for "panel-like" blocks: render markdown (incl. KaTeX) inside a styled container
+  const prismFenceRule = mdWithPrism.renderer.rules.fence;
+  mdWithPrism.renderer.rules.fence = (tokens, idx, options, env, self) => {
+    const token = tokens[idx];
+    const lang = token.info.trim().toLowerCase();
+    const content = token.content.trim();
+
+    // Math fences: render through KaTeX instead of code highlighting
+    if (lang === 'math' || lang === 'katex' || lang === 'latex' || lang === 'math-inline') {
+      const displayMode = lang !== 'math-inline';
+      const rendered = katexLib.renderToString(content, { displayMode, throwOnError: false });
+      return `<div class="md-panel">${rendered}</div>`;
+    }
+
+    // Fallback to existing Prism/highlight behaviour
+    if (prismFenceRule) {
+      return prismFenceRule(tokens, idx, options, env, self);
+    }
+    return self.renderToken(tokens, idx, options);
+  };
 
   const parsedSegments = computed(() => {
     const sourceStringRaw = typeof markdownSource === 'string' ? markdownSource : markdownSource.value;

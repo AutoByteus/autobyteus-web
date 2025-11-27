@@ -100,6 +100,19 @@ watch(segments, applyPostRenderEffects, { deep: true });
   margin: 0.2em 0 0.35em;
 }
 
+.markdown-renderer-segments .md-panel {
+  background: #f5f7fb;
+  border: 1px solid #e4e7ee;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 0.65em 0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.markdown-renderer-segments .md-panel p:last-child {
+  margin-bottom: 0;
+}
+
 .plantuml-segment-container {
   margin: 1em 0;
 }
