@@ -13,7 +13,7 @@
             'p-4 rounded-2xl max-w-full relative border shadow-sm hover:shadow-md transition-shadow duration-200 break-words',
             message.type === 'user'
               ? 'ml-auto border-blue-100 bg-blue-100/70 text-gray-900'
-              : 'mr-auto border-gray-200 bg-white text-gray-900 border-l-2 border-l-blue-200'
+              : 'mr-auto border-gray-200 bg-[#ededed] text-gray-900 border-l-2 border-l-blue-200'
           ]"
         >
           <UserMessage
