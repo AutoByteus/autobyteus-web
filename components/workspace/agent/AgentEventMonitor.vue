@@ -1,6 +1,6 @@
 <template>
   <!-- This root div is a flex column aiming to fill its parent's height (from AgentEventMonitorTabs) -->
-  <div class="flex flex-col h-full p-4 bg-white"> <!-- White canvas for clearer reading -->
+  <div class="flex flex-col h-full p-4"> <!-- Added p-4 for overall padding inside the monitor area -->
     
     <!-- Messages and Totals -->
     <!-- This div will take its natural height. No flex-grow here, allow it to be short. -->
@@ -10,10 +10,8 @@
           v-for="(message, index) in conversation.messages"
           :key="message.timestamp + '-' + message.type + '-' + index"
           :class="[
-            'p-4 rounded-2xl max-w-full relative border shadow-sm hover:shadow-md transition-shadow duration-200 break-words',
-            message.type === 'user'
-              ? 'ml-auto border-blue-100 bg-blue-100/70 text-gray-900'
-              : 'mr-auto border-gray-200 bg-[#ededed] text-gray-900'
+            'p-3 rounded-lg max-w-full relative shadow-sm hover:shadow-md transition-shadow duration-200 break-words',
+            message.type === 'user' ? 'ml-auto bg-blue-100 text-blue-800' : 'mr-auto bg-gray-100 text-gray-800'
           ]"
         >
           <UserMessage
