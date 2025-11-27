@@ -2,7 +2,9 @@ import { computed } from 'vue';
 import type { Ref } from 'vue';
 import MarkdownIt from 'markdown-it';
 import DOMPurify from 'dompurify';
+import { katex } from '@mdit/plugin-katex';
 import { generateDiagramId } from '~/utils/plantUMLCache';
+import { normalizeMath } from '~/utils/markdownMath';
 import { markdownItPrism } from '~/utils/markdownItPrism'; // Keep using this for non-PlantUML code blocks
 
 export interface MarkdownSegment {
@@ -14,6 +16,13 @@ export interface MarkdownSegment {
 }
 
 export const useMarkdownSegments = (markdownSource: Ref<string> | string) => {
+  // Support both $...$ and \\(...\\)/\\[...\\] delimiters so messages coming
+  // from different providers render consistently.
+  const katexOptions = {
+    delimiters: 'all' as const, // dollars + bracket delimiters (\(...\), \[...\])
+  };
+
+  // Instance for tokenizing structure
   const md = new MarkdownIt({
     html: true,
     breaks: true,
@@ -21,21 +30,18 @@ export const useMarkdownSegments = (markdownSource: Ref<string> | string) => {
     typographer: true,
   });
 
+  // Enable KaTeX on the tokenizer
+  md.use(katex, katexOptions);
+
   // Use markdownItPrism for syntax highlighting of 'code' segments (non-PlantUML)
   // This plugin modifies the 'fence' rule. We need to be careful.
-  // The strategy: let markdownItPrism handle regular code blocks.
-  // For PlantUML, we'll have a custom rule or check `token.info`.
-
+  
   const originalFenceRule = md.renderer.rules.fence;
   md.renderer.rules.fence = (tokens, idx, options, env, self) => {
     const token = tokens[idx];
     const lang = token.info.trim().toLowerCase();
     if (lang === 'plantuml') {
-      // This indicates a PlantUML block. We'll use this token type later.
-      // For rendering, we'll output a special marker or nothing,
-      // as the component will be inserted by Vue.
-      // The actual HTML string from md.render() will be minimal for this.
-      // Let's make it identifiable for splitting or special handling.
+      // This indicates a PlantUML block.
       return `<!-- PLANTUML_PLACEHOLDER_${generateDiagramId(token.content.trim())} -->`;
     }
     // For other languages, let markdownItPrism (if applied) or default rule handle it.
@@ -45,21 +51,16 @@ export const useMarkdownSegments = (markdownSource: Ref<string> | string) => {
     return self.renderToken(tokens, idx, options); // Fallback
   };
   
-  // Apply Prism plugin AFTER our custom fence rule might have been set,
-  // or ensure Prism's rule calls ours if lang is not plantuml.
-  // A safer way is to let Prism run, and then process its output, or
-  // have Prism's rule explicitly ignore 'plantuml'.
-  // For now, let's assume markdownItPrism is smart enough or we configure it.
-  // The current markdownItPrism in context does not seem to allow ignoring specific langs.
-  // Let's simplify: Prism will run on all fences. We'll extract PlantUML from its token, not its rendered output.
-
-  // Re-initialize md for Prism to ensure clean rule setup
+  // Re-initialize md for Prism to ensure clean rule setup, and include KaTeX for rendering math
   const mdWithPrism = new MarkdownIt({
     html: true, breaks: true, linkify: true, typographer: true,
-  }).use(markdownItPrism); // Prism for syntax highlighting of normal code blocks
+  })
+  .use(markdownItPrism) // Prism for syntax highlighting of normal code blocks
+  .use(katex, katexOptions); // KaTeX for rendering math tokens
 
   const parsedSegments = computed(() => {
-    const sourceString = typeof markdownSource === 'string' ? markdownSource : markdownSource.value;
+    const sourceStringRaw = typeof markdownSource === 'string' ? markdownSource : markdownSource.value;
+    const sourceString = normalizeMath(sourceStringRaw);
     const segments: MarkdownSegment[] = [];
     let segmentKey = 0;
 
@@ -69,10 +70,15 @@ export const useMarkdownSegments = (markdownSource: Ref<string> | string) => {
 
     function flushBatchToHtmlSegment() {
       if (currentBatchOfTokens.length > 0) {
-        // Render these tokens using mdWithPrism to get highlighted code blocks
+        // Render these tokens using mdWithPrism to get highlighted code blocks and math formulas
         const html = mdWithPrism.renderer.render(currentBatchOfTokens, mdWithPrism.options, {});
+        
+        // Sanitize the HTML. 
+        // Note: KaTeX produces safe HTML with classes and inline styles (if configured), 
+        // but DOMPurify needs to allow them.
         const sanitizedHtml = DOMPurify.sanitize(html, { 
-            ADD_ATTR: ['class', 'style'], // Allow classes from Prism and inline styles if any
+            ADD_ATTR: ['class', 'style'], // Allow classes from Prism/KaTeX and inline styles if any
+            ADD_TAGS: ['math', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'annotation', 'mtext'], // Allow MathML tags if KaTeX outputs them
             USE_PROFILES: { html: true } 
         });
         if (sanitizedHtml.trim()) {

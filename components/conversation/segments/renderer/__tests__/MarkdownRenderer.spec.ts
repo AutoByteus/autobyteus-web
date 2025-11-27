@@ -30,6 +30,33 @@ describe('MarkdownRenderer', () => {
     expect(wrapper.html()).toContain('<h1>Hello World</h1>');
   });
 
+  it('renders KaTeX when using bracket delimiters', () => {
+    const wrapper = mount(MarkdownRenderer, {
+      props: {
+        content: '\\\\[ a^2 + b^2 = c^2 \\\\]'
+      }
+    });
+
+    expect(wrapper.html()).toContain('katex');
+  });
+
+  it('auto-wraps bare bracket block into KaTeX', () => {
+    const wrapper = mount(MarkdownRenderer, {
+      props: {
+        content: '[\n a^2 + b^2 = c^2\n]'
+      }
+    });
+
+    expect(wrapper.html()).toContain('katex');
+  });
+
+  it('auto-wraps lone LaTeX line without delimiters', () => {
+    const wrapper = mount(MarkdownRenderer, {
+      props: { content: 'A = \\\\frac{1}{2}bh' }
+    });
+    expect(wrapper.html()).toContain('katex');
+  });
+
   it('should render plantuml diagram with loading state', () => {
     const wrapper = mount(MarkdownRenderer, {
       props: {
