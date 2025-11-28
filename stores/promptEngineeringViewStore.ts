@@ -33,6 +33,8 @@ export const usePromptEngineeringViewStore = defineStore('promptEngineeringView'
     },
     showPromptDetails(promptId: string) {
       this.selectedPromptId = promptId;
+      // Explicitly switch view mode to ensure we leave 'create' mode if active
+      this.currentView = 'details';
     },
     closePromptDetails() {
       this.selectedPromptId = null;

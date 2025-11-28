@@ -124,15 +124,21 @@ async function submitPrompt() {
   isSubmitting.value = true;
 
   try {
-    await promptStore.createPrompt(
+    const newPrompt = await promptStore.createPrompt(
       formData.name,
       formData.category,
       formData.promptContent,
       formData.description,
       formData.suitableForModels.join(', ')
     );
-    // On success, navigate back to the marketplace
-    viewStore.showMarketplace();
+    
+    // On success, navigate to the prompt details of the newly created prompt
+    if (newPrompt && newPrompt.id) {
+      viewStore.showPromptDetails(newPrompt.id);
+    } else {
+      // Fallback to marketplace if for some reason we don't get an ID
+      viewStore.showMarketplace();
+    }
   } catch (err) {
     // Error will be handled by the store, maybe show a notification here in the future
     console.error("Failed to create prompt:", err);
