@@ -17,8 +17,13 @@
           :selectedPromptId="viewStore.selectedPromptId"
           @select-prompt="viewStore.showPromptDetails"
         />
+        
+        <!-- Drafts View -->
+        <DraftsList 
+          v-else-if="viewStore.isDraftsView"
+        />
 
-        <!-- Create Prompt View -->
+        <!-- Create Prompt View (Editor) -->
         <CreatePromptView
           v-else-if="viewStore.isCreateView"
         />
@@ -35,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { usePromptEngineeringViewStore } from '~/stores/promptEngineeringViewStore';
 import { storeToRefs } from 'pinia';
 
@@ -43,26 +48,35 @@ import PromptMarketplace from '~/components/promptEngineering/PromptMarketplace.
 import PromptDetails from '~/components/promptEngineering/PromptDetails.vue';
 import PromptSidebar from '~/components/promptEngineering/PromptSidebar.vue';
 import CreatePromptView from '~/components/promptEngineering/CreatePromptView.vue';
+import DraftsList from '~/components/promptEngineering/DraftsList.vue';
 
 const viewStore = usePromptEngineeringViewStore();
-const { currentView, selectedPromptId } = storeToRefs(viewStore);
-
-// This is for the sidebar's active state, which is a bit different from the main content view
-const sidebarView = ref('marketplace');
+const { currentView } = storeToRefs(viewStore);
 
 const menuItems = [
   { id: 'marketplace', label: 'Prompts Marketplace' },
+  { id: 'drafts', label: 'My Drafts' },
 ];
 
+// Sidebar logic
+// If currentView is 'create' or 'details', we probably want to highlight 'marketplace' 
+// or 'drafts' depending on where we came from.
+const sidebarView = computed(() => {
+  if (viewStore.isDraftsView) return 'drafts';
+  if (viewStore.isMarketplaceView) return 'marketplace';
+  // If we are editing a draft, highlight 'drafts'
+  if (viewStore.isCreateView && viewStore.activeDraftId) return 'drafts';
+  // Default fallback
+  return 'marketplace';
+});
+
 function navigateTo(view: string) {
-  sidebarView.value = view;
   if (view === 'marketplace') {
-    // This will reset the view to marketplace and clear any selections
     viewStore.showMarketplace();
+  } else if (view === 'drafts') {
+    viewStore.showDraftsList();
   }
 }
-
-// Watch for direct changes to selectedPromptId if needed, for example from URL routing in future
 </script>
 
 <style scoped>

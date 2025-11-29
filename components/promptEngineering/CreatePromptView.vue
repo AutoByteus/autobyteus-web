@@ -10,10 +10,15 @@
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
-          Back to Marketplace
+          Back
         </button>
       </div>
-      <h1 class="text-xl font-semibold text-gray-800">Create New Prompt</h1>
+      <div class="flex items-center gap-3">
+         <span v-if="savedIndicator" class="text-xs text-gray-400 animate-pulse">Saved</span>
+         <h1 class="text-xl font-semibold text-gray-800">
+           {{ isNewDraft ? 'Create New Prompt' : 'Edit Draft' }}
+         </h1>
+      </div>
     </div>
 
     <!-- Form -->
@@ -26,7 +31,6 @@
             id="prompt-name"
             v-model="formData.name"
             type="text"
-            required
             class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             placeholder="e.g., Python Code Generator"
           />
@@ -39,7 +43,6 @@
             id="prompt-category"
             v-model="formData.category"
             type="text"
-            required
             class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             placeholder="e.g., Code Generation"
           />
@@ -66,7 +69,6 @@
           <textarea
             id="prompt-content"
             v-model="formData.promptContent"
-            required
             class="mt-1 block w-full flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono"
             placeholder="Enter your prompt here..."
             style="min-height: 200px;"
@@ -97,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { usePromptStore } from '~/stores/promptStore';
 import { usePromptEngineeringViewStore } from '~/stores/promptEngineeringViewStore';
 import CanonicalModelSelector from './CanonicalModelSelector.vue';
@@ -105,6 +107,8 @@ import CanonicalModelSelector from './CanonicalModelSelector.vue';
 const promptStore = usePromptStore();
 const viewStore = usePromptEngineeringViewStore();
 
+// Local reactive state bound to the form inputs
+// We don't initialize it here, we initialize it in onMounted
 const formData = reactive({
   name: '',
   category: '',
@@ -114,10 +118,50 @@ const formData = reactive({
 });
 
 const isSubmitting = ref(false);
+const savedIndicator = ref(false);
 
 const isFormValid = computed(() => {
   return formData.name.trim() !== '' && formData.category.trim() !== '' && formData.promptContent.trim() !== '';
 });
+
+const isNewDraft = computed(() => {
+  // If it has no name yet, it feels "New".
+  return !viewStore.activeDraft?.name;
+});
+
+// Initialize form from Store
+onMounted(() => {
+  if (viewStore.activeDraft) {
+    // Load existing draft
+    formData.name = viewStore.activeDraft.name;
+    formData.category = viewStore.activeDraft.category;
+    formData.description = viewStore.activeDraft.description;
+    formData.promptContent = viewStore.activeDraft.promptContent;
+    // Ensure array copy
+    formData.suitableForModels = [...viewStore.activeDraft.suitableForModels];
+  } else {
+    // If we somehow got here without an active draft (e.g. refresh on create route),
+    // start a new one to ensure state consistency.
+    viewStore.startNewDraft();
+  }
+});
+
+// Auto-Save Watcher
+watch(formData, (newVal) => {
+  if (viewStore.activeDraftId) {
+    viewStore.updateActiveDraft({
+      name: newVal.name,
+      category: newVal.category,
+      description: newVal.description,
+      promptContent: newVal.promptContent,
+      suitableForModels: newVal.suitableForModels,
+    });
+    
+    // Flash saved indicator
+    savedIndicator.value = true;
+    setTimeout(() => { savedIndicator.value = false; }, 1000);
+  }
+}, { deep: true });
 
 async function submitPrompt() {
   if (!isFormValid.value || isSubmitting.value) return;
@@ -132,15 +176,19 @@ async function submitPrompt() {
       formData.suitableForModels.join(', ')
     );
     
-    // On success, navigate to the prompt details of the newly created prompt
+    // On success:
+    // 1. Remove the draft since it's now a real prompt
+    if (viewStore.activeDraftId) {
+      viewStore.deleteDraft(viewStore.activeDraftId);
+    }
+    
+    // 2. Navigate to the prompt details
     if (newPrompt && newPrompt.id) {
       viewStore.showPromptDetails(newPrompt.id);
     } else {
-      // Fallback to marketplace if for some reason we don't get an ID
       viewStore.showMarketplace();
     }
   } catch (err) {
-    // Error will be handled by the store, maybe show a notification here in the future
     console.error("Failed to create prompt:", err);
   } finally {
     isSubmitting.value = false;
@@ -148,6 +196,7 @@ async function submitPrompt() {
 }
 
 function handleClose() {
+  // Just go back to marketplace. The draft remains saved in the store.
   viewStore.showMarketplace();
 }
 </script>
