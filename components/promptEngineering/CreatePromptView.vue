@@ -10,7 +10,8 @@
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
-          Back
+          <!-- Dynamic Back Label -->
+          {{ backButtonLabel }}
         </button>
       </div>
       <div class="flex items-center gap-3">
@@ -108,7 +109,6 @@ const promptStore = usePromptStore();
 const viewStore = usePromptEngineeringViewStore();
 
 // Local reactive state bound to the form inputs
-// We don't initialize it here, we initialize it in onMounted
 const formData = reactive({
   name: '',
   category: '',
@@ -125,8 +125,14 @@ const isFormValid = computed(() => {
 });
 
 const isNewDraft = computed(() => {
-  // If it has no name yet, it feels "New".
   return !viewStore.activeDraft?.name;
+});
+
+// Dynamic Back Label based on Context
+const backButtonLabel = computed(() => {
+  return viewStore.currentSidebarContext === 'drafts' 
+    ? 'Back to Drafts' 
+    : 'Back to Marketplace';
 });
 
 // Initialize form from Store
@@ -137,12 +143,9 @@ onMounted(() => {
     formData.category = viewStore.activeDraft.category;
     formData.description = viewStore.activeDraft.description;
     formData.promptContent = viewStore.activeDraft.promptContent;
-    // Ensure array copy
     formData.suitableForModels = [...viewStore.activeDraft.suitableForModels];
   } else {
-    // If we somehow got here without an active draft (e.g. refresh on create route),
-    // start a new one to ensure state consistency.
-    viewStore.startNewDraft();
+    viewStore.startNewDraft(viewStore.currentSidebarContext);
   }
 });
 
@@ -157,7 +160,6 @@ watch(formData, (newVal) => {
       suitableForModels: newVal.suitableForModels,
     });
     
-    // Flash saved indicator
     savedIndicator.value = true;
     setTimeout(() => { savedIndicator.value = false; }, 1000);
   }
@@ -176,13 +178,11 @@ async function submitPrompt() {
       formData.suitableForModels.join(', ')
     );
     
-    // On success:
-    // 1. Remove the draft since it's now a real prompt
+    // On success, remove draft
     if (viewStore.activeDraftId) {
       viewStore.deleteDraft(viewStore.activeDraftId);
     }
     
-    // 2. Navigate to the prompt details
     if (newPrompt && newPrompt.id) {
       viewStore.showPromptDetails(newPrompt.id);
     } else {
@@ -196,7 +196,16 @@ async function submitPrompt() {
 }
 
 function handleClose() {
-  // Just go back to marketplace. The draft remains saved in the store.
-  viewStore.showMarketplace();
+  // Use the Store's logic to check emptiness
+  if (viewStore.isDraftEmpty(formData) && viewStore.activeDraftId) {
+    viewStore.deleteDraft(viewStore.activeDraftId);
+  } else {
+    // Explicit navigation based on context
+    if (viewStore.currentSidebarContext === 'drafts') {
+      viewStore.showDraftsList();
+    } else {
+      viewStore.showMarketplace();
+    }
+  }
 }
 </script>

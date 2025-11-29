@@ -84,6 +84,15 @@
               Edit
             </button>
             <button
+              @click="duplicatePrompt"
+              class="flex items-center px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+              </svg>
+              Duplicate
+            </button>
+            <button
               @click="copyPrompt"
               class="flex items-center px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
@@ -91,7 +100,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
-              Copy Prompt
+              Copy Content
             </button>
              <button
               @click="openDeleteConfirm"
@@ -268,6 +277,7 @@ import { usePromptEngineeringViewStore } from '~/stores/promptEngineeringViewSto
 import ModelBadge from '~/components/promptEngineering/ModelBadge.vue';
 import PromptCompare from '~/components/promptEngineering/PromptCompare.vue';
 import CanonicalModelSelector from './CanonicalModelSelector.vue';
+import { formatDate } from '~/utils/dateUtils';
 
 const props = defineProps<{ promptId: string }>();
 
@@ -447,8 +457,8 @@ function copyPrompt() {
       .then(() => {
         // Simple toast notification
         const element = document.createElement('div');
-        element.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg';
-        element.textContent = 'Prompt copied to clipboard!';
+        element.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+        element.textContent = 'Prompt content copied to clipboard!';
         document.body.appendChild(element);
         
         setTimeout(() => {
@@ -457,6 +467,11 @@ function copyPrompt() {
       })
       .catch((err) => console.error('Failed to copy prompt:', err));
   }
+}
+
+function duplicatePrompt() {
+  if (!prompt.value) return;
+  viewStore.duplicateDraft(prompt.value);
 }
 
 function viewRelatedPrompt(promptId: string) {
@@ -472,13 +487,6 @@ function exitComparisonMode() {
   comparisonMode.value = false;
   compareWithPromptId.value = '';
 }
-
-const formatDate = (dateString: string) =>
-  new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
 
 watch(
   () => props.promptId,

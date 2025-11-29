@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { computed } from 'vue';
 import { usePromptEngineeringViewStore } from '~/stores/promptEngineeringViewStore';
 import { storeToRefs } from 'pinia';
 
@@ -51,23 +51,15 @@ import CreatePromptView from '~/components/promptEngineering/CreatePromptView.vu
 import DraftsList from '~/components/promptEngineering/DraftsList.vue';
 
 const viewStore = usePromptEngineeringViewStore();
-const { currentView } = storeToRefs(viewStore);
 
 const menuItems = [
   { id: 'marketplace', label: 'Prompts Marketplace' },
   { id: 'drafts', label: 'My Drafts' },
 ];
 
-// Sidebar logic
-// If currentView is 'create' or 'details', we probably want to highlight 'marketplace' 
-// or 'drafts' depending on where we came from.
+// Sidebar logic: Uses the explicit context from the store
 const sidebarView = computed(() => {
-  if (viewStore.isDraftsView) return 'drafts';
-  if (viewStore.isMarketplaceView) return 'marketplace';
-  // If we are editing a draft, highlight 'drafts'
-  if (viewStore.isCreateView && viewStore.activeDraftId) return 'drafts';
-  // Default fallback
-  return 'marketplace';
+  return viewStore.currentSidebarContext;
 });
 
 function navigateTo(view: string) {

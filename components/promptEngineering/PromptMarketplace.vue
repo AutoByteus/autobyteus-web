@@ -40,8 +40,9 @@
             </svg>
             {{ syncing ? 'Syncing...' : 'Sync Prompts' }}
           </button>
+          <!-- Update: Pass 'marketplace' as origin -->
           <button
-            @click="viewStore.startNewDraft"
+            @click="viewStore.startNewDraft('marketplace')"
             class="flex items-center px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">

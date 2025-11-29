@@ -2,15 +2,15 @@
   <div class="drafts-list bg-white rounded-lg border p-6 h-full flex flex-col">
     <div class="flex justify-between items-center mb-6 pb-4 border-b">
       <h1 class="text-xl font-semibold text-gray-800">My Drafts</h1>
-      <span class="text-sm text-gray-500">{{ viewStore.draftCount }} {{ viewStore.draftCount === 1 ? 'draft' : 'drafts' }}</span>
+      <span class="text-sm text-gray-500">{{ viewStore.nonEmptyDrafts.length }} {{ viewStore.nonEmptyDrafts.length === 1 ? 'draft' : 'drafts' }}</span>
     </div>
 
     <!-- Grid Layout -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-auto pb-4">
       
-      <!-- "Create New Draft" Card -->
+      <!-- "Create New Draft" Card - Pass 'drafts' origin -->
       <div 
-        @click="viewStore.startNewDraft"
+        @click="viewStore.startNewDraft('drafts')"
         class="group relative h-64 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center text-center p-6"
       >
         <div class="h-10 w-10 rounded-full bg-gray-100 group-hover:bg-blue-100 text-gray-400 group-hover:text-blue-600 flex items-center justify-center mb-3 transition-colors">
@@ -23,7 +23,7 @@
 
       <!-- Draft Cards -->
       <div 
-        v-for="draft in viewStore.drafts" 
+        v-for="draft in viewStore.nonEmptyDrafts" 
         :key="draft.id"
         class="group relative bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer flex flex-col h-64"
         @click="viewStore.openDraft(draft.id)"
@@ -86,29 +86,9 @@
 
 <script setup lang="ts">
 import { usePromptEngineeringViewStore } from '~/stores/promptEngineeringViewStore';
+import { timeAgo } from '~/utils/dateUtils';
 
 const viewStore = usePromptEngineeringViewStore();
-
-function timeAgo(timestamp: number) {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  
-  let interval = seconds / 31536000;
-  if (interval > 1) return Math.floor(interval) + "y ago";
-  
-  interval = seconds / 2592000;
-  if (interval > 1) return Math.floor(interval) + "mo ago";
-  
-  interval = seconds / 86400;
-  if (interval > 1) return Math.floor(interval) + "d ago";
-  
-  interval = seconds / 3600;
-  if (interval > 1) return Math.floor(interval) + "h ago";
-  
-  interval = seconds / 60;
-  if (interval > 1) return Math.floor(interval) + "m ago";
-  
-  return "just now";
-}
 </script>
 
 <style scoped>
