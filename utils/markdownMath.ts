@@ -5,15 +5,20 @@
 
 const fenceLineRe = /^\s*```/;
 const hasMathDelimiterRe = /(?:\\\[|\\\(|\$\$?)/;
+// Only treat a line as "mathy" when it explicitly contains LaTeX commands.
+// This avoids accidentally converting snake_case or caret usage in plain text
+// into KaTeX blocks (which changes the font for entire sentences).
 const latexCommandRe = /\\(frac|sqrt|sum|int|lim|alpha|beta|gamma|delta|theta|pi|sin|cos|tan|log|ln)/i;
-const caretOrSubscriptRe = /[A-Za-z0-9]\s*[\^_]\s*[A-Za-z0-9(]/;
 
 const isFenceLine = (line: string) => fenceLineRe.test(line);
 const isBracketStart = (line: string) => line.trim() === '[';
 const isBracketEnd = (line: string) => line.trim() === ']';
+// Support explicit LaTeX block delimiters \[  \] (common in ChatGPT/Docs output)
+const isLatexBlockStart = (line: string) => line.trim() === '\\[';
+const isLatexBlockEnd = (line: string) => line.trim() === '\\]';
 
 const looksLikeLatex = (line: string) =>
-  latexCommandRe.test(line) || caretOrSubscriptRe.test(line);
+  latexCommandRe.test(line);
 
 /**
  * Normalize math so KaTeX renders it:
@@ -31,6 +36,7 @@ export const normalizeMath = (raw: string): string => {
 
   let inFence = false;
   let pendingBracket: string[] | null = null;
+  let inLatexBlock = false;
 
   const flushBracket = () => {
     if (pendingBracket) {
@@ -50,6 +56,23 @@ export const normalizeMath = (raw: string): string => {
     }
 
     if (inFence) {
+      out.push(line);
+      continue;
+    }
+
+    // Handle \[ ... \] block math (do not re-wrap inner lines)
+    if (isLatexBlockStart(line)) {
+      flushBracket();
+      inLatexBlock = true;
+      out.push(line);
+      continue;
+    }
+    if (isLatexBlockEnd(line) && inLatexBlock) {
+      inLatexBlock = false;
+      out.push(line);
+      continue;
+    }
+    if (inLatexBlock) {
       out.push(line);
       continue;
     }
