@@ -7,7 +7,16 @@
         <h4 class="text-base font-medium text-gray-800 truncate" :title="headerTitle">{{ headerTitle }}</h4>
         <AgentStatusDisplay v-if="selectedAgent" :phase="selectedAgent.state.currentPhase" />
       </div>
-      <WorkspaceHeaderActions @new-agent="createNewAgent" @open-history="openHistoryPanel" />
+      
+      <div class="flex items-center space-x-2">
+        <CopyButton 
+          v-if="selectedAgent" 
+          :text-to-copy="conversationText" 
+          label="Copy full conversation"
+        />
+        <!-- Separator removed -->
+        <WorkspaceHeaderActions @new-agent="createNewAgent" @open-history="openHistoryPanel" />
+      </div>
     </div>
     
     <!-- Tabbed Agent Monitors -->
@@ -30,6 +39,7 @@ import AgentEventMonitorTabs from '~/components/workspace/agent/AgentEventMonito
 import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue';
 import WorkspaceHeaderActions from '~/components/workspace/common/WorkspaceHeaderActions.vue';
 import AgentStatusDisplay from '~/components/workspace/agent/AgentStatusDisplay.vue';
+import CopyButton from '~/components/common/CopyButton.vue';
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
@@ -61,6 +71,19 @@ const headerTitle = computed(() => {
   }
   
   return 'Workspace'; // A generic fallback
+});
+
+const conversationText = computed(() => {
+  if (!selectedAgent.value) return '';
+  return selectedAgent.value.state.conversation.messages
+    .map(m => {
+      // Changed 'Agent' to 'Assistant' to match LLM chat templates
+      const role = m.type === 'user' ? 'User' : 'Assistant';
+      // Ensure text exists
+      const content = m.text || ''; 
+      return `${role}:\n${content}`;
+    })
+    .join('\n\n');
 });
 
 const createNewAgent = () => {

@@ -1,5 +1,10 @@
 <template>
-  <div>
+  <div class="relative group pr-8">
+    <!-- Copy Button: Visible on hover -->
+    <div class="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+      <CopyButton :text-to-copy="message.text" label="Copy message" />
+    </div>
+
     <div v-if="message.contextFilePaths && message.contextFilePaths.length > 0">
       <strong>Context Files:</strong>
       <ul class="list-disc list-inside">
@@ -25,6 +30,7 @@
 <script setup lang="ts">
 import type { UserMessage } from '~/types/conversation';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
+import CopyButton from '~/components/common/CopyButton.vue';
 
 const props = defineProps<{
   message: UserMessage;

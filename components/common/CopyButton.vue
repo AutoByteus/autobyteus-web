@@ -15,11 +15,13 @@ import { ClipboardDocumentIcon, ClipboardDocumentCheckIcon } from '@heroicons/vu
 
 const props = defineProps<{
   textToCopy: string;
+  label?: string; // Optional custom label for the tooltip
 }>();
 
 const copied = ref(false);
 
-const tooltipText = computed(() => copied.value ? 'Copied!' : 'Copy source code');
+// Use the provided label or fallback to 'Copy source code'
+const tooltipText = computed(() => copied.value ? 'Copied!' : (props.label || 'Copy source code'));
 
 const copy = async () => {
   if (!props.textToCopy) return;

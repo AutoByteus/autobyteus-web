@@ -1,5 +1,10 @@
 <template>
-  <div>
+  <div class="relative group pr-8">
+    <!-- Copy Button: Visible on hover -->
+    <div class="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+      <CopyButton :text-to-copy="message.text" label="Copy message" />
+    </div>
+
     <strong>Agent:</strong>
     <div>
       <template v-for="(segment, segmentIndex) in message.segments" :key="segmentIndex">
@@ -70,6 +75,7 @@ import SystemTaskNotificationSegment from '~/components/conversation/segments/Sy
 import MediaSegment from '~/components/conversation/segments/MediaSegment.vue';
 import IframeSegment from '~/components/conversation/segments/IframeSegment.vue';
 import ErrorSegment from '~/components/conversation/segments/ErrorSegment.vue';
+import CopyButton from '~/components/common/CopyButton.vue';
 
 const props = defineProps<{
   message: AIMessage;
