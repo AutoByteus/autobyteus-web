@@ -140,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
 import { useMediaLibraryStore, type MediaFile } from '~/stores/mediaLibraryStore';
 import FullScreenImageModal from '~/components/common/FullScreenImageModal.vue';
 import FullScreenVideoModal from '~/components/common/FullScreenVideoModal.vue';
@@ -161,8 +161,31 @@ const showConfirmDelete = ref(false);
 
 const imageFiles = computed(() => store.files.filter(f => f.category === 'images'));
 
+const handleKeydown = (event: KeyboardEvent) => {
+  // Don't hijack keys when user is typing or interacting with form controls
+  const target = event.target as HTMLElement | null;
+  const tag = target?.tagName;
+  if (target && (target.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT')) return;
+
+  // Avoid paging while a modal is open
+  if (isImageModalVisible.value || isVideoModalVisible.value || isAudioModalVisible.value) return;
+
+  if (event.key === 'ArrowLeft' && store.pagination.currentPage > 1) {
+    event.preventDefault();
+    store.changePage(store.pagination.currentPage - 1);
+  } else if (event.key === 'ArrowRight' && store.pagination.currentPage < store.pagination.totalPages) {
+    event.preventDefault();
+    store.changePage(store.pagination.currentPage + 1);
+  }
+};
+
 onMounted(() => {
   store.fetchMedia();
+  window.addEventListener('keydown', handleKeydown);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown);
 });
 
 const getIconForCategory = (category: string) => {
