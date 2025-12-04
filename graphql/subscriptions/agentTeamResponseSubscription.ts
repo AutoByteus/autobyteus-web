@@ -73,6 +73,12 @@ const nestedTeamEventFragment = gql`
               message
               details
             }
+            ... on GraphQLInterAgentMessageData {
+              senderAgentId
+              recipientRoleName
+              messageType
+              content
+            }
             ... on GraphQLToolInvocationApprovalRequestedData {
               invocationId
               toolName

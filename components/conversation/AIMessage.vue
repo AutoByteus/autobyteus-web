@@ -46,6 +46,10 @@
           v-else-if="segment.type === 'system_task_notification'"
           :segment="segment"
         />
+        <InterAgentMessageSegment
+          v-else-if="segment.type === 'inter_agent_message'"
+          :segment="segment"
+        />
         <MediaSegment
           v-else-if="segment.type === 'media'"
           :segment="segment"
@@ -72,6 +76,7 @@ import ThinkSegment from '~/components/conversation/segments/ThinkSegment.vue';
 import ToolCallSegment from '~/components/conversation/segments/ToolCallSegment.vue';
 import FileWriterSegment from '~/components/conversation/segments/FileWriterSegment.vue';
 import SystemTaskNotificationSegment from '~/components/conversation/segments/SystemTaskNotificationSegment.vue';
+import InterAgentMessageSegment from '~/components/conversation/segments/InterAgentMessageSegment.vue';
 import MediaSegment from '~/components/conversation/segments/MediaSegment.vue';
 import IframeSegment from '~/components/conversation/segments/IframeSegment.vue';
 import ErrorSegment from '~/components/conversation/segments/ErrorSegment.vue';

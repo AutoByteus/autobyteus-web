@@ -72,6 +72,12 @@ export const AgentResponseSubscription = gql`
           senderId
           content
         }
+        ... on GraphQLInterAgentMessageData {
+          senderAgentId
+          recipientRoleName
+          messageType
+          content
+        }
         ... on GraphQLToDoListUpdateData {
           todos {
             description

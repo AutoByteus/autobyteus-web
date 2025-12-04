@@ -13,6 +13,7 @@ import { handleAgentPhaseTransition } from './agentResponseHandlers/phaseTransit
 import { handleSystemTaskNotification } from './agentResponseHandlers/systemTaskNotificationHandler';
 import { handleAgentError } from './agentResponseHandlers/errorEventHandler';
 import { handleToDoListUpdate } from './agentResponseHandlers/todoListUpdateHandler';
+import { handleInterAgentMessage } from './agentResponseHandlers/interAgentMessageHandler';
 
 /**
  * Main dispatcher for processing all agent response events.
@@ -47,6 +48,9 @@ export function processAgentResponseEvent(
 
     case 'GraphQLSystemTaskNotificationData':
       return handleSystemTaskNotification(eventData, agentContext);
+
+    case 'GraphQLInterAgentMessageData':
+      return handleInterAgentMessage(eventData, agentContext);
 
     case 'GraphQLErrorEventData':
       return handleAgentError(eventData, agentContext);

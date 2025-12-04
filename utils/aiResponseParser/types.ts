@@ -52,6 +52,14 @@ export interface SystemTaskNotificationSegment {
   content: string;
 }
 
+export interface InterAgentMessageSegment {
+  type: 'inter_agent_message';
+  senderAgentId: string;
+  recipientRoleName: string;
+  messageType: string;
+  content: string;
+}
+
 // NEW MEDIA SEGMENT TYPE
 export interface MediaSegment {
   type: 'media';
@@ -80,6 +88,7 @@ export type AIResponseSegment =
   | ToolCallSegment
   | BashCommandSegment
   | SystemTaskNotificationSegment
+  | InterAgentMessageSegment
   | MediaSegment
   | IframeSegment
   | ErrorSegment;
