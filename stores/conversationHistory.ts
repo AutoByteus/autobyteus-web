@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { useApolloClient } from '@vue/apollo-composable';
-import { GET_CONVERSATION_HISTORY } from '~/graphql/queries/conversation_queries';
-import type { GetConversationHistoryQuery, GetConversationHistoryQueryVariables } from '~/generated/graphql';
+import { GET_AGENT_CONVERSATION_HISTORY } from '~/graphql/queries/conversation_queries';
+import type { GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables } from '~/generated/graphql';
 import type { Conversation, UserMessage, AIMessage } from '~/types/conversation';
 
 interface ConversationHistoryState {
@@ -44,7 +44,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.loading = true;
       this.error = null;
 
-      const variables: GetConversationHistoryQueryVariables = {
+      const variables: GetAgentConversationHistoryQueryVariables = {
         agentDefinitionId: this.agentDefinitionId,
         page,
         pageSize,
@@ -53,8 +53,8 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
 
       try {
         const { client } = useApolloClient();
-        const { data, errors } = await client.query<GetConversationHistoryQuery, GetConversationHistoryQueryVariables>({
-          query: GET_CONVERSATION_HISTORY,
+        const { data, errors } = await client.query<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables>({
+          query: GET_AGENT_CONVERSATION_HISTORY,
           variables,
           fetchPolicy: 'network-only',
         });
@@ -63,8 +63,8 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
           throw new Error(errors.map(e => e.message).join(', '));
         }
 
-        if (data?.getConversationHistory) {
-          const { conversations, totalPages, currentPage } = data.getConversationHistory;
+        if (data?.getAgentConversationHistory) {
+          const { conversations, totalPages, currentPage } = data.getAgentConversationHistory;
           this.conversations = conversations.map(conv => this.mapToConversation(conv));
           this.totalPages = totalPages;
           this.currentPage = currentPage;
@@ -107,17 +107,17 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.error = null;
       this.searchQuery = '';
     },
-    mapToConversation(agentConversation: GetConversationHistoryQuery['getConversationHistory']['conversations'][number]): Conversation {
+    mapToConversation(agentConversation: any): Conversation {
       // This function performs a "lightweight" mapping.
       // Heavy parsing is deferred to the agentContextsStore when a user continues a conversation.
       return {
         id: agentConversation.agentId, // This is the historical conversation ID
-        messages: agentConversation.messages.map(msg => {
+        messages: agentConversation.messages.map((msg: any) => {
           if (msg.role === 'user') {
             const userMessage: UserMessage = {
               type: 'user',
               text: msg.originalMessage || '',
-              contextFilePaths: msg.contextPaths?.map(path => ({
+              contextFilePaths: msg.contextPaths?.map((path: string) => ({
                 path,
                 type: 'Text', // Standardize to match ContextFilePath type
               })) || [],

@@ -42,6 +42,8 @@ export interface Conversation {
   updatedAt: string;
   // This is used for sending the first message to create a new agent instance.
   agentDefinitionId?: string;
+  // Optional name aggregated from definition
+  agentName?: string;
   // This is set on the first turn and persists for the conversation.
   llmModelIdentifier?: string;
   // This is set on the first turn and persists for the conversation.

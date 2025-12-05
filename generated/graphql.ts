@@ -29,6 +29,7 @@ export type AgentConversation = {
   __typename?: 'AgentConversation';
   agentDefinitionId: Scalars['String']['output'];
   agentId: Scalars['String']['output'];
+  agentName?: Maybe<Scalars['String']['output']>;
   createdAt: Scalars['String']['output'];
   llmModel?: Maybe<Scalars['String']['output']>;
   messages: Array<Message>;
@@ -810,9 +811,10 @@ export type Query = {
   availableToolNames: Array<Scalars['String']['output']>;
   availableWorkspaceDefinitions: Array<WorkspaceDefinition>;
   fileContent: Scalars['String']['output'];
-  getConversationHistory: ConversationHistory;
+  getAgentConversationHistory: ConversationHistory;
   getLlmProviderApiKey?: Maybe<Scalars['String']['output']>;
   getModelsByProvider: Array<ProviderModels>;
+  getRawConversationHistory: ConversationHistory;
   getServerSettings: Array<ServerSetting>;
   listApplications: Array<ApplicationManifest>;
   mcpServers: Array<McpServerConfigUnion>;
@@ -855,7 +857,7 @@ export type QueryFileContentArgs = {
 };
 
 
-export type QueryGetConversationHistoryArgs = {
+export type QueryGetAgentConversationHistoryArgs = {
   agentDefinitionId: Scalars['String']['input'];
   page?: Scalars['Int']['input'];
   pageSize?: Scalars['Int']['input'];
@@ -865,6 +867,14 @@ export type QueryGetConversationHistoryArgs = {
 
 export type QueryGetLlmProviderApiKeyArgs = {
   provider: Scalars['String']['input'];
+};
+
+
+export type QueryGetRawConversationHistoryArgs = {
+  agentDefinitionId?: InputMaybe<Scalars['String']['input']>;
+  page?: Scalars['Int']['input'];
+  pageSize?: Scalars['Int']['input'];
+  searchQuery?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1484,7 +1494,7 @@ export type ListApplicationsQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type ListApplicationsQuery = { __typename?: 'Query', listApplications: Array<{ __typename: 'ApplicationManifest', id: string, name: string, description: string, icon: string, type?: string | null, teamDefinitionName?: string | null }> };
 
-export type GetConversationHistoryQueryVariables = Exact<{
+export type GetAgentConversationHistoryQueryVariables = Exact<{
   agentDefinitionId: Scalars['String']['input'];
   page?: InputMaybe<Scalars['Int']['input']>;
   pageSize?: InputMaybe<Scalars['Int']['input']>;
@@ -1492,7 +1502,17 @@ export type GetConversationHistoryQueryVariables = Exact<{
 }>;
 
 
-export type GetConversationHistoryQuery = { __typename?: 'Query', getConversationHistory: { __typename: 'ConversationHistory', totalPages: number, currentPage: number, conversations: Array<{ __typename: 'AgentConversation', agentId: string, agentDefinitionId: string, createdAt: string, llmModel?: string | null, useXmlToolFormat: boolean, messages: Array<{ __typename: 'Message', messageId?: string | null, role: string, message: string, timestamp: string, contextPaths?: Array<string> | null, originalMessage?: string | null, tokenCount?: number | null, cost?: number | null, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null }> }> } };
+export type GetAgentConversationHistoryQuery = { __typename?: 'Query', getAgentConversationHistory: { __typename: 'ConversationHistory', totalPages: number, currentPage: number, conversations: Array<{ __typename: 'AgentConversation', agentId: string, agentDefinitionId: string, agentName?: string | null, createdAt: string, llmModel?: string | null, useXmlToolFormat: boolean, messages: Array<{ __typename: 'Message', messageId?: string | null, role: string, message: string, timestamp: string, contextPaths?: Array<string> | null, originalMessage?: string | null, tokenCount?: number | null, cost?: number | null, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null }> }> } };
+
+export type GetRawConversationHistoryQueryVariables = Exact<{
+  page?: InputMaybe<Scalars['Int']['input']>;
+  pageSize?: InputMaybe<Scalars['Int']['input']>;
+  searchQuery?: InputMaybe<Scalars['String']['input']>;
+  agentDefinitionId?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type GetRawConversationHistoryQuery = { __typename?: 'Query', getRawConversationHistory: { __typename: 'ConversationHistory', totalPages: number, currentPage: number, conversations: Array<{ __typename: 'AgentConversation', agentId: string, agentDefinitionId: string, agentName?: string | null, createdAt: string, llmModel?: string | null, useXmlToolFormat: boolean, messages: Array<{ __typename: 'Message', messageId?: string | null, role: string, message: string, timestamp: string, contextPaths?: Array<string> | null, originalMessage?: string | null, tokenCount?: number | null, cost?: number | null, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null }> }> } };
 
 export type GetFileContentQueryVariables = Exact<{
   workspaceId: Scalars['String']['input'];
@@ -3117,9 +3137,9 @@ export function useListApplicationsLazyQuery(options: VueApolloComposable.UseQue
   return VueApolloComposable.useLazyQuery<ListApplicationsQuery, ListApplicationsQueryVariables>(ListApplicationsDocument, {}, options);
 }
 export type ListApplicationsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<ListApplicationsQuery, ListApplicationsQueryVariables>;
-export const GetConversationHistoryDocument = gql`
-    query GetConversationHistory($agentDefinitionId: String!, $page: Int, $pageSize: Int, $searchQuery: String) {
-  getConversationHistory(
+export const GetAgentConversationHistoryDocument = gql`
+    query GetAgentConversationHistory($agentDefinitionId: String!, $page: Int, $pageSize: Int, $searchQuery: String) {
+  getAgentConversationHistory(
     agentDefinitionId: $agentDefinitionId
     page: $page
     pageSize: $pageSize
@@ -3130,6 +3150,7 @@ export const GetConversationHistoryDocument = gql`
       __typename
       agentId
       agentDefinitionId
+      agentName
       createdAt
       llmModel
       useXmlToolFormat
@@ -3156,30 +3177,94 @@ export const GetConversationHistoryDocument = gql`
     `;
 
 /**
- * __useGetConversationHistoryQuery__
+ * __useGetAgentConversationHistoryQuery__
  *
- * To run a query within a Vue component, call `useGetConversationHistoryQuery` and pass it any options that fit your needs.
- * When your component renders, `useGetConversationHistoryQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * To run a query within a Vue component, call `useGetAgentConversationHistoryQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetAgentConversationHistoryQuery` returns an object from Apollo Client that contains result, loading and error properties
  * you can use to render your UI.
  *
  * @param variables that will be passed into the query
  * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
  *
  * @example
- * const { result, loading, error } = useGetConversationHistoryQuery({
+ * const { result, loading, error } = useGetAgentConversationHistoryQuery({
  *   agentDefinitionId: // value for 'agentDefinitionId'
  *   page: // value for 'page'
  *   pageSize: // value for 'pageSize'
  *   searchQuery: // value for 'searchQuery'
  * });
  */
-export function useGetConversationHistoryQuery(variables: GetConversationHistoryQueryVariables | VueCompositionApi.Ref<GetConversationHistoryQueryVariables> | ReactiveFunction<GetConversationHistoryQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetConversationHistoryQuery, GetConversationHistoryQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetConversationHistoryQuery, GetConversationHistoryQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetConversationHistoryQuery, GetConversationHistoryQueryVariables>> = {}) {
-  return VueApolloComposable.useQuery<GetConversationHistoryQuery, GetConversationHistoryQueryVariables>(GetConversationHistoryDocument, variables, options);
+export function useGetAgentConversationHistoryQuery(variables: GetAgentConversationHistoryQueryVariables | VueCompositionApi.Ref<GetAgentConversationHistoryQueryVariables> | ReactiveFunction<GetAgentConversationHistoryQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables>(GetAgentConversationHistoryDocument, variables, options);
 }
-export function useGetConversationHistoryLazyQuery(variables?: GetConversationHistoryQueryVariables | VueCompositionApi.Ref<GetConversationHistoryQueryVariables> | ReactiveFunction<GetConversationHistoryQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetConversationHistoryQuery, GetConversationHistoryQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetConversationHistoryQuery, GetConversationHistoryQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetConversationHistoryQuery, GetConversationHistoryQueryVariables>> = {}) {
-  return VueApolloComposable.useLazyQuery<GetConversationHistoryQuery, GetConversationHistoryQueryVariables>(GetConversationHistoryDocument, variables, options);
+export function useGetAgentConversationHistoryLazyQuery(variables?: GetAgentConversationHistoryQueryVariables | VueCompositionApi.Ref<GetAgentConversationHistoryQueryVariables> | ReactiveFunction<GetAgentConversationHistoryQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables>(GetAgentConversationHistoryDocument, variables, options);
 }
-export type GetConversationHistoryQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetConversationHistoryQuery, GetConversationHistoryQueryVariables>;
+export type GetAgentConversationHistoryQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables>;
+export const GetRawConversationHistoryDocument = gql`
+    query GetRawConversationHistory($page: Int, $pageSize: Int, $searchQuery: String, $agentDefinitionId: String) {
+  getRawConversationHistory(
+    page: $page
+    pageSize: $pageSize
+    searchQuery: $searchQuery
+    agentDefinitionId: $agentDefinitionId
+  ) {
+    __typename
+    conversations {
+      __typename
+      agentId
+      agentDefinitionId
+      agentName
+      createdAt
+      llmModel
+      useXmlToolFormat
+      messages {
+        __typename
+        messageId
+        role
+        message
+        timestamp
+        contextPaths
+        originalMessage
+        tokenCount
+        cost
+        reasoning
+        imageUrls
+        audioUrls
+        videoUrls
+      }
+    }
+    totalPages
+    currentPage
+  }
+}
+    `;
+
+/**
+ * __useGetRawConversationHistoryQuery__
+ *
+ * To run a query within a Vue component, call `useGetRawConversationHistoryQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetRawConversationHistoryQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param variables that will be passed into the query
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetRawConversationHistoryQuery({
+ *   page: // value for 'page'
+ *   pageSize: // value for 'pageSize'
+ *   searchQuery: // value for 'searchQuery'
+ *   agentDefinitionId: // value for 'agentDefinitionId'
+ * });
+ */
+export function useGetRawConversationHistoryQuery(variables: GetRawConversationHistoryQueryVariables | VueCompositionApi.Ref<GetRawConversationHistoryQueryVariables> | ReactiveFunction<GetRawConversationHistoryQueryVariables> = {}, options: VueApolloComposable.UseQueryOptions<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables>(GetRawConversationHistoryDocument, variables, options);
+}
+export function useGetRawConversationHistoryLazyQuery(variables: GetRawConversationHistoryQueryVariables | VueCompositionApi.Ref<GetRawConversationHistoryQueryVariables> | ReactiveFunction<GetRawConversationHistoryQueryVariables> = {}, options: VueApolloComposable.UseQueryOptions<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables>(GetRawConversationHistoryDocument, variables, options);
+}
+export type GetRawConversationHistoryQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables>;
 export const GetFileContentDocument = gql`
     query GetFileContent($workspaceId: String!, $filePath: String!) {
   fileContent(workspaceId: $workspaceId, filePath: $filePath)
