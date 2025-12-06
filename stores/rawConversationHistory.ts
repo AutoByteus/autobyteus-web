@@ -16,7 +16,7 @@ interface RawConversationHistoryState {
   
   // Filtering
   searchQuery: string;
-  selectedAgentFilter: string | null; // ID of the agent definition to filter by
+  selectedAgentId: string | null;
   
   // Selection (Detail View)
   selectedConversationId: string | null;
@@ -33,7 +33,7 @@ export const useRawConversationHistoryStore = defineStore('rawConversationHistor
     totalPages: 1,
     
     searchQuery: '',
-    selectedAgentFilter: null,
+    selectedAgentId: null,
     selectedConversationId: null,
   }),
 
@@ -46,7 +46,8 @@ export const useRawConversationHistoryStore = defineStore('rawConversationHistor
   },
 
   actions: {
-    async fetchLogs(page: number = this.currentPage) {
+    // Renamed from fetchLogs to fetchRawConversationHistory for clarity and consistency
+    async fetchRawConversationHistory(page: number = this.currentPage) {
       this.loading = true;
       this.error = null;
 
@@ -54,7 +55,7 @@ export const useRawConversationHistoryStore = defineStore('rawConversationHistor
         page,
         pageSize: this.pageSize,
         searchQuery: this.searchQuery || null,
-        agentDefinitionId: this.selectedAgentFilter || null,
+        agentDefinitionId: this.selectedAgentId || null,
       };
 
       try {
@@ -76,7 +77,7 @@ export const useRawConversationHistoryStore = defineStore('rawConversationHistor
           this.currentPage = currentPage;
         }
       } catch (error: any) {
-        this.error = error?.message || 'Failed to fetch conversation logs.';
+        this.error = error?.message || 'Failed to fetch conversation history.';
       } finally {
         this.loading = false;
       }
@@ -85,32 +86,32 @@ export const useRawConversationHistoryStore = defineStore('rawConversationHistor
     async performSearch(query: string) {
       this.searchQuery = query;
       this.currentPage = 1;
-      await this.fetchLogs();
+      await this.fetchRawConversationHistory();
     },
     
-    async setAgentFilter(agentDefinitionId: string | null) {
-      this.selectedAgentFilter = agentDefinitionId;
+    async setSelectedAgentId(agentDefinitionId: string | null) {
+      this.selectedAgentId = agentDefinitionId;
       this.currentPage = 1;
-      await this.fetchLogs();
+      await this.fetchRawConversationHistory();
     },
     
     async clearSearch() {
         this.searchQuery = '';
         this.currentPage = 1;
-        await this.fetchLogs();
+        await this.fetchRawConversationHistory();
     },
 
     async nextPage() {
       if (this.currentPage < this.totalPages) {
         this.currentPage += 1;
-        await this.fetchLogs(this.currentPage);
+        await this.fetchRawConversationHistory(this.currentPage);
       }
     },
 
     async previousPage() {
       if (this.currentPage > 1) {
         this.currentPage -= 1;
-        await this.fetchLogs(this.currentPage);
+        await this.fetchRawConversationHistory(this.currentPage);
       }
     },
 
@@ -127,7 +128,7 @@ export const useRawConversationHistoryStore = defineStore('rawConversationHistor
         this.currentPage = 1;
         this.totalPages = 1;
         this.searchQuery = '';
-        this.selectedAgentFilter = null;
+        this.selectedAgentId = null;
         this.selectedConversationId = null;
         this.error = null;
         this.loading = false;
