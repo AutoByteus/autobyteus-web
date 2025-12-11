@@ -23,6 +23,7 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
   const llmResponseProcessors = ref<ProcessorOption[]>([]);
   const systemPromptProcessors = ref<ProcessorOption[]>([]);
   const toolExecutionResultProcessors = ref<ProcessorOption[]>([]);
+  const toolInvocationPreprocessors = ref<ProcessorOption[]>([]);
   const phaseHooks = ref<ProcessorOption[]>([]);
   const promptCategories = ref<PromptCategory[]>([]);
   
@@ -49,6 +50,8 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
         llmResponseProcessors.value = data.availableLlmResponseProcessors || [];
         systemPromptProcessors.value = data.availableSystemPromptProcessors || [];
         toolExecutionResultProcessors.value = data.availableToolExecutionResultProcessors || [];
+        // The generated type may lag behind the schema; cast to any for the new field.
+        toolInvocationPreprocessors.value = (data as any).availableToolInvocationPreprocessors || [];
         phaseHooks.value = data.availablePhaseHooks || [];
         promptCategories.value = data.availablePromptCategories || [];
       }
@@ -67,6 +70,7 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
     llmResponseProcessors,
     systemPromptProcessors,
     toolExecutionResultProcessors,
+    toolInvocationPreprocessors,
     phaseHooks,
     promptCategories,
     loading,
