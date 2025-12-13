@@ -50,6 +50,7 @@ export type AgentDefinition = {
   systemPromptName?: Maybe<Scalars['String']['output']>;
   systemPromptProcessorNames: Array<Scalars['String']['output']>;
   toolExecutionResultProcessorNames: Array<Scalars['String']['output']>;
+  toolInvocationPreprocessorNames: Array<Scalars['String']['output']>;
   toolNames: Array<Scalars['String']['output']>;
 };
 
@@ -196,6 +197,7 @@ export type CreateAgentDefinitionInput = {
   systemPromptName: Scalars['String']['input'];
   systemPromptProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
   toolExecutionResultProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
+  toolInvocationPreprocessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
   toolNames?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
@@ -808,6 +810,7 @@ export type Query = {
   availablePromptCategories: Array<PromptCategory>;
   availableSystemPromptProcessors: Array<ProcessorOption>;
   availableToolExecutionResultProcessors: Array<ProcessorOption>;
+  availableToolInvocationPreprocessors: Array<ProcessorOption>;
   availableToolNames: Array<Scalars['String']['output']>;
   availableWorkspaceDefinitions: Array<WorkspaceDefinition>;
   fileContent: Scalars['String']['output'];
@@ -1173,6 +1176,7 @@ export type UpdateAgentDefinitionInput = {
   systemPromptName?: InputMaybe<Scalars['String']['input']>;
   systemPromptProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
   toolExecutionResultProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
+  toolInvocationPreprocessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
   toolNames?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
@@ -1227,14 +1231,14 @@ export type CreateAgentDefinitionMutationVariables = Exact<{
 }>;
 
 
-export type CreateAgentDefinitionMutation = { __typename?: 'Mutation', createAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string }> } };
+export type CreateAgentDefinitionMutation = { __typename?: 'Mutation', createAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string }> } };
 
 export type UpdateAgentDefinitionMutationVariables = Exact<{
   input: UpdateAgentDefinitionInput;
 }>;
 
 
-export type UpdateAgentDefinitionMutation = { __typename?: 'Mutation', updateAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null } };
+export type UpdateAgentDefinitionMutation = { __typename?: 'Mutation', updateAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null } };
 
 export type DeleteAgentDefinitionMutationVariables = Exact<{
   id: Scalars['String']['input'];
@@ -1472,12 +1476,12 @@ export type ExecuteBashCommandsMutation = { __typename?: 'Mutation', executeBash
 export type GetAgentCustomizationOptionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentCustomizationOptionsQuery = { __typename?: 'Query', availableToolNames: Array<string>, availableInputProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableLlmResponseProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableSystemPromptProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableToolExecutionResultProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availablePhaseHooks: Array<{ __typename: 'HookOption', name: string, isMandatory: boolean }>, availablePromptCategories: Array<{ __typename: 'PromptCategory', category: string, names: Array<string> }> };
+export type GetAgentCustomizationOptionsQuery = { __typename?: 'Query', availableToolNames: Array<string>, availableInputProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableLlmResponseProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableSystemPromptProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableToolExecutionResultProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableToolInvocationPreprocessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availablePhaseHooks: Array<{ __typename: 'HookOption', name: string, isMandatory: boolean }>, availablePromptCategories: Array<{ __typename: 'PromptCategory', category: string, names: Array<string> }> };
 
 export type GetAgentDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean }> }> };
+export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean }> }> };
 
 export type GetAgentInstancesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1775,6 +1779,7 @@ export const CreateAgentDefinitionDocument = gql`
     llmResponseProcessorNames
     systemPromptProcessorNames
     toolExecutionResultProcessorNames
+    toolInvocationPreprocessorNames
     phaseHookNames
     systemPromptCategory
     systemPromptName
@@ -1822,6 +1827,7 @@ export const UpdateAgentDefinitionDocument = gql`
     llmResponseProcessorNames
     systemPromptProcessorNames
     toolExecutionResultProcessorNames
+    toolInvocationPreprocessorNames
     phaseHookNames
     systemPromptCategory
     systemPromptName
@@ -2940,6 +2946,11 @@ export const GetAgentCustomizationOptionsDocument = gql`
     name
     isMandatory
   }
+  availableToolInvocationPreprocessors {
+    __typename
+    name
+    isMandatory
+  }
   availablePhaseHooks {
     __typename
     name
@@ -2985,6 +2996,7 @@ export const GetAgentDefinitionsDocument = gql`
     llmResponseProcessorNames
     systemPromptProcessorNames
     toolExecutionResultProcessorNames
+    toolInvocationPreprocessorNames
     phaseHookNames
     systemPromptCategory
     systemPromptName

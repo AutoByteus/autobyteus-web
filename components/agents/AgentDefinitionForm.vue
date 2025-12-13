@@ -265,6 +265,9 @@ watch(() => optionsStore.loading, (isLoading) => {
     if (formData.tool_execution_result_processor_names.length === 0) {
       formData.tool_execution_result_processor_names = optionsStore.toolExecutionResultProcessors.filter(p => p.isMandatory).map(p => p.name);
     }
+    if (formData.tool_invocation_preprocessor_names.length === 0) {
+      formData.tool_invocation_preprocessor_names = optionsStore.toolInvocationPreprocessors.filter(p => p.isMandatory).map(p => p.name);
+    }
     if (formData.phase_hook_names.length === 0) {
       formData.phase_hook_names = optionsStore.phaseHooks.filter(p => p.isMandatory).map(p => p.name);
     }
@@ -305,6 +308,7 @@ function resetToDefaults(fieldName: string) {
     'llm_response_processor_names': 'llmResponseProcessors',
     'system_prompt_processor_names': 'systemPromptProcessors',
     'tool_execution_result_processor_names': 'toolExecutionResultProcessors',
+    'tool_invocation_preprocessor_names': 'toolInvocationPreprocessors',
     'phase_hook_names': 'phaseHooks',
   };
   const key = storeKeyMap[fieldName];
@@ -329,6 +333,7 @@ const handleSubmit = () => {
     llmResponseProcessorNames: formData.llm_response_processor_names,
     systemPromptProcessorNames: formData.system_prompt_processor_names,
     toolExecutionResultProcessorNames: formData.tool_execution_result_processor_names,
+    toolInvocationPreprocessorNames: formData.tool_invocation_preprocessor_names,
     phaseHookNames: formData.phase_hook_names,
   };
   emit('submit', submissionData);
