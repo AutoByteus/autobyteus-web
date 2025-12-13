@@ -185,7 +185,7 @@ const componentFields = computed(() => [
   { name: 'llm_response_processor_names', camelCase: 'llmResponseProcessorNames', label: 'LLM Response Processors', placeholder: 'Add custom processors...', helpText: 'Customize processors that interpret LLM responses.' },
   { name: 'system_prompt_processor_names', camelCase: 'systemPromptProcessorNames', label: 'System Prompt Processors', placeholder: 'Add custom processors...', helpText: 'Customize processors that build the system prompt.' },
   { name: 'tool_execution_result_processor_names', camelCase: 'toolExecutionResultProcessorNames', label: 'Tool Result Processors', placeholder: 'Add custom processors...', helpText: 'Customize processors that handle tool results.' },
-  { name: 'tool_invocation_preprocessor_names', camelCase: 'toolInvocationPreprocessorNames', label: 'Tool Invocation Preprocessors', placeholder: 'Add preprocessors...', helpText: 'Run before a tool executes (e.g., resolve media paths for RPA).' },
+  { name: 'tool_invocation_preprocessor_names', camelCase: 'toolInvocationPreprocessorNames', label: 'Tool Invocation Preprocessors', placeholder: 'Add preprocessors...', helpText: 'Run before a tool executes (e.g., resolve media paths).' },
   { name: 'phase_hook_names', camelCase: 'phaseHookNames', label: 'Phase Hooks', placeholder: 'Add custom hooks...', helpText: 'Customize hooks that trigger on agent phase changes.' },
 ]);
 
