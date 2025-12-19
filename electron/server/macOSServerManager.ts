@@ -7,6 +7,7 @@ import { StdioOptions } from 'child_process'
 import { BaseServerManager } from './baseServerManager'
 import { logger } from '../logger'
 import { getLocalIp } from '../utils/networkUtils'
+import { getBashLoginPath } from '../utils/shellEnv'
 
 export class MacOSServerManager extends BaseServerManager {
   private executableInsideApp: string = ''
@@ -58,8 +59,14 @@ export class MacOSServerManager extends BaseServerManager {
     const hostIp = getLocalIp() || 'localhost'
     const publicServerUrl = `http://${hostIp}:${this.serverPort}`
 
+    const bashPath = getBashLoginPath()
+    if (bashPath) {
+      logger.info('Using PATH from bash login shell')
+    }
+
     const env = {
       ...process.env,
+      ...(bashPath ? { PATH: bashPath } : {}),
       PORT: this.serverPort.toString(),
       SERVER_PORT: this.serverPort.toString(),
       // Explicitly provide the server with its public-facing URL.
