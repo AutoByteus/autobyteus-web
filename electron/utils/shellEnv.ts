@@ -58,6 +58,7 @@ export function getLoginShellPath(): string | null {
     }
 
     logger.info(`Loaded PATH from ${isZsh ? 'zsh' : 'bash'} login shell`)
+    logger.info(`Login shell PATH: ${pathValue}`)
     cachedLoginPath = pathValue
     return cachedLoginPath
   } catch (error) {
