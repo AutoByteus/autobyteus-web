@@ -6,7 +6,7 @@ import { StdioOptions } from 'child_process'
 import { BaseServerManager } from './baseServerManager'
 import { logger } from '../logger'
 import { getLocalIp } from '../utils/networkUtils'
-import { getBashLoginPath } from '../utils/shellEnv'
+import { getLoginShellPath } from '../utils/shellEnv'
 
 export class LinuxServerManager extends BaseServerManager {
   /**
@@ -31,14 +31,14 @@ export class LinuxServerManager extends BaseServerManager {
     const hostIp = getLocalIp() || 'localhost'
     const publicServerUrl = `http://${hostIp}:${this.serverPort}`
     
-    const bashPath = getBashLoginPath()
-    if (bashPath) {
-      logger.info('Using PATH from bash login shell')
+    const loginShellPath = getLoginShellPath()
+    if (loginShellPath) {
+      logger.info('Using PATH from login shell')
     }
 
     const env = {
       ...process.env,
-      ...(bashPath ? { PATH: bashPath } : {}),
+      ...(loginShellPath ? { PATH: loginShellPath } : {}),
       PORT: this.serverPort.toString(),
       SERVER_PORT: this.serverPort.toString(),
       // Explicitly provide the server with its public-facing URL.
