@@ -1,247 +1,146 @@
 <template>
-  <Teleport to="body" :disabled="!isMaximized">
-    <div class="vnc-container h-full flex flex-col" :class="{ 'vnc-maximized': isMaximized }">
-      <div class="connection-status py-2 px-3 bg-gray-100 border-b border-gray-200 flex justify-between items-center">
-        <div class="flex items-center">
-          <div 
-            class="status-indicator w-3 h-3 rounded-full mr-2" 
-            :class="{ 'bg-red-500': !vncStore.isConnected, 'bg-yellow-500': vncStore.isConnecting, 'bg-green-500': vncStore.isConnected }"
-          ></div>
-          <span class="text-sm font-medium">
-            {{ vncStore.isConnected ? 'Connected to VNC server' : vncStore.statusMessage }}
-          </span>
-        </div>
-        <div class="controls flex items-center space-x-2">
-          <button 
-            v-if="!vncStore.isConnected && !vncStore.isConnecting"
-            @click="handleConnectClick" 
-            class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-          >
-            Connect
-          </button>
-          <button 
-            v-if="vncStore.isConnected"
-            @click="handleDisconnectClick" 
-            class="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
-          >
-            Disconnect
-          </button>
-          <button
-            @click="toggleMaximize"
-            class="px-2 py-1 text-xs bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
-            :disabled="!vncStore.isConnected"
-            :title="isMaximized ? 'Restore View (Esc)' : 'Maximize View'"
-          >
-            <ArrowsPointingInIcon v-if="isMaximized" class="w-4 h-4" />
-            <ArrowsPointingOutIcon v-else class="w-4 h-4" />
-          </button>
-          <button 
-            v-if="vncStore.isConnected"
-            @click="vncStore.toggleViewOnly" 
-            class="px-2 py-1 text-xs rounded transition-colors"
-            :class="vncStore.viewOnly ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-yellow-500 text-white hover:bg-yellow-600'"
-            title="Toggle interaction mode"
-          >
-            {{ vncStore.viewOnly ? 'View Only' : 'Interactive' }}
-          </button>
-        </div>
+  <div class="vnc-viewer h-full flex flex-col bg-white">
+    <div class="px-3 py-2 border-b border-gray-200"></div>
+
+    <div class="flex-1 overflow-auto p-3">
+      <div v-if="serverSettingsStore.isLoading" class="flex items-center justify-center h-full text-sm text-gray-500">
+        Loading VNC settings...
       </div>
-      <div class="vnc-screen flex-grow relative">
-        <div ref="screen" class="vnc-display"></div>
-        <div 
-          v-if="vncStore.isConnecting" 
-          class="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 z-10"
-        >
-          <div class="text-center">
-            <svg class="animate-spin h-8 w-8 text-blue-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span class="text-sm text-gray-700">Connecting to VNC server...</span>
-          </div>
-        </div>
+      <div v-else-if="hosts.length === 0" class="text-sm text-gray-500 space-y-2">
+        <p>No VNC hosts configured.</p>
+        <p class="text-xs text-gray-400">
+          Add <span class="font-mono">AUTOBYTEUS_VNC_SERVER_URLS</span> as a JSON array or newline list in Server Settings.
+        </p>
+      </div>
+      <div v-else class="vnc-stack">
+        <VncHostTile
+          v-for="host in hosts"
+          :key="host.id"
+          :host="host"
+          :password="vncPassword"
+          :auto-connect="true"
+        />
       </div>
     </div>
-  </Teleport>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, nextTick, watch } from 'vue';
-import { useVncViewerStore } from '~/stores/vncViewer';
-import { useServerSettingsStore } from '~/stores/serverSettings'; // Added import
-import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/vue/24/outline';
+import { computed, onMounted } from 'vue';
+import { useRuntimeConfig } from 'nuxt/app';
+import { useServerSettingsStore } from '~/stores/serverSettings';
+import VncHostTile, { type VncHostConfig } from '~/components/workspace/tools/VncHostTile.vue';
 
-const vncStore = useVncViewerStore();
 const serverSettingsStore = useServerSettingsStore();
-const screen = ref<HTMLElement | null>(null);
-const isMaximized = ref(false);
-const autoConnectEnabled = ref(true);
-let settingsWatchStop: (() => void) | null = null;
-let connectTimer: ReturnType<typeof setTimeout> | null = null;
+const config = useRuntimeConfig();
 
-const toggleMaximize = () => {
-  isMaximized.value = !isMaximized.value;
-  // We assume noVNC will auto-resize with its container. 
-  // The resizing of the container element should be sufficient for the noVNC instance to adapt.
+const VNC_URLS_KEY = 'AUTOBYTEUS_VNC_SERVER_URLS';
+const VNC_URL_KEY = 'AUTOBYTEUS_VNC_SERVER_URL';
+const VNC_PASSWORD_KEYS = ['AUTOBYTEUS_VNC_SERVER_PASSWORD', 'AUTOBYTEUS_VNC_PASSWORD'];
+
+const getSettingValue = (key: string) => {
+  return serverSettingsStore.getSettingByKey(key)?.value?.trim() ?? '';
 };
 
-const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape') {
-    isMaximized.value = false;
+const normalizeUrl = (url: string) => {
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  if (!trimmed.startsWith('ws://') && !trimmed.startsWith('wss://')) {
+    return `ws://${trimmed}`;
   }
+  return trimmed;
 };
 
-watch(isMaximized, (newValue) => {
-  if (newValue) {
-    window.addEventListener('keydown', handleKeydown);
-  } else {
-    window.removeEventListener('keydown', handleKeydown);
+const createHost = (index: number, name: string, url: string): VncHostConfig | null => {
+  const normalizedUrl = normalizeUrl(url);
+  if (!normalizedUrl) return null;
+  return {
+    id: `vnc-${index}`,
+    name: name || `Host ${index + 1}`,
+    url: normalizedUrl,
+  };
+};
+
+const parseHostLine = (line: string, index: number): VncHostConfig | null => {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  if (trimmed.includes('|')) {
+    const [name, url] = trimmed.split('|');
+    return createHost(index, name.trim(), url.trim());
   }
-});
-
-const clearPendingConnection = () => {
-  settingsWatchStop?.();
-  settingsWatchStop = null;
-  if (connectTimer) {
-    clearTimeout(connectTimer);
-    connectTimer = null;
+  if (trimmed.includes('=')) {
+    const [name, url] = trimmed.split('=');
+    return createHost(index, name.trim(), url.trim());
   }
+  return createHost(index, '', trimmed);
 };
 
-const handleConnectClick = () => {
-  autoConnectEnabled.value = true;
-  vncStore.connect();
-};
+const parseHostsFromValue = (value: string): VncHostConfig[] => {
+  if (!value) return [];
+  const trimmed = value.trim();
+  if (!trimmed) return [];
 
-const handleDisconnectClick = () => {
-  autoConnectEnabled.value = false;
-  clearPendingConnection();
-  vncStore.disconnect();
-};
-
-
-// Handle window resize
-const handleWindowResize = () => {
-  if (!vncStore.isConnected) {
-    return;
-  }
-  console.log('VNC Viewer: Window resize event triggered');
-};
-
-onMounted(() => {
-  console.log('VNC Viewer: Component mounted');
-  window.addEventListener('resize', handleWindowResize);
-  
-  nextTick(() => {
-    if (screen.value) {
-      vncStore.setContainer(screen.value); // Set container once screen element is available
-      
-      const attemptConnection = () => {
-        if (!autoConnectEnabled.value) {
-          console.log('VNC Viewer: Auto-connect disabled, skipping connection attempt.');
-          return;
+  try {
+    const parsed = JSON.parse(trimmed);
+    const hostsArray = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.hosts) ? parsed.hosts : null;
+    if (hostsArray) {
+      return hostsArray.map((entry: any, index: number) => {
+        if (typeof entry === 'string') {
+          return parseHostLine(entry, index);
         }
-        // The 300ms delay can help ensure the container's dimensions are fully settled in the DOM,
-        // which might be important for noVNC's initial scaling.
-        connectTimer = setTimeout(() => {
-          connectTimer = null;
-          // Check if component is still mounted before connecting
-          if (screen.value) { // screen.value being non-null implies component is still mounted effectively
-             console.log('VNC Viewer: Attempting VNC connection via vncStore.connect()');
-             vncStore.connect();
-          } else {
-             console.log('VNC Viewer: Connection attempt aborted, component unmounted or screen became null.');
-          }
-        }, 300);
-      };
-
-      // Check current state of server settings before attempting to connect
-      if (serverSettingsStore.isLoading) {
-        console.log('VNC Viewer: Server settings are currently loading. Waiting for completion.');
-        settingsWatchStop?.();
-        settingsWatchStop = watch(() => serverSettingsStore.isLoading, (newIsLoading) => {
-          if (!newIsLoading) { // Finished loading
-            console.log('VNC Viewer: Server settings finished loading. Proceeding with connection attempt.');
-            attemptConnection();
-            settingsWatchStop?.();
-            settingsWatchStop = null;
-          }
-        });
-      } else { 
-        // Not currently loading. This means settings are either:
-        // 1. Already loaded successfully.
-        // 2. Fetch was attempted and failed (serverSettingsStore.error would be set).
-        // 3. Fetch was never initiated by workspace.vue (less likely with the new change, but possible if workspace mount failed).
-        if (serverSettingsStore.settings.length === 0 && !serverSettingsStore.error && !serverSettingsStore.isLoading) {
-            console.warn('VNC Viewer: Server settings appear not to be loaded, and not currently loading. The fetch from workspace.vue might not have been initiated or completed. Connection attempt will proceed and may use fallback URLs.');
-        } else if (serverSettingsStore.error) {
-            console.error('VNC Viewer: Server settings fetch previously failed with an error. Connection attempt will proceed and may use fallback URLs.', serverSettingsStore.error);
-        } else {
-            console.log('VNC Viewer: Server settings are already loaded or not applicable (e.g., fetch completed). Proceeding with connection attempt.');
+        if (entry && typeof entry === 'object') {
+          const name = String(entry.name ?? entry.label ?? entry.id ?? `Host ${index + 1}`);
+          const url = String(entry.url ?? entry.host ?? entry.address ?? '');
+          return createHost(index, name, url);
         }
-        attemptConnection();
-      }
-    } else {
-      console.error('VNC Viewer: Screen element not available after mount and nextTick.');
+        return null;
+      }).filter((host): host is VncHostConfig => !!host);
     }
-  });
+  } catch (error) {
+    // Fall back to line-based parsing.
+  }
+
+  const lines = trimmed.split(/[\n,;]/);
+  return lines.map((line, index) => parseHostLine(line, index)).filter((host): host is VncHostConfig => !!host);
+};
+
+const hosts = computed(() => {
+  const multiValue = getSettingValue(VNC_URLS_KEY);
+  if (multiValue) {
+    const parsedHosts = parseHostsFromValue(multiValue);
+    if (parsedHosts.length > 0) return parsedHosts;
+  }
+
+  const singleValue = getSettingValue(VNC_URL_KEY);
+  if (singleValue) {
+    const singleHost = createHost(0, 'Primary', singleValue);
+    return singleHost ? [singleHost] : [];
+  }
+
+  return [];
 });
 
-onBeforeUnmount(() => {
-  console.log('VNC Viewer: Component unmounting');
-  window.removeEventListener('resize', handleWindowResize);
-  window.removeEventListener('keydown', handleKeydown);
-  clearPendingConnection();
-  autoConnectEnabled.value = false;
-  vncStore.disconnect(); // Always disconnect when component is unmounted
+const vncPassword = computed(() => {
+  const fromSettings = VNC_PASSWORD_KEYS.map(getSettingValue).find(Boolean);
+  return fromSettings || config.public.vncPassword || 'mysecretpassword';
+});
+
+onMounted(async () => {
+  if (serverSettingsStore.settings.length === 0 && !serverSettingsStore.isLoading) {
+    try {
+      await serverSettingsStore.fetchServerSettings();
+    } catch (error) {
+      console.error('Failed to load server settings for VNC hosts:', error);
+    }
+  }
+  console.log('[VNC Viewer] hosts resolved', hosts.value);
 });
 </script>
 
 <style scoped>
-.vnc-container { 
-  background-color: #1e1e1e; 
-  overflow: hidden; 
+.vnc-stack {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 300px;
+  gap: 12px;
 }
-
-.vnc-maximized {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 5000; /* A high z-index to appear over other UI elements */
-}
-
-.vnc-screen { 
-  background-color: #1e1e1e; 
-  position: relative; 
-  flex-grow: 1;
-  min-height: 200px;
-  overflow: hidden;
-}
-
-.vnc-display {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start; 
-}
-
-:deep(.vnc-display canvas) {
-  max-width: 100%;
-  object-fit: contain;
-  margin-top: 0; 
-}
-
-.status-indicator { box-shadow: 0 0 4px currentColor; }
-.controls button:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
