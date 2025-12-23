@@ -30,6 +30,14 @@
             Disconnect
           </button>
           <button
+            @click="handlePasteClick"
+            class="px-2 py-1 text-xs bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            :disabled="!isConnected || viewOnly"
+            :title="!isConnected ? 'Connect to paste from host clipboard' : viewOnly ? 'Switch to Interactive to paste' : 'Paste from host clipboard'"
+          >
+            <ClipboardDocumentIcon class="w-4 h-4" />
+          </button>
+          <button
             @click="toggleMaximize"
             class="px-2 py-1 text-xs bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
             :disabled="!isConnected"
@@ -70,8 +78,9 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, nextTick, ref, watch } from 'vue';
-import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/vue/24/outline';
+import { ArrowsPointingOutIcon, ArrowsPointingInIcon, ClipboardDocumentIcon } from '@heroicons/vue/24/outline';
 import { useVncSession } from '~/composables/useVncSession';
+import { useToasts } from '~/composables/useToasts';
 
 export interface VncHostConfig {
   id: string;
@@ -100,6 +109,7 @@ const {
   connect,
   disconnect,
   setContainer,
+  sendClipboardText,
 } = session;
 
 const screen = ref<HTMLElement | null>(null);
@@ -107,6 +117,7 @@ const isMaximized = ref(false);
 const autoConnectEnabled = ref(props.autoConnect !== false);
 let resizeObserver: ResizeObserver | null = null;
 let pendingConnect = false;
+const { addToast } = useToasts();
 
 const connectIfReady = () => {
   if (!autoConnectEnabled.value) {
@@ -136,6 +147,32 @@ const handleDisconnectClick = () => {
   autoConnectEnabled.value = false;
   pendingConnect = false;
   disconnect();
+};
+
+const handlePasteClick = async () => {
+  if (!isConnected.value) {
+    addToast('Connect to the VNC host before pasting.', 'info');
+    return;
+  }
+  if (viewOnly.value) {
+    addToast('Switch to Interactive mode to paste.', 'info');
+    return;
+  }
+  if (!navigator?.clipboard?.readText) {
+    addToast('Clipboard API not available in this browser.', 'error');
+    return;
+  }
+  try {
+    const text = await navigator.clipboard.readText();
+    if (!text) {
+      addToast('Clipboard is empty.', 'info');
+      return;
+    }
+    sendClipboardText(text);
+  } catch (error) {
+    console.error('[VNC Tile] Clipboard read failed:', error);
+    addToast('Failed to read clipboard. Check browser permissions.', 'error');
+  }
 };
 
 const toggleMaximize = () => {

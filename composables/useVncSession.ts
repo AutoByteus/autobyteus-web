@@ -187,6 +187,11 @@ export function useVncSession(options: VncSessionOptions) {
     window.dispatchEvent(new Event('resize'));
   };
 
+  const sendClipboardText = (text: string) => {
+    if (!rfb.value || !text) return;
+    rfb.value.clipboardPasteFrom(text);
+  };
+
   return {
     connectionStatus,
     errorMessage,
@@ -199,5 +204,6 @@ export function useVncSession(options: VncSessionOptions) {
     disconnect,
     toggleViewOnly,
     refreshViewport,
+    sendClipboardText,
   };
 }
