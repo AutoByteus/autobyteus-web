@@ -9,7 +9,9 @@
       <div v-else-if="hosts.length === 0" class="text-sm text-gray-500 space-y-2">
         <p>No VNC hosts configured.</p>
         <p class="text-xs text-gray-400">
-          Add <span class="font-mono">AUTOBYTEUS_VNC_SERVER_URLS</span> as a JSON array or newline list in Server Settings.
+          Add <span class="font-mono">AUTOBYTEUS_VNC_SERVER_URLS</span> as a comma-separated list (for example
+          <span class="font-mono">localhost:5900,localhost:5901</span>). If not set, we fall back to
+          <span class="font-mono">AUTOBYTEUS_VNC_SERVER_URL</span>.
         </p>
       </div>
       <div v-else class="vnc-stack">
@@ -30,6 +32,7 @@ import { computed, onMounted } from 'vue';
 import { useRuntimeConfig } from 'nuxt/app';
 import { useServerSettingsStore } from '~/stores/serverSettings';
 import VncHostTile, { type VncHostConfig } from '~/components/workspace/tools/VncHostTile.vue';
+import { parseCommaSeparatedHosts } from '~/utils/vncHosts';
 
 const serverSettingsStore = useServerSettingsStore();
 const config = useRuntimeConfig();
@@ -42,82 +45,17 @@ const getSettingValue = (key: string) => {
   return serverSettingsStore.getSettingByKey(key)?.value?.trim() ?? '';
 };
 
-const normalizeUrl = (url: string) => {
-  const trimmed = url.trim();
-  if (!trimmed) return '';
-  if (!trimmed.startsWith('ws://') && !trimmed.startsWith('wss://')) {
-    return `ws://${trimmed}`;
-  }
-  return trimmed;
-};
-
-const createHost = (index: number, name: string, url: string): VncHostConfig | null => {
-  const normalizedUrl = normalizeUrl(url);
-  if (!normalizedUrl) return null;
-  return {
-    id: `vnc-${index}`,
-    name: name || `Host ${index + 1}`,
-    url: normalizedUrl,
-  };
-};
-
-const parseHostLine = (line: string, index: number): VncHostConfig | null => {
-  const trimmed = line.trim();
-  if (!trimmed) return null;
-  if (trimmed.includes('|')) {
-    const [name, url] = trimmed.split('|');
-    return createHost(index, name.trim(), url.trim());
-  }
-  if (trimmed.includes('=')) {
-    const [name, url] = trimmed.split('=');
-    return createHost(index, name.trim(), url.trim());
-  }
-  return createHost(index, '', trimmed);
-};
-
-const parseHostsFromValue = (value: string): VncHostConfig[] => {
-  if (!value) return [];
-  const trimmed = value.trim();
-  if (!trimmed) return [];
-
-  try {
-    const parsed = JSON.parse(trimmed);
-    const hostsArray = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.hosts) ? parsed.hosts : null;
-    if (hostsArray) {
-      return hostsArray.map((entry: any, index: number) => {
-        if (typeof entry === 'string') {
-          return parseHostLine(entry, index);
-        }
-        if (entry && typeof entry === 'object') {
-          const name = String(entry.name ?? entry.label ?? entry.id ?? `Host ${index + 1}`);
-          const url = String(entry.url ?? entry.host ?? entry.address ?? '');
-          return createHost(index, name, url);
-        }
-        return null;
-      }).filter((host): host is VncHostConfig => !!host);
-    }
-  } catch (error) {
-    // Fall back to line-based parsing.
-  }
-
-  const lines = trimmed.split(/[\n,;]/);
-  return lines.map((line, index) => parseHostLine(line, index)).filter((host): host is VncHostConfig => !!host);
-};
+const parseHosts = (value: string): VncHostConfig[] => parseCommaSeparatedHosts(value);
 
 const hosts = computed(() => {
   const multiValue = getSettingValue(VNC_URLS_KEY);
   if (multiValue) {
-    const parsedHosts = parseHostsFromValue(multiValue);
-    if (parsedHosts.length > 0) return parsedHosts;
+    return parseHosts(multiValue);
   }
 
   const singleValue = getSettingValue(VNC_URL_KEY);
-  if (singleValue) {
-    const singleHost = createHost(0, 'Primary', singleValue);
-    return singleHost ? [singleHost] : [];
-  }
-
-  return [];
+  if (!singleValue) return [];
+  return parseHosts(singleValue);
 });
 
 const vncPassword = computed(() => {
