@@ -1,5 +1,9 @@
 import { defineVitestConfig } from '@nuxt/test-utils/config'
-import path from 'path'
+import { fileURLToPath } from 'url'
+import { dirname, resolve } from 'path'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 export default defineVitestConfig({
   test: {
@@ -13,7 +17,7 @@ export default defineVitestConfig({
   },
   resolve: {
     alias: {
-      '~': path.resolve(__dirname, './'), // Adjust this path if your project structure is different
+      '~': resolve(__dirname, './'), // Adjust this path if your project structure is different
     },
   },
 })
