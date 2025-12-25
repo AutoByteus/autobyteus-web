@@ -191,11 +191,11 @@
                     LLM Models
                     <span class="ml-1.5 text-gray-400 font-normal">({{ selectedProviderLlmModels.length }})</span>
                   </h4>
-                  <div class="grid grid-cols-1 xl:grid-cols-2 gap-1">
+                  <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
                     <div 
                       v-for="model in selectedProviderLlmModels" 
                       :key="`panel-llm-${model.modelIdentifier}`"
-                      class="py-1.5 px-2 hover:bg-blue-50 rounded text-sm text-gray-700 flex items-center group"
+                      class="py-2.5 px-3 hover:bg-blue-50 rounded-lg text-sm text-gray-700"
                     >
                       <span class="break-all">{{ model.modelIdentifier }}</span>
                     </div>
@@ -209,11 +209,11 @@
                     Audio Models
                     <span class="ml-1.5 text-gray-400 font-normal">({{ selectedProviderAudioModels.length }})</span>
                   </h4>
-                  <div class="grid grid-cols-1 xl:grid-cols-2 gap-1">
+                  <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
                     <div 
                       v-for="model in selectedProviderAudioModels" 
                       :key="`panel-audio-${model.modelIdentifier}`"
-                      class="py-1.5 px-2 hover:bg-purple-50 rounded text-sm text-gray-700 flex items-center group"
+                      class="py-2.5 px-3 hover:bg-purple-50 rounded-lg text-sm text-gray-700"
                     >
                       <span class="break-all">{{ model.modelIdentifier }}</span>
                     </div>
@@ -227,11 +227,11 @@
                     Image Models
                     <span class="ml-1.5 text-gray-400 font-normal">({{ selectedProviderImageModels.length }})</span>
                   </h4>
-                  <div class="grid grid-cols-1 xl:grid-cols-2 gap-1">
+                  <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
                     <div 
                       v-for="model in selectedProviderImageModels" 
                       :key="`panel-image-${model.modelIdentifier}`"
-                      class="py-1.5 px-2 hover:bg-amber-50 rounded text-sm text-gray-700 flex items-center group"
+                      class="py-2.5 px-3 hover:bg-amber-50 rounded-lg text-sm text-gray-700"
                     >
                       <span class="break-all">{{ model.modelIdentifier }}</span>
                     </div>
