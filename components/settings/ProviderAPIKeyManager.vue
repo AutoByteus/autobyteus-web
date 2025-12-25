@@ -197,7 +197,6 @@
                       :key="`panel-llm-${model.modelIdentifier}`"
                       class="py-1.5 px-2 hover:bg-blue-50 rounded text-sm text-gray-700 flex items-center group"
                     >
-                      <span class="w-1.5 h-1.5 rounded-full bg-blue-400 mr-2 flex-shrink-0"></span>
                       <span class="break-all">{{ model.modelIdentifier }}</span>
                     </div>
                   </div>
@@ -216,7 +215,6 @@
                       :key="`panel-audio-${model.modelIdentifier}`"
                       class="py-1.5 px-2 hover:bg-purple-50 rounded text-sm text-gray-700 flex items-center group"
                     >
-                      <span class="w-1.5 h-1.5 rounded-full bg-purple-400 mr-2 flex-shrink-0"></span>
                       <span class="break-all">{{ model.modelIdentifier }}</span>
                     </div>
                   </div>
@@ -235,7 +233,6 @@
                       :key="`panel-image-${model.modelIdentifier}`"
                       class="py-1.5 px-2 hover:bg-amber-50 rounded text-sm text-gray-700 flex items-center group"
                     >
-                      <span class="w-1.5 h-1.5 rounded-full bg-amber-400 mr-2 flex-shrink-0"></span>
                       <span class="break-all">{{ model.modelIdentifier }}</span>
                     </div>
                   </div>
