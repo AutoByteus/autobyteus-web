@@ -79,13 +79,13 @@
           </div>
           
           <!-- Two-column layout: Provider Sidebar + Model Panel -->
-          <div v-else class="flex gap-4 min-h-[400px]">
+          <div v-else class="flex gap-4">
             <!-- Left Sidebar: Provider List -->
             <div class="w-56 flex-shrink-0 border border-gray-200 rounded-lg overflow-hidden">
               <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
                 <span class="text-sm font-medium text-gray-600">Providers</span>
               </div>
-              <div class="overflow-y-auto max-h-[360px]">
+              <div>
                 <button
                   v-for="provider in allProvidersWithModels"
                   :key="`sidebar-${provider.name}`"
@@ -193,7 +193,7 @@
               </div>
 
               <!-- Panel Content: Models by Type -->
-              <div class="p-4 overflow-y-auto max-h-[280px] space-y-4">
+              <div class="p-4 space-y-4">
                 <!-- LLM Models -->
                 <div v-if="selectedProviderLlmModels.length > 0">
                   <h4 class="text-sm font-medium text-gray-600 mb-2 flex items-center">
@@ -379,7 +379,7 @@ const hasAnyModels = computed(
 // Track which provider is selected in the Available Models section
 const selectedModelProvider = ref<string>("");
 
-// Combined list of all providers that have at least one model (any type)
+// Combined list of ALL providers with their model counts
 // Each entry has: name, totalModels (across all types)
 interface ProviderSummary {
   name: string;
@@ -388,6 +388,11 @@ interface ProviderSummary {
 
 const allProvidersWithModels = computed<ProviderSummary[]>(() => {
   const providerMap = new Map<string, number>();
+  
+  // First, ensure ALL providers from the providers list are included
+  (providers.value || []).forEach(p => {
+    providerMap.set(p, 0);
+  });
   
   // Count LLM models per provider
   (providersWithModels.value || []).forEach(p => {
@@ -407,9 +412,8 @@ const allProvidersWithModels = computed<ProviderSummary[]>(() => {
     providerMap.set(p.provider, (providerMap.get(p.provider) || 0) + count);
   });
   
-  // Convert to array and filter out providers with 0 models
+  // Convert to array - include ALL providers (even with 0 models)
   return Array.from(providerMap.entries())
-    .filter(([, count]) => count > 0)
     .map(([name, totalModels]) => ({ name, totalModels }))
     .sort((a, b) => a.name.localeCompare(b.name));
 });
