@@ -51,7 +51,7 @@
               <div class="px-4 py-3 border-b border-gray-200/60 bg-gray-50">
                 <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Providers</span>
               </div>
-              <div class="p-2 space-y-0.5 max-h-[600px] overflow-y-auto custom-scrollbar">
+              <div class="p-2 space-y-0.5">
                 <button
                   v-for="provider in allProvidersWithModels"
                   :key="`sidebar-${provider.name}`"
