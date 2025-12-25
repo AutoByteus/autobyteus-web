@@ -13,43 +13,9 @@
 
       <div v-else class="space-y-6">
         <!-- Provider Sidebar + Details Panel (includes API key config and models) -->
-        <div class="mt-8">
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center">
-              <h3 class="text-lg font-medium text-gray-800">
-                Available Models
-              </h3>
-              <button
-                @click="refreshModels"
-                class="ml-2 p-1 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-100 transition-colors duration-200"
-                title="Refresh models"
-                :disabled="isLoadingModels || isReloadingModels"
-              >
-                <span
-                  class="i-heroicons-arrow-path-20-solid w-5 h-5"
-                  :class="{
-                    'animate-spin': isLoadingModels || isReloadingModels,
-                  }"
-                ></span>
-              </button>
-            </div>
-            <button
-              @click="refreshModels"
-              class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              :disabled="isLoadingModels || isReloadingModels"
-            >
-              <span
-                v-if="isLoadingModels || isReloadingModels"
-                class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"
-              ></span>
-              {{
-                isLoadingModels || isReloadingModels
-                  ? "Reloading..."
-                  : "Reload Models"
-              }}
-            </button>
-          </div>
-
+        <div class="mt-4">
+          
+          <!-- Loading state for models -->
           <div
             v-if="isLoadingModels || isReloadingModels"
             class="flex justify-center items-center py-6"
@@ -79,42 +45,37 @@
           </div>
           
           <!-- Two-column layout: Provider Sidebar + Model Panel -->
-          <div v-else class="flex gap-4">
+          <div v-else class="flex gap-6 items-start">
             <!-- Left Sidebar: Provider List -->
-            <div class="w-56 flex-shrink-0 border border-gray-200 rounded-lg overflow-hidden">
-              <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
-                <span class="text-sm font-medium text-gray-600">Providers</span>
+            <div class="w-64 flex-shrink-0 bg-gray-50/50 rounded-xl overflow-hidden border border-gray-200">
+              <div class="px-4 py-3 border-b border-gray-200/60 bg-gray-50">
+                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Providers</span>
               </div>
-              <div>
+              <div class="p-2 space-y-0.5 max-h-[600px] overflow-y-auto custom-scrollbar">
                 <button
                   v-for="provider in allProvidersWithModels"
                   :key="`sidebar-${provider.name}`"
                   @click="selectProviderForModels(provider.name)"
-                  class="w-full px-3 py-2.5 flex items-center justify-between text-left transition-colors duration-150 border-b border-gray-100 last:border-b-0"
-                  :class="[
-                    selectedModelProvider === provider.name
-                      ? 'bg-blue-50 border-l-2 border-l-blue-500'
-                      : 'hover:bg-gray-50 border-l-2 border-l-transparent',
-                  ]"
+                  class="w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between group transition-all duration-200"
+                  :class="selectedModelProvider === provider.name 
+                    ? 'bg-white text-blue-700 shadow-sm ring-1 ring-gray-200' 
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'"
                 >
                   <div class="flex items-center min-w-0">
                     <span
-                      class="w-2 h-2 rounded-full mr-2 flex-shrink-0"
-                      :class="isProviderConfigured(provider.name) ? 'bg-green-500' : 'bg-gray-300'"
+                      class="w-2 h-2 rounded-full mr-3 flex-shrink-0 transition-colors"
+                      :class="isProviderConfigured(provider.name) 
+                        ? (selectedModelProvider === provider.name ? 'bg-green-500' : 'bg-green-400')
+                        : 'bg-gray-300'"
                     ></span>
-                    <span 
-                      class="text-sm font-medium truncate"
-                      :class="selectedModelProvider === provider.name ? 'text-blue-700' : 'text-gray-700'"
-                    >
-                      {{ provider.name }}
-                    </span>
+                    <span class="truncate font-medium text-sm">{{ provider.name }}</span>
                   </div>
                   <div class="flex items-center gap-1 flex-shrink-0 ml-2">
                     <span 
-                      class="text-xs px-1.5 py-0.5 rounded-full"
-                      :class="isProviderConfigured(provider.name) 
-                        ? 'bg-green-100 text-green-600' 
-                        : 'bg-gray-100 text-gray-400'"
+                      class="text-xs py-0.5 px-2 rounded-full transition-colors font-medium border"
+                      :class="selectedModelProvider === provider.name
+                        ? 'bg-blue-50 text-blue-600 border-blue-100'
+                        : 'bg-gray-100 text-gray-400 border-transparent group-hover:bg-white group-hover:border-gray-200'"
                     >
                       {{ provider.totalModels }}
                     </span>
@@ -124,39 +85,54 @@
             </div>
 
             <!-- Right Panel: Models for Selected Provider -->
-            <div class="flex-1 border border-gray-200 rounded-lg overflow-hidden">
+            <div class="flex-1 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
               <!-- Panel Header -->
               <div 
-                class="px-4 py-3 border-b flex items-center justify-between"
-                :class="isProviderConfigured(selectedModelProvider) 
-                  ? 'bg-green-50 border-green-200' 
-                  : 'bg-gray-50 border-gray-200'"
+                class="px-5 py-4 border-b flex items-center justify-between bg-white"
               >
-                <div class="flex items-center">
-                  <span
-                    class="w-2.5 h-2.5 rounded-full mr-2"
-                    :class="isProviderConfigured(selectedModelProvider) ? 'bg-green-500' : 'bg-gray-400'"
-                  ></span>
-                  <span class="font-semibold text-gray-800">{{ selectedModelProvider }}</span>
+                <div class="flex items-center gap-3">
+                  <span 
+                    class="text-lg font-semibold text-gray-900"
+                  >{{ selectedModelProvider }}</span>
+                  
+                  <span 
+                    class="text-xs px-2.5 py-1 rounded-full border font-medium flex items-center gap-1.5"
+                    :class="isProviderConfigured(selectedModelProvider) 
+                      ? 'bg-green-50 text-green-700 border-green-100' 
+                      : 'bg-gray-50 text-gray-500 border-gray-100'"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full" :class="isProviderConfigured(selectedModelProvider) ? 'bg-green-500' : 'bg-gray-400'"></span>
+                    {{ isProviderConfigured(selectedModelProvider) ? 'Configured' : 'Not Configured' }}
+                  </span>
                 </div>
-                <span 
-                  class="text-xs px-2 py-1 rounded-full"
-                  :class="isProviderConfigured(selectedModelProvider) 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-gray-100 text-gray-500'"
+
+                <button
+                  @click="refreshModels"
+                  class="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all duration-200 group relative"
+                  title="Reload models"
+                  :disabled="isLoadingModels || isReloadingModels"
                 >
-                  {{ isProviderConfigured(selectedModelProvider) ? 'Configured' : 'Not Configured' }}
-                </span>
+                  <span
+                    class="i-heroicons-arrow-path-20-solid w-5 h-5 transition-transform"
+                    :class="{
+                      'animate-spin': isLoadingModels || isReloadingModels,
+                      'group-hover:rotate-180': !isLoadingModels && !isReloadingModels
+                    }"
+                  ></span>
+                  <div class="absolute right-0 -bottom-8 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                    Reload Models
+                  </div>
+                </button>
               </div>
 
               <!-- API Key Configuration Section -->
-              <div class="px-4 py-3 border-b border-gray-100 bg-white">
+              <div class="px-5 py-4 border-b border-gray-100 bg-white">
                 <div class="flex gap-2">
                   <div class="relative flex-1">
                     <input
                       v-model="apiKey"
                       :type="showApiKey ? 'text' : 'password'"
-                      class="w-full p-2.5 pr-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      class="w-full p-2.5 pr-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
                       :placeholder="isProviderConfigured(selectedModelProvider) ? 'Enter new key to update...' : 'Enter API key...'"
                     />
                     <button
@@ -183,68 +159,82 @@
               </div>
 
               <!-- Panel Content: Models by Type -->
-              <div class="p-4 space-y-4">
-                <!-- LLM Models -->
-                <div v-if="selectedProviderLlmModels.length > 0">
-                  <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center">
-                    <span class="i-heroicons-cube-20-solid w-3.5 h-3.5 text-blue-500 mr-1.5"></span>
-                    LLM Models
-                    <span class="ml-1.5 text-gray-400 font-normal">({{ selectedProviderLlmModels.length }})</span>
-                  </h4>
-                  <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
-                    <div 
-                      v-for="model in selectedProviderLlmModels" 
-                      :key="`panel-llm-${model.modelIdentifier}`"
-                      class="py-2.5 px-3 hover:bg-blue-50 rounded-lg text-sm text-gray-700"
-                    >
-                      <span class="break-all">{{ model.modelIdentifier }}</span>
-                    </div>
-                  </div>
+              <div class="px-5 py-4 bg-gray-50/30 min-h-[300px]">
+                
+                <div v-if="selectedProviderLlmModels.length > 0 || selectedProviderAudioModels.length > 0 || selectedProviderImageModels.length > 0" class="mb-5">
+                  <h3 class="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                    Available Models
+                    <span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
+                      {{ selectedProviderLlmModels.length + selectedProviderAudioModels.length + selectedProviderImageModels.length }}
+                    </span>
+                  </h3>
                 </div>
 
-                <!-- Audio Models -->
-                <div v-if="selectedProviderAudioModels.length > 0">
-                  <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center">
-                    <span class="i-heroicons-speaker-wave-20-solid w-3.5 h-3.5 text-purple-500 mr-1.5"></span>
-                    Audio Models
-                    <span class="ml-1.5 text-gray-400 font-normal">({{ selectedProviderAudioModels.length }})</span>
-                  </h4>
-                  <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
-                    <div 
-                      v-for="model in selectedProviderAudioModels" 
-                      :key="`panel-audio-${model.modelIdentifier}`"
-                      class="py-2.5 px-3 hover:bg-purple-50 rounded-lg text-sm text-gray-700"
-                    >
-                      <span class="break-all">{{ model.modelIdentifier }}</span>
+                <div class="space-y-6">
+                  <!-- LLM Models -->
+                  <div v-if="selectedProviderLlmModels.length > 0">
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                       <span class="i-heroicons-cube-20-solid w-4 h-4 text-blue-500"></span>
+                      LLM Models
+                    </h4>
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
+                      <div 
+                        v-for="model in selectedProviderLlmModels" 
+                        :key="`panel-llm-${model.modelIdentifier}`"
+                        class="py-2.5 px-3 bg-white border border-gray-100 hover:border-blue-200 hover:shadow-sm rounded-lg text-sm text-gray-700 transition-all duration-200"
+                      >
+                        <span class="break-all font-medium text-gray-600">{{ model.modelIdentifier }}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <!-- Image Models -->
-                <div v-if="selectedProviderImageModels.length > 0">
-                  <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center">
-                    <span class="i-heroicons-photo-20-solid w-3.5 h-3.5 text-amber-500 mr-1.5"></span>
-                    Image Models
-                    <span class="ml-1.5 text-gray-400 font-normal">({{ selectedProviderImageModels.length }})</span>
-                  </h4>
-                  <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
-                    <div 
-                      v-for="model in selectedProviderImageModels" 
-                      :key="`panel-image-${model.modelIdentifier}`"
-                      class="py-2.5 px-3 hover:bg-amber-50 rounded-lg text-sm text-gray-700"
-                    >
-                      <span class="break-all">{{ model.modelIdentifier }}</span>
+                  <!-- Audio Models -->
+                  <div v-if="selectedProviderAudioModels.length > 0">
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                      <span class="i-heroicons-speaker-wave-20-solid w-4 h-4 text-purple-500"></span>
+                      Audio Models
+                    </h4>
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
+                      <div 
+                        v-for="model in selectedProviderAudioModels" 
+                        :key="`panel-audio-${model.modelIdentifier}`"
+                        class="py-2.5 px-3 bg-white border border-gray-100 hover:border-purple-200 hover:shadow-sm rounded-lg text-sm text-gray-700 transition-all duration-200"
+                      >
+                        <span class="break-all font-medium text-gray-600">{{ model.modelIdentifier }}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <!-- Empty state for selected provider -->
-                <div 
-                  v-if="selectedProviderLlmModels.length === 0 && selectedProviderAudioModels.length === 0 && selectedProviderImageModels.length === 0"
-                  class="text-center py-6"
-                >
-                  <span class="i-heroicons-cube-transparent-20-solid w-8 h-8 text-gray-300 mx-auto mb-2"></span>
-                  <p class="text-sm text-gray-500">No models available for this provider</p>
+                  <!-- Image Models -->
+                  <div v-if="selectedProviderImageModels.length > 0">
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                      <span class="i-heroicons-photo-20-solid w-4 h-4 text-amber-500"></span>
+                      Image Models
+                    </h4>
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
+                      <div 
+                        v-for="model in selectedProviderImageModels" 
+                        :key="`panel-image-${model.modelIdentifier}`"
+                        class="py-2.5 px-3 bg-white border border-gray-100 hover:border-amber-200 hover:shadow-sm rounded-lg text-sm text-gray-700 transition-all duration-200"
+                      >
+                        <span class="break-all font-medium text-gray-600">{{ model.modelIdentifier }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Empty state for selected provider -->
+                  <div 
+                    v-if="selectedProviderLlmModels.length === 0 && selectedProviderAudioModels.length === 0 && selectedProviderImageModels.length === 0"
+                    class="flex flex-col items-center justify-center py-12 text-center"
+                  >
+                    <div class="bg-gray-50 p-4 rounded-full mb-3">
+                      <span class="i-heroicons-cube-transparent-20-solid w-8 h-8 text-gray-300"></span>
+                    </div>
+                    <h4 class="text-gray-900 font-medium mb-1">No Models Found</h4>
+                    <p class="text-sm text-gray-500 max-w-xs mx-auto">
+                      This provider doesn't have any models available yet. Try checking your API key configuration.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
