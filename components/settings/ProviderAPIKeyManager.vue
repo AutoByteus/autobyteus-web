@@ -151,27 +151,17 @@
 
               <!-- API Key Configuration Section -->
               <div class="px-4 py-3 border-b border-gray-100 bg-white">
-                <div class="flex items-center justify-between mb-2">
-                  <label class="text-sm font-medium text-gray-700">API Key</label>
-                  <span 
-                    v-if="isProviderConfigured(selectedModelProvider)"
-                    class="text-xs text-green-600 flex items-center"
-                  >
-                    <span class="i-heroicons-check-circle-20-solid w-4 h-4 mr-1"></span>
-                    Key saved
-                  </span>
-                </div>
                 <div class="flex gap-2">
                   <div class="relative flex-1">
                     <input
                       v-model="apiKey"
                       :type="showApiKey ? 'text' : 'password'"
-                      class="w-full p-2 pr-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      class="w-full p-2.5 pr-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       :placeholder="isProviderConfigured(selectedModelProvider) ? 'Enter new key to update...' : 'Enter API key...'"
                     />
                     <button
                       @click="toggleApiKeyVisibility"
-                      class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       type="button"
                     >
                       <span v-if="showApiKey" class="i-heroicons-eye-slash-20-solid w-4 h-4"></span>
@@ -181,13 +171,13 @@
                   <button
                     @click="saveApiKeyForSelectedProvider"
                     :disabled="!apiKey || saving"
-                    class="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                    class="px-4 py-2.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center whitespace-nowrap"
                   >
                     <span
                       v-if="saving"
                       class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1.5"
                     ></span>
-                    {{ saving ? 'Saving...' : 'Save' }}
+                    {{ saving ? 'Saving...' : 'Save Key' }}
                   </button>
                 </div>
               </div>
@@ -201,7 +191,7 @@
                     LLM Models
                     <span class="ml-2 text-xs text-gray-400">({{ selectedProviderLlmModels.length }})</span>
                   </h4>
-                  <div class="grid gap-2 grid-cols-1 sm:grid-cols-2">
+                  <div class="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                     <div 
                       v-for="model in selectedProviderLlmModels" 
                       :key="`panel-llm-${model.modelIdentifier}`"
@@ -225,7 +215,7 @@
                     Audio Models
                     <span class="ml-2 text-xs text-gray-400">({{ selectedProviderAudioModels.length }})</span>
                   </h4>
-                  <div class="grid gap-2 grid-cols-1 sm:grid-cols-2">
+                  <div class="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                     <div 
                       v-for="model in selectedProviderAudioModels" 
                       :key="`panel-audio-${model.modelIdentifier}`"
@@ -249,7 +239,7 @@
                     Image Models
                     <span class="ml-2 text-xs text-gray-400">({{ selectedProviderImageModels.length }})</span>
                   </h4>
-                  <div class="grid gap-2 grid-cols-1 sm:grid-cols-2">
+                  <div class="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                     <div 
                       v-for="model in selectedProviderImageModels" 
                       :key="`panel-image-${model.modelIdentifier}`"
