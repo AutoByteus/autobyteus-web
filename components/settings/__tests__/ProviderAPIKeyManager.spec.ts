@@ -90,9 +90,20 @@ describe('ProviderAPIKeyManager', () => {
 
     await flushPromises()
 
+    // With sidebar layout, we need to click on a provider to see its models
+    // Find and click the OPENAI button in the provider sidebar
+    const providerButtons = wrapper.findAll('button').filter(btn => btn.text().includes('OPENAI'))
+    const sidebarButton = providerButtons.find(btn => btn.text().includes('3')) // Has model count badge
+    if (sidebarButton) {
+      await sidebarButton.trigger('click')
+      await flushPromises()
+    }
+
+    // After selecting the provider, we should see the model type sections
     expect(wrapper.text()).toContain('LLM Models')
     expect(wrapper.text()).toContain('Audio Models')
     expect(wrapper.text()).toContain('Image Models')
+    // Component displays modelIdentifier
     expect(wrapper.text()).toContain('gpt-4o')
     expect(wrapper.text()).toContain('whisper-1')
     expect(wrapper.text()).toContain('dall-e-3')
