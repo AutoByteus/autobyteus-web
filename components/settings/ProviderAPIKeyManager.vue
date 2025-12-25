@@ -1,9 +1,23 @@
 <template>
   <div class="provider-api-key-manager bg-white rounded-lg shadow-lg">
     <div class="p-6">
-      <h2 class="text-2xl font-semibold text-gray-800 mb-6">
-        API Key Management
-      </h2>
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-semibold text-gray-800">
+          API Key Management
+        </h2>
+        <button
+          @click="refreshModels"
+          class="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+          title="Reload all models"
+          :disabled="isLoadingModels || isReloadingModels"
+        >
+          <span
+            class="i-heroicons-arrow-path-20-solid w-4 h-4 mr-2"
+            :class="{ 'animate-spin': isLoadingModels || isReloadingModels }"
+          ></span>
+          Reload Models
+        </button>
+      </div>
 
       <div v-if="loading" class="flex justify-center items-center py-8">
         <div
@@ -48,19 +62,8 @@
           <div v-else class="flex gap-6 items-start">
             <!-- Left Sidebar: Provider List -->
             <div class="w-64 flex-shrink-0 bg-gray-50/50 rounded-xl overflow-hidden border border-gray-200">
-              <div class="px-4 py-3 border-b border-gray-200/60 bg-gray-50 flex items-center justify-between">
+              <div class="px-4 py-3 border-b border-gray-200/60 bg-gray-50">
                 <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Providers</span>
-                <button
-                  @click="refreshModels"
-                  class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded-md transition-colors"
-                  title="Reload all models"
-                  :disabled="isLoadingModels || isReloadingModels"
-                >
-                  <span
-                    class="i-heroicons-arrow-path-20-solid w-4 h-4"
-                    :class="{ 'animate-spin': isLoadingModels || isReloadingModels }"
-                  ></span>
-                </button>
               </div>
               <div class="p-2 space-y-0.5">
                 <button
