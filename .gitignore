@@ -4,6 +4,6 @@ node_modules
 nuxt.d.ts
 .output
 dist
+electron-dist
 .DS_Store
 android
-
