@@ -186,72 +186,57 @@
               <div class="p-4 space-y-4">
                 <!-- LLM Models -->
                 <div v-if="selectedProviderLlmModels.length > 0">
-                  <h4 class="text-sm font-medium text-gray-600 mb-2 flex items-center">
-                    <span class="i-heroicons-cube-20-solid w-4 h-4 text-blue-500 mr-1.5"></span>
+                  <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center">
+                    <span class="i-heroicons-cube-20-solid w-3.5 h-3.5 text-blue-500 mr-1.5"></span>
                     LLM Models
-                    <span class="ml-2 text-xs text-gray-400">({{ selectedProviderLlmModels.length }})</span>
+                    <span class="ml-1.5 text-gray-400 font-normal">({{ selectedProviderLlmModels.length }})</span>
                   </h4>
-                  <div class="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                  <div class="grid grid-cols-1 xl:grid-cols-2 gap-1">
                     <div 
                       v-for="model in selectedProviderLlmModels" 
                       :key="`panel-llm-${model.modelIdentifier}`"
-                      class="p-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center"
+                      class="py-1.5 px-2 hover:bg-blue-50 rounded text-sm text-gray-700 flex items-center group"
                     >
-                      <span class="i-heroicons-cube-20-solid w-4 h-4 text-blue-600 mr-2 flex-shrink-0"></span>
-                      <span 
-                        class="text-sm font-medium text-gray-800 truncate" 
-                        :title="model.modelIdentifier"
-                      >
-                        {{ model.modelIdentifier }}
-                      </span>
+                      <span class="w-1.5 h-1.5 rounded-full bg-blue-400 mr-2 flex-shrink-0"></span>
+                      <span class="break-all">{{ model.modelIdentifier }}</span>
                     </div>
                   </div>
                 </div>
 
                 <!-- Audio Models -->
                 <div v-if="selectedProviderAudioModels.length > 0">
-                  <h4 class="text-sm font-medium text-gray-600 mb-2 flex items-center">
-                    <span class="i-heroicons-speaker-wave-20-solid w-4 h-4 text-purple-500 mr-1.5"></span>
+                  <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center">
+                    <span class="i-heroicons-speaker-wave-20-solid w-3.5 h-3.5 text-purple-500 mr-1.5"></span>
                     Audio Models
-                    <span class="ml-2 text-xs text-gray-400">({{ selectedProviderAudioModels.length }})</span>
+                    <span class="ml-1.5 text-gray-400 font-normal">({{ selectedProviderAudioModels.length }})</span>
                   </h4>
-                  <div class="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                  <div class="grid grid-cols-1 xl:grid-cols-2 gap-1">
                     <div 
                       v-for="model in selectedProviderAudioModels" 
                       :key="`panel-audio-${model.modelIdentifier}`"
-                      class="p-2 bg-purple-50 border border-purple-200 rounded-lg flex items-center"
+                      class="py-1.5 px-2 hover:bg-purple-50 rounded text-sm text-gray-700 flex items-center group"
                     >
-                      <span class="i-heroicons-speaker-wave-20-solid w-4 h-4 text-purple-600 mr-2 flex-shrink-0"></span>
-                      <span 
-                        class="text-sm font-medium text-gray-800 truncate" 
-                        :title="model.modelIdentifier"
-                      >
-                        {{ model.modelIdentifier }}
-                      </span>
+                      <span class="w-1.5 h-1.5 rounded-full bg-purple-400 mr-2 flex-shrink-0"></span>
+                      <span class="break-all">{{ model.modelIdentifier }}</span>
                     </div>
                   </div>
                 </div>
 
                 <!-- Image Models -->
                 <div v-if="selectedProviderImageModels.length > 0">
-                  <h4 class="text-sm font-medium text-gray-600 mb-2 flex items-center">
-                    <span class="i-heroicons-photo-20-solid w-4 h-4 text-amber-500 mr-1.5"></span>
+                  <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center">
+                    <span class="i-heroicons-photo-20-solid w-3.5 h-3.5 text-amber-500 mr-1.5"></span>
                     Image Models
-                    <span class="ml-2 text-xs text-gray-400">({{ selectedProviderImageModels.length }})</span>
+                    <span class="ml-1.5 text-gray-400 font-normal">({{ selectedProviderImageModels.length }})</span>
                   </h4>
-                  <div class="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                  <div class="grid grid-cols-1 xl:grid-cols-2 gap-1">
                     <div 
                       v-for="model in selectedProviderImageModels" 
                       :key="`panel-image-${model.modelIdentifier}`"
-                      class="p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center"
+                      class="py-1.5 px-2 hover:bg-amber-50 rounded text-sm text-gray-700 flex items-center group"
                     >
-                      <span class="i-heroicons-photo-20-solid w-4 h-4 text-amber-600 mr-2 flex-shrink-0"></span>
-                      <span 
-                        class="text-sm font-medium text-gray-800 truncate" 
-                        :title="model.modelIdentifier"
-                      >
-                        {{ model.modelIdentifier }}
-                      </span>
+                      <span class="w-1.5 h-1.5 rounded-full bg-amber-400 mr-2 flex-shrink-0"></span>
+                      <span class="break-all">{{ model.modelIdentifier }}</span>
                     </div>
                   </div>
                 </div>
@@ -259,7 +244,7 @@
                 <!-- Empty state for selected provider -->
                 <div 
                   v-if="selectedProviderLlmModels.length === 0 && selectedProviderAudioModels.length === 0 && selectedProviderImageModels.length === 0"
-                  class="text-center py-8"
+                  class="text-center py-6"
                 >
                   <span class="i-heroicons-cube-transparent-20-solid w-8 h-8 text-gray-300 mx-auto mb-2"></span>
                   <p class="text-sm text-gray-500">No models available for this provider</p>
