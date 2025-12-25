@@ -73,7 +73,7 @@
                   class="w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between group transition-all duration-200"
                   :class="selectedModelProvider === provider.name 
                     ? 'bg-white text-blue-700 shadow-sm ring-1 ring-gray-200' 
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'"
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'"
                 >
                   <div class="flex items-center min-w-0">
                     <span
@@ -162,48 +162,48 @@
                 <div class="space-y-6">
                   <!-- LLM Models -->
                   <div v-if="selectedProviderLlmModels.length > 0">
-                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
                       LLM Models
                     </h4>
                     <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
                       <div 
                         v-for="model in selectedProviderLlmModels" 
                         :key="`panel-llm-${model.modelIdentifier}`"
-                        class="py-2.5 px-3 bg-white border border-gray-100 hover:border-blue-200 hover:shadow-sm rounded-lg text-sm text-gray-700 transition-all duration-200"
+                        class="py-2.5 px-3 bg-white border border-gray-100 hover:border-blue-200 hover:shadow-sm rounded-lg text-sm transition-all duration-200"
                       >
-                        <span class="break-all font-medium text-gray-600">{{ model.modelIdentifier }}</span>
+                        <span class="break-all font-medium text-gray-900">{{ model.modelIdentifier }}</span>
                       </div>
                     </div>
                   </div>
 
                   <!-- Audio Models -->
                   <div v-if="selectedProviderAudioModels.length > 0">
-                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
                       Audio Models
                     </h4>
                     <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
                       <div 
                         v-for="model in selectedProviderAudioModels" 
                         :key="`panel-audio-${model.modelIdentifier}`"
-                        class="py-2.5 px-3 bg-white border border-gray-100 hover:border-purple-200 hover:shadow-sm rounded-lg text-sm text-gray-700 transition-all duration-200"
+                        class="py-2.5 px-3 bg-white border border-gray-100 hover:border-purple-200 hover:shadow-sm rounded-lg text-sm transition-all duration-200"
                       >
-                        <span class="break-all font-medium text-gray-600">{{ model.modelIdentifier }}</span>
+                        <span class="break-all font-medium text-gray-900">{{ model.modelIdentifier }}</span>
                       </div>
                     </div>
                   </div>
 
                   <!-- Image Models -->
                   <div v-if="selectedProviderImageModels.length > 0">
-                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
                       Image Models
                     </h4>
                     <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
                       <div 
                         v-for="model in selectedProviderImageModels" 
                         :key="`panel-image-${model.modelIdentifier}`"
-                        class="py-2.5 px-3 bg-white border border-gray-100 hover:border-amber-200 hover:shadow-sm rounded-lg text-sm text-gray-700 transition-all duration-200"
+                        class="py-2.5 px-3 bg-white border border-gray-100 hover:border-amber-200 hover:shadow-sm rounded-lg text-sm transition-all duration-200"
                       >
-                        <span class="break-all font-medium text-gray-600">{{ model.modelIdentifier }}</span>
+                        <span class="break-all font-medium text-gray-900">{{ model.modelIdentifier }}</span>
                       </div>
                     </div>
                   </div>
