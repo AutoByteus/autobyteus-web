@@ -7,12 +7,12 @@
         </h2>
         <button
           @click="refreshModels"
-          class="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+          class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
           title="Reload all models"
           :disabled="isLoadingModels || isReloadingModels"
         >
           <span
-            class="i-heroicons-arrow-path-20-solid w-4 h-4 mr-2"
+            class="i-heroicons-arrow-path-20-solid w-5 h-5 mr-2 text-gray-500 group-hover:text-gray-700"
             :class="{ 'animate-spin': isLoadingModels || isReloadingModels }"
           ></span>
           Reload Models
