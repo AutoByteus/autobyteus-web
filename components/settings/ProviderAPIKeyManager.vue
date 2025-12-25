@@ -162,8 +162,7 @@
                 <div class="space-y-6">
                   <!-- LLM Models -->
                   <div v-if="selectedProviderLlmModels.length > 0">
-                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                       <span class="i-heroicons-cube-20-solid w-4 h-4 text-blue-500"></span>
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
                       LLM Models
                     </h4>
                     <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
@@ -179,8 +178,7 @@
 
                   <!-- Audio Models -->
                   <div v-if="selectedProviderAudioModels.length > 0">
-                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                      <span class="i-heroicons-speaker-wave-20-solid w-4 h-4 text-purple-500"></span>
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
                       Audio Models
                     </h4>
                     <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
@@ -196,8 +194,7 @@
 
                   <!-- Image Models -->
                   <div v-if="selectedProviderImageModels.length > 0">
-                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                      <span class="i-heroicons-photo-20-solid w-4 h-4 text-amber-500"></span>
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
                       Image Models
                     </h4>
                     <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
