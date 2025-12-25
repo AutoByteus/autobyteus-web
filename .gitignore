@@ -5,5 +5,6 @@ nuxt.d.ts
 .output
 dist
 electron-dist
+resources
 .DS_Store
 android
