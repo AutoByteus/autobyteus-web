@@ -48,8 +48,19 @@
           <div v-else class="flex gap-6 items-start">
             <!-- Left Sidebar: Provider List -->
             <div class="w-64 flex-shrink-0 bg-gray-50/50 rounded-xl overflow-hidden border border-gray-200">
-              <div class="px-4 py-3 border-b border-gray-200/60 bg-gray-50">
+              <div class="px-4 py-3 border-b border-gray-200/60 bg-gray-50 flex items-center justify-between">
                 <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Providers</span>
+                <button
+                  @click="refreshModels"
+                  class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded-md transition-colors"
+                  title="Reload all models"
+                  :disabled="isLoadingModels || isReloadingModels"
+                >
+                  <span
+                    class="i-heroicons-arrow-path-20-solid w-4 h-4"
+                    :class="{ 'animate-spin': isLoadingModels || isReloadingModels }"
+                  ></span>
+                </button>
               </div>
               <div class="p-2 space-y-0.5">
                 <button
@@ -105,24 +116,6 @@
                     {{ isProviderConfigured(selectedModelProvider) ? 'Configured' : 'Not Configured' }}
                   </span>
                 </div>
-
-                <button
-                  @click="refreshModels"
-                  class="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all duration-200 group relative"
-                  title="Reload models"
-                  :disabled="isLoadingModels || isReloadingModels"
-                >
-                  <span
-                    class="i-heroicons-arrow-path-20-solid w-5 h-5 transition-transform"
-                    :class="{
-                      'animate-spin': isLoadingModels || isReloadingModels,
-                      'group-hover:rotate-180': !isLoadingModels && !isReloadingModels
-                    }"
-                  ></span>
-                  <div class="absolute right-0 -bottom-8 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                    Reload Models
-                  </div>
-                </button>
               </div>
 
               <!-- API Key Configuration Section -->
