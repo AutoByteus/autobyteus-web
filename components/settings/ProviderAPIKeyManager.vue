@@ -157,14 +157,7 @@
               <!-- Panel Content: Models by Type -->
               <div class="px-5 py-4 bg-gray-50/30 min-h-[300px]">
                 
-                <div v-if="selectedProviderLlmModels.length > 0 || selectedProviderAudioModels.length > 0 || selectedProviderImageModels.length > 0" class="mb-5">
-                  <h3 class="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
-                    Available Models
-                    <span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
-                      {{ selectedProviderLlmModels.length + selectedProviderAudioModels.length + selectedProviderImageModels.length }}
-                    </span>
-                  </h3>
-                </div>
+                <div v-if="selectedProviderLlmModels.length > 0 || selectedProviderAudioModels.length > 0 || selectedProviderImageModels.length > 0" class="mb-2"></div>
 
                 <div class="space-y-6">
                   <!-- LLM Models -->
