@@ -8,3 +8,4 @@ electron-dist
 resources
 .DS_Store
 android
+build/icons
