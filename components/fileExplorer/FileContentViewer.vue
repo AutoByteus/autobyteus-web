@@ -71,6 +71,7 @@
         v-for="file in openFiles" 
         :key="file"
         @click="setActiveFile(file)"
+        @contextmenu.prevent="showContextMenu($event, file)"
         role="button"
         tabindex="0"
         @keyup.enter="setActiveFile(file)"
@@ -88,7 +89,46 @@
           <span class="text-base leading-none text-red-500 hover:text-red-600">&times;</span>
         </button>
       </div>
+      <!-- Close All button when multiple files open -->
+      <button 
+        v-if="openFiles.length > 1"
+        @click="closeAllFiles"
+        class="ml-auto px-3 py-1 text-xs text-gray-500 hover:text-red-500 hover:bg-red-50 rounded transition-colors whitespace-nowrap"
+        title="Close all files"
+      >
+        Close All
+      </button>
     </div>
+
+    <!-- Context Menu -->
+    <Teleport to="body">
+      <div
+        v-if="contextMenu.visible"
+        class="fixed bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-[200] min-w-[150px]"
+        :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
+        @click.stop
+      >
+        <button
+          @click="handleContextClose"
+          class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+        >
+          Close
+        </button>
+        <button
+          v-if="openFiles.length > 1"
+          @click="handleContextCloseOthers"
+          class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+        >
+          Close Others
+        </button>
+        <button
+          @click="handleContextCloseAll"
+          class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+        >
+          Close All
+        </button>
+      </div>
+    </Teleport>
 
     <div class="flex-1 flex flex-col min-h-0">
       <div v-if="!activeFile" class="flex-1 text-center py-4 flex items-center justify-center">
@@ -229,6 +269,8 @@ const getFileName = (filePath: string) => {
 };
 const setActiveFile = (filePath: string) => fileExplorerStore.setActiveFile(filePath)
 const closeFile = (filePath: string) => fileExplorerStore.closeFile(filePath)
+const closeAllFiles = () => fileExplorerStore.closeAllFiles()
+const closeOtherFiles = (filePath: string) => fileExplorerStore.closeOtherFiles(filePath)
 const getFileLanguage = (filePath: string) => getLanguage(filePath)
 const setMode = (mode: 'edit' | 'preview') => {
   if (!activeFile.value) return
@@ -242,6 +284,56 @@ const isPreviewableText = computed(() => {
 
 const activeFileMode = computed(() => activeFileData.value?.mode ?? 'edit')
 const toggleZenMode = () => fileContentDisplayModeStore.toggleZenMode()
+
+// Context menu state
+const contextMenu = ref({
+  visible: false,
+  x: 0,
+  y: 0,
+  targetFile: null as string | null
+})
+
+const showContextMenu = (event: MouseEvent, file: string) => {
+  contextMenu.value = {
+    visible: true,
+    x: event.clientX,
+    y: event.clientY,
+    targetFile: file
+  }
+}
+
+const hideContextMenu = () => {
+  contextMenu.value.visible = false
+  contextMenu.value.targetFile = null
+}
+
+const handleContextClose = () => {
+  if (contextMenu.value.targetFile) {
+    closeFile(contextMenu.value.targetFile)
+  }
+  hideContextMenu()
+}
+
+const handleContextCloseOthers = () => {
+  if (contextMenu.value.targetFile) {
+    closeOtherFiles(contextMenu.value.targetFile)
+  }
+  hideContextMenu()
+}
+
+const handleContextCloseAll = () => {
+  closeAllFiles()
+  hideContextMenu()
+}
+
+// Check if Monaco editor is focused
+const isEditorFocused = () => {
+  const activeEl = document.activeElement
+  if (!activeEl) return false
+  // Monaco editor uses textarea or elements with monaco-editor class
+  return activeEl.tagName === 'TEXTAREA' || 
+         activeEl.closest('.monaco-editor') !== null
+}
 
 const activeViewerComponent = computed(() => {
   const file = activeFileData.value
@@ -300,10 +392,12 @@ watch(activeFileData, (newVal) => {
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
+  document.addEventListener('click', hideContextMenu)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown)
+  document.removeEventListener('click', hideContextMenu)
   if (saveSuccessTimeout) {
     clearTimeout(saveSuccessTimeout)
   }
@@ -339,6 +433,18 @@ const handleKeydown = async (event: KeyboardEvent) => {
   }
   if (isFullscreenMode.value && event.key === 'Escape') {
     fileContentDisplayModeStore.minimize()
+  }
+  
+  // Arrow key navigation - only when editor is NOT focused
+  if (!isEditorFocused() && openFiles.value.length > 1) {
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault()
+      fileExplorerStore.navigateToPreviousTab()
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault()
+      fileExplorerStore.navigateToNextTab()
+    }
   }
 }
 </script>

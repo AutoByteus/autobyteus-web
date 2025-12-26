@@ -341,6 +341,50 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
 
+    closeAllFiles() {
+      const wsState = this._getOrCreateCurrentWorkspaceState();
+      wsState.openFiles = [];
+      wsState.activeFile = null;
+      const fileContentDisplayModeStore = useFileContentDisplayModeStore();
+      fileContentDisplayModeStore.hide();
+    },
+
+    closeOtherFiles(exceptFilePath: string) {
+      const wsState = this._getOrCreateCurrentWorkspaceState();
+      // Keep only the file that matches the exceptFilePath
+      wsState.openFiles = wsState.openFiles.filter(file => file.path === exceptFilePath);
+      // Ensure the kept file is active
+      if (wsState.openFiles.length > 0) {
+        wsState.activeFile = exceptFilePath;
+      } else {
+        wsState.activeFile = null;
+        const fileContentDisplayModeStore = useFileContentDisplayModeStore();
+        fileContentDisplayModeStore.hide();
+      }
+    },
+
+    navigateToNextTab() {
+      const wsState = this._getOrCreateCurrentWorkspaceState();
+      if (wsState.openFiles.length <= 1) return;
+      
+      const currentIndex = wsState.openFiles.findIndex(f => f.path === wsState.activeFile);
+      if (currentIndex === -1) return;
+
+      const nextIndex = (currentIndex + 1) % wsState.openFiles.length;
+      wsState.activeFile = wsState.openFiles[nextIndex].path;
+    },
+
+    navigateToPreviousTab() {
+      const wsState = this._getOrCreateCurrentWorkspaceState();
+      if (wsState.openFiles.length <= 1) return;
+      
+      const currentIndex = wsState.openFiles.findIndex(f => f.path === wsState.activeFile);
+      if (currentIndex === -1) return;
+
+      const prevIndex = currentIndex <= 0 ? wsState.openFiles.length - 1 : currentIndex - 1;
+      wsState.activeFile = wsState.openFiles[prevIndex].path;
+    },
+
     async fetchFileContent(filePath: string) {
       const wsState = this._getOrCreateCurrentWorkspaceState();
       const file = wsState.openFiles.find(f => f.path === filePath);
