@@ -38,16 +38,7 @@
         </div>
 
         <!-- Category -->
-        <div>
-          <label for="prompt-category" class="block text-sm font-medium text-gray-700">Category</label>
-          <input
-            id="prompt-category"
-            v-model="formData.category"
-            type="text"
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            placeholder="e.g., Code Generation"
-          />
-        </div>
+        <CreatableCategorySelect v-model="formData.category" />
 
         <!-- Description -->
         <div>
@@ -104,6 +95,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { usePromptStore } from '~/stores/promptStore';
 import { usePromptEngineeringViewStore } from '~/stores/promptEngineeringViewStore';
 import CanonicalModelSelector from './CanonicalModelSelector.vue';
+import CreatableCategorySelect from './CreatableCategorySelect.vue';
 
 const promptStore = usePromptStore();
 const viewStore = usePromptEngineeringViewStore();
