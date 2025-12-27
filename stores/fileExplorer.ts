@@ -29,6 +29,7 @@ import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import { useServerStore } from '~/stores/serverStore'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
 import { findFileByPath, determineFileType } from '~/utils/fileExplorer/fileUtils'
+import { TreeNode } from '~/utils/fileExplorer/TreeNode'
 import { getServerUrls } from '~/utils/serverConfig'
 
 // --- NEW TYPES FOR MULTI-CONTENT SUPPORT ---
@@ -61,6 +62,7 @@ interface WorkspaceFileExplorerState {
   searchResults: any[];
   searchLoading: boolean;
   searchError: string | null;
+  searchAbortController: AbortController | null;
   
   // State for manual saves from the editor
   saveContentError: Record<string, string | null>;
@@ -94,6 +96,7 @@ const createDefaultWorkspaceFileExplorerState = (): WorkspaceFileExplorerState =
   searchResults: [],
   searchLoading: false,
   searchError: null,
+  searchAbortController: null,
   saveContentError: {},
   saveContentLoading: {},
   deleteError: {},
@@ -708,6 +711,13 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       const wsState = this._getOrCreateCurrentWorkspaceState();
       const workspaceStore = useWorkspaceStore();
       
+      // Cancel any previous in-flight search request
+      if (wsState.searchAbortController) {
+        wsState.searchAbortController.abort();
+      }
+      wsState.searchAbortController = new AbortController();
+      const currentAbortController = wsState.searchAbortController;
+      
       wsState.searchLoading = true;
       wsState.searchError = null;
       
@@ -728,8 +738,18 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         const { client } = useApolloClient();
         const { data, errors } = await client.query<SearchFilesQuery, SearchFilesQueryVariables>({
           query: SearchFiles,
-          variables: { workspaceId, query }
+          variables: { workspaceId, query },
+          context: {
+            fetchOptions: {
+              signal: currentAbortController.signal
+            }
+          }
         });
+
+        // Check if this request was aborted (a newer request superseded it)
+        if (currentAbortController.signal.aborted) {
+          return;
+        }
 
         if (errors && errors.length > 0) {
           throw new Error(errors.map(e => e.message).join(', '));
@@ -737,18 +757,46 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
 
         if (data?.searchFiles) {
           const matchedPaths = data.searchFiles;
-          wsState.searchResults = matchedPaths.map(path => {
-            return findFileByPath(workspaceStore.currentWorkspaceTree?.children || [], path);
-          }).filter((file): file is NonNullable<typeof file> => file !== null);
+          // Create TreeNode objects from returned paths
+          // We don't require the file to exist in the loaded tree,
+          // since the tree might be shallowly loaded
+          wsState.searchResults = matchedPaths.map(filePath => {
+            // First try to find in the tree (for proper node metadata)
+            const existingNode = findFileByPath(
+              workspaceStore.currentWorkspaceTree?.children || [], 
+              filePath
+            );
+            if (existingNode) {
+              return existingNode;
+            }
+            
+            // If not in tree, create a simple TreeNode from the path
+            const fileName = filePath.split('/').pop() || filePath;
+            return new TreeNode(
+              fileName,     // name
+              filePath,     // path
+              true,         // is_file (search results are files)
+              [],           // children
+              `search-${filePath}`, // id (unique for search results)
+              true          // childrenLoaded
+            );
+          });
         } else {
           wsState.searchResults = [];
         }
       } catch (error) {
+        // Ignore aborted requests - they're intentional when a new search supersedes
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
         console.error('Error searching files:', error);
         wsState.searchError = error instanceof Error ? error.message : 'An unknown error occurred';
         throw error;
       } finally {
-        wsState.searchLoading = false;
+        // Only update loading state if this is still the current request
+        if (!currentAbortController.signal.aborted) {
+          wsState.searchLoading = false;
+        }
       }
     },
     
