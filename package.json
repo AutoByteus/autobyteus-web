@@ -63,7 +63,8 @@
     "pinia": "^2.1.7",
     "prismjs": "^1.29.0",
     "uuid": "^11.0.3",
-    "vue-chartjs": "^5.3.2"
+    "vue-chartjs": "^5.3.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "^5.0.2",

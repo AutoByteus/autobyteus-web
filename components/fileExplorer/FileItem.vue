@@ -109,12 +109,15 @@
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { TreeNode } from '~/utils/fileExplorer/TreeNode'
 import { useFileExplorerStore } from '~/stores/fileExplorer'
+import { useWorkspaceStore } from '~/stores/workspace'
 import FileContextMenu from './FileContextMenu.vue'
 import ConfirmDeleteDialog from './ConfirmDeleteDialog.vue'
 import AddFileOrFolderDialog from './AddFileOrFolderDialog.vue'
 
 const props = defineProps<{ file: TreeNode }>()
 const fileExplorerStore = useFileExplorerStore()
+const workspaceStore = useWorkspaceStore()
+const isLoadingChildren = ref(false)
 
 const fileItemRef = ref<HTMLElement | null>(null)
 const dragPreviewRef = ref<HTMLElement | null>(null)
@@ -131,7 +134,7 @@ const isGlobalDragging = ref(false)
 const isPreviewable = computed(() => {
   if (!props.file.is_file) return false
   const lower = props.file.name.toLowerCase()
-  return lower.endsWith('.md') || lower.endsWith('.markdown') || lower.endsWith('.html') || lower.endsWith('.htm')
+  return lower.endsWith('.md') || lower.endsWith('.markdown') || lower.endsWith('.html') || lower.endsWith('.htm') || lower.endsWith('.csv')
 })
 
 const showAddDialog = ref(false)
@@ -183,11 +186,28 @@ const onGlobalDragEnd = () => {
   isDragging.value = false
 }
 
-const handleClick = () => {
+const handleClick = async () => {
   if (props.file.is_file) {
     fileExplorerStore.openFile(props.file.path)
   } else {
+    // Toggle folder open/close
     fileExplorerStore.toggleFolder(props.file.path)
+    
+    // Lazy load children if folder is being opened and children not yet loaded
+    const willBeOpen = fileExplorerStore.isFolderOpen(props.file.path)
+    if (willBeOpen && !props.file.childrenLoaded && !isLoadingChildren.value) {
+      const activeWorkspace = workspaceStore.activeWorkspace
+      if (activeWorkspace) {
+        isLoadingChildren.value = true
+        try {
+          await workspaceStore.fetchFolderChildren(activeWorkspace.workspaceId, props.file.path)
+        } catch (error) {
+          console.error('Error loading folder children:', error)
+        } finally {
+          isLoadingChildren.value = false
+        }
+      }
+    }
   }
 }
 

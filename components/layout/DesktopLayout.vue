@@ -158,16 +158,14 @@ const activeLaunchProfileHasWorkspace = computed(() => !!workspaceStore.activeWo
   background-color: #6b7280;
 }
 
-/* Minimize Panel Animation */
+/* Subtle Panel Animation - quick 100ms for snappy feel */
 .panel-minimize-enter-active,
 .panel-minimize-leave-active {
-  transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms;
-  overflow: hidden;
+  transition: opacity 100ms ease-out;
 }
 
 .panel-minimize-enter-from,
 .panel-minimize-leave-to {
-  width: 0 !important;
   opacity: 0;
 }
 </style>

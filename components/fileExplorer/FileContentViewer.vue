@@ -239,6 +239,7 @@ import AudioPlayer from '~/components/fileExplorer/viewers/AudioPlayer.vue'
 import VideoPlayer from '~/components/fileExplorer/viewers/VideoPlayer.vue'
 import MarkdownPreviewer from '~/components/fileExplorer/viewers/MarkdownPreviewer.vue'
 import HtmlPreviewer from '~/components/fileExplorer/viewers/HtmlPreviewer.vue'
+import ExcelViewer from '~/components/fileExplorer/viewers/ExcelViewer.vue'
 
 const fileExplorerStore = useFileExplorerStore()
 const workspaceStore = useWorkspaceStore()
@@ -354,6 +355,7 @@ const activeViewerComponent = computed(() => {
     case 'Image': return ImageViewer
     case 'Audio': return AudioPlayer
     case 'Video': return VideoPlayer
+    case 'Excel': return ExcelViewer
     default: return null
   }
 });
@@ -375,7 +377,7 @@ const viewerProps = computed(() => {
     }
   }
 
-  if (['Image', 'Audio', 'Video'].includes(file.type)) {
+  if (['Image', 'Audio', 'Video', 'Excel'].includes(file.type)) {
     return { url: file.url }
   }
 

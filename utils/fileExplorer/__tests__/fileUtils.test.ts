@@ -64,6 +64,12 @@ describe('fileUtils', () => {
       expect(await determineFileType('film.mkv')).toBe('Video');
     });
 
+    it('should determine file type as Excel for spreadsheet files', async () => {
+      expect(await determineFileType('spreadsheet.xlsx')).toBe('Excel');
+      expect(await determineFileType('data.xls')).toBe('Excel');
+      expect(await determineFileType('report.xlsm')).toBe('Excel');
+    });
+
     it('should be case-insensitive', async () => {
       const fileType = await determineFileType('PHOTO.PNG')
       expect(fileType).toBe('Image')

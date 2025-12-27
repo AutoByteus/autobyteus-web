@@ -14,10 +14,11 @@ export function getFilePathsFromFolder(node: TreeNode): string[] {
   return filePaths
 }
 
-export async function determineFileType(filePath: string): Promise<'Text' | 'Image' | 'Audio' | 'Video'> {
+export async function determineFileType(filePath: string): Promise<'Text' | 'Image' | 'Audio' | 'Video' | 'Excel'> {
   const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
   const audioExtensions = ['.mp3', '.wav', '.m4a', '.flac', '.ogg', '.aac'];
   const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
+  const excelExtensions = ['.xlsx', '.xls', '.xlsm', '.csv'];
   const lowercasePath = filePath.toLowerCase();
   
   for (const ext of imageExtensions) {
@@ -35,6 +36,12 @@ export async function determineFileType(filePath: string): Promise<'Text' | 'Ima
   for (const ext of videoExtensions) {
     if (lowercasePath.endsWith(ext)) {
       return 'Video';
+    }
+  }
+
+  for (const ext of excelExtensions) {
+    if (lowercasePath.endsWith(ext)) {
+      return 'Excel';
     }
   }
   
