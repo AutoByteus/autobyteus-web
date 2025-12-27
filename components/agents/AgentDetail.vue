@@ -2,13 +2,13 @@
   <div class="flex-1 overflow-auto p-8">
     <div class="max-w-6xl mx-auto">
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-20">
+      <div v-if="viewState === 'loading'" class="text-center py-20">
         <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto"></div>
-        <p class="mt-4 text-gray-600">Loading Agent Details...</p>
+        <p class="mt-4 text-gray-600">{{ isDeleting ? 'Deleting Agent...' : 'Loading Agent Details...' }}</p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="!agentDef" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
+      <div v-else-if="viewState === 'not-found'" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
         <h3 class="font-bold">Agent Not Found</h3>
         <p>The agent definition with the specified ID could not be found.</p>
         <button @click="$emit('navigate', { view: 'list' })" class="text-indigo-600 hover:underline mt-2 inline-block">&larr; Back to all agents</button>
@@ -113,14 +113,6 @@
       @cancel="onDeleteCanceled"
     />
 
-    <!-- Notification -->
-    <div v-if="notification"
-        :class="[
-          'fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white',
-          notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-        ]">
-      {{ notification.message }}
-    </div>
   </div>
 </template>
 
@@ -140,9 +132,14 @@ const agentDef = computed(() => agentDefinitionStore.getAgentDefinitionById(agen
 const loading = ref(false);
 
 const selectedAgent = ref<AgentDefinition | null>(null);
-const notification = ref<{ type: 'success' | 'error'; message: string } | null>(null);
 const showDeleteConfirm = ref(false);
 const agentIdToDelete = ref<string | null>(null);
+const isDeleting = ref(false);
+const viewState = computed(() => {
+  if (loading.value || isDeleting.value) return 'loading';
+  if (!agentDef.value) return 'not-found';
+  return 'ready';
+});
 
 const componentLists = [
   { title: 'Tools', key: 'toolNames' },
@@ -177,27 +174,31 @@ const handleDelete = (id: string) => {
 };
 
 const onDeleteConfirmed = async () => {
-  if (agentIdToDelete.value) {
-    const success = await agentDefinitionStore.deleteAgentDefinition(agentIdToDelete.value);
-    if (success) {
-      showNotification('Agent definition deleted successfully.', 'success');
-      setTimeout(() => emit('navigate', { view: 'list' }), 1500);
-    } else {
-      showNotification('Failed to delete agent definition.', 'error');
-    }
+  const idToDelete = agentIdToDelete.value;
+  if (!idToDelete) {
+    return;
   }
+
   onDeleteCanceled();
+  isDeleting.value = true;
+
+  try {
+    // Delete and navigate to list - the list page shows all delete results (success or error)
+    const result = await agentDefinitionStore.deleteAgentDefinition(idToDelete);
+    if (result?.success) {
+      emit('navigate', { view: 'list' });
+      return;
+    }
+  } catch (error) {
+    console.error('Failed to delete agent definition:', error);
+  }
+
+  // If deletion fails, return to the detail view.
+  isDeleting.value = false;
 };
 
 const onDeleteCanceled = () => {
   showDeleteConfirm.value = false;
   agentIdToDelete.value = null;
-};
-
-const showNotification = (message: string, type: 'success' | 'error') => {
-  notification.value = { message, type };
-  setTimeout(() => {
-    notification.value = null;
-  }, 3000);
 };
 </script>
