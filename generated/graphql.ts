@@ -233,7 +233,7 @@ export type CreatePromptInput = {
 };
 
 export type CreateWorkspaceInput = {
-  config: Scalars['JSON']['input'];
+  rootPath: Scalars['String']['input'];
 };
 
 export type DeleteAgentDefinitionResult = {

@@ -59,7 +59,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     fileSystemSubscriptions: new Map(),
   }),
   actions: {    
-    async createWorkspace(config: Record<string, any>): Promise<string> {
+    async createWorkspace(config: { root_path: string }): Promise<string> {
       this.loading = true;
       this.error = null;
       const { client } = useApolloClient();
@@ -68,7 +68,7 @@ export const useWorkspaceStore = defineStore('workspace', {
           mutation: CreateWorkspace,
           variables: {
             input: {
-              config: config
+              rootPath: config.root_path
             }
           }
         });

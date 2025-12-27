@@ -105,9 +105,8 @@ const handleRunTeam = (teamDef: AgentTeamDefinition) => {
 };
 
 const onLaunchSuccess = () => {
-  isLaunchModalOpen.value = false;
-  teamToLaunch.value = null;
-  // Navigate to the main workspace view. The correct profile will be active.
+  // Do not explicitly close the modal here to avoid a flash of the underlying list
+  // before the router navigation completes (which will destroy this component and the modal).
   router.push('/workspace');
 };
 </script>
