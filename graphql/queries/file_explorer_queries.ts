@@ -13,3 +13,13 @@ export const SearchFiles = gql`
     searchFiles(workspaceId: $workspaceId, query: $query)
   }
 `;
+
+/**
+ * Query to fetch children of a specific folder for lazy loading.
+ * Returns JSON with immediate children only (one level deep).
+ */
+export const GetFolderChildren = gql`
+  query GetFolderChildren($workspaceId: String!, $folderPath: String!) {
+    folderChildren(workspaceId: $workspaceId, folderPath: $folderPath)
+  }
+`;

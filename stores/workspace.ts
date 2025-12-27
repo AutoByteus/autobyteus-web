@@ -271,8 +271,67 @@ export const useWorkspaceStore = defineStore('workspace', {
         this.fileSystemSubscriptions.delete(workspaceId);
         console.log(`Unsubscribed from file system watcher for workspace: ${workspaceId}`);
       }
+    },
+
+    /**
+     * Fetches children of a folder for lazy loading.
+     * Called when a user expands a folder that hasn't had its children loaded yet.
+     */
+    async fetchFolderChildren(workspaceId: string, folderPath: string): Promise<void> {
+      const workspace = this.workspaces[workspaceId];
+      if (!workspace) {
+        console.error(`Workspace ${workspaceId} not found`);
+        return;
+      }
+
+      const { client } = useApolloClient();
+      try {
+        const { GetFolderChildren } = await import('~/graphql/queries/file_explorer_queries');
+        const { data, errors } = await client.query({
+          query: GetFolderChildren,
+          variables: { workspaceId, folderPath },
+          fetchPolicy: 'network-only', // Always fetch fresh data
+        });
+
+        if (errors && errors.length > 0) {
+          console.error('Error fetching folder children:', errors);
+          return;
+        }
+
+        if (data?.folderChildren) {
+          const folderData = JSON.parse(data.folderChildren);
+          
+          // Check for error response
+          if (folderData.error) {
+            console.error('Server error:', folderData.error);
+            return;
+          }
+
+          // Find the folder node in the tree
+          const folderNode = workspace.nodeIdToNode[folderData.id];
+          if (!folderNode) {
+            console.error(`Folder node not found for path: ${folderPath}`);
+            return;
+          }
+
+          // Clear existing children and add new ones from server
+          folderNode.children = [];
+          for (const childData of folderData.children) {
+            const childNode = TreeNode.fromObject(childData);
+            folderNode.addChild(childNode);
+            // Add to nodeIdToNode lookup
+            workspace.nodeIdToNode[childNode.id] = childNode;
+          }
+
+          // Mark folder as loaded
+          folderNode.childrenLoaded = true;
+        }
+      } catch (error) {
+        console.error('Error fetching folder children:', error);
+      }
     }
   },
+
   getters: {
     activeWorkspace(): WorkspaceInfo | null {
       const selectedLaunchProfileStore = useSelectedLaunchProfileStore();

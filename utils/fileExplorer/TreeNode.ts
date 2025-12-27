@@ -4,33 +4,50 @@ export class TreeNode {
   is_file: boolean
   children: TreeNode[]
   id: string
+  /**
+   * Tracks whether children have been loaded from the server.
+   * For lazy loading: folders start with childrenLoaded=false and are loaded on-demand.
+   * Files always have childrenLoaded=true since they have no children.
+   */
+  childrenLoaded: boolean
 
   constructor(
     name: string,
     path: string,
     is_file: boolean = false,
     children: TreeNode[] = [],
-    id: string = ''
+    id: string = '',
+    childrenLoaded: boolean = false
   ) {
     this.name = name
     this.path = path
     this.is_file = is_file
     this.children = children
     this.id = id
+    // Files always have children loaded (they have none), folders depend on server data
+    this.childrenLoaded = is_file ? true : childrenLoaded
   }
 
   static fromObject(obj: any): TreeNode {
     const children = obj.children
       ? obj.children.map((child: any) => TreeNode.fromObject(child))
       : []
+    // If a folder has children from the server, it means children are loaded
+    // If a folder has no children, it might be empty OR not yet loaded
+    // We rely on the childrenLoaded flag from the server or default to false for folders
+    const childrenLoaded = obj.childrenLoaded !== undefined 
+      ? obj.childrenLoaded 
+      : (obj.is_file || (obj.children && obj.children.length > 0))
     return new TreeNode(
       obj.name,
       obj.path,
       obj.is_file,
       children,
-      obj.id || ''
+      obj.id || '',
+      childrenLoaded
     )
   }
+
 
   /**
    * Adds a child in a sorted position, avoiding a full re-sort of `children`.
