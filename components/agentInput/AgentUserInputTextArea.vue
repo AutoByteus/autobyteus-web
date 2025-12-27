@@ -33,44 +33,26 @@
         placeholder="Select a model"
       />
 
+      <!-- Hidden behind feature flag for future use -->
       <AudioRecorder
+        v-if="ENABLE_AUDIO_RECORDER"
         :disabled="true"
         title="Voice input is coming soon"
         class="w-full sm:w-auto"
       />
-      
-      <div class="flex w-full sm:w-auto flex-col sm:flex-row gap-2">
-        <button
-          @click="handleSearchContext"
-          :disabled="true"
-          title="Context-aware search is coming soon"
-          class="flex items-center justify-center px-4 py-2.5 bg-green-500 text-white text-sm font-medium rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px] w-full sm:w-auto"
-        >
-          <svg v-if="isSearching" class="animate-spin h-4 w-4 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-          </svg>
-          <svg v-else class="h-4 w-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <span class="whitespace-nowrap">{{ isSearching ? 'Searching...' : 'Search Context' }}</span>
-        </button>
 
-        <button 
-          @click="handleSend"
-          :disabled="isSending || !internalRequirement.trim() || !activeContextStore.activeAgentContext"
-          class="flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px] w-full sm:w-auto"
-        >
-          <svg v-if="isSending" class="animate-spin h-4 w-4 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-          </svg>
-          <svg v-else class="h-4 w-4 mr-2 flex-shrink-0" fill="none" viewBox="0 0 20 20">
-            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
-          </svg>
-          <span class="whitespace-nowrap">{{ isSending ? 'Sending...' : 'Send' }}</span>
-        </button>
-      </div>
+      <button 
+        @click="handleSend"
+        :disabled="isSending || !internalRequirement.trim() || !activeContextStore.activeAgentContext"
+        :title="isSending ? 'Sending...' : 'Send message'"
+        class="flex items-center justify-center p-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px] min-w-[40px]"
+      >
+        <svg v-if="isSending" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <PaperAirplaneIcon v-else class="h-5 w-5" />
+      </button>
     </div>
   </div>
 </template>
@@ -83,9 +65,14 @@ import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import { useServerStore } from '~/stores/serverStore';
 import { useWorkspaceStore } from '~/stores/workspace';
 import AudioRecorder from '~/components/AudioRecorder.vue';
+
 import GroupedSelect from '~/components/agentInput/GroupedSelect.vue';
+import { PaperAirplaneIcon } from '@heroicons/vue/24/solid';
 import { getFilePathsFromFolder } from '~/utils/fileExplorer/fileUtils';
 import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
+
+// Feature flags
+const ENABLE_AUDIO_RECORDER = false; // Set to true to enable the audio recorder feature
 
 // Initialize stores
 const activeContextStore = useActiveContextStore();
@@ -103,7 +90,7 @@ const internalRequirement = ref(''); // Local state for textarea
 const textarea = ref<HTMLTextAreaElement | null>(null);
 const controlsRef = ref<HTMLDivElement | null>(null);
 const textareaHeight = ref(150);
-const isSearching = ref(false);
+
 const platform = ref<'win32' | 'linux' | 'darwin'>('linux');
 
 // Computed properties for v-model binding to the store
@@ -243,9 +230,7 @@ const handleSend = async () => {
   }
 };
 
-const handleSearchContext = async () => {
-  console.log('Search Context button clicked, but functionality is not yet implemented.');
-};
+
 
 const insertFilePaths = (filePaths: string[]) => {
   if (!textarea.value || filePaths.length === 0) return;
