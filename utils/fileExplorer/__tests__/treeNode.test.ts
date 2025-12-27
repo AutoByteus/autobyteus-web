@@ -128,4 +128,119 @@ describe('TreeNode', () => {
     expect(root.children[0].name).toBe('zzzFolder')
     expect(root.children[1].id).toBe('fileB-id')
   })
+
+  // ============================================================
+  // Tests for childrenLoaded - Lazy Loading Support
+  // ============================================================
+
+  describe('childrenLoaded (lazy loading)', () => {
+    it('files should always have childrenLoaded=true', () => {
+      const file = new TreeNode('file.txt', 'root/file.txt', true, [], 'file-id')
+      expect(file.childrenLoaded).toBe(true)
+    })
+
+    it('folders should default to childrenLoaded=false', () => {
+      const folder = new TreeNode('folder', 'root/folder', false, [], 'folder-id')
+      expect(folder.childrenLoaded).toBe(false)
+    })
+
+    it('folders can be initialized with childrenLoaded=true', () => {
+      const folder = new TreeNode('folder', 'root/folder', false, [], 'folder-id', true)
+      expect(folder.childrenLoaded).toBe(true)
+    })
+
+    it('fromObject should set childrenLoaded=true for files', () => {
+      const obj = {
+        name: 'file.txt',
+        path: 'root/file.txt',
+        is_file: true,
+        children: [],
+        id: 'file-id'
+      }
+      const node = TreeNode.fromObject(obj)
+      expect(node.childrenLoaded).toBe(true)
+    })
+
+    it('fromObject should set childrenLoaded=true for folders with children', () => {
+      const obj = {
+        name: 'folder',
+        path: 'root/folder',
+        is_file: false,
+        id: 'folder-id',
+        children: [
+          { name: 'child.txt', path: 'root/folder/child.txt', is_file: true, id: 'child-id', children: [] }
+        ]
+      }
+      const node = TreeNode.fromObject(obj)
+      expect(node.childrenLoaded).toBe(true)
+      expect(node.children).toHaveLength(1)
+    })
+
+    it('fromObject should set childrenLoaded=false for empty folders by default', () => {
+      // Empty folder from server could be truly empty OR not yet loaded
+      // Without explicit childrenLoaded flag, we assume not loaded for lazy loading
+      const obj = {
+        name: 'folder',
+        path: 'root/folder',
+        is_file: false,
+        id: 'folder-id',
+        children: []
+      }
+      const node = TreeNode.fromObject(obj)
+      // Empty folder with no children array from shallow load = not loaded
+      expect(node.childrenLoaded).toBe(false)
+    })
+
+    it('fromObject should respect explicit childrenLoaded flag', () => {
+      const obj = {
+        name: 'empty-folder',
+        path: 'root/empty-folder',
+        is_file: false,
+        id: 'folder-id',
+        children: [],
+        childrenLoaded: true  // Server says this folder is actually empty
+      }
+      const node = TreeNode.fromObject(obj)
+      expect(node.childrenLoaded).toBe(true)
+    })
+
+    it('nested folders should have correct childrenLoaded states', () => {
+      // Simulates a shallow tree from server where root has children loaded,
+      // but subfolders do not
+      const obj = {
+        name: 'root',
+        path: 'root',
+        is_file: false,
+        id: 'root-id',
+        children: [
+          { 
+            name: 'subfolder', 
+            path: 'root/subfolder', 
+            is_file: false, 
+            id: 'subfolder-id', 
+            children: []  // Empty = not loaded yet
+          },
+          { 
+            name: 'file.txt', 
+            path: 'root/file.txt', 
+            is_file: true, 
+            id: 'file-id', 
+            children: [] 
+          }
+        ]
+      }
+      const root = TreeNode.fromObject(obj)
+      
+      // Root has children, so it's loaded
+      expect(root.childrenLoaded).toBe(true)
+      
+      // Subfolder has no children and no explicit flag, so not loaded
+      const subfolder = root.children.find(c => c.name === 'subfolder')
+      expect(subfolder?.childrenLoaded).toBe(false)
+      
+      // File always has childrenLoaded=true
+      const file = root.children.find(c => c.name === 'file.txt')
+      expect(file?.childrenLoaded).toBe(true)
+    })
+  })
 })

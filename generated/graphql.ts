@@ -814,6 +814,7 @@ export type Query = {
   availableToolNames: Array<Scalars['String']['output']>;
   availableWorkspaceDefinitions: Array<WorkspaceDefinition>;
   fileContent: Scalars['String']['output'];
+  folderChildren: Scalars['String']['output'];
   getAgentConversationHistory: ConversationHistory;
   getLlmProviderApiKey?: Maybe<Scalars['String']['output']>;
   getModelsByProvider: Array<ProviderModels>;
@@ -856,6 +857,12 @@ export type QueryAgentTeamInstanceArgs = {
 
 export type QueryFileContentArgs = {
   filePath: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
+};
+
+
+export type QueryFolderChildrenArgs = {
+  folderPath: Scalars['String']['input'];
   workspaceId: Scalars['String']['input'];
 };
 
@@ -1533,6 +1540,14 @@ export type SearchFilesQueryVariables = Exact<{
 
 
 export type SearchFilesQuery = { __typename?: 'Query', searchFiles: Array<string> };
+
+export type GetFolderChildrenQueryVariables = Exact<{
+  workspaceId: Scalars['String']['input'];
+  folderPath: Scalars['String']['input'];
+}>;
+
+
+export type GetFolderChildrenQuery = { __typename?: 'Query', folderChildren: string };
 
 export type GetLlmProviderApiKeyQueryVariables = Exact<{
   provider: Scalars['String']['input'];
@@ -3335,6 +3350,35 @@ export function useSearchFilesLazyQuery(variables?: SearchFilesQueryVariables | 
   return VueApolloComposable.useLazyQuery<SearchFilesQuery, SearchFilesQueryVariables>(SearchFilesDocument, variables, options);
 }
 export type SearchFilesQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<SearchFilesQuery, SearchFilesQueryVariables>;
+export const GetFolderChildrenDocument = gql`
+    query GetFolderChildren($workspaceId: String!, $folderPath: String!) {
+  folderChildren(workspaceId: $workspaceId, folderPath: $folderPath)
+}
+    `;
+
+/**
+ * __useGetFolderChildrenQuery__
+ *
+ * To run a query within a Vue component, call `useGetFolderChildrenQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetFolderChildrenQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param variables that will be passed into the query
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetFolderChildrenQuery({
+ *   workspaceId: // value for 'workspaceId'
+ *   folderPath: // value for 'folderPath'
+ * });
+ */
+export function useGetFolderChildrenQuery(variables: GetFolderChildrenQueryVariables | VueCompositionApi.Ref<GetFolderChildrenQueryVariables> | ReactiveFunction<GetFolderChildrenQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetFolderChildrenQuery, GetFolderChildrenQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetFolderChildrenQuery, GetFolderChildrenQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetFolderChildrenQuery, GetFolderChildrenQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetFolderChildrenQuery, GetFolderChildrenQueryVariables>(GetFolderChildrenDocument, variables, options);
+}
+export function useGetFolderChildrenLazyQuery(variables?: GetFolderChildrenQueryVariables | VueCompositionApi.Ref<GetFolderChildrenQueryVariables> | ReactiveFunction<GetFolderChildrenQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetFolderChildrenQuery, GetFolderChildrenQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetFolderChildrenQuery, GetFolderChildrenQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetFolderChildrenQuery, GetFolderChildrenQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetFolderChildrenQuery, GetFolderChildrenQueryVariables>(GetFolderChildrenDocument, variables, options);
+}
+export type GetFolderChildrenQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetFolderChildrenQuery, GetFolderChildrenQueryVariables>;
 export const GetLlmProviderApiKeyDocument = gql`
     query GetLLMProviderApiKey($provider: String!) {
   getLlmProviderApiKey(provider: $provider)
