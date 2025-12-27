@@ -1,6 +1,6 @@
 <template>
-  <div class="provider-api-key-manager bg-white rounded-lg shadow-lg">
-    <div class="p-6">
+  <div class="provider-api-key-manager bg-white rounded-lg shadow-lg flex-1 flex flex-col">
+    <div class="p-6 flex-1 flex flex-col">
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-2xl font-semibold text-gray-800">
           API Key Management
@@ -25,9 +25,9 @@
         ></div>
       </div>
 
-      <div v-else class="space-y-6">
+      <div v-else class="flex-1 flex flex-col">
         <!-- Provider Sidebar + Details Panel (includes API key config and models) -->
-        <div class="mt-4">
+        <div class="mt-4 flex-1 flex flex-col">
           
           <!-- Loading state for models -->
           <div
@@ -59,13 +59,13 @@
           </div>
           
           <!-- Two-column layout: Provider Sidebar + Model Panel -->
-          <div v-else class="flex gap-6 items-start">
+          <div v-else class="flex gap-6 items-stretch flex-1">
             <!-- Left Sidebar: Provider List -->
-            <div class="w-64 flex-shrink-0 bg-gray-50/50 rounded-xl overflow-hidden border border-gray-200">
+            <div class="w-64 flex-shrink-0 bg-gray-50/50 rounded-xl overflow-hidden border border-gray-200 flex flex-col">
               <div class="px-4 py-3 border-b border-gray-200/60 bg-gray-50">
                 <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Providers</span>
               </div>
-              <div class="p-2 space-y-0.5">
+              <div class="p-2 space-y-0.5 flex-1 overflow-y-auto">
                 <button
                   v-for="provider in allProvidersWithModels"
                   :key="`sidebar-${provider.name}`"
@@ -99,7 +99,7 @@
             </div>
 
             <!-- Right Panel: Models for Selected Provider -->
-            <div class="flex-1 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+            <div class="flex-1 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
               <!-- Panel Header -->
               <div 
                 class="px-5 py-4 border-b flex items-center justify-between bg-white"
@@ -155,7 +155,7 @@
               </div>
 
               <!-- Panel Content: Models by Type -->
-              <div class="px-5 py-4 bg-gray-50/30 min-h-[300px]">
+              <div class="px-5 py-4 bg-gray-50/30 flex-1 overflow-y-auto">
                 
                 <div v-if="selectedProviderLlmModels.length > 0 || selectedProviderAudioModels.length > 0 || selectedProviderImageModels.length > 0" class="mb-2"></div>
 

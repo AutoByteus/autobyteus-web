@@ -93,7 +93,7 @@
 
     <!-- Content section -->
     <div class="flex-1 overflow-auto">
-      <div class="max-w-7xl mx-auto p-6">
+      <div class="max-w-7xl mx-auto p-6 min-h-full flex flex-col">
         <ProviderAPIKeyManager v-if="activeSection === 'api-keys'" />
         <TokenUsageStatistics v-if="activeSection === 'token-usage'" />
         <ConversationHistoryManager v-if="activeSection === 'conversation-logs'" />
