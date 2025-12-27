@@ -13,7 +13,6 @@ export const GetAgentInstances = gql`
         __typename
         workspaceId
         name
-        workspaceTypeName
         config
       }
     }

@@ -86,51 +86,28 @@
                       />
                       <div class="flex-1">
                         <p class="font-semibold text-gray-800">{{ ws.name }}</p>
-                        <p class="text-sm text-gray-500 mt-1">Type: <span class="font-mono">{{ ws.workspaceTypeName }}</span></p>
                         <p class="text-xs text-gray-500 mt-1">ID: <span class="font-mono">{{ ws.workspaceId }}</span></p>
                       </div>
                     </label>
                   </div>
                 </div>
 
-                <!-- Details for 'new' mode -->
+                <!-- Details for 'new' mode - simplified to just root_path -->
                 <div v-if="configMode === 'new'" class="space-y-4">
-                  <label class="block text-sm font-medium text-gray-700">Available Workspace Types</label>
-                   <div class="space-y-3">
-                     <div
-                        v-for="type in workspaceStore.availableWorkspaceTypes"
-                        :key="type.name"
-                        @click="selectedNewWorkspaceType = type.name"
-                        :class="[
-                          'p-4 border rounded-lg cursor-pointer transition-all duration-150',
-                          selectedNewWorkspaceType === type.name
-                            ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-500'
-                            : 'bg-gray-50 border-gray-300 hover:bg-gray-100 hover:border-gray-400'
-                        ]"
-                      >
-                        <h4 class="font-semibold text-gray-800">{{ type.name }}</h4>
-                        <p class="text-sm text-gray-600 mt-1">{{ type.description }}</p>
-                      </div>
-                   </div>
-
-                    <!-- Dynamic Form Fields -->
-                    <div v-if="selectedSchema" class="space-y-4 pt-4 border-t border-gray-200">
-                        <div v-for="param in selectedSchema.parameters" :key="param.name">
-                            <label :for="`param-${param.name}`" class="block text-sm font-medium text-gray-700">
-                            {{ capitalize(param.name.replace(/_/g, ' ')) }}
-                            <span v-if="param.required" class="text-red-500">*</span>
-                            </label>
-                            <input
-                            :id="`param-${param.name}`"
-                            :type="getHtmlInputType(param.param_type)"
-                            :placeholder="param.description"
-                            v-model="formData[param.name]"
-                            :required="param.required"
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            />
-                            <p class="text-xs text-gray-500 mt-1">{{ param.description }}</p>
-                        </div>
-                    </div>
+                  <div>
+                    <label for="root-path" class="block text-sm font-medium text-gray-700">
+                      Root Path <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="root-path"
+                      type="text"
+                      placeholder="e.g., /home/user/my-project"
+                      v-model="rootPath"
+                      required
+                      class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    />
+                    <p class="text-xs text-gray-500 mt-1">The absolute path to the workspace directory.</p>
+                  </div>
                 </div>
             </div>
 
@@ -181,9 +158,8 @@ const agentLaunchProfileStore = useAgentLaunchProfileStore();
 const agentDefinitionStore = useAgentDefinitionStore();
 
 const configMode = ref<'new' | 'existing' | 'none' | null>(null);
-const selectedNewWorkspaceType = ref('');
 const selectedExistingWorkspaceId = ref('');
-const formData = ref<Record<string, any>>({});
+const rootPath = ref('');
 const error = ref<string | null>(null);
 
 const existingWorkspaces = computed(() => Object.values(workspaceStore.workspaces));
@@ -192,12 +168,12 @@ const isSubmitDisabled = computed(() => {
     if (workspaceStore.loading) return true;
     if (!configMode.value) return true;
     if (configMode.value === 'existing' && !selectedExistingWorkspaceId.value) return true;
-    if (configMode.value === 'new' && !selectedNewWorkspaceType.value) return true;
+    if (configMode.value === 'new' && !rootPath.value) return true;
     return false;
 });
 
 onMounted(async () => {
-  await workspaceStore.fetchAvailableWorkspaceTypes();
+  await workspaceStore.fetchAllWorkspaces();
   if (existingWorkspaces.value.length > 0) {
     configMode.value = 'existing';
   } else {
@@ -205,36 +181,12 @@ onMounted(async () => {
   }
 });
 
-const selectedSchema = computed(() => {
-  if (configMode.value !== 'new' || !selectedNewWorkspaceType.value) return null;
-  return workspaceStore.availableWorkspaceTypes.find(t => t.name === selectedNewWorkspaceType.value)?.config_schema;
-});
-
-watch(selectedNewWorkspaceType, (newType) => {
-  const schema = workspaceStore.availableWorkspaceTypes.find(t => t.name === newType)?.config_schema;
-  formData.value = {};
-  if (schema) {
-    for (const param of schema.parameters) {
-      formData.value[param.name] = param.default_value ?? '';
-    }
-  }
-});
-
 watch(configMode, (newMode) => {
     // Clear selections when switching modes
-    if (newMode !== 'new') selectedNewWorkspaceType.value = '';
     if (newMode !== 'existing') selectedExistingWorkspaceId.value = '';
+    if (newMode !== 'new') rootPath.value = '';
     error.value = null;
 });
-
-
-const getHtmlInputType = (paramType: string) => {
-  switch(paramType) {
-    case 'INTEGER': return 'number';
-    case 'BOOLEAN': return 'checkbox';
-    default: return 'text';
-  }
-};
 
 const handleSubmit = async () => {
   error.value = null;
@@ -251,7 +203,6 @@ const handleSubmit = async () => {
     
     let workspaceId: string | null = null;
     let workspaceName: string = '';
-    let workspaceTypeName: string = '';
     let workspaceConfig: any = {};
 
     switch (configMode.value) {
@@ -263,20 +214,18 @@ const handleSubmit = async () => {
         const existingWs = workspaceStore.workspaces[selectedExistingWorkspaceId.value];
         workspaceId = existingWs.workspaceId;
         workspaceName = existingWs.name;
-        workspaceTypeName = existingWs.workspaceTypeName;
         workspaceConfig = existingWs.workspaceConfig;
         break;
 
       case 'new':
-        if (!selectedNewWorkspaceType.value) {
-            error.value = "Please select a workspace type to create.";
+        if (!rootPath.value) {
+            error.value = "Please enter a root path.";
             return;
         }
-        workspaceTypeName = selectedNewWorkspaceType.value;
-        workspaceConfig = formData.value;
+        workspaceConfig = { root_path: rootPath.value };
 
         // Create workspace
-        workspaceId = await workspaceStore.createWorkspace(workspaceTypeName, workspaceConfig);
+        workspaceId = await workspaceStore.createWorkspace(workspaceConfig);
         const workspaceInfo = workspaceStore.workspaces[workspaceId];
         if (workspaceInfo) {
           workspaceName = workspaceInfo.name;
@@ -286,7 +235,6 @@ const handleSubmit = async () => {
       case 'none':
         workspaceId = null;
         workspaceName = 'No Workspace';
-        workspaceTypeName = 'No Workspace';
         workspaceConfig = {};
         break;
     }
@@ -296,7 +244,6 @@ const handleSubmit = async () => {
       agentDef,
       workspaceId,
       workspaceName,
-      workspaceTypeName,
       workspaceConfig
     );
     agentLaunchProfileStore.setActiveLaunchProfile(newProfile.id);
@@ -306,11 +253,5 @@ const handleSubmit = async () => {
     console.error("Failed to create workspace and launch profile:", e);
     error.value = e.message || "An unknown error occurred.";
   }
-};
-
-const capitalize = (value: string) => {
-  if (!value) return '';
-  value = value.toString();
-  return value.charAt(0).toUpperCase() + value.slice(1);
 };
 </script>

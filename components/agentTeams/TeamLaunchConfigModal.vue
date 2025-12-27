@@ -51,7 +51,7 @@
                         <div v-if="globalConfig.workspaceConfig.mode === 'existing'" class="mt-2 space-y-2">
                           <label v-for="ws in workspaceStore.allWorkspaces" :key="ws.workspaceId" class="flex items-center space-x-3 p-2 border rounded-md cursor-pointer" :class="globalConfig.workspaceConfig.existingWorkspaceId === ws.workspaceId ? 'bg-blue-100 border-blue-400' : 'bg-white'">
                              <input type="radio" v-model="globalConfig.workspaceConfig.existingWorkspaceId" :value="ws.workspaceId" class="form-radio" />
-                             <span class="text-sm font-medium">{{ ws.name }} <span class="text-xs text-gray-500 font-mono">({{ ws.workspaceTypeName }})</span></span>
+                             <span class="text-sm font-medium">{{ ws.name }}</span>
                           </label>
                         </div>
                       </div>
@@ -60,7 +60,7 @@
                       <input type="radio" v-model="globalConfig.workspaceConfig.mode" value="new" class="form-radio mt-1" />
                       <div class="flex-grow">
                         <span>Create New Workspace</span>
-                        <div v-if="globalConfig.workspaceConfig.mode === 'new'" class="mt-2">
+                        <div v-if="globalConfig.workspaceConfig.mode === 'new' && globalConfig.workspaceConfig.newWorkspaceConfig" class="mt-2">
                           <WorkspaceConfigForm v-model="globalConfig.workspaceConfig.newWorkspaceConfig" />
                         </div>
                       </div>
@@ -197,10 +197,10 @@
                                 <input type="radio" :name="`${member.memberName}-ws-mode`" :checked="getMemberOverride(member.memberName).workspaceConfig?.mode === 'existing'" @change="setMemberWorkspaceMode(member.memberName, 'existing')" :disabled="workspaceStore.allWorkspaces.length === 0" class="form-radio mt-1" />
                                 <div class="flex-grow">
                                   <span>Use an Existing Workspace</span>
-                                  <div v-if="getMemberOverride(member.memberName).workspaceConfig?.mode === 'existing'" class="mt-2 space-y-2">
+                                  <div v-if="getMemberOverride(member.memberName).workspaceConfig && getMemberOverride(member.memberName).workspaceConfig.mode === 'existing'" class="mt-2 space-y-2">
                                     <label v-for="ws in workspaceStore.allWorkspaces" :key="ws.workspaceId" class="flex items-center space-x-3 p-2 border rounded-md cursor-pointer" :class="getMemberOverride(member.memberName).workspaceConfig.existingWorkspaceId === ws.workspaceId ? 'bg-blue-100 border-blue-400' : 'bg-white'">
                                        <input type="radio" v-model="getMemberOverride(member.memberName).workspaceConfig.existingWorkspaceId" :value="ws.workspaceId" class="form-radio" />
-                                       <span class="text-sm font-medium">{{ ws.name }} <span class="text-xs text-gray-500 font-mono">({{ ws.workspaceTypeName }})</span></span>
+                                       <span class="text-sm font-medium">{{ ws.name }}</span>
                                     </label>
                                   </div>
                                 </div>
@@ -209,7 +209,7 @@
                                 <input type="radio" :name="`${member.memberName}-ws-mode`" :checked="getMemberOverride(member.memberName).workspaceConfig?.mode === 'new'" @change="setMemberWorkspaceMode(member.memberName, 'new')" class="form-radio mt-1" />
                                 <div class="flex-grow">
                                   <span>Create New Workspace</span>
-                                  <div v-if="getMemberOverride(member.memberName).workspaceConfig?.mode === 'new'" class="mt-2">
+                                  <div v-if="getMemberOverride(member.memberName).workspaceConfig?.mode === 'new' && getMemberOverride(member.memberName).workspaceConfig?.newWorkspaceConfig" class="mt-2">
                                     <WorkspaceConfigForm v-model="getMemberOverride(member.memberName).workspaceConfig.newWorkspaceConfig" />
                                   </div>
                                 </div>
@@ -385,20 +385,15 @@ const formatWorkspaceConfig = (config: WorkspaceLaunchConfig, isDefault: boolean
       const ws = workspaceStore.allWorkspaces.find(w => w.workspaceId === config.existingWorkspaceId);
       return `${prefix}Existing: ${ws?.name || 'Select...'}`;
     case 'new':
-      const typeName = config.newWorkspaceConfig?.typeName;
-      const params = config.newWorkspaceConfig?.params || {};
+      const params = config.newWorkspaceConfig;
       let detail = '';
 
-      if (typeName === 'local_workspace' && params.root_path && typeof params.root_path === 'string') {
+      if (params && params.root_path) {
         const pathParts = params.root_path.replace(/\\/g, '/').split('/').filter(Boolean);
         detail = `(.../${pathParts.pop() || '..'})`;
-      } else if (typeName === 'ssh_remote' && params.host && typeof params.host === 'string') {
-        detail = `(${params.host})`;
-      } else if (typeName && params.image && typeof params.image === 'string') {
-        detail = `(${params.image.split(':')[0]})`;
       }
 
-      return `${prefix}New: ${typeName || 'Select...'} ${detail}`;
+      return `${prefix}New: ${detail || 'Select...'}`;
     default: return 'Select...';
   }
 };
@@ -429,14 +424,8 @@ const setMemberWorkspaceMode = (memberName: string, mode: 'default' | 'none' | '
       newConfig.existingWorkspaceId = workspaceStore.allWorkspaces[0].workspaceId;
     }
     if (mode === 'new') {
-      newConfig.newWorkspaceConfig = { typeName: '', params: {} };
-      if (workspaceStore.availableWorkspaceTypes.length > 0) {
-        const defaultType = workspaceStore.availableWorkspaceTypes[0];
-        newConfig.newWorkspaceConfig.typeName = defaultType.name;
-        const newParams: Record<string, any> = {};
-        defaultType.config_schema.parameters.forEach(p => { newParams[p.name] = p.default_value ?? '' });
-        newConfig.newWorkspaceConfig.params = newParams;
-      }
+      // Single workspace type: filesystem with root_path
+      newConfig.newWorkspaceConfig = { root_path: '' };
     }
     override.workspaceConfig = newConfig;
   }
@@ -518,7 +507,7 @@ watch(() => props.show, async (isVisible) => {
 
     await Promise.all([
       llmStore.fetchProvidersWithModels(),
-      workspaceStore.fetchAvailableWorkspaceTypes(),
+      workspaceStore.fetchAllWorkspaces(),
     ]);
 
     if (!globalConfig.llmModelIdentifier && llmStore.models.length > 0) {
@@ -535,15 +524,8 @@ watch(() => props.show, async (isVisible) => {
 
 watch(() => globalConfig.workspaceConfig.mode, (newMode) => {
   if (newMode === 'new' && !globalConfig.workspaceConfig.newWorkspaceConfig) {
-    const newWorkspaceConfig = { typeName: '', params: {} };
-    if (workspaceStore.availableWorkspaceTypes.length > 0) {
-      const defaultType = workspaceStore.availableWorkspaceTypes[0];
-      newWorkspaceConfig.typeName = defaultType.name;
-      const newParams: Record<string, any> = {};
-      defaultType.config_schema.parameters.forEach(p => { newParams[p.name] = p.default_value ?? '' });
-      newWorkspaceConfig.params = newParams;
-    }
-    globalConfig.workspaceConfig.newWorkspaceConfig = newWorkspaceConfig;
+    // Single workspace type: filesystem with root_path
+    globalConfig.workspaceConfig.newWorkspaceConfig = { root_path: '' };
   }
 
   if (newMode === 'existing' && !globalConfig.workspaceConfig.existingWorkspaceId) {

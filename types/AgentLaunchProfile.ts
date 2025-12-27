@@ -6,6 +6,5 @@ export interface AgentLaunchProfile {
   agentDefinition: AgentDefinition; 
   name: string;
   createdAt: string;
-  workspaceTypeName: string;
   workspaceConfig: any;
 }

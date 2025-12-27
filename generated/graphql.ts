@@ -234,7 +234,6 @@ export type CreatePromptInput = {
 
 export type CreateWorkspaceInput = {
   config: Scalars['JSON']['input'];
-  workspaceTypeName: Scalars['String']['input'];
 };
 
 export type DeleteAgentDefinitionResult = {
@@ -728,23 +727,6 @@ export type MutationWriteFileContentArgs = {
   workspaceId: Scalars['String']['input'];
 };
 
-export type ParameterDefinition = {
-  __typename?: 'ParameterDefinition';
-  defaultValue?: Maybe<Scalars['JSON']['output']>;
-  description: Scalars['String']['output'];
-  name: Scalars['String']['output'];
-  required: Scalars['Boolean']['output'];
-  type: ParameterType;
-};
-
-export enum ParameterType {
-  Boolean = 'BOOLEAN',
-  Float = 'FLOAT',
-  Integer = 'INTEGER',
-  Json = 'JSON',
-  String = 'STRING'
-}
-
 export type ProcessorOption = {
   __typename?: 'ProcessorOption';
   isMandatory: Scalars['Boolean']['output'];
@@ -812,7 +794,6 @@ export type Query = {
   availableToolExecutionResultProcessors: Array<ProcessorOption>;
   availableToolInvocationPreprocessors: Array<ProcessorOption>;
   availableToolNames: Array<Scalars['String']['output']>;
-  availableWorkspaceDefinitions: Array<WorkspaceDefinition>;
   fileContent: Scalars['String']['output'];
   folderChildren: Scalars['String']['output'];
   getAgentConversationHistory: ConversationHistory;
@@ -1216,13 +1197,6 @@ export type UsageStatistics = {
   totalCost?: Maybe<Scalars['Float']['output']>;
 };
 
-export type WorkspaceDefinition = {
-  __typename?: 'WorkspaceDefinition';
-  configSchema: Array<ParameterDefinition>;
-  description: Scalars['String']['output'];
-  workspaceTypeName: Scalars['String']['output'];
-};
-
 export type WorkspaceInfo = {
   __typename?: 'WorkspaceInfo';
   absolutePath?: Maybe<Scalars['String']['output']>;
@@ -1230,7 +1204,6 @@ export type WorkspaceInfo = {
   fileExplorer?: Maybe<Scalars['JSON']['output']>;
   name: Scalars['String']['output'];
   workspaceId: Scalars['String']['output'];
-  workspaceTypeName: Scalars['String']['output'];
 };
 
 export type CreateAgentDefinitionMutationVariables = Exact<{
@@ -1493,7 +1466,7 @@ export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions:
 export type GetAgentInstancesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentInstancesQuery = { __typename?: 'Query', agentInstances: Array<{ __typename: 'AgentInstance', id: string, name: string, role: string, currentPhase: string, agentDefinitionId?: string | null, workspace?: { __typename: 'WorkspaceInfo', workspaceId: string, name: string, workspaceTypeName: string, config: any } | null }> };
+export type GetAgentInstancesQuery = { __typename?: 'Query', agentInstances: Array<{ __typename: 'AgentInstance', id: string, name: string, role: string, currentPhase: string, agentDefinitionId?: string | null, workspace?: { __typename: 'WorkspaceInfo', workspaceId: string, name: string, config: any } | null }> };
 
 export type GetAgentTeamDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1623,15 +1596,10 @@ export type GetToolsGroupedByCategoryQueryVariables = Exact<{
 
 export type GetToolsGroupedByCategoryQuery = { __typename?: 'Query', toolsGroupedByCategory: Array<{ __typename: 'ToolCategoryGroup', categoryName: string, tools: Array<{ __typename: 'ToolDefinitionDetail', name: string, description: string, origin: ToolOriginEnum, category: string, argumentSchema?: { __typename: 'ToolArgumentSchema', parameters: Array<{ __typename: 'ToolParameterDefinition', name: string, paramType: ToolParameterTypeEnum, description: string, required: boolean, defaultValue?: string | null, enumValues?: Array<string> | null }> } | null }> }> };
 
-export type GetAvailableWorkspaceDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
-
-
-export type GetAvailableWorkspaceDefinitionsQuery = { __typename?: 'Query', availableWorkspaceDefinitions: Array<{ __typename: 'WorkspaceDefinition', workspaceTypeName: string, description: string, configSchema: Array<{ __typename: 'ParameterDefinition', name: string, type: ParameterType, description: string, required: boolean, defaultValue?: any | null }> }> };
-
 export type GetAllWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAllWorkspacesQuery = { __typename?: 'Query', workspaces: Array<{ __typename: 'WorkspaceInfo', workspaceId: string, name: string, workspaceTypeName: string, config: any, fileExplorer?: any | null, absolutePath?: string | null }> };
+export type GetAllWorkspacesQuery = { __typename?: 'Query', workspaces: Array<{ __typename: 'WorkspaceInfo', workspaceId: string, name: string, config: any, fileExplorer?: any | null, absolutePath?: string | null }> };
 
 export type NestedTeamEventFragment = { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentOperationalPhaseTransitionData', newPhase: AgentOperationalPhase, oldPhase?: AgentOperationalPhase | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData' } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamPhaseTransitionData', newPhase: AgentTeamOperationalPhase, oldPhase?: AgentTeamOperationalPhase | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload' } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, taskId: string, newStatus: TaskStatus, agentName: string, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } | { __typename: 'GraphQLTasksCreatedEvent', teamId: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } };
 
@@ -3066,7 +3034,6 @@ export const GetAgentInstancesDocument = gql`
       __typename
       workspaceId
       name
-      workspaceTypeName
       config
     }
   }
@@ -3831,50 +3798,12 @@ export function useGetToolsGroupedByCategoryLazyQuery(variables?: GetToolsGroupe
   return VueApolloComposable.useLazyQuery<GetToolsGroupedByCategoryQuery, GetToolsGroupedByCategoryQueryVariables>(GetToolsGroupedByCategoryDocument, variables, options);
 }
 export type GetToolsGroupedByCategoryQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetToolsGroupedByCategoryQuery, GetToolsGroupedByCategoryQueryVariables>;
-export const GetAvailableWorkspaceDefinitionsDocument = gql`
-    query GetAvailableWorkspaceDefinitions {
-  availableWorkspaceDefinitions {
-    __typename
-    workspaceTypeName
-    description
-    configSchema {
-      __typename
-      name
-      type
-      description
-      required
-      defaultValue
-    }
-  }
-}
-    `;
-
-/**
- * __useGetAvailableWorkspaceDefinitionsQuery__
- *
- * To run a query within a Vue component, call `useGetAvailableWorkspaceDefinitionsQuery` and pass it any options that fit your needs.
- * When your component renders, `useGetAvailableWorkspaceDefinitionsQuery` returns an object from Apollo Client that contains result, loading and error properties
- * you can use to render your UI.
- *
- * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
- *
- * @example
- * const { result, loading, error } = useGetAvailableWorkspaceDefinitionsQuery();
- */
-export function useGetAvailableWorkspaceDefinitionsQuery(options: VueApolloComposable.UseQueryOptions<GetAvailableWorkspaceDefinitionsQuery, GetAvailableWorkspaceDefinitionsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetAvailableWorkspaceDefinitionsQuery, GetAvailableWorkspaceDefinitionsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetAvailableWorkspaceDefinitionsQuery, GetAvailableWorkspaceDefinitionsQueryVariables>> = {}) {
-  return VueApolloComposable.useQuery<GetAvailableWorkspaceDefinitionsQuery, GetAvailableWorkspaceDefinitionsQueryVariables>(GetAvailableWorkspaceDefinitionsDocument, {}, options);
-}
-export function useGetAvailableWorkspaceDefinitionsLazyQuery(options: VueApolloComposable.UseQueryOptions<GetAvailableWorkspaceDefinitionsQuery, GetAvailableWorkspaceDefinitionsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetAvailableWorkspaceDefinitionsQuery, GetAvailableWorkspaceDefinitionsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetAvailableWorkspaceDefinitionsQuery, GetAvailableWorkspaceDefinitionsQueryVariables>> = {}) {
-  return VueApolloComposable.useLazyQuery<GetAvailableWorkspaceDefinitionsQuery, GetAvailableWorkspaceDefinitionsQueryVariables>(GetAvailableWorkspaceDefinitionsDocument, {}, options);
-}
-export type GetAvailableWorkspaceDefinitionsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAvailableWorkspaceDefinitionsQuery, GetAvailableWorkspaceDefinitionsQueryVariables>;
 export const GetAllWorkspacesDocument = gql`
     query GetAllWorkspaces {
   workspaces {
     __typename
     workspaceId
     name
-    workspaceTypeName
     config
     fileExplorer
     absolutePath

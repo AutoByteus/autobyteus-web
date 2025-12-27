@@ -137,7 +137,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
         const agentState = new AgentRunState(configForMember.memberName, conversation);
         const agentConfig: AgentRunConfig = {
           launchProfileId: profile.id,
-          workspaceId: configForMember.workspaceId,
+          workspaceId: configForMember.workspaceId || null,
           llmModelIdentifier: configForMember.llmModelIdentifier,
           autoExecuteTools: configForMember.autoExecuteTools,
           parseToolCalls: true, // Team agents always parse tool calls for now
@@ -330,9 +330,9 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       if (config.mode === 'none') return null;
       if (config.mode === 'existing') return config.existingWorkspaceId || null;
       if (config.mode === 'new' && config.newWorkspaceConfig) {
-        if (!config.newWorkspaceConfig.typeName) throw new Error(`Workspace type for "${forItemName}" not selected.`);
+        // No check for typeName anymore as FileSystemWorkspace is the default and only type
         try {
-          return await workspaceStore.createWorkspace(config.newWorkspaceConfig.typeName, config.newWorkspaceConfig.params);
+          return await workspaceStore.createWorkspace(config.newWorkspaceConfig);
         } catch (e: any) {
           throw new Error(`Failed to create workspace for "${forItemName}": ${e.message}`);
         }

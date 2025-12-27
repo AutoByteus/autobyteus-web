@@ -49,7 +49,6 @@ describe('FileItem - Lazy Loading', () => {
         name: 'Test Workspace',
         fileExplorer: new TreeNode('root', 'root', false, [], 'root-id', true),
         nodeIdToNode: {},
-        workspaceTypeName: 'local',
         workspaceConfig: {},
         absolutePath: '/test/path'
       }),
@@ -57,7 +56,10 @@ describe('FileItem - Lazy Loading', () => {
     })
 
     // Mock isFolderOpen to return false initially (folder is closed)
-    fileExplorerStore.isFolderOpen = vi.fn().mockReturnValue(false)
+    Object.defineProperty(fileExplorerStore, 'isFolderOpen', {
+        value: vi.fn().mockReturnValue(false),
+        writable: true
+    })
 
     const wrapper = mount(FileItem, {
       props: { file },
@@ -85,7 +87,7 @@ describe('FileItem - Lazy Loading', () => {
     const { wrapper, fileExplorerStore, workspaceStore } = await mountComponent(unloadedFolder)
 
     // Simulate folder will be open after click
-    fileExplorerStore.isFolderOpen = vi.fn().mockReturnValue(true)
+    ;(fileExplorerStore as any).isFolderOpen = vi.fn().mockReturnValue(true)
 
     // Click on the file item (folder)
     const fileHeader = wrapper.find('.file-header')
@@ -107,7 +109,7 @@ describe('FileItem - Lazy Loading', () => {
     const { wrapper, fileExplorerStore, workspaceStore } = await mountComponent(loadedFolder)
 
     // Simulate folder will be open after click  
-    fileExplorerStore.isFolderOpen = vi.fn().mockReturnValue(true)
+    ;(fileExplorerStore as any).isFolderOpen = vi.fn().mockReturnValue(true)
 
     // Click on the file item
     const fileHeader = wrapper.find('.file-header')
@@ -126,7 +128,7 @@ describe('FileItem - Lazy Loading', () => {
     const { wrapper, fileExplorerStore, workspaceStore } = await mountComponent(unloadedFolder)
 
     // Simulate folder will be CLOSED after click (collapsing)
-    fileExplorerStore.isFolderOpen = vi.fn().mockReturnValue(false)
+    ;(fileExplorerStore as any).isFolderOpen = vi.fn().mockReturnValue(false)
 
     // Click on the file item
     const fileHeader = wrapper.find('.file-header')

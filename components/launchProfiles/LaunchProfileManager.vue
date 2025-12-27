@@ -81,9 +81,7 @@
                 <p class="text-xs text-gray-500 mt-2">
                   Created: {{ new Date(profile.createdAt).toLocaleString() }}
                 </p>
-                <p class="text-xs text-gray-500 mt-1">
-                  Workspace Type: <span class="font-mono text-xs bg-gray-100 px-1 rounded">{{ profile.workspaceTypeName }}</span>
-                </p>
+
               </div>
 
               <div class="mt-6 flex items-center justify-end space-x-3 border-t border-gray-200 pt-4">
@@ -126,9 +124,7 @@
                 <p class="text-xs text-gray-500 mt-2">
                   Created: {{ new Date(profile.createdAt).toLocaleString() }}
                 </p>
-                <p class="text-xs text-gray-500 mt-1">
-                  Workspace Type: <span class="font-mono text-xs bg-gray-100 px-1 rounded">{{ profile.workspaceTypeName }}</span>
-                </p>
+
               </div>
 
               <div class="mt-6 flex items-center justify-end space-x-3 border-t border-gray-200 pt-4">
@@ -178,7 +174,8 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-import { useAgentLaunchProfileStore, type AgentLaunchProfile, LAUNCH_PROFILE_STORAGE_KEY } from '~/stores/agentLaunchProfileStore';
+import { useAgentLaunchProfileStore, LAUNCH_PROFILE_STORAGE_KEY } from '~/stores/agentLaunchProfileStore';
+import type { AgentLaunchProfile } from '~/types/AgentLaunchProfile';
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useWorkspaceStore } from '~/stores/workspace';

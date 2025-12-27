@@ -81,7 +81,6 @@ async function handleOpenAgent(agentInstance: GetAgentInstancesQuery['agentInsta
     agentDef,
     workspace?.workspaceId || null,
     workspace?.name || 'No Workspace',
-    workspace?.workspaceTypeName || 'No Workspace',
     workspace?.config || {}
   );
   

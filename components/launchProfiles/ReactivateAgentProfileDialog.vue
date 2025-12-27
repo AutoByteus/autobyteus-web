@@ -24,10 +24,7 @@
               <p class="text-sm text-gray-600 mt-2">Create a new workspace based on the profile's saved configuration.</p>
               
               <div v-if="selectedOption === 'recreate' && launchProfile" class="mt-4 space-y-3 text-sm">
-                <div>
-                  <h5 class="font-semibold text-gray-700">Workspace Type</h5>
-                  <p class="text-gray-600 font-mono pl-1">{{ launchProfile.workspaceTypeName }}</p>
-                </div>
+
                 <div v-if="Object.keys(launchProfile.workspaceConfig || {}).length > 0">
                   <h5 class="font-semibold text-gray-700">Configuration</h5>
                   <div class="mt-1 p-3 bg-gray-50 border border-gray-200 rounded-md space-y-1 text-xs">
@@ -80,7 +77,7 @@
                         Recommended
                       </span>
                     </div>
-                    <p class="text-sm text-gray-500 font-mono">{{ ws.workspaceTypeName }}</p>
+
                     <div v-if="Object.keys(ws.workspaceConfig || {}).length > 0" class="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-700 space-y-1">
                       <div v-for="(value, key) in ws.workspaceConfig" :key="key" class="flex">
                         <span class="font-medium mr-1">{{ key }}:</span>
@@ -120,7 +117,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace';
-import type { AgentLaunchProfile } from '~/stores/agentLaunchProfileStore';
+import type { AgentLaunchProfile } from '~/types/AgentLaunchProfile';
 import type { WorkspaceInfo } from '~/stores/workspace';
 
 const props = defineProps<{  show: boolean;

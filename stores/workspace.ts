@@ -1,12 +1,11 @@
 import { defineStore } from 'pinia'
 import { useSubscription, useApolloClient } from '@vue/apollo-composable'
 import { CreateWorkspace } from '~/graphql/mutations/workspace_mutations'
-import { GetAvailableWorkspaceDefinitions, GetAllWorkspaces } from '~/graphql/queries/workspace_queries'
+import { GetAllWorkspaces } from '~/graphql/queries/workspace_queries'
 import { FileSystemChangedSubscription } from '~/graphql/subscriptions/fileSystemSubscription'
 import type {
   CreateWorkspaceMutation,
   CreateWorkspaceMutationVariables,
-  GetAvailableWorkspaceDefinitionsQuery,
   GetAllWorkspacesQuery,
   FileSystemChangedSubscription as FileSystemChangedSubscriptionResult,
   FileSystemChangedSubscriptionVariables,
@@ -39,14 +38,12 @@ export interface WorkspaceInfo {
   name: string;
   fileExplorer: TreeNode;
   nodeIdToNode: Record<string, TreeNode>;
-  workspaceTypeName: string;
   workspaceConfig: any;
   absolutePath: string | null;
 }
 
 interface WorkspaceState {
   workspaces: Record<string, WorkspaceInfo>;
-  availableWorkspaceTypes: WorkspaceType[];
   loading: boolean;
   error: any;
   workspacesFetched: boolean;
@@ -56,14 +53,13 @@ interface WorkspaceState {
 export const useWorkspaceStore = defineStore('workspace', {
   state: (): WorkspaceState => ({
     workspaces: {},
-    availableWorkspaceTypes: [],
     loading: false,
     error: null,
     workspacesFetched: false,
     fileSystemSubscriptions: new Map(),
   }),
   actions: {    
-    async createWorkspace(workspaceTypeName: string, config: Record<string, any>): Promise<string> {
+    async createWorkspace(config: Record<string, any>): Promise<string> {
       this.loading = true;
       this.error = null;
       const { client } = useApolloClient();
@@ -72,7 +68,6 @@ export const useWorkspaceStore = defineStore('workspace', {
           mutation: CreateWorkspace,
           variables: {
             input: {
-              workspaceTypeName: workspaceTypeName,
               config: config
             }
           }
@@ -93,7 +88,6 @@ export const useWorkspaceStore = defineStore('workspace', {
             name: newWorkspace.name,
             fileExplorer: treeNode,
             nodeIdToNode: nodeIdToNode,
-            workspaceTypeName: workspaceTypeName,
             workspaceConfig: config,
             absolutePath: newWorkspace.absolutePath,
           };
@@ -109,44 +103,6 @@ export const useWorkspaceStore = defineStore('workspace', {
         this.error = e;
         console.error('Error creating workspace:', e);
         throw e;
-      } finally {
-        this.loading = false;
-      }
-    },
-    async fetchAvailableWorkspaceTypes() {
-      if (this.availableWorkspaceTypes.length > 0) return;
-      this.loading = true;
-      this.error = null;
-      try {
-        const { client } = useApolloClient();
-        const { data, errors } = await client.query<GetAvailableWorkspaceDefinitionsQuery>({
-          query: GetAvailableWorkspaceDefinitions,
-          fetchPolicy: 'network-only',
-        });
-
-        if (errors && errors.length > 0) {
-          throw new Error(errors.map(e => e.message).join(', '));
-        }
-
-        if (data?.availableWorkspaceDefinitions) {
-          this.availableWorkspaceTypes = data.availableWorkspaceDefinitions.map(def => ({
-            name: def.workspaceTypeName,
-            description: def.description,
-            config_schema: {
-              parameters: def.configSchema.map(param => ({
-                name: param.name,
-                param_type: param.type,
-                description: param.description,
-                required: param.required,
-                default_value: param.defaultValue,
-              }))
-            }
-          }));
-        }
-      } catch (error: any) {
-        console.error("Failed to fetch available workspace types:", error);
-        this.error = error;
-        throw error;
       } finally {
         this.loading = false;
       }
@@ -175,7 +131,6 @@ export const useWorkspaceStore = defineStore('workspace', {
               name: ws.name,
               fileExplorer: treeNode,
               nodeIdToNode: nodeIdToNode,
-              workspaceTypeName: ws.workspaceTypeName,
               workspaceConfig: ws.config,
               absolutePath: ws.absolutePath,
             };

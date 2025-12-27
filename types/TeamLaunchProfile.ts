@@ -20,8 +20,7 @@ export interface WorkspaceLaunchConfig {
   
   // The configuration needed to create a new workspace if mode is 'new'.
   newWorkspaceConfig?: {
-    typeName: string;
-    params: Record<string, any>;
+    root_path: string;
   };
 }
 

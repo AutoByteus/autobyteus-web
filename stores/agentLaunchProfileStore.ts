@@ -8,7 +8,6 @@ import type { AgentLaunchProfile } from '~/types/AgentLaunchProfile';
 interface AgentLaunchProfileState {
   activeLaunchProfiles: Record<string, AgentLaunchProfile>;
   inactiveLaunchProfiles: Record<string, AgentLaunchProfile>;
-  // activeProfileId is now managed by useSelectedLaunchProfileStore
 }
 
 export const LAUNCH_PROFILE_STORAGE_KEY = 'autobyteus-agent-launch-profiles';
@@ -50,7 +49,6 @@ export const useAgentLaunchProfileStore = defineStore('agentLaunchProfile', {
       agentDefinition: AgentDefinition, 
       workspaceId: string | null, 
       workspaceName: string, 
-      workspaceTypeName: string, 
       workspaceConfig: any
     ): AgentLaunchProfile {
       const sanitizedConfig = JSON.parse(JSON.stringify(workspaceConfig));
@@ -61,7 +59,6 @@ export const useAgentLaunchProfileStore = defineStore('agentLaunchProfile', {
         workspaceId,
         name: workspaceId ? `${agentDefinition.name} @ ${workspaceName}` : `${agentDefinition.name} @ No Workspace`,
         createdAt: new Date().toISOString(),
-        workspaceTypeName,
         workspaceConfig: sanitizedConfig,
       };
 
@@ -99,13 +96,13 @@ export const useAgentLaunchProfileStore = defineStore('agentLaunchProfile', {
         return false;
       }
       
-      if (!profileToRestore.workspaceTypeName || !profileToRestore.workspaceConfig) {
+      if (!profileToRestore.workspaceConfig) {
         alert(`Cannot restore profile "${profileToRestore.name}". This profile has invalid data.`);
         return false;
       }
       
       try {
-        const newWorkspaceId = await workspaceStore.createWorkspace(profileToRestore.workspaceTypeName, profileToRestore.workspaceConfig);
+        const newWorkspaceId = await workspaceStore.createWorkspace(profileToRestore.workspaceConfig);
         const newWorkspace = workspaceStore.workspaces[newWorkspaceId];
 
         if (newWorkspace) {
@@ -144,7 +141,6 @@ export const useAgentLaunchProfileStore = defineStore('agentLaunchProfile', {
 
       profileToAttach.workspaceId = targetWorkspace.workspaceId;
       profileToAttach.name = `${profileToAttach.agentDefinition.name} @ ${targetWorkspace.name}`;
-      profileToAttach.workspaceTypeName = targetWorkspace.workspaceTypeName;
       profileToAttach.workspaceConfig = targetWorkspace.workspaceConfig;
 
       this.activeLaunchProfiles[profileId] = profileToAttach;
