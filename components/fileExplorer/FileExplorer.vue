@@ -36,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted } from 'vue';
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import FileItem from "~/components/fileExplorer/FileItem.vue";
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
@@ -61,8 +61,26 @@ const displayedFiles = computed(() => {
   }
 });
 
-watch(searchQuery, () => {
-  fileExplorerStore.searchFiles(searchQuery.value);
+// Debounce timer for search
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+watch(searchQuery, (newQuery) => {
+  // Clear previous timer
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer);
+  }
+  
+  // Debounce 300ms before triggering search
+  searchDebounceTimer = setTimeout(() => {
+    fileExplorerStore.searchFiles(newQuery);
+  }, 300);
+});
+
+// Cleanup timer on unmount
+onUnmounted(() => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer);
+  }
 });
 
 watch(activeWorkspace, (newWorkspace) => {
