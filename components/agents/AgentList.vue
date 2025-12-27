@@ -26,6 +26,42 @@
         </div>
       </div>
 
+      <!-- Delete Result Message -->
+      <div v-if="deleteResult" class="mb-6">
+        <div 
+          class="p-4 rounded-lg" 
+          :class="deleteResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'"
+        >
+          <div class="flex items-start">
+            <div class="flex-shrink-0">
+              <svg v-if="deleteResult.success" class="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+              </svg>
+              <svg v-else class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium">{{ deleteResult.message }}</p>
+            </div>
+            <div class="ml-auto pl-3">
+              <div class="-mx-1.5 -my-1.5">
+                <button 
+                  @click="clearDeleteResult"
+                  class="inline-flex bg-transparent rounded-md p-1.5"
+                  :class="deleteResult.success ? 'text-green-600 hover:bg-green-100' : 'text-red-600 hover:bg-red-100'"
+                >
+                  <span class="sr-only">Dismiss</span>
+                  <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Single Box Search Filter -->
       <div class="mb-6">
         <div class="relative">
@@ -84,7 +120,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useAgentDefinitionStore, type AgentDefinition } from '~/stores/agentDefinitionStore';
 import AgentCard from '~/components/agents/AgentCard.vue';
 import WorkspaceConfigModal from '~/components/workspace/config/WorkspaceConfigModal.vue';
@@ -92,6 +129,7 @@ import WorkspaceConfigModal from '~/components/workspace/config/WorkspaceConfigM
 const emit = defineEmits(['navigate']);
 
 const agentDefinitionStore = useAgentDefinitionStore();
+const { deleteResult } = storeToRefs(agentDefinitionStore);
 
 const agentDefinitions = computed(() => agentDefinitionStore.agentDefinitions);
 const loading = computed(() => agentDefinitionStore.loading);
@@ -100,6 +138,22 @@ const error = computed(() => agentDefinitionStore.error);
 const selectedAgent = ref<AgentDefinition | null>(null);
 const searchQuery = ref('');
 const reloading = ref(false);
+
+// Timer for auto-dismissing delete notification
+let deleteNotificationTimer: number | null = null;
+
+// Watch for delete result and auto-dismiss after 5 seconds
+watch(deleteResult, (newResult) => {
+  if (newResult) {
+    if (deleteNotificationTimer) clearTimeout(deleteNotificationTimer);
+    deleteNotificationTimer = window.setTimeout(() => agentDefinitionStore.clearDeleteResult(), 5000);
+  }
+});
+
+const clearDeleteResult = () => {
+  if (deleteNotificationTimer) clearTimeout(deleteNotificationTimer);
+  agentDefinitionStore.clearDeleteResult();
+};
 
 const filteredAgentDefinitions = computed(() => {
   if (!searchQuery.value) {
@@ -143,4 +197,8 @@ const onWorkspaceCreated = () => {
   selectedAgent.value = null; // Close the modal
   navigateTo('/workspace'); // Navigate to the workspace view
 };
+
+onBeforeUnmount(() => {
+  if (deleteNotificationTimer) clearTimeout(deleteNotificationTimer);
+});
 </script>

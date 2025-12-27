@@ -62,6 +62,11 @@ export interface UpdateAgentDefinitionInput {
   phaseHookNames?: string[];
 }
 
+interface DeleteResult {
+  success: boolean;
+  message: string;
+}
+
 interface AgentDefinitionState {
   agentDefinitions: AgentDefinition[];
   loading: boolean;
@@ -72,6 +77,7 @@ export const useAgentDefinitionStore = defineStore('agentDefinition', () => {
   const agentDefinitions = ref<AgentDefinition[]>([]);
   const loading = ref(false);
   const error = ref<any>(null);
+  const deleteResult = ref<DeleteResult | null>(null);
   const { client } = useApolloClient();
 
   // --- ACTIONS ---
@@ -197,37 +203,29 @@ export const useAgentDefinitionStore = defineStore('agentDefinition', () => {
   }
   
   // Delete an agent definition
-  async function deleteAgentDefinition(id: string): Promise<boolean> {
+  async function deleteAgentDefinition(id: string): Promise<DeleteResult | null> {
+    // Clear any previous delete result to prevent stale notifications
+    deleteResult.value = null;
     try {
       const { data, errors } = await client.mutate({
         mutation: DeleteAgentDefinition,
         variables: { id },
-        update: (cache) => {
-          // This function handles the optimistic update of the Apollo cache.
-          const normalizedId = cache.identify({ __typename: 'AgentDefinition', id });
-          cache.evict({ id: normalizedId });
-          cache.gc();
-
-          cache.modify({
-            fields: {
-              agentDefinitions(existingDefsRefs = [], { readField }) {
-                return existingDefsRefs.filter(defRef => readField('id', defRef) !== id);
-              },
-            },
-          });
-        }
+        refetchQueries: [{ query: GetAgentDefinitions }]
       });
 
       if (errors && errors.length > 0) {
         throw new Error(errors.map(e => e.message).join(', '));
       }
 
-      if (data?.deleteAgentDefinition?.success) {
-        // Update local Pinia state now that the operation is confirmed by the server.
-        agentDefinitions.value = agentDefinitions.value.filter(def => def.id !== id);
-        return true;
+      if (data?.deleteAgentDefinition) {
+        deleteResult.value = data.deleteAgentDefinition;
+        if (data.deleteAgentDefinition.success) {
+          // Update local Pinia state now that the operation is confirmed by the server.
+          agentDefinitions.value = agentDefinitions.value.filter(def => def.id !== id);
+        }
+        return data.deleteAgentDefinition;
       }
-      return false;
+      return null;
     } catch (e) {
       error.value = e;
       console.error("Failed to delete agent definition:", e);
@@ -235,23 +233,31 @@ export const useAgentDefinitionStore = defineStore('agentDefinition', () => {
     }
   }
 
+  function clearDeleteResult() {
+    deleteResult.value = null;
+  }
+
   // --- GETTERS ---
   const getAgentDefinitionById = computed(() => {
     return (id: string) => agentDefinitions.value.find(def => def.id === id);
   });
+  const getDeleteResult = computed(() => deleteResult.value);
 
   return {
     // State
     agentDefinitions,
     loading,
     error,
+    deleteResult,
     // Actions
     fetchAllAgentDefinitions,
     reloadAllAgentDefinitions,
     createAgentDefinition,
     updateAgentDefinition,
     deleteAgentDefinition,
+    clearDeleteResult,
     // Getters
     getAgentDefinitionById,
+    getDeleteResult,
   };
 });
