@@ -1,13 +1,17 @@
 # AutoByteus Web Frontend
+
 A modern web application built with Nuxt.js, featuring both web and electron builds.
 
 ## Prerequisites
+
 - Node.js (v16 or higher)
 - Yarn package manager
 - Git
 
 ## Environment Setup
+
 Create a `.env` file in the root directory with the following variables:
+
 ```env
 # GraphQL endpoint
 NUXT_PUBLIC_GRAPHQL_BASE_URL=http://localhost:8000/graphql
@@ -20,15 +24,19 @@ NUXT_PUBLIC_WS_BASE_URL=ws://localhost:8000/graphql
 > **Note for Electron App**: When running as an Electron application with the integrated backend server, these endpoint URLs are automatically configured with the dynamically allocated port.
 
 ## Server Modes
+
 AutoByteus supports two server operation modes: internal and external.
 
 ### Internal Server
+
 The internal server is a bundled backend server that runs within the Electron application. This mode is:
+
 - **Default for desktop applications** (Electron builds)
 - Completely self-contained with no additional setup required
 - Automatically started and managed by the application
 
 #### Data Storage Location
+
 The internal server stores its data in the following locations based on your operating system:
 
 - **Windows**: `C:\Users\<username>\AppData\Roaming\autobyteus\server-data`
@@ -36,12 +44,15 @@ The internal server stores its data in the following locations based on your ope
 - **Linux**: `~/.config/autobyteus/server-data`
 
 These directories contain:
+
 - `db/`: Database files
 - `logs/`: Server log files
 - `download/`: Downloaded content
 
 #### Configuration
+
 No additional configuration is needed for internal server mode. The application automatically:
+
 - Finds an available port
 - Starts the server
 - Configures the frontend to connect to it
@@ -49,7 +60,9 @@ No additional configuration is needed for internal server mode. The application 
 You can force the application to use external server mode by setting `USE_INTERNAL_SERVER=false` in your environment.
 
 ### External Server
+
 The external server mode connects to a separately running AutoByteus server. This mode is:
+
 - **Default for web-based development** (browser mode)
 - Requires a separately installed and running backend server
 - Configured through environment variables
@@ -57,34 +70,47 @@ The external server mode connects to a separately running AutoByteus server. Thi
 To use external server mode, ensure your `.env` file contains the correct URLs for your server as shown in the Environment Setup section.
 
 ## Installation
+
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd autobyteus-web
 ```
+
 2. Install dependencies:
+
 ```bash
 yarn install
 ```
 
 ## Development
+
 ### Web Development (Browser-based)
+
 Start the development server:
+
 ```bash
 yarn dev
 ```
+
 The application will be available at `http://localhost:3000` in your web browser. Use this command for normal frontend development when you want to work on the web version of the application.
 
 ## Building
+
 ### Web Build
+
 For deploying the web version:
+
 ```bash
 yarn build
 yarn preview  # To preview the build
 ```
 
 ### Desktop Application Build
+
 To build the desktop application, use the appropriate command for your operating system:
+
 ```bash
 # For Linux
 yarn build:electron:linux
@@ -93,16 +119,20 @@ yarn build:electron:windows
 # For macOS
 yarn build:electron:mac
 ```
+
 The built applications will be available in the `dist` directory. Use these commands when you want to create a standalone desktop application for distribution.
 
 ### Desktop Application with Integrated Backend
+
 The Electron application includes the AutoByteus backend server, which is automatically started when the application launches.
 
 #### Preparing the Server
+
 Before building the Electron application with the integrated server:
 
 1. Ensure the AutoByteus server repository is available at `../autobyteus-server` (relative to this project) or specify the path in the prepare-server script
 2. Run the prepare-server script to copy the server files:
+
 ```bash
 yarn prepare-server
 ```
@@ -110,7 +140,9 @@ yarn prepare-server
 This script copies the built backend server and its configurations to the `resources/server` directory.
 
 #### Building with Integrated Server
+
 The standard build commands for Electron automatically include the backend server:
+
 ```bash
 # For Linux with integrated server
 yarn build:electron:linux
@@ -121,7 +153,9 @@ yarn build:electron:mac
 ```
 
 #### Dynamic Port Allocation
+
 When the Electron application starts, it:
+
 1. Finds an available port on the system
 2. Starts the backend server on that port
 3. Automatically configures the frontend to connect to the server on the allocated port
@@ -130,45 +164,86 @@ When the Electron application starts, it:
 This ensures the application works even if the default port (8000) is already in use on the system.
 
 ## Testing
-Run all tests:
+
+This project uses [Vitest](https://vitest.dev/) for testing with the Nuxt test utilities.
+
+### Test Organization (Best Practice)
+
+Tests are **colocated** with source files in `__tests__` directories:
+
+```
+utils/
+  fileExplorer/
+    TreeNode.ts
+    __tests__/
+      treeNode.test.ts    # Tests for TreeNode.ts
+components/
+  fileExplorer/
+    FileItem.vue
+    __tests__/
+      FileItem.spec.ts    # Tests for FileItem.vue
+```
+
+This keeps tests close to the code they test, making them easier to find and maintain.
+
+### Running Tests
+
 ```bash
+# Run ALL tests (nuxt + electron)
 yarn test
+
+# Run only Nuxt tests (recommended for most development)
+yarn test:nuxt
+
+# Run only Electron tests
+yarn test:electron
 ```
 
-### Running Specific Tests
-To run all tests in a specific test file:
-```bash
-yarn test utils/aiResponseParser/tool_parsing_strategies/__tests__/xmlToolParsingStrategy.spec.ts
+### Running Specific Test Files
 
-```
-To run a specific test within a file:
-```bash
-# Run a specific test by description
-yarn test "tests/unit/utils/aiResponseParser/aiResponseSegmentParser.test.ts" -t "should parse text without implementation tags"
-# Run all tests matching a pattern
-yarn test "tests/unit/utils/aiResponseParser/aiResponseSegmentParser.test.ts" -t "should parse text"
-```
+Use `yarn test:nuxt` with the file path to run specific tests:
 
-### Component Testing Example (Provider API Manager)
-The Provider API Manager screen includes a Vitest component spec at `components/settings/__tests__/ProviderAPIKeyManager.spec.ts`. It mounts the component with a testing Pinia store to verify the LLM and audio model sections render correctly.
-
-Run just this spec:
 ```bash
-yarn test components/settings/__tests__/ProviderAPIKeyManager.spec.ts --run
+# Run a specific test file
+yarn test:nuxt utils/fileExplorer/__tests__/treeNode.test.ts --run
+
+# Run component tests
+yarn test:nuxt components/fileExplorer/__tests__/FileItem.spec.ts --run
+
+# Run with pattern matching (all files matching path)
+yarn test:nuxt components/settings --run
 ```
 
-If your environment limits worker processes (e.g., containers without thread support), force a single-thread run:
+> **Note**: Use `--run` flag to run once and exit (non-watch mode).
+
+### Running Specific Test Cases
+
 ```bash
-yarn test components/settings/__tests__/ProviderAPIKeyManager.spec.ts --run --pool threads --maxWorkers 1 --no-file-parallelism --no-isolate
+# Run tests matching a description
+yarn test:nuxt utils/fileExplorer/__tests__/treeNode.test.ts -t "childrenLoaded" --run
+
+# Run with verbose output
+yarn test:nuxt components/fileExplorer/__tests__/FileItem.spec.ts --run --reporter=verbose
+```
+
+### Performance Tips
+
+If your environment limits worker processes (e.g., containers):
+
+```bash
+yarn test:nuxt components/settings/__tests__/ProviderAPIKeyManager.spec.ts --run --pool threads --maxWorkers 1 --no-file-parallelism --no-isolate
 ```
 
 ## GraphQL Codegen
+
 Generate TypeScript types from GraphQL schema:
+
 ```bash
 yarn codegen
 ```
 
 ## Available Scripts
+
 - `yarn dev`: Start development server (browser-based)
 - `yarn build`: Build for web production
 - `yarn test`: Run tests
@@ -180,6 +255,7 @@ yarn codegen
 - `yarn codegen`: Generate GraphQL types
 
 ## Project Structure
+
 - `components/`: Vue components
 - `pages/`: Application pages and routing
 - `store/`: Pinia stores
