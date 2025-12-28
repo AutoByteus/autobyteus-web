@@ -2,6 +2,7 @@
   <div class="file-explorer flex flex-col h-full pt-4 group">
     <div v-if="activeWorkspace" class="mb-4 px-2 flex items-center justify-between gap-2">
       <input
+        ref="searchInputRef"
         v-model="searchQuery"
         type="text"
         placeholder="Search files..."
@@ -36,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
+import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import FileItem from "~/components/fileExplorer/FileItem.vue";
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
@@ -46,6 +47,7 @@ const workspaceStore = useWorkspaceStore();
 const fileExplorerStore = useFileExplorerStore();
 const layoutStore = useWorkspaceLeftPanelLayoutStore();
 const searchQuery = ref('');
+const searchInputRef = ref<HTMLInputElement | null>(null);
 
 const closePanel = () => layoutStore.closePanel('fileExplorer');
 
@@ -70,10 +72,19 @@ watch(searchQuery, (newQuery) => {
     clearTimeout(searchDebounceTimer);
   }
   
-  // Debounce 300ms before triggering search
+  // Debounce 500ms before triggering search (industry best practice for detecting typing completion)
   searchDebounceTimer = setTimeout(() => {
     fileExplorerStore.searchFiles(newQuery);
-  }, 300);
+  }, 500);
+});
+
+// Restore focus to search input after displayedFiles changes (prevents focus loss during re-render)
+watch(displayedFiles, () => {
+  if (document.activeElement === searchInputRef.value) {
+    nextTick(() => {
+      searchInputRef.value?.focus();
+    });
+  }
 });
 
 // Cleanup timer on unmount

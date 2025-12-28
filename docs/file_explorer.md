@@ -244,6 +244,194 @@ class TreeNode {
 }
 ```
 
+## File Search
+
+The File Search feature enables users to quickly find files within a workspace by typing a search query. It uses fuzzy matching on the backend (via `rapidfuzz`) and displays results as clickable file items.
+
+### Architecture
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant FileExplorer as FileExplorer.vue
+    participant Timer as Debounce Timer
+    participant Store as fileExplorer.ts
+    participant GraphQL as Apollo Client
+    participant Backend as autobyteus-server
+
+    User->>FileExplorer: Types search query
+    FileExplorer->>Timer: Start/Reset 300ms timer
+    Timer-->>FileExplorer: Timer fires
+    FileExplorer->>Store: searchFiles(query)
+
+    Note over Store: Cancel previous request<br/>if still in-flight
+    Store->>Store: Set searchLoading=true
+    Store->>GraphQL: query SearchFiles
+    GraphQL->>Backend: GraphQL request
+    Backend-->>GraphQL: Array of file paths
+    GraphQL-->>Store: Response data
+    Store->>Store: Convert paths to TreeNodes
+    Store->>Store: Set searchResults, searchLoading=false
+    Store-->>FileExplorer: Reactive state update
+    FileExplorer->>User: Display search results
+```
+
+### State Management
+
+Search state is maintained per-workspace within `WorkspaceFileExplorerState`:
+
+```typescript
+interface WorkspaceFileExplorerState {
+  // ... other fields ...
+
+  // State for file search
+  searchResults: TreeNode[]; // Array of matching file nodes
+  searchLoading: boolean; // True while request is in-flight
+  searchError: string | null; // Error message if search fails
+  searchAbortController: AbortController | null; // For request cancellation
+}
+```
+
+**Getters (in `fileExplorer.ts`):**
+
+| Getter             | Returns          | Description                           |
+| ------------------ | ---------------- | ------------------------------------- |
+| `getSearchResults` | `TreeNode[]`     | Array of matching file nodes          |
+| `isSearchLoading`  | `boolean`        | True if a search request is in-flight |
+| `getSearchError`   | `string \| null` | Error message if search failed        |
+
+### Key Features
+
+#### 1. Debounced Input (300ms)
+
+To avoid overwhelming the backend with requests on every keystroke, the UI debounces the search input:
+
+```typescript
+// FileExplorer.vue
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+watch(searchQuery, (newQuery) => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer);
+  }
+
+  searchDebounceTimer = setTimeout(() => {
+    fileExplorerStore.searchFiles(newQuery);
+  }, 300);
+});
+```
+
+#### 2. Request Cancellation (AbortController)
+
+If a new search is triggered while a previous request is still in-flight, the previous request is cancelled to prevent stale results from overwriting newer ones:
+
+```typescript
+// fileExplorer.ts - searchFiles action
+async searchFiles(query: string) {
+  const wsState = this._getOrCreateCurrentWorkspaceState();
+
+  // Cancel any previous in-flight search request
+  if (wsState.searchAbortController) {
+    wsState.searchAbortController.abort();
+  }
+  wsState.searchAbortController = new AbortController();
+
+  // Pass signal to Apollo Client
+  const { data } = await client.query({
+    query: SearchFiles,
+    variables: { workspaceId, query },
+    context: {
+      fetchOptions: {
+        signal: wsState.searchAbortController.signal
+      }
+    }
+  });
+  // ...
+}
+```
+
+#### 3. TreeNode Conversion
+
+Search results from the backend are file paths. The frontend converts these to `TreeNode` objects so they can be rendered by the same `FileItem.vue` component used for the directory tree:
+
+```typescript
+wsState.searchResults = matchedPaths.map((filePath) => {
+  // First try to find existing node in the tree (for proper metadata)
+  const existingNode = findFileByPath(
+    workspaceStore.currentWorkspaceTree?.children || [],
+    filePath
+  );
+  if (existingNode) return existingNode;
+
+  // If not in tree (due to lazy loading), create a simple TreeNode
+  const fileName = filePath.split("/").pop() || filePath;
+  return new TreeNode(
+    fileName, // name
+    filePath, // path
+    true, // is_file
+    [], // children
+    `search-${filePath}`, // unique id for search results
+    true // childrenLoaded
+  );
+});
+```
+
+### UI Component (FileExplorer.vue)
+
+The search input and results display are integrated into the main file explorer panel:
+
+```vue
+<template>
+  <div class="file-explorer">
+    <!-- Search input -->
+    <input v-model="searchQuery" type="text" placeholder="Search files..." />
+
+    <!-- Results display -->
+    <div v-if="searchLoading">Loading search results...</div>
+    <div v-else-if="displayedFiles.length === 0 && searchQuery">
+      No files match your search.
+    </div>
+    <div v-else>
+      <FileItem v-for="file in displayedFiles" :key="file.id" :file="file" />
+    </div>
+  </div>
+</template>
+
+<script setup>
+const displayedFiles = computed(() => {
+  if (searchQuery.value) {
+    return fileExplorerStore.getSearchResults; // Show search results
+  } else {
+    return workspaceStore.currentWorkspaceTree?.children || []; // Show tree
+  }
+});
+</script>
+```
+
+### Usage Example
+
+```typescript
+const fileExplorerStore = useFileExplorerStore();
+
+// Search for files
+await fileExplorerStore.searchFiles("utils");
+
+// Access results
+const results = fileExplorerStore.getSearchResults;
+const isLoading = fileExplorerStore.isSearchLoading;
+const error = fileExplorerStore.getSearchError;
+```
+
+### Backend Integration
+
+The frontend sends a `SearchFiles` GraphQL query which the backend handles using a fuzzy search strategy (default: `RapidfuzzSearchStrategy`). See [autobyteus-server/docs/modules/file_explorer.md](../../autobyteus-server/docs/modules/file_explorer.md) for backend implementation details including:
+
+- Search strategy pattern (allowing different search algorithms)
+- Fuzzy matching using `rapidfuzz` library
+- File name index building for performance
+
+---
+
 ## GraphQL API
 
 ### Queries
