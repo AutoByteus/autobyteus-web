@@ -148,7 +148,7 @@ const componentLists = [
   { title: 'System Prompt Processors', key: 'systemPromptProcessorNames' },
   { title: 'Tool Result Processors', key: 'toolExecutionResultProcessorNames' },
   { title: 'Tool Invocation Preprocessors', key: 'toolInvocationPreprocessorNames' },
-  { title: 'Phase Hooks', key: 'phaseHookNames' },
+  { title: 'Lifecycle Processors', key: 'lifecycleProcessorNames' },
 ];
 
 onMounted(async () => {

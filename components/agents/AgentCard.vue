@@ -70,7 +70,7 @@ const allSkills = computed(() => [
   ...(agentDef.value.llmResponseProcessorNames || []),
   ...(agentDef.value.systemPromptProcessorNames || []),
   ...(agentDef.value.toolExecutionResultProcessorNames || []),
-  ...(agentDef.value.phaseHookNames || []),
+  ...(agentDef.value.lifecycleProcessorNames || []),
 ]);
 
 const visibleTools = computed(() => (agentDef.value.toolNames || []).slice(0, MAX_TAGS));

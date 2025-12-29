@@ -13,7 +13,7 @@ export interface AgentTeamContext {
   launchProfile: TeamLaunchProfile;
   members: Map<string, AgentContext>;
   focusedMemberName: string;
-  currentPhase: string;
+  currentStatus: string;
   isSubscribed: boolean;
   unsubscribe?: () => void;
   taskPlan: Task[] | null;

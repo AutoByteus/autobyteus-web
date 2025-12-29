@@ -11,7 +11,7 @@ interface PromptCategory {
 }
 
 export interface ProcessorOption {
-  __typename?: 'ProcessorOption' | 'HookOption';
+  __typename?: 'ProcessorOption';
   name: string;
   isMandatory: boolean;
 }
@@ -24,7 +24,7 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
   const systemPromptProcessors = ref<ProcessorOption[]>([]);
   const toolExecutionResultProcessors = ref<ProcessorOption[]>([]);
   const toolInvocationPreprocessors = ref<ProcessorOption[]>([]);
-  const phaseHooks = ref<ProcessorOption[]>([]);
+  const lifecycleProcessors = ref<ProcessorOption[]>([]);
   const promptCategories = ref<PromptCategory[]>([]);
   
   const loading = ref(false);
@@ -52,7 +52,7 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
         toolExecutionResultProcessors.value = data.availableToolExecutionResultProcessors || [];
         // The generated type may lag behind the schema; cast to any for the new field.
         toolInvocationPreprocessors.value = (data as any).availableToolInvocationPreprocessors || [];
-        phaseHooks.value = data.availablePhaseHooks || [];
+        lifecycleProcessors.value = (data as any).availableLifecycleProcessors || [];
         promptCategories.value = data.availablePromptCategories || [];
       }
     } catch (e) {
@@ -71,7 +71,7 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
     systemPromptProcessors,
     toolExecutionResultProcessors,
     toolInvocationPreprocessors,
-    phaseHooks,
+    lifecycleProcessors,
     promptCategories,
     loading,
     error,

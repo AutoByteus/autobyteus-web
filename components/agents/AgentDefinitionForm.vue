@@ -186,7 +186,7 @@ const componentFields = computed(() => [
   { name: 'system_prompt_processor_names', camelCase: 'systemPromptProcessorNames', label: 'System Prompt Processors', placeholder: 'Add custom processors...', helpText: 'Customize processors that build the system prompt.' },
   { name: 'tool_execution_result_processor_names', camelCase: 'toolExecutionResultProcessorNames', label: 'Tool Result Processors', placeholder: 'Add custom processors...', helpText: 'Customize processors that handle tool results.' },
   { name: 'tool_invocation_preprocessor_names', camelCase: 'toolInvocationPreprocessorNames', label: 'Tool Invocation Preprocessors', placeholder: 'Add preprocessors...', helpText: 'Run before a tool executes (e.g., resolve media paths).' },
-  { name: 'phase_hook_names', camelCase: 'phaseHookNames', label: 'Phase Hooks', placeholder: 'Add custom hooks...', helpText: 'Customize hooks that trigger on agent phase changes.' },
+  { name: 'lifecycle_processor_names', camelCase: 'lifecycleProcessorNames', label: 'Lifecycle Processors', placeholder: 'Add custom processors...', helpText: 'Attach processors triggered by agent lifecycle events (e.g. AGENT_READY).' },
 ]);
 
 const toolSource = computed((): GroupedSource => {
@@ -213,7 +213,7 @@ const getComponentSource = (fieldName: string): GroupedSource | FlatSource => {
     'system_prompt_processor_names': 'systemPromptProcessors',
     'tool_execution_result_processor_names': 'toolExecutionResultProcessors',
     'tool_invocation_preprocessor_names': 'toolInvocationPreprocessors',
-    'phase_hook_names': 'phaseHooks',
+    'lifecycle_processor_names': 'lifecycleProcessors',
   };
   const key = storeKeyMap[fieldName];
   const tags = optionsStore[key] as ProcessorOption[] | undefined;
@@ -268,8 +268,8 @@ watch(() => optionsStore.loading, (isLoading) => {
     if (formData.tool_invocation_preprocessor_names.length === 0) {
       formData.tool_invocation_preprocessor_names = optionsStore.toolInvocationPreprocessors.filter(p => p.isMandatory).map(p => p.name);
     }
-    if (formData.phase_hook_names.length === 0) {
-      formData.phase_hook_names = optionsStore.phaseHooks.filter(p => p.isMandatory).map(p => p.name);
+    if (formData.lifecycle_processor_names.length === 0) {
+      formData.lifecycle_processor_names = optionsStore.lifecycleProcessors.filter(p => p.isMandatory).map(p => p.name);
     }
   }
 });
@@ -309,7 +309,7 @@ function resetToDefaults(fieldName: string) {
     'system_prompt_processor_names': 'systemPromptProcessors',
     'tool_execution_result_processor_names': 'toolExecutionResultProcessors',
     'tool_invocation_preprocessor_names': 'toolInvocationPreprocessors',
-    'phase_hook_names': 'phaseHooks',
+
   };
   const key = storeKeyMap[fieldName];
   if (!key) return;
@@ -334,7 +334,7 @@ const handleSubmit = () => {
     systemPromptProcessorNames: formData.system_prompt_processor_names,
     toolExecutionResultProcessorNames: formData.tool_execution_result_processor_names,
     toolInvocationPreprocessorNames: formData.tool_invocation_preprocessor_names,
-    phaseHookNames: formData.phase_hook_names,
+    lifecycleProcessorNames: formData.lifecycle_processor_names,
   };
   emit('submit', submissionData);
 };

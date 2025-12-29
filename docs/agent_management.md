@@ -129,7 +129,7 @@ interface AgentDefinition {
   systemPromptProcessorNames: string[];
   toolExecutionResultProcessorNames: string[];
   toolInvocationPreprocessorNames: string[];
-  phaseHookNames: string[];
+  lifecycleProcessorNames: string[];
   systemPromptCategory?: string;
   systemPromptName?: string;
   prompts?: Prompt[];
@@ -224,7 +224,7 @@ query GetAgentDefinitions {
     id, name, role, description
     toolNames, inputProcessorNames, llmResponseProcessorNames
     systemPromptProcessorNames, toolExecutionResultProcessorNames
-    toolInvocationPreprocessorNames, phaseHookNames
+    toolInvocationPreprocessorNames, lifecycleProcessorNames
     systemPromptCategory, systemPromptName
     prompts { id, name, category, ... }
   }
@@ -364,7 +364,7 @@ The `AgentDefinitionForm.vue` component allows configuring:
 | System Prompt Processors         | Modify system prompt dynamically   |
 | Tool Execution Result Processors | Transform tool outputs             |
 | Tool Invocation Preprocessors    | Modify tool calls before execution |
-| Phase Hooks                      | Hook into agent execution phases   |
+| Lifecycle Processors             | Hook into agent lifecycle events   |
 
 ## Related Modules
 

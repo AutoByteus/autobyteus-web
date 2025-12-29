@@ -14,7 +14,7 @@ export const CreateAgentDefinition = gql`
       systemPromptProcessorNames
       toolExecutionResultProcessorNames
       toolInvocationPreprocessorNames
-      phaseHookNames
+      lifecycleProcessorNames
       systemPromptCategory
       systemPromptName
       prompts {
@@ -41,7 +41,7 @@ export const UpdateAgentDefinition = gql`
       systemPromptProcessorNames
       toolExecutionResultProcessorNames
       toolInvocationPreprocessorNames
-      phaseHookNames
+      lifecycleProcessorNames
       systemPromptCategory
       systemPromptName
     }

@@ -18,12 +18,12 @@
         <p class="text-sm text-gray-800 mt-1">{{ agent.role }}</p>
       </div>
 
-      <!-- Current Phase -->
+      <!-- Current Status -->
       <div class="mb-4">
         <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Status</span>
         <div class="flex items-center mt-1">
             <span class="w-2 h-2 bg-green-500 rounded-full mr-1.5 animate-pulse"></span>
-            <p class="text-sm text-gray-800 font-mono">{{ agent.currentPhase }}</p>
+            <p class="text-sm text-gray-800 font-mono">{{ agent.currentStatus }}</p>
         </div>
       </div>
       

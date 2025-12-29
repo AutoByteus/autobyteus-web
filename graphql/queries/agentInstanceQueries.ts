@@ -7,7 +7,7 @@ export const GetAgentInstances = gql`
       id
       name
       role
-      currentPhase
+      currentStatus
       agentDefinitionId
       workspace {
         __typename

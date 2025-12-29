@@ -80,9 +80,9 @@ const isLoading = computed(() => {
   if (!runContext.value) return true;
   // Also check if the store is in a launching state for initial message processing.
   if (applicationRunStore.isLaunching) return true;
-  // Check the phase of the coordinator agent for subsequent messages.
-  const coordinatorPhase = teamContext.value?.members.get(teamContext.value.focusedMemberName)?.state.currentPhase;
-  if (coordinatorPhase && coordinatorPhase !== 'DONE' && coordinatorPhase !== 'UNINITIALIZED' && coordinatorPhase !== 'ERROR') {
+  // Check the status of the coordinator agent for subsequent messages.
+  const coordinatorStatus = teamContext.value?.members.get(teamContext.value.focusedMemberName)?.state.currentStatus;
+  if (coordinatorStatus && coordinatorStatus !== 'DONE' && coordinatorStatus !== 'UNINITIALIZED' && coordinatorStatus !== 'ERROR') {
       return true;
   }
   return false;

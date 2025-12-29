@@ -17,8 +17,9 @@ export interface AgentDefinition {
   llmResponseProcessorNames: string[];
   systemPromptProcessorNames: string[];
   toolExecutionResultProcessorNames: string[];
+
   toolInvocationPreprocessorNames: string[];
-  phaseHookNames: string[];
+  lifecycleProcessorNames: string[];
   prompts: {
     __typename?: 'Prompt';
     id: string;
@@ -43,7 +44,7 @@ export interface CreateAgentDefinitionInput {
   systemPromptProcessorNames?: string[];
   toolExecutionResultProcessorNames?: string[];
   toolInvocationPreprocessorNames?: string[];
-  phaseHookNames?: string[];
+  lifecycleProcessorNames?: string[];
 }
 
 export interface UpdateAgentDefinitionInput {
@@ -59,7 +60,7 @@ export interface UpdateAgentDefinitionInput {
   systemPromptProcessorNames?: string[];
   toolExecutionResultProcessorNames?: string[];
   toolInvocationPreprocessorNames?: string[];
-  phaseHookNames?: string[];
+  lifecycleProcessorNames?: string[];
 }
 
 interface DeleteResult {

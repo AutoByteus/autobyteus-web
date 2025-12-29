@@ -24,12 +24,10 @@ export const GetAgentCustomizationOptions = gql`
       isMandatory
     }
     availableToolInvocationPreprocessors {
-      __typename
       name
       isMandatory
     }
-    availablePhaseHooks {
-      __typename
+    availableLifecycleProcessors {
       name
       isMandatory
     }
