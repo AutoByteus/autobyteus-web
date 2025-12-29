@@ -11,7 +11,7 @@ const nestedTeamEventFragment = gql`
     data {
       __typename
       ... on GraphQLAgentTeamStatusUpdateData {
-        newTeamStatus: newStatus
+        newStatus
         oldStatus
         errorMessage
       }
@@ -61,7 +61,7 @@ const nestedTeamEventFragment = gql`
               toolName
             }
             ... on GraphQLAgentStatusUpdateData {
-              newAgentStatus: newStatus
+              newStatus
               oldStatus
               trigger
               toolName
