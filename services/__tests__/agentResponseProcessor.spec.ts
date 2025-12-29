@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { processAgentResponseEvent } from '../agentResponseProcessor';
 import * as assistantHandler from '../agentResponseHandlers/assistantResponseHandler';
 import * as toolCallHandler from '../agentResponseHandlers/toolCallHandler';
-import * as statusHandler from '../agentResponseHandlers/statusTransitionHandler';
+import * as statusHandler from '../agentResponseHandlers/statusUpdateHandler';
 import * as systemTaskHandler from '../agentResponseHandlers/systemTaskNotificationHandler';
 import * as errorHandler from '../agentResponseHandlers/errorEventHandler';
 import { AgentContext } from '~/types/agent/AgentContext';
@@ -23,8 +23,8 @@ vi.mock('../agentResponseHandlers/toolCallHandler', () => ({
   handleToolInteractionLog: vi.fn(),
 }));
 
-vi.mock('../agentResponseHandlers/statusTransitionHandler', () => ({
-  handleAgentStatusTransition: vi.fn(),
+vi.mock('../agentResponseHandlers/statusUpdateHandler', () => ({
+  handleAgentStatusUpdate: vi.fn(),
 }));
 
 vi.mock('../agentResponseHandlers/systemTaskNotificationHandler', () => ({
@@ -116,13 +116,13 @@ describe('processAgentResponseEvent', () => {
     expect(toolCallHandler.handleToolInteractionLog).toHaveBeenCalledWith(eventData, mockAgentContext);
   });
 
-  it('should call handleAgentStatusTransition for GraphQLAgentStatusTransitionData', () => {
+  it('should call handleAgentStatusUpdate for GraphQLAgentStatusUpdateData', () => {
     const eventData: AgentResponseSubscription['agentResponse']['data'] = {
-      __typename: 'GraphQLAgentStatusTransitionData',
+      __typename: 'GraphQLAgentStatusUpdateData',
       newStatus: 'EXECUTING_TOOL' as any,
     };
     processAgentResponseEvent(eventData, mockAgentContext);
-    expect(statusHandler.handleAgentStatusTransition).toHaveBeenCalledWith(eventData, mockAgentContext);
+    expect(statusHandler.handleAgentStatusUpdate).toHaveBeenCalledWith(eventData, mockAgentContext);
   });
   
   it('should call handleSystemTaskNotification for GraphQLSystemTaskNotificationData', () => {

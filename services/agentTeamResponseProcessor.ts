@@ -5,7 +5,7 @@ import type {
 } from '~/generated/graphql';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import { processAgentResponseEvent } from '~/services/agentResponseProcessor';
-import { handleTeamStatusTransition } from './agentTeamResponseHandlers/teamStatusHandler';
+import { handleTeamStatusUpdate } from './agentTeamResponseHandlers/teamStatusUpdateHandler';
 import { handleTasksCreated, handleTaskStatusUpdated } from './agentTeamResponseHandlers/taskPlanHandler';
 // No longer importing any stores. It is now completely decoupled.
 
@@ -19,8 +19,8 @@ export function processAgentTeamResponseEvent(teamContext: AgentTeamContext, eve
   const data = event.data;
 
   switch (data.__typename) {
-    case 'GraphQLAgentTeamStatusTransitionData':
-      handleTeamStatusTransition(data, teamContext);
+    case 'GraphQLAgentTeamStatusUpdateData':
+      handleTeamStatusUpdate(data, teamContext);
       break;
 
     case 'GraphQLAgentEventRebroadcastPayload':

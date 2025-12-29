@@ -45,7 +45,7 @@ export const AgentResponseSubscription = gql`
           toolInvocationId
           toolName
         }
-        ... on GraphQLAgentStatusTransitionData {
+        ... on GraphQLAgentStatusUpdateData {
           newStatus
           oldStatus
           trigger
