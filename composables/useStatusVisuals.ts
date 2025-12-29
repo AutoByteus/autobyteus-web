@@ -34,6 +34,8 @@ export function useStatusVisuals(status: Ref<string | undefined>) {
         return { text: 'Analyzing Response', colorClass: 'bg-blue-500 animate-pulse', iconComponent: CogIcon };
       case AgentStatus.AwaitingToolApproval:
         return { text: 'Awaiting Approval', colorClass: 'bg-yellow-500', iconComponent: ClockIcon };
+      case AgentStatus.ToolDenied:
+        return { text: 'Tool Denied', colorClass: 'bg-amber-500', iconComponent: ExclamationTriangleIcon };
       case AgentStatus.ExecutingTool:
         return { text: 'Executing Tool', colorClass: 'bg-cyan-500 animate-pulse', iconComponent: PlayIcon };
       case AgentStatus.ProcessingToolResult:
