@@ -1,11 +1,11 @@
 import type { Conversation, Message, AIMessage } from '~/types/conversation';
 import type { ToDo } from '~/types/todo';
 import { generateBaseInvocationId } from '~/utils/toolUtils';
-import { AgentOperationalPhase } from '~/generated/graphql';
+import { AgentStatus } from '~/generated/graphql';
 
 export class AgentRunState {
   public agentId: string;
-  public currentPhase: string = AgentOperationalPhase.Uninitialized;
+  public currentStatus: string = AgentStatus.Uninitialized;
   public conversation: Conversation;
   public agent_tool_invocation_counts = new Map<string, number>();
   public todoList: ToDo[] = [];

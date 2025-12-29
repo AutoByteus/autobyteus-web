@@ -295,7 +295,7 @@ class Snake:
     const parser = createParser(LLMProvider.ANTHROPIC, true);
 
     // FIX: Syntax error from previous attempt is removed.
-    const newPromptContent = `Role: Agent Creator. Phase1 gather requirements then call CreatePrompt with {{tools}} placeholder. Phase2 pick tools. Phase3 create agent with prompt_id and selected tools. When calling tools emit raw JSON only (no code fences).`;
+    const newPromptContent = `Role: Agent Creator. Step 1 gather requirements then call CreatePrompt with {{tools}} placeholder. Step 2 pick tools. Step 3 create agent with prompt_id and selected tools. When calling tools emit raw JSON only (no code fences).`;
 
     // FIX: Use the raw XML entity in the input string. This is the correct test data.
     const newDescription = "Structured flow A -&gt; B -&gt; C with {{tools}} placeholder.";

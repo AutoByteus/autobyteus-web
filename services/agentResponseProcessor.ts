@@ -9,7 +9,7 @@ import {
   handleToolInvocationAutoExecuting,
   handleToolInteractionLog,
 } from './agentResponseHandlers/toolCallHandler';
-import { handleAgentPhaseTransition } from './agentResponseHandlers/phaseTransitionHandler';
+import { handleAgentStatusTransition } from './agentResponseHandlers/statusTransitionHandler';
 import { handleSystemTaskNotification } from './agentResponseHandlers/systemTaskNotificationHandler';
 import { handleAgentError } from './agentResponseHandlers/errorEventHandler';
 import { handleToDoListUpdate } from './agentResponseHandlers/todoListUpdateHandler';
@@ -43,8 +43,8 @@ export function processAgentResponseEvent(
     case 'GraphQLToolInteractionLogEntryData':
       return handleToolInteractionLog(eventData, agentContext);
       
-    case 'GraphQLAgentOperationalPhaseTransitionData':
-      return handleAgentPhaseTransition(eventData, agentContext);
+    case 'GraphQLAgentStatusTransitionData':
+      return handleAgentStatusTransition(eventData, agentContext);
 
     case 'GraphQLSystemTaskNotificationData':
       return handleSystemTaskNotification(eventData, agentContext);

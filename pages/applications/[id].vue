@@ -1,6 +1,6 @@
 <template>
   <div class="flex w-full h-full bg-white font-sans">
-    <!-- PHASE 2: INTERACTION UI -->
+    <!-- STEP 2: INTERACTION UI -->
     <div v-if="instanceId" class="w-full h-full">
        <Suspense>
           <template #default>

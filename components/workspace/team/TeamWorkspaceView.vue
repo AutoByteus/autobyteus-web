@@ -7,7 +7,7 @@
         <h4 v-if="activeLaunchProfile" class="text-base font-medium text-gray-800 truncate" :title="activeLaunchProfile.name">
           {{ activeLaunchProfile.name }}
         </h4>
-        <TeamStatusDisplay v-if="activeTeamContext" :phase="activeTeamContext.currentPhase" />
+        <TeamStatusDisplay v-if="activeTeamContext" :status="activeTeamContext.currentStatus" />
       </div>
       <WorkspaceHeaderActions @new-agent="createNewTeamInstance" @open-history="openHistoryPanel" />
     </div>

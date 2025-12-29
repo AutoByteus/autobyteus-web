@@ -1,11 +1,11 @@
 import type {
-  GraphQLAgentTeamStreamEvent,
-  GraphQLAgentEventRebroadcastPayload,
-  GraphQLSubTeamEventRebroadcastPayload,
+  GraphQlAgentTeamStreamEvent,
+  GraphQlAgentEventRebroadcastPayload,
+  GraphQlSubTeamEventRebroadcastPayload,
 } from '~/generated/graphql';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import { processAgentResponseEvent } from '~/services/agentResponseProcessor';
-import { handleTeamPhaseTransition } from './agentTeamResponseHandlers/teamStatusHandler';
+import { handleTeamStatusTransition } from './agentTeamResponseHandlers/teamStatusHandler';
 import { handleTasksCreated, handleTaskStatusUpdated } from './agentTeamResponseHandlers/taskPlanHandler';
 // No longer importing any stores. It is now completely decoupled.
 
@@ -15,12 +15,12 @@ import { handleTasksCreated, handleTaskStatusUpdated } from './agentTeamResponse
  * @param teamContext - The specific AgentTeamContext this event belongs to.
  * @param event - The `GraphQLAgentTeamStreamEvent` from the subscription.
  */
-export function processAgentTeamResponseEvent(teamContext: AgentTeamContext, event: GraphQLAgentTeamStreamEvent): void {
+export function processAgentTeamResponseEvent(teamContext: AgentTeamContext, event: GraphQlAgentTeamStreamEvent): void {
   const data = event.data;
 
   switch (data.__typename) {
-    case 'GraphQLAgentTeamPhaseTransitionData':
-      handleTeamPhaseTransition(data, teamContext);
+    case 'GraphQLAgentTeamStatusTransitionData':
+      handleTeamStatusTransition(data, teamContext);
       break;
 
     case 'GraphQLAgentEventRebroadcastPayload':
@@ -45,7 +45,7 @@ export function processAgentTeamResponseEvent(teamContext: AgentTeamContext, eve
   }
 }
 
-function handleAgentEventRebroadcast(payload: GraphQLAgentEventRebroadcastPayload, teamContext: AgentTeamContext) {
+function handleAgentEventRebroadcast(payload: GraphQlAgentEventRebroadcastPayload, teamContext: AgentTeamContext) {
   const memberAgentContext = teamContext.members.get(payload.agentName);
   if (!memberAgentContext) {
     console.warn(`Received rebroadcasted event for unknown member '${payload.agentName}' in team '${teamContext.teamId}'.`);
@@ -59,7 +59,7 @@ function handleAgentEventRebroadcast(payload: GraphQLAgentEventRebroadcastPayloa
   }
 }
 
-function handleSubTeamEventRebroadcast(payload: GraphQLSubTeamEventRebroadcastPayload, teamContext: AgentTeamContext) {
+function handleSubTeamEventRebroadcast(payload: GraphQlSubTeamEventRebroadcastPayload, teamContext: AgentTeamContext) {
   // TODO: Implement recursive processing for nested teams.
   // This would involve finding the sub-team context and calling processAgentTeamResponseEvent on its event.
   // For now, we log it as unhandled.

@@ -1,50 +1,50 @@
 import { computed, h, type Component, type Ref } from 'vue';
 import { CheckCircleIcon, ClockIcon, ExclamationTriangleIcon, CogIcon, PlayIcon, ArrowPathIcon } from '@heroicons/vue/24/solid';
-import { AgentOperationalPhase } from '~/generated/graphql';
+import { AgentStatus } from '~/generated/graphql';
 
-interface PhaseVisuals {
+interface StatusVisuals {
   text: string;
   colorClass: string;
   iconComponent: Component;
 }
 
-export function usePhaseVisuals(phase: Ref<string | undefined>) {
-  const visuals = computed((): PhaseVisuals => {
-    const currentPhase = phase.value || AgentOperationalPhase.Uninitialized;
+export function useStatusVisuals(status: Ref<string | undefined>) {
+  const visuals = computed((): StatusVisuals => {
+    const currentStatus = status.value || AgentStatus.Uninitialized;
 
-    switch (currentPhase) {
+    switch (currentStatus) {
       // Explicitly handle uninitialized state
-      case AgentOperationalPhase.Uninitialized:
+      case AgentStatus.Uninitialized:
         return { text: 'Uninitialized', colorClass: 'bg-gray-400', iconComponent: CogIcon };
 
-      // Initialization phases
-      case AgentOperationalPhase.Bootstrapping:
+      // Initialization states
+      case AgentStatus.Bootstrapping:
         return { text: 'Bootstrapping', colorClass: 'bg-blue-500 animate-pulse', iconComponent: CogIcon };
 
       // Idle state
-      case AgentOperationalPhase.Idle:
+      case AgentStatus.Idle:
         return { text: 'Idle', colorClass: 'bg-green-500', iconComponent: CheckCircleIcon };
 
       // Core processing loop
-      case AgentOperationalPhase.ProcessingUserInput:
+      case AgentStatus.ProcessingUserInput:
         return { text: 'Processing Input', colorClass: 'bg-blue-500 animate-pulse', iconComponent: CogIcon };
-      case AgentOperationalPhase.AwaitingLlmResponse:
+      case AgentStatus.AwaitingLlmResponse:
         return { text: 'Awaiting LLM Response', colorClass: 'bg-purple-500 animate-pulse', iconComponent: ArrowPathIcon };
-      case AgentOperationalPhase.AnalyzingLlmResponse:
+      case AgentStatus.AnalyzingLlmResponse:
         return { text: 'Analyzing Response', colorClass: 'bg-blue-500 animate-pulse', iconComponent: CogIcon };
-      case AgentOperationalPhase.AwaitingToolApproval:
+      case AgentStatus.AwaitingToolApproval:
         return { text: 'Awaiting Approval', colorClass: 'bg-yellow-500', iconComponent: ClockIcon };
-      case AgentOperationalPhase.ExecutingTool:
+      case AgentStatus.ExecutingTool:
         return { text: 'Executing Tool', colorClass: 'bg-cyan-500 animate-pulse', iconComponent: PlayIcon };
-      case AgentOperationalPhase.ProcessingToolResult:
+      case AgentStatus.ProcessingToolResult:
         return { text: 'Processing Tool Result', colorClass: 'bg-blue-500 animate-pulse', iconComponent: CogIcon };
 
       // Terminal states
-      case AgentOperationalPhase.Error:
+      case AgentStatus.Error:
         return { text: 'Error', colorClass: 'bg-red-500', iconComponent: ExclamationTriangleIcon };
-      case AgentOperationalPhase.ShuttingDown:
+      case AgentStatus.ShuttingDown:
         return { text: 'Shutting Down', colorClass: 'bg-orange-500 animate-pulse', iconComponent: ExclamationTriangleIcon };
-      case AgentOperationalPhase.ShutdownComplete:
+      case AgentStatus.ShutdownComplete:
         return { text: 'Offline', colorClass: 'bg-slate-600', iconComponent: ExclamationTriangleIcon };
 
       // Default/fallback state

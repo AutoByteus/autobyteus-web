@@ -45,9 +45,9 @@ export const AgentResponseSubscription = gql`
           toolInvocationId
           toolName
         }
-        ... on GraphQLAgentOperationalPhaseTransitionData {
-          newPhase
-          oldPhase
+        ... on GraphQLAgentStatusTransitionData {
+          newStatus
+          oldStatus
           trigger
           toolName
           errorMessage

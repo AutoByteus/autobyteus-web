@@ -9,7 +9,7 @@ import type {
   AgentTeamResponseSubscriptionVariables,
   ContextFileType,
   TeamMemberConfigInput,
-  AgentOperationalPhase,
+  AgentStatus,
   TaskNotificationModeEnum,
 } from '~/generated/graphql';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
@@ -153,7 +153,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
         launchProfile: profile,
         members: members,
         focusedMemberName: profile.teamDefinition.coordinatorMemberName, // Default to coordinator
-        currentPhase: 'UNINITIALIZED' as AgentOperationalPhase,
+        currentStatus: 'UNINITIALIZED' as AgentStatus,
         isSubscribed: false,
         unsubscribe: undefined,
         taskPlan: null,

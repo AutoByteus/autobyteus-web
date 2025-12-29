@@ -5,7 +5,7 @@
       <div class="flex items-center space-x-3 min-w-0">
         <span class="text-xl">🤖</span>
         <h4 class="text-base font-medium text-gray-800 truncate" :title="headerTitle">{{ headerTitle }}</h4>
-        <AgentStatusDisplay v-if="selectedAgent" :phase="selectedAgent.state.currentPhase" />
+        <AgentStatusDisplay v-if="selectedAgent" :status="selectedAgent.state.currentStatus" />
       </div>
       
       <div class="flex items-center space-x-2">

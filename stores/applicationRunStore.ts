@@ -14,7 +14,7 @@ import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import type { Conversation } from '~/types/conversation';
 import type {
   TeamMemberConfigInput,
-  AgentOperationalPhase,
+  AgentStatus,
   SendMessageToTeamMutation,
   SendMessageToTeamMutationVariables,
   AgentTeamResponseSubscription as AgentTeamResponseSubscriptionType,
@@ -136,7 +136,7 @@ export const useApplicationRunStore = defineStore('applicationRun', {
           launchProfile: teamLaunchProfile,
           members: members,
           focusedMemberName: profile.teamDefinition.coordinatorMemberName,
-          currentPhase: 'UNINITIALIZED' as AgentOperationalPhase,
+          currentStatus: 'UNINITIALIZED' as AgentStatus,
           isSubscribed: false,
           unsubscribe: undefined,
           taskPlan: null,
@@ -163,7 +163,7 @@ export const useApplicationRunStore = defineStore('applicationRun', {
       const appContextStore = useApplicationContextStore();
       const runContext = appContextStore.getRun(instanceId);
       if (!runContext) throw new Error(`Application run with ID ${instanceId} not found.`);
-
+ 
       const { teamContext } = runContext;
       const focusedMember = teamContext.members.get(teamContext.focusedMemberName);
       if (!focusedMember) throw new Error("Focused member not found in application context.");

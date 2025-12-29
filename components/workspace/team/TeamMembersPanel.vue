@@ -37,7 +37,7 @@
           </span>
         </div>
         <div class="mt-2">
-          <AgentStatusDisplay :phase="member.state.currentPhase" />
+          <AgentStatusDisplay :status="member.state.currentStatus" />
         </div>
       </div>
     </div>

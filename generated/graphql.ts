@@ -41,9 +41,9 @@ export type AgentDefinition = {
   description: Scalars['String']['output'];
   id: Scalars['String']['output'];
   inputProcessorNames: Array<Scalars['String']['output']>;
+  lifecycleProcessorNames: Array<Scalars['String']['output']>;
   llmResponseProcessorNames: Array<Scalars['String']['output']>;
   name: Scalars['String']['output'];
-  phaseHookNames: Array<Scalars['String']['output']>;
   prompts: Array<Prompt>;
   role: Scalars['String']['output'];
   systemPromptCategory?: Maybe<Scalars['String']['output']>;
@@ -57,14 +57,14 @@ export type AgentDefinition = {
 export type AgentInstance = {
   __typename?: 'AgentInstance';
   agentDefinitionId?: Maybe<Scalars['String']['output']>;
-  currentPhase: Scalars['String']['output'];
+  currentStatus: Scalars['String']['output'];
   id: Scalars['String']['output'];
   name: Scalars['String']['output'];
   role: Scalars['String']['output'];
   workspace?: Maybe<WorkspaceInfo>;
 };
 
-export enum AgentOperationalPhase {
+export enum AgentStatus {
   AnalyzingLlmResponse = 'ANALYZING_LLM_RESPONSE',
   AwaitingLlmResponse = 'AWAITING_LLM_RESPONSE',
   AwaitingToolApproval = 'AWAITING_TOOL_APPROVAL',
@@ -99,13 +99,13 @@ export enum AgentTeamEventSourceType {
 
 export type AgentTeamInstance = {
   __typename?: 'AgentTeamInstance';
-  currentPhase: Scalars['String']['output'];
+  currentStatus: Scalars['String']['output'];
   id: Scalars['String']['output'];
   name: Scalars['String']['output'];
   role?: Maybe<Scalars['String']['output']>;
 };
 
-export enum AgentTeamOperationalPhase {
+export enum AgentTeamStatus {
   Bootstrapping = 'BOOTSTRAPPING',
   Error = 'ERROR',
   Idle = 'IDLE',
@@ -189,9 +189,9 @@ export type ConversationHistory = {
 export type CreateAgentDefinitionInput = {
   description: Scalars['String']['input'];
   inputProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
+  lifecycleProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
   llmResponseProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
   name: Scalars['String']['input'];
-  phaseHookNames?: InputMaybe<Array<Scalars['String']['input']>>;
   role: Scalars['String']['input'];
   systemPromptCategory: Scalars['String']['input'];
   systemPromptName: Scalars['String']['input'];
@@ -277,24 +277,24 @@ export type GraphQlAgentEventRebroadcastPayload = {
   agentName: Scalars['String']['output'];
 };
 
-export type GraphQlAgentOperationalPhaseTransitionData = {
-  __typename?: 'GraphQLAgentOperationalPhaseTransitionData';
+export type GraphQlAgentStatusTransitionData = {
+  __typename?: 'GraphQLAgentStatusTransitionData';
   errorDetails?: Maybe<Scalars['String']['output']>;
   errorMessage?: Maybe<Scalars['String']['output']>;
-  newPhase: AgentOperationalPhase;
-  oldPhase?: Maybe<AgentOperationalPhase>;
+  newStatus: AgentStatus;
+  oldStatus?: Maybe<AgentStatus>;
   toolName?: Maybe<Scalars['String']['output']>;
   trigger?: Maybe<Scalars['String']['output']>;
 };
 
-export type GraphQlAgentTeamPhaseTransitionData = {
-  __typename?: 'GraphQLAgentTeamPhaseTransitionData';
+export type GraphQlAgentTeamStatusTransitionData = {
+  __typename?: 'GraphQLAgentTeamStatusTransitionData';
   errorMessage?: Maybe<Scalars['String']['output']>;
-  newPhase: AgentTeamOperationalPhase;
-  oldPhase?: Maybe<AgentTeamOperationalPhase>;
+  newStatus: AgentTeamStatus;
+  oldStatus?: Maybe<AgentTeamStatus>;
 };
 
-export type GraphQlAgentTeamStreamDataPayload = GraphQlAgentEventRebroadcastPayload | GraphQlAgentTeamPhaseTransitionData | GraphQlSubTeamEventRebroadcastPayload | GraphQlTaskStatusUpdatedEvent | GraphQlTasksCreatedEvent;
+export type GraphQlAgentTeamStreamDataPayload = GraphQlAgentEventRebroadcastPayload | GraphQlAgentTeamStatusTransitionData | GraphQlSubTeamEventRebroadcastPayload | GraphQlTaskStatusUpdatedEvent | GraphQlTasksCreatedEvent;
 
 export type GraphQlAgentTeamStreamEvent = {
   __typename?: 'GraphQLAgentTeamStreamEvent';
@@ -350,7 +350,7 @@ export type GraphQlInterAgentMessageData = {
 };
 
 /** Represents the data payload for a stream event. */
-export type GraphQlStreamDataPayload = GraphQlAgentOperationalPhaseTransitionData | GraphQlAssistantChunkData | GraphQlAssistantCompleteResponseData | GraphQlErrorEventData | GraphQlInterAgentMessageData | GraphQlSystemTaskNotificationData | GraphQlToDoListUpdateData | GraphQlToolInteractionLogEntryData | GraphQlToolInvocationApprovalRequestedData | GraphQlToolInvocationAutoExecutingData;
+export type GraphQlStreamDataPayload = GraphQlAgentStatusTransitionData | GraphQlAssistantChunkData | GraphQlAssistantCompleteResponseData | GraphQlErrorEventData | GraphQlInterAgentMessageData | GraphQlSystemTaskNotificationData | GraphQlToDoListUpdateData | GraphQlToolInteractionLogEntryData | GraphQlToolInvocationApprovalRequestedData | GraphQlToolInvocationAutoExecutingData;
 
 export type GraphQlStreamEvent = {
   __typename?: 'GraphQLStreamEvent';
@@ -439,12 +439,6 @@ export type GraphQlToolInvocationAutoExecutingData = {
   arguments: Scalars['JSON']['output'];
   invocationId: Scalars['String']['output'];
   toolName?: Maybe<Scalars['String']['output']>;
-};
-
-export type HookOption = {
-  __typename?: 'HookOption';
-  isMandatory: Scalars['Boolean']['output'];
-  name: Scalars['String']['output'];
 };
 
 export type ImportMcpServerConfigsResult = {
@@ -786,9 +780,9 @@ export type Query = {
   availableAudioProvidersWithModels: Array<ProviderWithModels>;
   availableImageProvidersWithModels: Array<ProviderWithModels>;
   availableInputProcessors: Array<ProcessorOption>;
+  availableLifecycleProcessors: Array<ProcessorOption>;
   availableLlmProvidersWithModels: Array<ProviderWithModels>;
   availableLlmResponseProcessors: Array<ProcessorOption>;
-  availablePhaseHooks: Array<HookOption>;
   availablePromptCategories: Array<PromptCategory>;
   availableSystemPromptProcessors: Array<ProcessorOption>;
   availableToolExecutionResultProcessors: Array<ProcessorOption>;
@@ -987,7 +981,7 @@ export type StdioMcpServerConfigInput = {
 
 export enum StreamEventType {
   AgentIdle = 'AGENT_IDLE',
-  AgentOperationalPhaseTransition = 'AGENT_OPERATIONAL_PHASE_TRANSITION',
+  AgentStatusTransition = 'AGENT_STATUS_TRANSITION',
   AgentTodoListUpdate = 'AGENT_TODO_LIST_UPDATE',
   AssistantChunk = 'ASSISTANT_CHUNK',
   AssistantCompleteResponse = 'ASSISTANT_COMPLETE_RESPONSE',
@@ -1156,9 +1150,9 @@ export type UpdateAgentDefinitionInput = {
   description?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   inputProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
+  lifecycleProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
   llmResponseProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
   name?: InputMaybe<Scalars['String']['input']>;
-  phaseHookNames?: InputMaybe<Array<Scalars['String']['input']>>;
   role?: InputMaybe<Scalars['String']['input']>;
   systemPromptCategory?: InputMaybe<Scalars['String']['input']>;
   systemPromptName?: InputMaybe<Scalars['String']['input']>;
@@ -1211,14 +1205,14 @@ export type CreateAgentDefinitionMutationVariables = Exact<{
 }>;
 
 
-export type CreateAgentDefinitionMutation = { __typename?: 'Mutation', createAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string }> } };
+export type CreateAgentDefinitionMutation = { __typename?: 'Mutation', createAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string }> } };
 
 export type UpdateAgentDefinitionMutationVariables = Exact<{
   input: UpdateAgentDefinitionInput;
 }>;
 
 
-export type UpdateAgentDefinitionMutation = { __typename?: 'Mutation', updateAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null } };
+export type UpdateAgentDefinitionMutation = { __typename?: 'Mutation', updateAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null } };
 
 export type DeleteAgentDefinitionMutationVariables = Exact<{
   id: Scalars['String']['input'];
@@ -1456,17 +1450,17 @@ export type ExecuteBashCommandsMutation = { __typename?: 'Mutation', executeBash
 export type GetAgentCustomizationOptionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentCustomizationOptionsQuery = { __typename?: 'Query', availableToolNames: Array<string>, availableInputProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableLlmResponseProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableSystemPromptProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableToolExecutionResultProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableToolInvocationPreprocessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availablePhaseHooks: Array<{ __typename: 'HookOption', name: string, isMandatory: boolean }>, availablePromptCategories: Array<{ __typename: 'PromptCategory', category: string, names: Array<string> }> };
+export type GetAgentCustomizationOptionsQuery = { __typename?: 'Query', availableToolNames: Array<string>, availableInputProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableLlmResponseProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableSystemPromptProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableToolExecutionResultProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableToolInvocationPreprocessors: Array<{ __typename?: 'ProcessorOption', name: string, isMandatory: boolean }>, availableLifecycleProcessors: Array<{ __typename?: 'ProcessorOption', name: string, isMandatory: boolean }>, availablePromptCategories: Array<{ __typename: 'PromptCategory', category: string, names: Array<string> }> };
 
 export type GetAgentDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, phaseHookNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean }> }> };
+export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean }> }> };
 
 export type GetAgentInstancesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentInstancesQuery = { __typename?: 'Query', agentInstances: Array<{ __typename: 'AgentInstance', id: string, name: string, role: string, currentPhase: string, agentDefinitionId?: string | null, workspace?: { __typename: 'WorkspaceInfo', workspaceId: string, name: string, config: any } | null }> };
+export type GetAgentInstancesQuery = { __typename?: 'Query', agentInstances: Array<{ __typename: 'AgentInstance', id: string, name: string, role: string, currentStatus: string, agentDefinitionId?: string | null, workspace?: { __typename: 'WorkspaceInfo', workspaceId: string, name: string, config: any } | null }> };
 
 export type GetAgentTeamDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1601,21 +1595,21 @@ export type GetAllWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type GetAllWorkspacesQuery = { __typename?: 'Query', workspaces: Array<{ __typename: 'WorkspaceInfo', workspaceId: string, name: string, config: any, fileExplorer?: any | null, absolutePath?: string | null }> };
 
-export type NestedTeamEventFragment = { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentOperationalPhaseTransitionData', newPhase: AgentOperationalPhase, oldPhase?: AgentOperationalPhase | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData' } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamPhaseTransitionData', newPhase: AgentTeamOperationalPhase, oldPhase?: AgentTeamOperationalPhase | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload' } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, taskId: string, newStatus: TaskStatus, agentName: string, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } | { __typename: 'GraphQLTasksCreatedEvent', teamId: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } };
+export type NestedTeamEventFragment = { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentStatusTransitionData', oldStatus?: AgentStatus | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null, newAgentStatus: AgentStatus } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData' } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamStatusTransitionData', oldStatus?: AgentTeamStatus | null, errorMessage?: string | null, newTeamStatus: AgentTeamStatus } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload' } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, taskId: string, agentName: string, newTaskStatus: TaskStatus, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } | { __typename: 'GraphQLTasksCreatedEvent', teamId: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } };
 
 export type AgentTeamResponseSubscriptionVariables = Exact<{
   teamId: Scalars['String']['input'];
 }>;
 
 
-export type AgentTeamResponseSubscription = { __typename?: 'Subscription', agentTeamResponse: { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentOperationalPhaseTransitionData', newPhase: AgentOperationalPhase, oldPhase?: AgentOperationalPhase | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData' } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamPhaseTransitionData', newPhase: AgentTeamOperationalPhase, oldPhase?: AgentTeamOperationalPhase | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload', subTeamNodeName: string, subTeamEvent: { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentOperationalPhaseTransitionData', newPhase: AgentOperationalPhase, oldPhase?: AgentOperationalPhase | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData' } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamPhaseTransitionData', newPhase: AgentTeamOperationalPhase, oldPhase?: AgentTeamOperationalPhase | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload', subTeamNodeName: string, subTeamEvent: { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentOperationalPhaseTransitionData', newPhase: AgentOperationalPhase, oldPhase?: AgentOperationalPhase | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData' } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamPhaseTransitionData', newPhase: AgentTeamOperationalPhase, oldPhase?: AgentTeamOperationalPhase | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload' } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, taskId: string, newStatus: TaskStatus, agentName: string, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } | { __typename: 'GraphQLTasksCreatedEvent', teamId: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } } } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, taskId: string, newStatus: TaskStatus, agentName: string, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } | { __typename: 'GraphQLTasksCreatedEvent', teamId: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } } } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, taskId: string, newStatus: TaskStatus, agentName: string, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } | { __typename: 'GraphQLTasksCreatedEvent', teamId: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } } };
+export type AgentTeamResponseSubscription = { __typename?: 'Subscription', agentTeamResponse: { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentStatusTransitionData', oldStatus?: AgentStatus | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null, newAgentStatus: AgentStatus } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData' } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamStatusTransitionData', oldStatus?: AgentTeamStatus | null, errorMessage?: string | null, newTeamStatus: AgentTeamStatus } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload', subTeamNodeName: string, subTeamEvent: { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentStatusTransitionData', oldStatus?: AgentStatus | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null, newAgentStatus: AgentStatus } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData' } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamStatusTransitionData', oldStatus?: AgentTeamStatus | null, errorMessage?: string | null, newTeamStatus: AgentTeamStatus } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload', subTeamNodeName: string, subTeamEvent: { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentStatusTransitionData', oldStatus?: AgentStatus | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null, newAgentStatus: AgentStatus } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData' } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamStatusTransitionData', oldStatus?: AgentTeamStatus | null, errorMessage?: string | null, newTeamStatus: AgentTeamStatus } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload' } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, taskId: string, agentName: string, newTaskStatus: TaskStatus, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } | { __typename: 'GraphQLTasksCreatedEvent', teamId: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } } } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, taskId: string, agentName: string, newTaskStatus: TaskStatus, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } | { __typename: 'GraphQLTasksCreatedEvent', teamId: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } } } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, taskId: string, agentName: string, newTaskStatus: TaskStatus, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } | { __typename: 'GraphQLTasksCreatedEvent', teamId: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } } };
 
 export type AgentResponseSubscriptionVariables = Exact<{
   agentId: Scalars['String']['input'];
 }>;
 
 
-export type AgentResponseSubscription = { __typename?: 'Subscription', agentResponse: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentOperationalPhaseTransitionData', newPhase: AgentOperationalPhase, oldPhase?: AgentOperationalPhase | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData', todos: Array<{ __typename?: 'GraphQLToDo', description: string, todoId: string, status: ToDoStatus }> } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } };
+export type AgentResponseSubscription = { __typename?: 'Subscription', agentResponse: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentStatusTransitionData', newStatus: AgentStatus, oldStatus?: AgentStatus | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData', todos: Array<{ __typename?: 'GraphQLToDo', description: string, todoId: string, status: ToDoStatus }> } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } };
 
 export type FileSystemChangedSubscriptionVariables = Exact<{
   workspaceId: Scalars['String']['input'];
@@ -1632,9 +1626,9 @@ export const NestedTeamEventFragmentDoc = gql`
   eventSourceType
   data {
     __typename
-    ... on GraphQLAgentTeamPhaseTransitionData {
-      newPhase
-      oldPhase
+    ... on GraphQLAgentTeamStatusTransitionData {
+      newTeamStatus: newStatus
+      oldStatus
       errorMessage
     }
     ... on GraphQLAgentEventRebroadcastPayload {
@@ -1682,9 +1676,9 @@ export const NestedTeamEventFragmentDoc = gql`
             toolInvocationId
             toolName
           }
-          ... on GraphQLAgentOperationalPhaseTransitionData {
-            newPhase
-            oldPhase
+          ... on GraphQLAgentStatusTransitionData {
+            newAgentStatus: newStatus
+            oldStatus
             trigger
             toolName
             errorMessage
@@ -1737,7 +1731,7 @@ export const NestedTeamEventFragmentDoc = gql`
     ... on GraphQLTaskStatusUpdatedEvent {
       teamId
       taskId
-      newStatus
+      newTaskStatus: newStatus
       agentName
       deliverables {
         filePath
@@ -1763,7 +1757,7 @@ export const CreateAgentDefinitionDocument = gql`
     systemPromptProcessorNames
     toolExecutionResultProcessorNames
     toolInvocationPreprocessorNames
-    phaseHookNames
+    lifecycleProcessorNames
     systemPromptCategory
     systemPromptName
     prompts {
@@ -1811,7 +1805,7 @@ export const UpdateAgentDefinitionDocument = gql`
     systemPromptProcessorNames
     toolExecutionResultProcessorNames
     toolInvocationPreprocessorNames
-    phaseHookNames
+    lifecycleProcessorNames
     systemPromptCategory
     systemPromptName
   }
@@ -2930,12 +2924,10 @@ export const GetAgentCustomizationOptionsDocument = gql`
     isMandatory
   }
   availableToolInvocationPreprocessors {
-    __typename
     name
     isMandatory
   }
-  availablePhaseHooks {
-    __typename
+  availableLifecycleProcessors {
     name
     isMandatory
   }
@@ -2980,7 +2972,7 @@ export const GetAgentDefinitionsDocument = gql`
     systemPromptProcessorNames
     toolExecutionResultProcessorNames
     toolInvocationPreprocessorNames
-    phaseHookNames
+    lifecycleProcessorNames
     systemPromptCategory
     systemPromptName
     prompts {
@@ -3028,7 +3020,7 @@ export const GetAgentInstancesDocument = gql`
     id
     name
     role
-    currentPhase
+    currentStatus
     agentDefinitionId
     workspace {
       __typename
@@ -3918,9 +3910,9 @@ export const AgentResponseDocument = gql`
         toolInvocationId
         toolName
       }
-      ... on GraphQLAgentOperationalPhaseTransitionData {
-        newPhase
-        oldPhase
+      ... on GraphQLAgentStatusTransitionData {
+        newStatus
+        oldStatus
         trigger
         toolName
         errorMessage

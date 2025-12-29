@@ -10,9 +10,9 @@ const nestedTeamEventFragment = gql`
     eventSourceType
     data {
       __typename
-      ... on GraphQLAgentTeamPhaseTransitionData {
-        newPhase
-        oldPhase
+      ... on GraphQLAgentTeamStatusTransitionData {
+        newTeamStatus: newStatus
+        oldStatus
         errorMessage
       }
       ... on GraphQLAgentEventRebroadcastPayload {
@@ -60,9 +60,9 @@ const nestedTeamEventFragment = gql`
               toolInvocationId
               toolName
             }
-            ... on GraphQLAgentOperationalPhaseTransitionData {
-              newPhase
-              oldPhase
+            ... on GraphQLAgentStatusTransitionData {
+              newAgentStatus: newStatus
+              oldStatus
               trigger
               toolName
               errorMessage
@@ -115,7 +115,7 @@ const nestedTeamEventFragment = gql`
       ... on GraphQLTaskStatusUpdatedEvent {
         teamId
         taskId
-        newStatus
+        newTaskStatus: newStatus
         agentName
         deliverables {
           filePath
