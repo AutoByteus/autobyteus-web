@@ -1,12 +1,11 @@
 import { ref } from 'vue'
 
+// Global state for right panel visibility and width to allow sharing across components
+const isRightPanelVisible = ref(true)
+const rightPanelWidth = ref(450)
+
 export function useRightPanel() {
-  // State for right panel visibility and width
-  const isRightPanelVisible = ref(true)
-  const rightPanelWidth = ref(300)
-  const minRightPanelWidth = 200
-  // Removed the fixed maximum constraint to allow free expansion
-  // If desired, a dynamic maximum can be computed based on container size
+  const minRightPanelWidth = 400
 
   /**
    * Toggles the visibility of the right panel.

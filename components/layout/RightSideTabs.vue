@@ -1,15 +1,29 @@
 <template>
-  <div class="flex flex-col h-full bg-white pt-2">
-    <TabList
-      :tabs="visibleTabs"
-      :selected-tab="activeTab"
-      @select="handleTabSelect"
-    />
+  <div class="flex flex-col h-full bg-white">
+    <!-- Header with Tabs and Toggle -->
+    <div class="flex items-center justify-between bg-white pt-2 pr-1 border-b border-gray-200">
+      <TabList
+        class="flex-1"
+        :tabs="visibleTabs"
+        :selected-tab="activeTab"
+        @select="handleTabSelect"
+      />
+      <button 
+        @click="toggleRightPanel"
+        class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors mr-2 flex-shrink-0"
+        title="Toggle Sidebar"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="18" height="18" x="3" y="3" rx="2"/>
+          <path d="M15 3v18"/>
+        </svg>
+      </button>
+    </div>
 
     <!-- Tab Content -->
-    <div class="flex-grow overflow-auto relative mt-[-1px]">
+    <div class="flex-grow overflow-auto relative">
       <div v-if="activeTab === 'files'" class="h-full">
-        <FileContentViewer />
+        <FileExplorerLayout />
       </div>
       <div v-if="activeTab === 'teamMembers'" class="h-full">
         <TeamOverviewPanel />
@@ -28,49 +42,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
+import { watch } from 'vue';
 import { useActiveContextStore } from '~/stores/activeContextStore';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
+import { useRightPanel } from '~/composables/useRightPanel';
+import { useRightSideTabs } from '~/composables/useRightSideTabs';
+import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
 import TabList from '~/components/tabs/TabList.vue';
 import TeamOverviewPanel from '~/components/workspace/team/TeamOverviewPanel.vue';
 import TodoListPanel from '~/components/workspace/agent/TodoListPanel.vue';
 import Terminal from '~/components/workspace/tools/Terminal.vue';
 import VncViewer from '~/components/workspace/tools/VncViewer.vue';
-import FileContentViewer from '~/components/fileExplorer/FileContentViewer.vue';
-
-type TabName = 'files' | 'teamMembers' | 'terminal' | 'vnc' | 'todoList';
+import FileExplorerLayout from '~/components/fileExplorer/FileExplorerLayout.vue';
 
 const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
 const activeContextStore = useActiveContextStore();
 const fileExplorerStore = useFileExplorerStore();
-const activeTab = ref<TabName>('terminal');
-
-const allTabs = [
-  { name: 'files' as TabName, label: 'Files', requires: 'any' },
-  { name: 'teamMembers' as TabName, label: 'Team', requires: 'team' },
-  { name: 'todoList' as TabName, label: 'To-Do', requires: 'agent' },
-  { name: 'terminal' as TabName, label: 'Terminal', requires: 'any' },
-  { name: 'vnc' as TabName, label: 'VNC Viewer', requires: 'any' },
-];
-
-const visibleTabs = computed(() => {
-  return allTabs.filter(tab => {
-    if (tab.requires === 'any') return true;
-    return tab.requires === selectedLaunchProfileStore.selectedProfileType;
-  });
-});
+const { toggleRightPanel } = useRightPanel();
+const { activeTab, visibleTabs, setActiveTab } = useRightSideTabs();
 
 const handleTabSelect = (tabName: string) => {
-  activeTab.value = tabName as TabName;
+  setActiveTab(tabName as any);
 };
 
-// Watch for changes in the selected profile type to adjust the active tab
+// Watch for changes in the selected profile type to adjust the active tab via the composable logic
 watch(() => selectedLaunchProfileStore.selectedProfileType, (newType) => {
   if (newType === 'team') {
-    activeTab.value = 'teamMembers';
+    setActiveTab('teamMembers');
   } else if (newType === 'agent') {
-    activeTab.value = 'todoList';
+    setActiveTab('todoList');
   }
 }, { immediate: true });
 
@@ -78,21 +78,21 @@ watch(() => selectedLaunchProfileStore.selectedProfileType, (newType) => {
 watch(visibleTabs, (newVisibleTabs) => {
   const isCurrentTabVisible = newVisibleTabs.some(tab => tab.name === activeTab.value);
   if (!isCurrentTabVisible && newVisibleTabs.length > 0) {
-    activeTab.value = newVisibleTabs[0].name;
+    setActiveTab(newVisibleTabs[0].name);
   }
 });
 
 // Watch the ToDo list for the active agent. If it becomes populated, switch to the To-Do tab.
 watch(() => activeContextStore.currentTodoList, (newTodoList) => {
   if (selectedLaunchProfileStore.selectedProfileType === 'agent' && newTodoList.length > 0 && activeTab.value !== 'todoList') {
-    activeTab.value = 'todoList';
+    setActiveTab('todoList');
   }
 });
 
 // Auto-switch to Files tab when a file is opened
 watch(() => fileExplorerStore.getOpenFiles, (openFiles) => {
   if (openFiles.length > 0 && activeTab.value !== 'files') {
-    activeTab.value = 'files';
+    setActiveTab('files');
   }
 }, { deep: true });
 

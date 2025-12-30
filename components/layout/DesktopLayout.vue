@@ -13,25 +13,6 @@
       </div>
     </transition>
 
-    <!-- File Explorer Container -->
-    <template v-if="activeLaunchProfileHasWorkspace">
-      <!-- Open State -->
-      <transition name="panel-minimize">
-        <div 
-          v-if="isFileExplorerOpen"
-          :style="{ width: fileExplorerWidth + 'px' }" 
-          class="bg-white p-0 shadow flex flex-col min-h-0 relative border-r border-gray-200"
-        >
-          <div class="flex-1 overflow-auto min-w-0">
-            <FileExplorer />
-          </div>
-        </div>
-      </transition>
-
-      <!-- Drag Handle -->
-      <div v-if="isFileExplorerOpen" class="drag-handle" @mousedown="initDragFileToContent"></div>
-    </template>
-
     <!-- Content Area - Always shows workspace views -->
     <div class="bg-white p-0 shadow flex flex-col min-h-0 flex-1 min-w-[200px]">
       <div class="flex-1 overflow-auto">
@@ -52,49 +33,11 @@
       class="bg-white p-0 shadow flex flex-col min-h-0 relative"
     >
       <RightSideTabs />
-      
-      <button 
-        @click="toggleRightPanel"
-        class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 p-1 bg-white rounded-full text-gray-600 hover:text-gray-900 shadow-md hover:shadow-lg transition-all duration-200"
-        :title="isRightPanelVisible ? 'Hide Side Panel' : 'Show Side Panel'"
-      >
-        <svg 
-          class="w-3 h-3 transition-transform duration-200" 
-          :class="{ 'rotate-180': !isRightPanelVisible }"
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path 
-            stroke-linecap="round" 
-            stroke-linejoin="round" 
-            stroke-width="2" 
-            d="M9 5l7 7-7 7"
-          />
-        </svg>
-      </button>
     </div>
 
-    <button 
-      v-if="!isRightPanelVisible"
-      @click="toggleRightPanel"
-      class="absolute right-0 top-1/2 -translate-y-1/2 p-1 bg-white rounded-full text-gray-600 hover:text-gray-900 shadow-md hover:shadow-lg transition-all duration-200"
-      title="Show Side Panel"
-    >
-      <svg 
-        class="w-3 h-3 transition-transform duration-200 rotate-180" 
-        fill="none" 
-        stroke="currentColor" 
-        viewBox="0 0 24 24"
-      >
-        <path 
-          stroke-linecap="round" 
-          stroke-linejoin="round" 
-          stroke-width="2" 
-          d="M9 5l7 7-7 7"
-        />
-      </svg>
-    </button>
+    <RightSidebarStrip 
+      v-if="!isRightPanelVisible" 
+    />
   </div>
 </template>
 
@@ -102,30 +45,24 @@
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useWorkspaceLeftPanelLayoutStore } from '~/stores/workspaceLeftPanelLayoutStore'
-import { useWorkspaceStore } from '~/stores/workspace';
 import { useRightPanel } from '~/composables/useRightPanel'
-import { usePanelResize } from '~/composables/usePanelResize'
 import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
-import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
 import AgentWorkspaceView from '~/components/workspace/agent/AgentWorkspaceView.vue'
 import TeamWorkspaceView from '~/components/workspace/team/TeamWorkspaceView.vue'
 import RightSideTabs from './RightSideTabs.vue'
+import RightSidebarStrip from './RightSidebarStrip.vue'
 import LaunchProfilePanel from '~/components/launchProfiles/LaunchProfilePanel.vue'
 
 const workspaceLeftPanelLayoutStore = useWorkspaceLeftPanelLayoutStore()
 const { panels } = storeToRefs(workspaceLeftPanelLayoutStore)
-const workspaceStore = useWorkspaceStore();
 const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
 
 // Panel State from new central store
 const isProfilePanelOpen = computed(() => panels.value.launchProfile.isOpen)
-const isFileExplorerOpen = computed(() => panels.value.fileExplorer.isOpen)
 const profilePanelWidth = ref(300)
 
-const { fileExplorerWidth, initDragFileToContent } = usePanelResize()
 const { isRightPanelVisible, rightPanelWidth, toggleRightPanel, initDragRightPanel } = useRightPanel()
 
-const activeLaunchProfileHasWorkspace = computed(() => !!workspaceStore.activeWorkspace);
 </script>
 
 <style scoped>
