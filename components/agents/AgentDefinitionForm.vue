@@ -73,6 +73,24 @@
       </div>
     </fieldset>
 
+    <!-- Skills Configuration -->
+    <fieldset class="border-t border-gray-200 pt-8">
+      <legend class="text-xl font-semibold text-gray-900">Skills Configuration</legend>
+      <div class="mt-4 grid grid-cols-1 gap-x-8 gap-y-8">
+        <div>
+          <label for="skill_names" class="block text-base font-medium text-gray-800">Skills</label>
+          <p class="text-sm text-gray-500 mb-2">Select skills to equip the agent with specific capabilities.</p>
+          <GroupableTagInput
+            :model-value="formData['skill_names']"
+            @update:model-value="formData['skill_names'] = $event"
+            :source="getComponentSource('skill_names')"
+            placeholder="Add skills..."
+            @add-all="handleAddAllSkills"
+          />
+        </div>
+      </div>
+    </fieldset>
+
     <!-- Tool Configuration -->
     <fieldset class="border-t border-gray-200 pt-8">
       <legend class="text-xl font-semibold text-gray-900">Tool Configuration</legend>
@@ -99,7 +117,7 @@
         The following components are pre-selected with sensible defaults. Modify them only if you need to customize the agent's core behavior. Mandatory components are locked.
       </p>
       <fieldset class="mt-4 space-y-8">
-        <div v-for="field in componentFields.filter(f => f.name !== 'tool_names')" :key="field.name">
+        <div v-for="field in componentFields.filter(f => f.name !== 'tool_names' && f.name !== 'skill_names')" :key="field.name">
           <div class="flex justify-between items-baseline mb-1">
             <label :for="field.name" class="block text-base font-medium text-gray-800">{{ field.label }}</label>
             <button
@@ -145,6 +163,7 @@
 import { reactive, watch, toRefs, computed, onMounted } from 'vue';
 import { useAgentDefinitionOptionsStore } from '~/stores/agentDefinitionOptionsStore';
 import { useToolManagementStore } from '~/stores/toolManagementStore';
+import { useSkillStore } from '~/stores/skillStore';
 import GroupableTagInput from '~/components/agents/GroupableTagInput.vue';
 import type { GroupedSource, FlatSource } from '~/components/agents/GroupableTagInput.vue';
 import type { ProcessorOption } from '~/stores/agentDefinitionOptionsStore';
@@ -162,10 +181,12 @@ const { initialData, isCreateMode } = toRefs(props);
 // Stores
 const optionsStore = useAgentDefinitionOptionsStore();
 const toolStore = useToolManagementStore();
+const skillStore = useSkillStore();
 
 // Fetch required data on mount
 onMounted(async () => {
   optionsStore.fetchAllAvailableOptions();
+  skillStore.fetchAllSkills();
   if (toolStore.getLocalToolsByCategory.length === 0) {
     toolStore.fetchLocalToolsGroupedByCategory();
   }
@@ -180,6 +201,7 @@ onMounted(async () => {
 });
 
 const componentFields = computed(() => [
+  { name: 'skill_names', camelCase: 'skillNames', label: 'Skills', placeholder: 'Add skills...', helpText: 'Select skills to equip the agent with specific capabilities.' },
   { name: 'tool_names', camelCase: 'toolNames', label: 'Tools', placeholder: 'Add custom tools...', helpText: 'Select available tools for the agent to use.' },
   { name: 'input_processor_names', camelCase: 'inputProcessorNames', label: 'Input Processors', placeholder: 'Add custom processors...', helpText: 'Customize processors that handle incoming messages.' },
   { name: 'llm_response_processor_names', camelCase: 'llmResponseProcessorNames', label: 'LLM Response Processors', placeholder: 'Add custom processors...', helpText: 'Customize processors that interpret LLM responses.' },
@@ -203,9 +225,19 @@ const toolSource = computed((): GroupedSource => {
   return { type: 'grouped', groups: [...localToolGroups, ...mcpServerGroups] };
 });
 
+const skillSource = computed((): FlatSource => {
+  return {
+    type: 'flat',
+    tags: skillStore.skills.map(s => ({ name: s.name, isMandatory: false }))
+  };
+});
+
 const getComponentSource = (fieldName: string): GroupedSource | FlatSource => {
   if (fieldName === 'tool_names') {
     return toolSource.value;
+  }
+  if (fieldName === 'skill_names') {
+    return skillSource.value;
   }
   const storeKeyMap: { [key: string]: keyof typeof optionsStore } = {
     'input_processor_names': 'inputProcessors',
@@ -301,6 +333,13 @@ function handleAddAllTools(groupName: string) {
   formData.tool_names = Array.from(newToolSet);
 }
 
+function handleAddAllSkills() {
+  const allSkills = skillStore.skills.map(s => s.name);
+  const currentSkills = formData.skill_names || [];
+  const newSkillSet = new Set([...currentSkills, ...allSkills]);
+  formData.skill_names = Array.from(newSkillSet);
+}
+
 // NEW: Reset to defaults function
 function resetToDefaults(fieldName: string) {
   const storeKeyMap: { [key: string]: keyof typeof optionsStore } = {
@@ -328,6 +367,7 @@ const handleSubmit = () => {
     description: formData.description,
     systemPromptCategory: formData.system_prompt_category,
     systemPromptName: formData.system_prompt_name,
+    skillNames: formData.skill_names,
     toolNames: formData.tool_names,
     inputProcessorNames: formData.input_processor_names,
     llmResponseProcessorNames: formData.llm_response_processor_names,

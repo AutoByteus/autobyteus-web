@@ -61,6 +61,17 @@
             <p v-else class="text-sm text-gray-500 italic">No system prompt configured.</p>
           </div>
           
+          <!-- Skills -->
+          <div class="border-t border-gray-200 pt-6 mt-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-2">Skills</h2>
+            <ul v-if="agentDef.skillNames && agentDef.skillNames.length" class="space-y-2">
+              <li v-for="item in agentDef.skillNames" :key="item" class="text-sm font-mono bg-gray-50 text-gray-800 px-4 py-2 rounded-md border border-gray-200">
+                {{ item }}
+              </li>
+            </ul>
+            <p v-else class="text-sm text-gray-500 italic">None configured.</p>
+          </div>
+          
           <!-- Tools -->
           <div class="border-t border-gray-200 pt-6 mt-6">
             <h2 class="text-lg font-semibold text-gray-800 mb-2">Tools</h2>

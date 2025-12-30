@@ -13,8 +13,10 @@ export const GetAgentDefinitions = gql`
       llmResponseProcessorNames
       systemPromptProcessorNames
       toolExecutionResultProcessorNames
+
       toolInvocationPreprocessorNames
       lifecycleProcessorNames
+      skillNames
       systemPromptCategory
       systemPromptName
       prompts {

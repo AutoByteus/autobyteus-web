@@ -46,6 +46,7 @@ export type AgentDefinition = {
   name: Scalars['String']['output'];
   prompts: Array<Prompt>;
   role: Scalars['String']['output'];
+  skillNames: Array<Scalars['String']['output']>;
   systemPromptCategory?: Maybe<Scalars['String']['output']>;
   systemPromptName?: Maybe<Scalars['String']['output']>;
   systemPromptProcessorNames: Array<Scalars['String']['output']>;
@@ -193,6 +194,7 @@ export type CreateAgentDefinitionInput = {
   llmResponseProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
   name: Scalars['String']['input'];
   role: Scalars['String']['input'];
+  skillNames?: InputMaybe<Array<Scalars['String']['input']>>;
   systemPromptCategory: Scalars['String']['input'];
   systemPromptName: Scalars['String']['input'];
   systemPromptProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -232,6 +234,12 @@ export type CreatePromptInput = {
   suitableForModels?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type CreateSkillInput = {
+  content: Scalars['String']['input'];
+  description: Scalars['String']['input'];
+  name: Scalars['String']['input'];
+};
+
 export type CreateWorkspaceInput = {
   rootPath: Scalars['String']['input'];
 };
@@ -260,6 +268,12 @@ export type DeletePromptInput = {
 
 export type DeletePromptResult = {
   __typename?: 'DeletePromptResult';
+  message: Scalars['String']['output'];
+  success: Scalars['Boolean']['output'];
+};
+
+export type DeleteSkillResult = {
+  __typename?: 'DeleteSkillResult';
   message: Scalars['String']['output'];
   success: Scalars['Boolean']['output'];
 };
@@ -520,12 +534,15 @@ export type Mutation = {
   createAgentTeamInstance: CreateAgentTeamInstanceResult;
   createFileOrFolder: Scalars['String']['output'];
   createPrompt: Prompt;
+  createSkill: Skill;
   createWorkspace: WorkspaceInfo;
   deleteAgentDefinition: DeleteAgentDefinitionResult;
   deleteAgentTeamDefinition: DeleteAgentTeamDefinitionResult;
   deleteFileOrFolder: Scalars['String']['output'];
   deleteMcpServer: DeleteMcpServerResult;
   deletePrompt: DeletePromptResult;
+  deleteSkill: DeleteSkillResult;
+  deleteSkillFile: Scalars['Boolean']['output'];
   discoverAndRegisterMcpServerTools: DiscoverAndRegisterMcpServerToolsResult;
   executeBashCommands: CommandExecutionResult;
   importMcpServerConfigs: ImportMcpServerConfigsResult;
@@ -545,6 +562,8 @@ export type Mutation = {
   updateAgentTeamDefinition: AgentTeamDefinition;
   updatePrompt: Prompt;
   updateServerSetting: Scalars['String']['output'];
+  updateSkill: Skill;
+  uploadSkillFile: Scalars['Boolean']['output'];
   writeFileContent: Scalars['String']['output'];
 };
 
@@ -591,6 +610,11 @@ export type MutationCreatePromptArgs = {
 };
 
 
+export type MutationCreateSkillArgs = {
+  input: CreateSkillInput;
+};
+
+
 export type MutationCreateWorkspaceArgs = {
   input: CreateWorkspaceInput;
 };
@@ -619,6 +643,17 @@ export type MutationDeleteMcpServerArgs = {
 
 export type MutationDeletePromptArgs = {
   input: DeletePromptInput;
+};
+
+
+export type MutationDeleteSkillArgs = {
+  name: Scalars['String']['input'];
+};
+
+
+export type MutationDeleteSkillFileArgs = {
+  path: Scalars['String']['input'];
+  skillName: Scalars['String']['input'];
 };
 
 
@@ -715,6 +750,18 @@ export type MutationUpdateServerSettingArgs = {
 };
 
 
+export type MutationUpdateSkillArgs = {
+  input: UpdateSkillInput;
+};
+
+
+export type MutationUploadSkillFileArgs = {
+  content: Scalars['String']['input'];
+  path: Scalars['String']['input'];
+  skillName: Scalars['String']['input'];
+};
+
+
 export type MutationWriteFileContentArgs = {
   content: Scalars['String']['input'];
   filePath: Scalars['String']['input'];
@@ -802,6 +849,10 @@ export type Query = {
   promptDetailsByNameAndCategory?: Maybe<PromptDetails>;
   prompts: Array<Prompt>;
   searchFiles: Array<Scalars['String']['output']>;
+  skill?: Maybe<Skill>;
+  skillFileContent?: Maybe<Scalars['String']['output']>;
+  skillFileTree?: Maybe<Scalars['String']['output']>;
+  skills: Array<Skill>;
   tools: Array<ToolDefinitionDetail>;
   toolsGroupedByCategory: Array<ToolCategoryGroup>;
   totalCostInPeriod: Scalars['Float']['output'];
@@ -890,6 +941,22 @@ export type QuerySearchFilesArgs = {
 };
 
 
+export type QuerySkillArgs = {
+  name: Scalars['String']['input'];
+};
+
+
+export type QuerySkillFileContentArgs = {
+  path: Scalars['String']['input'];
+  skillName: Scalars['String']['input'];
+};
+
+
+export type QuerySkillFileTreeArgs = {
+  name: Scalars['String']['input'];
+};
+
+
 export type QueryToolsArgs = {
   origin?: InputMaybe<ToolOriginEnum>;
   sourceServerId?: InputMaybe<Scalars['String']['input']>;
@@ -958,6 +1025,17 @@ export type ServerSetting = {
   description: Scalars['String']['output'];
   key: Scalars['String']['output'];
   value: Scalars['String']['output'];
+};
+
+export type Skill = {
+  __typename?: 'Skill';
+  content: Scalars['String']['output'];
+  createdAt?: Maybe<Scalars['String']['output']>;
+  description: Scalars['String']['output'];
+  fileCount: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  rootPath: Scalars['String']['output'];
+  updatedAt?: Maybe<Scalars['String']['output']>;
 };
 
 export type StdioMcpServerConfig = McpServerConfig & {
@@ -1154,6 +1232,7 @@ export type UpdateAgentDefinitionInput = {
   llmResponseProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
   name?: InputMaybe<Scalars['String']['input']>;
   role?: InputMaybe<Scalars['String']['input']>;
+  skillNames?: InputMaybe<Array<Scalars['String']['input']>>;
   systemPromptCategory?: InputMaybe<Scalars['String']['input']>;
   systemPromptName?: InputMaybe<Scalars['String']['input']>;
   systemPromptProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -1181,6 +1260,12 @@ export type UpdatePromptInput = {
   suitableForModels?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type UpdateSkillInput = {
+  content?: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
+  name: Scalars['String']['input'];
+};
+
 export type UsageStatistics = {
   __typename?: 'UsageStatistics';
   assistantCost?: Maybe<Scalars['Float']['output']>;
@@ -1205,14 +1290,14 @@ export type CreateAgentDefinitionMutationVariables = Exact<{
 }>;
 
 
-export type CreateAgentDefinitionMutation = { __typename?: 'Mutation', createAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string }> } };
+export type CreateAgentDefinitionMutation = { __typename?: 'Mutation', createAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string }> } };
 
 export type UpdateAgentDefinitionMutationVariables = Exact<{
   input: UpdateAgentDefinitionInput;
 }>;
 
 
-export type UpdateAgentDefinitionMutation = { __typename?: 'Mutation', updateAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null } };
+export type UpdateAgentDefinitionMutation = { __typename?: 'Mutation', updateAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null } };
 
 export type DeleteAgentDefinitionMutationVariables = Exact<{
   id: Scalars['String']['input'];
@@ -1455,7 +1540,7 @@ export type GetAgentCustomizationOptionsQuery = { __typename?: 'Query', availabl
 export type GetAgentDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean }> }> };
+export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean }> }> };
 
 export type GetAgentInstancesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1594,6 +1679,71 @@ export type GetAllWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type GetAllWorkspacesQuery = { __typename?: 'Query', workspaces: Array<{ __typename: 'WorkspaceInfo', workspaceId: string, name: string, config: any, fileExplorer?: any | null, absolutePath?: string | null }> };
+
+export type GetSkillsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetSkillsQuery = { __typename?: 'Query', skills: Array<{ __typename?: 'Skill', name: string, description: string, content: string, rootPath: string, fileCount: number }> };
+
+export type GetSkillQueryVariables = Exact<{
+  name: Scalars['String']['input'];
+}>;
+
+
+export type GetSkillQuery = { __typename?: 'Query', skill?: { __typename?: 'Skill', name: string, description: string, content: string, rootPath: string, fileCount: number } | null };
+
+export type GetSkillFileTreeQueryVariables = Exact<{
+  name: Scalars['String']['input'];
+}>;
+
+
+export type GetSkillFileTreeQuery = { __typename?: 'Query', skillFileTree?: string | null };
+
+export type GetSkillFileContentQueryVariables = Exact<{
+  skillName: Scalars['String']['input'];
+  path: Scalars['String']['input'];
+}>;
+
+
+export type GetSkillFileContentQuery = { __typename?: 'Query', skillFileContent?: string | null };
+
+export type CreateSkillMutationVariables = Exact<{
+  input: CreateSkillInput;
+}>;
+
+
+export type CreateSkillMutation = { __typename?: 'Mutation', createSkill: { __typename?: 'Skill', name: string, description: string, content: string, rootPath: string, fileCount: number } };
+
+export type UpdateSkillMutationVariables = Exact<{
+  input: UpdateSkillInput;
+}>;
+
+
+export type UpdateSkillMutation = { __typename?: 'Mutation', updateSkill: { __typename?: 'Skill', name: string, description: string, content: string, rootPath: string, fileCount: number } };
+
+export type DeleteSkillMutationVariables = Exact<{
+  name: Scalars['String']['input'];
+}>;
+
+
+export type DeleteSkillMutation = { __typename?: 'Mutation', deleteSkill: { __typename?: 'DeleteSkillResult', success: boolean, message: string } };
+
+export type UploadSkillFileMutationVariables = Exact<{
+  skillName: Scalars['String']['input'];
+  path: Scalars['String']['input'];
+  content: Scalars['String']['input'];
+}>;
+
+
+export type UploadSkillFileMutation = { __typename?: 'Mutation', uploadSkillFile: boolean };
+
+export type DeleteSkillFileMutationVariables = Exact<{
+  skillName: Scalars['String']['input'];
+  path: Scalars['String']['input'];
+}>;
+
+
+export type DeleteSkillFileMutation = { __typename?: 'Mutation', deleteSkillFile: boolean };
 
 export type NestedTeamEventFragment = { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentStatusUpdateData', newStatus: AgentStatus, oldStatus?: AgentStatus | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData' } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamStatusUpdateData', newStatus: AgentTeamStatus, oldStatus?: AgentTeamStatus | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload' } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, taskId: string, agentName: string, newTaskStatus: TaskStatus, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } | { __typename: 'GraphQLTasksCreatedEvent', teamId: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } };
 
@@ -1758,6 +1908,7 @@ export const CreateAgentDefinitionDocument = gql`
     toolExecutionResultProcessorNames
     toolInvocationPreprocessorNames
     lifecycleProcessorNames
+    skillNames
     systemPromptCategory
     systemPromptName
     prompts {
@@ -1806,6 +1957,7 @@ export const UpdateAgentDefinitionDocument = gql`
     toolExecutionResultProcessorNames
     toolInvocationPreprocessorNames
     lifecycleProcessorNames
+    skillNames
     systemPromptCategory
     systemPromptName
   }
@@ -2973,6 +3125,7 @@ export const GetAgentDefinitionsDocument = gql`
     toolExecutionResultProcessorNames
     toolInvocationPreprocessorNames
     lifecycleProcessorNames
+    skillNames
     systemPromptCategory
     systemPromptName
     prompts {
@@ -3822,6 +3975,281 @@ export function useGetAllWorkspacesLazyQuery(options: VueApolloComposable.UseQue
   return VueApolloComposable.useLazyQuery<GetAllWorkspacesQuery, GetAllWorkspacesQueryVariables>(GetAllWorkspacesDocument, {}, options);
 }
 export type GetAllWorkspacesQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAllWorkspacesQuery, GetAllWorkspacesQueryVariables>;
+export const GetSkillsDocument = gql`
+    query GetSkills {
+  skills {
+    name
+    description
+    content
+    rootPath
+    fileCount
+  }
+}
+    `;
+
+/**
+ * __useGetSkillsQuery__
+ *
+ * To run a query within a Vue component, call `useGetSkillsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetSkillsQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetSkillsQuery();
+ */
+export function useGetSkillsQuery(options: VueApolloComposable.UseQueryOptions<GetSkillsQuery, GetSkillsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetSkillsQuery, GetSkillsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetSkillsQuery, GetSkillsQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetSkillsQuery, GetSkillsQueryVariables>(GetSkillsDocument, {}, options);
+}
+export function useGetSkillsLazyQuery(options: VueApolloComposable.UseQueryOptions<GetSkillsQuery, GetSkillsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetSkillsQuery, GetSkillsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetSkillsQuery, GetSkillsQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetSkillsQuery, GetSkillsQueryVariables>(GetSkillsDocument, {}, options);
+}
+export type GetSkillsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetSkillsQuery, GetSkillsQueryVariables>;
+export const GetSkillDocument = gql`
+    query GetSkill($name: String!) {
+  skill(name: $name) {
+    name
+    description
+    content
+    rootPath
+    fileCount
+  }
+}
+    `;
+
+/**
+ * __useGetSkillQuery__
+ *
+ * To run a query within a Vue component, call `useGetSkillQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetSkillQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param variables that will be passed into the query
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetSkillQuery({
+ *   name: // value for 'name'
+ * });
+ */
+export function useGetSkillQuery(variables: GetSkillQueryVariables | VueCompositionApi.Ref<GetSkillQueryVariables> | ReactiveFunction<GetSkillQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetSkillQuery, GetSkillQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetSkillQuery, GetSkillQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetSkillQuery, GetSkillQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetSkillQuery, GetSkillQueryVariables>(GetSkillDocument, variables, options);
+}
+export function useGetSkillLazyQuery(variables?: GetSkillQueryVariables | VueCompositionApi.Ref<GetSkillQueryVariables> | ReactiveFunction<GetSkillQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetSkillQuery, GetSkillQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetSkillQuery, GetSkillQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetSkillQuery, GetSkillQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetSkillQuery, GetSkillQueryVariables>(GetSkillDocument, variables, options);
+}
+export type GetSkillQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetSkillQuery, GetSkillQueryVariables>;
+export const GetSkillFileTreeDocument = gql`
+    query GetSkillFileTree($name: String!) {
+  skillFileTree(name: $name)
+}
+    `;
+
+/**
+ * __useGetSkillFileTreeQuery__
+ *
+ * To run a query within a Vue component, call `useGetSkillFileTreeQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetSkillFileTreeQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param variables that will be passed into the query
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetSkillFileTreeQuery({
+ *   name: // value for 'name'
+ * });
+ */
+export function useGetSkillFileTreeQuery(variables: GetSkillFileTreeQueryVariables | VueCompositionApi.Ref<GetSkillFileTreeQueryVariables> | ReactiveFunction<GetSkillFileTreeQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetSkillFileTreeQuery, GetSkillFileTreeQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetSkillFileTreeQuery, GetSkillFileTreeQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetSkillFileTreeQuery, GetSkillFileTreeQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetSkillFileTreeQuery, GetSkillFileTreeQueryVariables>(GetSkillFileTreeDocument, variables, options);
+}
+export function useGetSkillFileTreeLazyQuery(variables?: GetSkillFileTreeQueryVariables | VueCompositionApi.Ref<GetSkillFileTreeQueryVariables> | ReactiveFunction<GetSkillFileTreeQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetSkillFileTreeQuery, GetSkillFileTreeQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetSkillFileTreeQuery, GetSkillFileTreeQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetSkillFileTreeQuery, GetSkillFileTreeQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetSkillFileTreeQuery, GetSkillFileTreeQueryVariables>(GetSkillFileTreeDocument, variables, options);
+}
+export type GetSkillFileTreeQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetSkillFileTreeQuery, GetSkillFileTreeQueryVariables>;
+export const GetSkillFileContentDocument = gql`
+    query GetSkillFileContent($skillName: String!, $path: String!) {
+  skillFileContent(skillName: $skillName, path: $path)
+}
+    `;
+
+/**
+ * __useGetSkillFileContentQuery__
+ *
+ * To run a query within a Vue component, call `useGetSkillFileContentQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetSkillFileContentQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param variables that will be passed into the query
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetSkillFileContentQuery({
+ *   skillName: // value for 'skillName'
+ *   path: // value for 'path'
+ * });
+ */
+export function useGetSkillFileContentQuery(variables: GetSkillFileContentQueryVariables | VueCompositionApi.Ref<GetSkillFileContentQueryVariables> | ReactiveFunction<GetSkillFileContentQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetSkillFileContentQuery, GetSkillFileContentQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetSkillFileContentQuery, GetSkillFileContentQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetSkillFileContentQuery, GetSkillFileContentQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetSkillFileContentQuery, GetSkillFileContentQueryVariables>(GetSkillFileContentDocument, variables, options);
+}
+export function useGetSkillFileContentLazyQuery(variables?: GetSkillFileContentQueryVariables | VueCompositionApi.Ref<GetSkillFileContentQueryVariables> | ReactiveFunction<GetSkillFileContentQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetSkillFileContentQuery, GetSkillFileContentQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetSkillFileContentQuery, GetSkillFileContentQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetSkillFileContentQuery, GetSkillFileContentQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetSkillFileContentQuery, GetSkillFileContentQueryVariables>(GetSkillFileContentDocument, variables, options);
+}
+export type GetSkillFileContentQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetSkillFileContentQuery, GetSkillFileContentQueryVariables>;
+export const CreateSkillDocument = gql`
+    mutation CreateSkill($input: CreateSkillInput!) {
+  createSkill(input: $input) {
+    name
+    description
+    content
+    rootPath
+    fileCount
+  }
+}
+    `;
+
+/**
+ * __useCreateSkillMutation__
+ *
+ * To run a mutation, you first call `useCreateSkillMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useCreateSkillMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useCreateSkillMutation({
+ *   variables: {
+ *     input: // value for 'input'
+ *   },
+ * });
+ */
+export function useCreateSkillMutation(options: VueApolloComposable.UseMutationOptions<CreateSkillMutation, CreateSkillMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<CreateSkillMutation, CreateSkillMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<CreateSkillMutation, CreateSkillMutationVariables>(CreateSkillDocument, options);
+}
+export type CreateSkillMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<CreateSkillMutation, CreateSkillMutationVariables>;
+export const UpdateSkillDocument = gql`
+    mutation UpdateSkill($input: UpdateSkillInput!) {
+  updateSkill(input: $input) {
+    name
+    description
+    content
+    rootPath
+    fileCount
+  }
+}
+    `;
+
+/**
+ * __useUpdateSkillMutation__
+ *
+ * To run a mutation, you first call `useUpdateSkillMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useUpdateSkillMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useUpdateSkillMutation({
+ *   variables: {
+ *     input: // value for 'input'
+ *   },
+ * });
+ */
+export function useUpdateSkillMutation(options: VueApolloComposable.UseMutationOptions<UpdateSkillMutation, UpdateSkillMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<UpdateSkillMutation, UpdateSkillMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<UpdateSkillMutation, UpdateSkillMutationVariables>(UpdateSkillDocument, options);
+}
+export type UpdateSkillMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<UpdateSkillMutation, UpdateSkillMutationVariables>;
+export const DeleteSkillDocument = gql`
+    mutation DeleteSkill($name: String!) {
+  deleteSkill(name: $name) {
+    success
+    message
+  }
+}
+    `;
+
+/**
+ * __useDeleteSkillMutation__
+ *
+ * To run a mutation, you first call `useDeleteSkillMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useDeleteSkillMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useDeleteSkillMutation({
+ *   variables: {
+ *     name: // value for 'name'
+ *   },
+ * });
+ */
+export function useDeleteSkillMutation(options: VueApolloComposable.UseMutationOptions<DeleteSkillMutation, DeleteSkillMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<DeleteSkillMutation, DeleteSkillMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<DeleteSkillMutation, DeleteSkillMutationVariables>(DeleteSkillDocument, options);
+}
+export type DeleteSkillMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<DeleteSkillMutation, DeleteSkillMutationVariables>;
+export const UploadSkillFileDocument = gql`
+    mutation UploadSkillFile($skillName: String!, $path: String!, $content: String!) {
+  uploadSkillFile(skillName: $skillName, path: $path, content: $content)
+}
+    `;
+
+/**
+ * __useUploadSkillFileMutation__
+ *
+ * To run a mutation, you first call `useUploadSkillFileMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useUploadSkillFileMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useUploadSkillFileMutation({
+ *   variables: {
+ *     skillName: // value for 'skillName'
+ *     path: // value for 'path'
+ *     content: // value for 'content'
+ *   },
+ * });
+ */
+export function useUploadSkillFileMutation(options: VueApolloComposable.UseMutationOptions<UploadSkillFileMutation, UploadSkillFileMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<UploadSkillFileMutation, UploadSkillFileMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<UploadSkillFileMutation, UploadSkillFileMutationVariables>(UploadSkillFileDocument, options);
+}
+export type UploadSkillFileMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<UploadSkillFileMutation, UploadSkillFileMutationVariables>;
+export const DeleteSkillFileDocument = gql`
+    mutation DeleteSkillFile($skillName: String!, $path: String!) {
+  deleteSkillFile(skillName: $skillName, path: $path)
+}
+    `;
+
+/**
+ * __useDeleteSkillFileMutation__
+ *
+ * To run a mutation, you first call `useDeleteSkillFileMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useDeleteSkillFileMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useDeleteSkillFileMutation({
+ *   variables: {
+ *     skillName: // value for 'skillName'
+ *     path: // value for 'path'
+ *   },
+ * });
+ */
+export function useDeleteSkillFileMutation(options: VueApolloComposable.UseMutationOptions<DeleteSkillFileMutation, DeleteSkillFileMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<DeleteSkillFileMutation, DeleteSkillFileMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<DeleteSkillFileMutation, DeleteSkillFileMutationVariables>(DeleteSkillFileDocument, options);
+}
+export type DeleteSkillFileMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<DeleteSkillFileMutation, DeleteSkillFileMutationVariables>;
 export const AgentTeamResponseDocument = gql`
     subscription AgentTeamResponse($teamId: String!) {
   agentTeamResponse(teamId: $teamId) {

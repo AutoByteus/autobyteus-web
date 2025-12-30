@@ -20,6 +20,7 @@ export interface AgentDefinition {
 
   toolInvocationPreprocessorNames: string[];
   lifecycleProcessorNames: string[];
+  skillNames: string[];
   prompts: {
     __typename?: 'Prompt';
     id: string;
@@ -45,6 +46,7 @@ export interface CreateAgentDefinitionInput {
   toolExecutionResultProcessorNames?: string[];
   toolInvocationPreprocessorNames?: string[];
   lifecycleProcessorNames?: string[];
+  skillNames?: string[];
 }
 
 export interface UpdateAgentDefinitionInput {
@@ -61,6 +63,7 @@ export interface UpdateAgentDefinitionInput {
   toolExecutionResultProcessorNames?: string[];
   toolInvocationPreprocessorNames?: string[];
   lifecycleProcessorNames?: string[];
+  skillNames?: string[];
 }
 
 interface DeleteResult {

@@ -130,6 +130,7 @@ interface AgentDefinition {
   toolExecutionResultProcessorNames: string[];
   toolInvocationPreprocessorNames: string[];
   lifecycleProcessorNames: string[];
+  skillNames: string[];
   systemPromptCategory?: string;
   systemPromptName?: string;
   prompts?: Prompt[];
@@ -365,10 +366,12 @@ The `AgentDefinitionForm.vue` component allows configuring:
 | Tool Execution Result Processors | Transform tool outputs             |
 | Tool Invocation Preprocessors    | Modify tool calls before execution |
 | Lifecycle Processors             | Hook into agent lifecycle events   |
+| Skills                           | File-based capabilities (scripts)  |
 
 ## Related Modules
 
 - **Workspace**: Agents are associated with workspaces for file context
+- **Skills**: Agents can be equipped with file-based skills
 - **Tools**: Agents invoke configured tools during execution
 - **Prompts**: System prompts define agent behavior
 - **Conversation**: Agent responses displayed in conversation segments
