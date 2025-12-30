@@ -1,6 +1,6 @@
 <template>
   <div class="vnc-viewer h-full flex flex-col bg-white">
-    <div class="px-3 py-2 border-b border-gray-200"></div>
+    <!-- Removed top border div to merge with tabs -->
 
     <div class="flex-1 overflow-auto p-3">
       <div v-if="serverSettingsStore.isLoading" class="flex items-center justify-center h-full text-sm text-gray-500">

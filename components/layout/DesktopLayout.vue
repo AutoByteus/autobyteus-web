@@ -32,66 +32,35 @@
       <div v-if="isFileExplorerOpen" class="drag-handle" @mousedown="initDragFileToContent"></div>
     </template>
 
-    <!-- Content Area -->
-    <div v-if="isFullscreenMode" 
-      class="bg-white p-0 shadow flex flex-col min-h-0 flex-1 min-w-[200px]"
-    >
-      <div class="flex-1 overflow-auto relative">
-        <FileContentViewer />
+    <!-- Content Area - Always shows workspace views -->
+    <div class="bg-white p-0 shadow flex flex-col min-h-0 flex-1 min-w-[200px]">
+      <div class="flex-1 overflow-auto">
+        <AgentWorkspaceView v-if="selectedLaunchProfileStore.selectedProfileType === 'agent'" />
+        <TeamWorkspaceView v-else-if="selectedLaunchProfileStore.selectedProfileType === 'team'" />
+        <div v-else class="flex items-center justify-center h-full text-gray-500">
+          <p>Select a profile to begin.</p>
+        </div>
       </div>
     </div>
 
-    <template v-else>
-      <div class="bg-white p-0 shadow flex flex-col min-h-0 flex-1 min-w-[200px]">
-        <div class="flex-1 overflow-auto">
-          <AgentWorkspaceView v-if="selectedLaunchProfileStore.selectedProfileType === 'agent'" />
-          <TeamWorkspaceView v-else-if="selectedLaunchProfileStore.selectedProfileType === 'team'" />
-          <div v-else class="flex items-center justify-center h-full text-gray-500">
-            <p>Select a profile to begin.</p>
-          </div>
-        </div>
-      </div>
+    <div class="drag-handle" @mousedown="initDragRightPanel"></div>
 
-      <div class="drag-handle" @mousedown="initDragRightPanel"></div>
-
-      <!-- Right Panel -->
-      <div 
-        v-show="isRightPanelVisible"
-        :style="{ width: rightPanelWidth + 'px' }" 
-        class="bg-white p-0 shadow flex flex-col min-h-0 relative"
-      >
-        <RightSideTabs />
-        
-        <button 
-          @click="toggleRightPanel"
-          class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 p-1 bg-white rounded-full text-gray-600 hover:text-gray-900 shadow-md hover:shadow-lg transition-all duration-200"
-          :title="isRightPanelVisible ? 'Hide Side Panel' : 'Show Side Panel'"
-        >
-          <svg 
-            class="w-3 h-3 transition-transform duration-200" 
-            :class="{ 'rotate-180': !isRightPanelVisible }"
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path 
-              stroke-linecap="round" 
-              stroke-linejoin="round" 
-              stroke-width="2" 
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
-        </button>
-      </div>
-
+    <!-- Right Panel -->
+    <div 
+      v-show="isRightPanelVisible"
+      :style="{ width: rightPanelWidth + 'px' }" 
+      class="bg-white p-0 shadow flex flex-col min-h-0 relative"
+    >
+      <RightSideTabs />
+      
       <button 
-        v-if="!isRightPanelVisible"
         @click="toggleRightPanel"
-        class="absolute right-0 top-1/2 -translate-y-1/2 p-1 bg-white rounded-full text-gray-600 hover:text-gray-900 shadow-md hover:shadow-lg transition-all duration-200"
-        title="Show Side Panel"
+        class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 p-1 bg-white rounded-full text-gray-600 hover:text-gray-900 shadow-md hover:shadow-lg transition-all duration-200"
+        :title="isRightPanelVisible ? 'Hide Side Panel' : 'Show Side Panel'"
       >
         <svg 
-          class="w-3 h-3 transition-transform duration-200 rotate-180" 
+          class="w-3 h-3 transition-transform duration-200" 
+          :class="{ 'rotate-180': !isRightPanelVisible }"
           fill="none" 
           stroke="currentColor" 
           viewBox="0 0 24 24"
@@ -104,27 +73,45 @@
           />
         </svg>
       </button>
-    </template>
+    </div>
+
+    <button 
+      v-if="!isRightPanelVisible"
+      @click="toggleRightPanel"
+      class="absolute right-0 top-1/2 -translate-y-1/2 p-1 bg-white rounded-full text-gray-600 hover:text-gray-900 shadow-md hover:shadow-lg transition-all duration-200"
+      title="Show Side Panel"
+    >
+      <svg 
+        class="w-3 h-3 transition-transform duration-200 rotate-180" 
+        fill="none" 
+        stroke="currentColor" 
+        viewBox="0 0 24 24"
+      >
+        <path 
+          stroke-linecap="round" 
+          stroke-linejoin="round" 
+          stroke-width="2" 
+          d="M9 5l7 7-7 7"
+        />
+      </svg>
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import { useWorkspaceLeftPanelLayoutStore } from '~/stores/workspaceLeftPanelLayoutStore'
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useRightPanel } from '~/composables/useRightPanel'
 import { usePanelResize } from '~/composables/usePanelResize'
 import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
-import FileContentViewer from '~/components/fileExplorer/FileContentViewer.vue'
 import AgentWorkspaceView from '~/components/workspace/agent/AgentWorkspaceView.vue'
 import TeamWorkspaceView from '~/components/workspace/team/TeamWorkspaceView.vue'
 import RightSideTabs from './RightSideTabs.vue'
 import LaunchProfilePanel from '~/components/launchProfiles/LaunchProfilePanel.vue'
 
-const fileContentDisplayModeStore = useFileContentDisplayModeStore()
 const workspaceLeftPanelLayoutStore = useWorkspaceLeftPanelLayoutStore()
 const { panels } = storeToRefs(workspaceLeftPanelLayoutStore)
 const workspaceStore = useWorkspaceStore();
@@ -135,7 +122,6 @@ const isProfilePanelOpen = computed(() => panels.value.launchProfile.isOpen)
 const isFileExplorerOpen = computed(() => panels.value.fileExplorer.isOpen)
 const profilePanelWidth = ref(300)
 
-const { isFullscreenMode } = storeToRefs(fileContentDisplayModeStore)
 const { fileExplorerWidth, initDragFileToContent } = usePanelResize()
 const { isRightPanelVisible, rightPanelWidth, toggleRightPanel, initDragRightPanel } = useRightPanel()
 

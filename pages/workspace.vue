@@ -2,8 +2,6 @@
   <div class="flex flex-col h-full bg-gray-100 pl-2 font-sans text-gray-800 border-t border-b border-gray-300">
     <DesktopLayout :show-file-content="showFileContent" />
     <MobileLayout :show-file-content="showFileContent" />
-    
-    <MinimizedFileIndicator />
   </div>
 </template>
 
@@ -16,7 +14,6 @@ import { LAUNCH_PROFILE_STORAGE_KEY, useAgentLaunchProfileStore } from '~/stores
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
 import DesktopLayout from '~/components/layout/DesktopLayout.vue';
 import MobileLayout from '~/components/layout/MobileLayout.vue';
-import MinimizedFileIndicator from '~/components/fileExplorer/MinimizedFileIndicator.vue';
 
 const fileExplorerStore = useFileExplorerStore();
 const serverSettingsStore = useServerSettingsStore();
@@ -48,3 +45,4 @@ onMounted(() => {
   teamLaunchProfileStore.loadLaunchProfiles();
 });
 </script>
+

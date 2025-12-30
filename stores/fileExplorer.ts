@@ -25,7 +25,6 @@ import type {
   CreateFileOrFolderMutationVariables
 } from '~/generated/graphql'
 import { useWorkspaceStore } from '~/stores/workspace'
-import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import { useServerStore } from '~/stores/serverStore'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
 import { findFileByPath, determineFileType } from '~/utils/fileExplorer/fileUtils'
@@ -310,8 +309,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
 
       wsState.activeFile = filePath;
-      const fileContentDisplayModeStore = useFileContentDisplayModeStore();
-      fileContentDisplayModeStore.showFullscreen();
   },
 
     setFileMode(filePath: string, mode: FileOpenMode) {
@@ -329,11 +326,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       if (wsState.activeFile === filePath) {
         const lastOpenFile = wsState.openFiles[wsState.openFiles.length - 1];
         wsState.activeFile = lastOpenFile ? lastOpenFile.path : null;
-        
-        if (!wsState.activeFile) {
-          const fileContentDisplayModeStore = useFileContentDisplayModeStore();
-          fileContentDisplayModeStore.hide();
-        }
       }
     },
 
@@ -348,8 +340,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       const wsState = this._getOrCreateCurrentWorkspaceState();
       wsState.openFiles = [];
       wsState.activeFile = null;
-      const fileContentDisplayModeStore = useFileContentDisplayModeStore();
-      fileContentDisplayModeStore.hide();
     },
 
     closeOtherFiles(exceptFilePath: string) {
@@ -361,8 +351,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         wsState.activeFile = exceptFilePath;
       } else {
         wsState.activeFile = null;
-        const fileContentDisplayModeStore = useFileContentDisplayModeStore();
-        fileContentDisplayModeStore.hide();
       }
     },
 

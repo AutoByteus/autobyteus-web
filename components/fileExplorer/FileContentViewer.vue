@@ -63,159 +63,87 @@
     id="contentViewer"
     class="bg-white rounded-lg shadow-md flex flex-col h-full"
     ref="contentRef"
-    v-if="isFullscreenMode || (!isFullscreenMode && !isMinimizedMode)"
   >
-    <!-- Tabs -->
-    <div class="flex border-b overflow-x-auto sticky top-0 bg-white z-10 p-2">
-      <div 
-        v-for="file in openFiles" 
-        :key="file"
-        @click="setActiveFile(file)"
-        @contextmenu.prevent="showContextMenu($event, file)"
-        role="button"
-        tabindex="0"
-        @keyup.enter="setActiveFile(file)"
-        :class="[
-          'px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 flex items-center gap-2', 
-          file === activeFile ? 'bg-gray-200 text-gray-800' : 'text-gray-600 hover:bg-gray-100'
-        ]"
-      >
-        <span class="truncate">{{ getFileName(file) }}</span>
-        <button 
-          @click.stop="closeFile(file)" 
-          class="close-button ml-1 w-5 h-5 flex items-center justify-center rounded-full hover:bg-red-100 transition-colors"
-          aria-label="Close file"
-        >
-          <span class="text-base leading-none text-red-500 hover:text-red-600">&times;</span>
-        </button>
-      </div>
-      <!-- Close All button when multiple files open -->
-      <button 
-        v-if="openFiles.length > 1"
-        @click="closeAllFiles"
-        class="ml-auto px-3 py-1 text-xs text-gray-500 hover:text-red-500 hover:bg-red-50 rounded transition-colors whitespace-nowrap"
-        title="Close all files"
-      >
-        Close All
-      </button>
-    </div>
-
-    <!-- Context Menu -->
-    <Teleport to="body">
-      <div
-        v-if="contextMenu.visible"
-        class="fixed bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-[200] min-w-[150px]"
-        :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
-        @click.stop
-      >
-        <button
-          @click="handleContextClose"
-          class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-        >
-          Close
-        </button>
-        <button
-          v-if="openFiles.length > 1"
-          @click="handleContextCloseOthers"
-          class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-        >
-          Close Others
-        </button>
-        <button
-          @click="handleContextCloseAll"
-          class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-        >
-          Close All
-        </button>
-      </div>
-    </Teleport>
-
-    <div class="flex-1 flex flex-col min-h-0">
-      <div v-if="!activeFile" class="flex-1 text-center py-4 flex items-center justify-center">
-        <p class="text-gray-600">No file selected</p>
-      </div>
-
-      <div v-else class="flex-1 flex flex-col min-h-0">
-        <div v-if="activeFileData?.isLoading" class="flex-1 text-center py-4 flex items-center justify-center">
-          <p class="text-gray-600">Loading file content...</p>
-        </div>
-        <div v-else-if="activeFileData?.error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative m-4" role="alert">
-          <strong class="font-bold">Error!</strong>
-          <span class="block sm:inline">{{ activeFileData.error }}</span>
-        </div>
-        <div v-else-if="activeFileData && activeViewerComponent" class="flex-1 bg-gray-50 rounded-lg overflow-hidden relative min-h-0">
-          <component
-            :is="activeViewerComponent"
-            v-bind="viewerProps"
-            @update:model-value="fileContent = $event"
-            @save="handleSave"
-            class="h-full w-full flex-1 min-h-0 overflow-auto"
-          />
-          <template v-if="activeFileData.type === 'Text' && activeFile && activeFileMode === 'edit'">
-            <div v-if="saveContentError" class="absolute bottom-2 left-2 text-red-600 bg-white px-2 py-1 rounded shadow">
-              {{ saveContentError }}
-            </div>
-            <div v-if="isSavingContent" class="absolute bottom-2 right-2 text-gray-600 bg-white px-2 py-1 rounded shadow">
-              Saving...
-            </div>
-            <div v-if="showSaveSuccess" class="absolute bottom-2 right-2 text-green-600 bg-white px-2 py-1 rounded shadow">
-              Changes saved
-            </div>
-          </template>
-        </div>
-        <div v-else class="flex-1 text-center py-4 flex items-center justify-center">
-          <p class="text-gray-500">Unsupported file type. Cannot display.</p>
+    <!-- File Tabs & Controls Header -->
+    <div class="flex items-center border-b border-gray-200 bg-white overflow-x-auto sticky top-0 z-10 px-0 h-[46px]">
+      <div class="flex flex-1 px-2 gap-4 items-center min-w-0">
+         <div class="flex gap-4 overflow-x-auto no-scrollbar mask-fade-right">
+            <button 
+            v-for="file in openFiles" 
+            :key="file"
+            @click="setActiveFile(file)"
+            @contextmenu.prevent="showContextMenu($event, file)"
+            tabindex="0"
+            @keyup.enter="setActiveFile(file)"
+            class="group relative flex items-center gap-2 px-1 py-2.5 text-sm font-medium border-b-2 transition-all duration-150 focus:outline-none whitespace-nowrap"
+            :class="file === activeFile 
+                ? 'border-blue-600 text-blue-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+            >
+            <span class="truncate max-w-[150px]">{{ getFileName(file) }}</span>
+            <span 
+                v-if="file === activeFile"
+                @click.stop="closeFile(file)" 
+                class="flex items-center justify-center w-4 h-4 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-100 hover:text-red-600 transition-all ml-1"
+                aria-label="Close file"
+            >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </span>
+            </button>
         </div>
       </div>
-    </div>
-
-    <!-- Redesigned Footer with Colors -->
-    <div class="border-t border-gray-200 bg-gray-50 px-4 py-3 flex items-center justify-between shrink-0 gap-4">
-      <!-- Left: Context Hint -->
-      <div class="flex items-center min-w-0">
-        <div v-if="isFullscreenMode" class="hidden sm:flex items-center gap-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md border border-gray-200">
-          <span>Press</span>
-          <kbd class="font-sans font-semibold text-gray-700 bg-white border border-gray-200 rounded px-1 min-w-[20px] text-center shadow-sm">Esc</kbd>
-          <span>to minimize</span>
-        </div>
-      </div>
-
-      <!-- Right: Actions Group -->
-      <div class="flex items-center gap-4">
-        
-        <!-- Edit/Preview Segmented Control -->
-        <div v-if="activeFileData?.type === 'Text' && isPreviewableText" class="flex p-1 bg-gray-200/80 rounded-lg border border-gray-200">
-          <button
-            class="px-4 py-1.5 text-xs font-medium rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+      
+      <!-- Right Side Controls -->
+      <div class="flex items-center gap-1 pr-2 shrink-0">
+        <!-- Edit/Preview Group -->
+        <div v-if="activeFileData?.type === 'Text' && isPreviewableText" class="flex items-center gap-1">
+           <button
+            class="p-1.5 rounded-md transition-all duration-200 focus:outline-none"
             :class="activeFileMode === 'edit' 
-              ? 'bg-blue-600 text-white shadow-md' 
-              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300/60'"
+              ? 'bg-blue-50 text-blue-600' 
+              : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'"
             @click.stop="setMode('edit')"
+             title="Edit Mode"
           >
-            Edit
+            <PencilSquareIcon class="h-4 w-4" />
           </button>
           <button
-            class="px-4 py-1.5 text-xs font-medium rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            class="p-1.5 rounded-md transition-all duration-200 focus:outline-none"
             :class="activeFileMode === 'preview' 
-              ? 'bg-blue-600 text-white shadow-md' 
-              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300/60'"
+              ? 'bg-blue-50 text-blue-600' 
+              : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'"
             @click.stop="setMode('preview')"
+             title="Preview Mode"
           >
-            Preview
+            <EyeIcon class="h-4 w-4" />
           </button>
+          
+          <!-- Divider -->
+          <div class="h-4 w-px bg-gray-200 mx-1"></div>
         </div>
 
-        <!-- Divider -->
-        <div v-if="activeFileData?.type === 'Text' && isPreviewableText" class="h-5 w-px bg-gray-300 hidden sm:block"></div>
+        <!-- Close All button -->
+        <button 
+            v-if="openFiles.length > 1"
+            @click="closeAllFiles"
+            class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all"
+            title="Close all files"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+            </svg>
+        </button>
 
-        <!-- Maximize Toggle -->
-        <button
-          class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+         <!-- Zen Mode -->
+         <button
+          class="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200 focus:outline-none"
           @click.stop="toggleZenMode"
           :title="isZenMode ? 'Restore view' : 'Maximize view'"
         >
-          <ArrowsPointingOutIcon v-if="!isZenMode" class="h-5 w-5" />
-          <ArrowsPointingInIcon v-else class="h-5 w-5" />
+          <ArrowsPointingOutIcon v-if="!isZenMode" class="h-4 w-4" />
+          <ArrowsPointingInIcon v-else class="h-4 w-4" />
         </button>
       </div>
     </div>
@@ -230,7 +158,7 @@ import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { useWorkspaceStore } from '~/stores/workspace'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import { getLanguage } from '~/utils/aiResponseParser/languageDetector'
-import { ArrowsPointingOutIcon, ArrowsPointingInIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { ArrowsPointingOutIcon, ArrowsPointingInIcon, XMarkIcon, PencilSquareIcon, EyeIcon } from '@heroicons/vue/24/outline'
 
 // Viewer components
 import MonacoEditor from '~/components/fileExplorer/MonacoEditor.vue'
@@ -244,7 +172,7 @@ import ExcelViewer from '~/components/fileExplorer/viewers/ExcelViewer.vue'
 const fileExplorerStore = useFileExplorerStore()
 const workspaceStore = useWorkspaceStore()
 const fileContentDisplayModeStore = useFileContentDisplayModeStore()
-const { isFullscreenMode, isMinimizedMode, isZenMode } = storeToRefs(fileContentDisplayModeStore)
+const { isZenMode } = storeToRefs(fileContentDisplayModeStore)
 
 const contentRef = ref<HTMLElement | null>(null)
 
@@ -427,14 +355,10 @@ const handleSave = async () => {
 }
 
 const handleKeydown = async (event: KeyboardEvent) => {
-  if (event.key === 'Escape') {
-    if (isZenMode.value) {
-      fileContentDisplayModeStore.toggleZenMode()
-      return
-    }
-  }
-  if (isFullscreenMode.value && event.key === 'Escape') {
-    fileContentDisplayModeStore.minimize()
+  // Exit Zen mode on Escape
+  if (event.key === 'Escape' && isZenMode.value) {
+    fileContentDisplayModeStore.exitZenMode()
+    return
   }
   
   // Arrow key navigation - only when editor is NOT focused

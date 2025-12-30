@@ -1,6 +1,6 @@
 <template>
   <div class="terminal-container h-full flex flex-col" ref="terminalContainer">
-    <div ref="terminalElement" class="flex-1 w-full"></div>
+    <div ref="terminalElement" class="flex-1 w-full relative"></div>
   </div>
 </template>
 
@@ -8,6 +8,7 @@
 import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import { WebglAddon } from '@xterm/addon-webgl';
 import '@xterm/xterm/css/xterm.css';
 import { useBashCommandStore } from '~/stores/bashCommand';
 import { useWorkspaceStore } from '~/stores/workspace';
@@ -21,16 +22,15 @@ const bashCommandStore = useBashCommandStore();
 const workspaceStore = useWorkspaceStore();
 
 let resizeObserver: ResizeObserver | null = null;
-
 const currentConversationId = ref<string>('default-conversation');
-
 const commandHistory = ref<string[]>([]);
 const historyIndex = ref<number>(0);
 let currentCommand = '';
 
 const prompt = computed(() => {
   const workspaceName = workspaceStore.activeWorkspace?.name || 'no-workspace';
-  return `\r\n${workspaceName}:~$ `;
+  /* Use darker ANSI colors for Light Theme readability */
+  return `\r\n\x1b[1;32m${workspaceName}\x1b[0m:\x1b[1;34m~$\x1b[0m `;
 });
 
 const writePrompt = () => {
@@ -49,34 +49,25 @@ const handleCommand = async (command: string) => {
 
   const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
   if (!workspaceId) {
-    terminalInstance.value.writeln(`Error: No active workspace found.`);
+    terminalInstance.value.writeln(`\r\n\x1b[31mError: No active workspace found.\x1b[0m`);
     writePrompt();
     return;
   }
   
-  // Generate a unique key for each command to avoid conflicts and race conditions.
   const commandKey = `${currentConversationId.value}:${Date.now()}`;
 
   try {
-    // Execute the command using the unique key.
-    await bashCommandStore.executeBashCommand(
-      workspaceId,
-      command,
-      commandKey
-    );
-    
-    // Retrieve the result using the same unique key.
+    await bashCommandStore.executeBashCommand(workspaceId, command, commandKey);
     const result = bashCommandStore.commandResults[commandKey];
     
-    // Safely access the message property and display it.
     if (result && typeof result.message === 'string') {
         terminalInstance.value.writeln(result.message);
     } else if (result && !result.success) {
-        terminalInstance.value.writeln(`Error: ${result.message || 'Command failed with no output.'}`);
+        terminalInstance.value.writeln(`\r\n\x1b[31mError: ${result.message || 'Command failed with no output.'}\x1b[0m`);
     }
 
   } catch (error) {
-    terminalInstance.value.writeln(`Error: ${(error as Error).message}`);
+    terminalInstance.value.writeln(`\r\n\x1b[31mError: ${(error as Error).message}\x1b[0m`);
   }
   writePrompt();
 };
@@ -97,24 +88,49 @@ const initializeTerminal = () => {
   if (!terminalElement.value) return;
 
   try {
+    // Modern VS Code-like Configuration (Light Theme)
     terminalInstance.value = new Terminal({
       cursorBlink: true,
-      fontFamily: 'Courier New, monospace',
-      fontSize: 14,
+      cursorStyle: 'bar',
+      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      fontSize: 13,
+      lineHeight: 1.2,
       theme: {
-        background: '#1e1e1e',
-        foreground: '#ffffff',
-        cursor: '#ffffff',
-        selection: '#44475a'
+        background: '#ffffff',
+        foreground: '#383a42', // Dark gray for main text
+        cursor: '#528bff',
+        selectionBackground: '#e5e5e6',
+        
+        // ANSI Colors (Light Theme Adapted)
+        black: '#383a42',
+        red: '#e45649',
+        green: '#50a14f',
+        yellow: '#986801',
+        blue: '#4078f2',
+        magenta: '#a626a4',
+        cyan: '#0184bc',
+        white: '#a0a1a7',
+        
+        // Bright variants
+        brightBlack: '#5c6370',
+        brightRed: '#ca1243',
+        brightGreen: '#4078f2', // Using blue for bright green in this palette or distinct green
+        brightYellow: '#c18401',
+        brightBlue: '#528bff',
+        brightMagenta: '#d02f74',
+        brightCyan: '#0184bc',
+        brightWhite: '#ffffff',
       },
       convertEol: true,
-      scrollback: 1000,
-      disableStdin: false
+      scrollback: 5000,
+      disableStdin: false,
+      allowProposedApi: true
     });
 
     fitAddon.value = new FitAddon();
     terminalInstance.value.open(terminalElement.value);
     
+    // Activate Fit Addon
     try {
       fitAddon.value.activate(terminalInstance.value);
       isAddonActivated.value = true;
@@ -124,19 +140,33 @@ const initializeTerminal = () => {
       isAddonActivated.value = false;
     }
 
-    terminalInstance.value.writeln('Welcome to Autobyteus Terminal!');
+    // Activate WebGL Addon for crisp rendering
+    try {
+      const webglAddon = new WebglAddon();
+      webglAddon.onContextLoss((e: unknown) => {
+        webglAddon.dispose();
+      });
+      terminalInstance.value.loadAddon(webglAddon);
+    } catch (e) {
+      console.warn('WebGL addon failed to load, falling back to canvas/dom renderer', e);
+    }
+
+    terminalInstance.value.writeln('\x1b[1;36mWelcome to Autobyteus Terminal!\x1b[0m');
     terminalInstance.value.writeln('Type your commands and press Enter.');
     writePrompt();
 
+    // Input Handling
     terminalInstance.value.onData((data) => {
       const code = data.charCodeAt(0);
       
+      // Backspace
       if (code === 8 || code === 127) {
         if (currentCommand.length > 0) {
           currentCommand = currentCommand.slice(0, -1);
           terminalInstance.value?.write('\b \b');
         }
       }
+      // Enter
       else if (code === 13) {
         if (currentCommand.trim().length > 0) {
           commandHistory.value.push(currentCommand);
@@ -146,12 +176,14 @@ const initializeTerminal = () => {
         handleCommand(currentCommand);
         currentCommand = '';
       }
+      // Normal character
       else {
         currentCommand += data;
         terminalInstance.value?.write(data);
       }
     });
 
+    // Special Keys (History, etc)
     terminalInstance.value.onKey(e => {
       const ev = e.domEvent;
       
@@ -164,6 +196,7 @@ const initializeTerminal = () => {
         if (historyIndex.value > 0) {
           historyIndex.value--;
           const command = commandHistory.value[historyIndex.value];
+          // Clear current line
           while (currentCommand.length > 0) {
             terminalInstance.value?.write('\b \b');
             currentCommand = currentCommand.slice(0, -1);
@@ -179,7 +212,8 @@ const initializeTerminal = () => {
           if (historyIndex.value < commandHistory.value.length) {
             command = commandHistory.value[historyIndex.value];
           }
-          while (currentCommand.length > 0) {
+           // Clear current line
+           while (currentCommand.length > 0) {
             terminalInstance.value?.write('\b \b');
             currentCommand = currentCommand.slice(0, -1);
           }
@@ -216,8 +250,8 @@ const cleanup = () => {
     if (isAddonActivated.value && fitAddon.value) {
       fitAddon.value.dispose();
     }
-  } catch (error) {
-    console.warn('Error disposing fit addon:', error);
+  } catch (error) { 
+    // ignore
   }
 
   try {
@@ -225,7 +259,7 @@ const cleanup = () => {
       terminalInstance.value.dispose();
     }
   } catch (error) {
-    console.warn('Error disposing terminal:', error);
+    // ignore
   }
 
   terminalInstance.value = null;
@@ -255,17 +289,43 @@ onBeforeUnmount(() => {
 
 <style>
 .terminal-container {
-  background-color: #1e1e1e;
-  /* border-radius: 5px; Removed */
+  background-color: #ffffff;
   overflow: hidden;
   height: 100%;
   cursor: text;
-  padding: 10px;
+  padding: 0;
   box-sizing: border-box;
 }
 
+/* Ensure inner xterm div fills space */
+.terminal-container .xterm-screen {
+  width: 100% !important; 
+}
+
+/* Custom Scrollbar to match Light Theme */
+.terminal-container ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.terminal-container ::-webkit-scrollbar-track {
+  background: #ffffff; 
+}
+
+.terminal-container ::-webkit-scrollbar-thumb {
+  background: #d1d5db; /* Gray-300 */
+  border-radius: 0px;
+}
+
+.terminal-container ::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af; /* Gray-400 */
+}
+
+.terminal-container ::-webkit-scrollbar-corner {
+  background: #ffffff;
+}
+
 .xterm {
-  padding: 0;
-  height: 100%;
+  padding: 12px 0 0 12px; /* Internal padding for text breathing room */
 }
 </style>

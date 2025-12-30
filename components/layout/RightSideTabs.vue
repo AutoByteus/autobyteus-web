@@ -8,6 +8,9 @@
 
     <!-- Tab Content -->
     <div class="flex-grow overflow-auto relative mt-[-1px]">
+      <div v-if="activeTab === 'files'" class="h-full">
+        <FileContentViewer />
+      </div>
       <div v-if="activeTab === 'teamMembers'" class="h-full">
         <TeamOverviewPanel />
       </div>
@@ -28,19 +31,23 @@
 import { ref, computed, watch } from 'vue';
 import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
 import { useActiveContextStore } from '~/stores/activeContextStore';
+import { useFileExplorerStore } from '~/stores/fileExplorer';
 import TabList from '~/components/tabs/TabList.vue';
 import TeamOverviewPanel from '~/components/workspace/team/TeamOverviewPanel.vue';
 import TodoListPanel from '~/components/workspace/agent/TodoListPanel.vue';
 import Terminal from '~/components/workspace/tools/Terminal.vue';
 import VncViewer from '~/components/workspace/tools/VncViewer.vue';
+import FileContentViewer from '~/components/fileExplorer/FileContentViewer.vue';
 
-type TabName = 'teamMembers' | 'terminal' | 'vnc' | 'todoList';
+type TabName = 'files' | 'teamMembers' | 'terminal' | 'vnc' | 'todoList';
 
 const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
 const activeContextStore = useActiveContextStore();
+const fileExplorerStore = useFileExplorerStore();
 const activeTab = ref<TabName>('terminal');
 
 const allTabs = [
+  { name: 'files' as TabName, label: 'Files', requires: 'any' },
   { name: 'teamMembers' as TabName, label: 'Team', requires: 'team' },
   { name: 'todoList' as TabName, label: 'To-Do', requires: 'agent' },
   { name: 'terminal' as TabName, label: 'Terminal', requires: 'any' },
@@ -63,8 +70,6 @@ watch(() => selectedLaunchProfileStore.selectedProfileType, (newType) => {
   if (newType === 'team') {
     activeTab.value = 'teamMembers';
   } else if (newType === 'agent') {
-    // If the new profile type is 'agent', switch to the 'todoList' tab by default.
-    // If the todo list is empty, the panel will show a "no todos" message.
     activeTab.value = 'todoList';
   }
 }, { immediate: true });
@@ -84,6 +89,13 @@ watch(() => activeContextStore.currentTodoList, (newTodoList) => {
   }
 });
 
+// Auto-switch to Files tab when a file is opened
+watch(() => fileExplorerStore.getOpenFiles, (openFiles) => {
+  if (openFiles.length > 0 && activeTab.value !== 'files') {
+    activeTab.value = 'files';
+  }
+}, { deep: true });
+
 </script>
 
 <style scoped>
@@ -97,3 +109,4 @@ watch(() => activeContextStore.currentTodoList, (newTodoList) => {
   height: 100%;
 }
 </style>
+

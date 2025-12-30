@@ -1,14 +1,19 @@
 <template>
-  <div 
-    class="px-3 py-1 cursor-pointer border border-gray-300 mr-1 border-b-0 rounded-t-md transition-colors duration-200 ease-in-out"
+  <button 
+    class="tab-button relative px-5 py-3 font-medium text-base transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-blue-500/20 whitespace-nowrap"
     :class="{ 
-      'bg-white text-blue-600': isActive, 
-      'bg-gray-100 text-gray-700 hover:bg-gray-200': !isActive 
+      'text-blue-600': isActive, 
+      'text-gray-600 hover:text-gray-900 hover:bg-gray-50': !isActive 
     }"
     @click="selectTab"
   >
     <slot />
-  </div>
+    <!-- Active indicator - thicker blue underline -->
+    <span 
+      v-if="isActive"
+      class="absolute bottom-0 left-0 right-0 h-[2px] bg-blue-600 rounded-t-sm"
+    />
+  </button>
 </template>
 
 <script setup lang="ts">
@@ -27,3 +32,15 @@ const selectTab = () => {
   emit("select", props.name);
 };
 </script>
+
+<style scoped>
+.tab-button {
+  /* Smooth hover effect */
+  background: transparent;
+}
+
+.tab-button:hover:not(.text-blue-600) {
+  background: rgba(0, 0, 0, 0.04);
+}
+</style>
+

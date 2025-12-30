@@ -1,5 +1,5 @@
 <template>
-  <div class="flex border-b border-gray-200 px-2">
+  <div class="flex items-end border-b border-gray-200 bg-white px-1">
     <Tab 
       v-for="tab in tabs" 
       :key="tab.name" 
