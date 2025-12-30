@@ -42,7 +42,7 @@
     <!-- Empty State -->
     <div
       v-else
-      class="flex-1 flex items-center justify-center text-center bg-gray-50 rounded-lg"
+      class="flex-1 flex items-center justify-center text-center bg-white rounded-lg"
     >
       <div class="px-4 py-8">
         <span class="i-heroicons-clipboard-document-check-20-solid w-10 h-10 text-gray-300 mx-auto"></span>
