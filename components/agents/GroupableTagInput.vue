@@ -25,7 +25,17 @@
     <!-- Available Tags List -->
     <div class="mt-1 border border-gray-200 rounded-md bg-gray-50 max-h-96 overflow-y-auto">
       <div class="p-2 sticky top-0 bg-gray-50/95 z-10 backdrop-blur-sm">
-        <input type="text" v-model="searchTerm" placeholder="Search available items..." class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
+        <div class="flex items-center gap-2">
+          <input type="text" v-model="searchTerm" placeholder="Search available items..." class="flex-1 px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
+          <button
+            v-if="canClearAll"
+            type="button"
+            @click="clearAll"
+            class="px-2.5 py-1.5 text-xs font-medium text-red-700 bg-red-100 rounded-md hover:bg-red-200"
+          >
+            Clear All
+          </button>
+        </div>
       </div>
 
       <div v-if="loading" class="p-4 text-center text-gray-500">Loading...</div>
@@ -134,6 +144,8 @@ const filteredFlatTags = computed(() => {
   return props.source.tags.filter(tag => tag.name.toLowerCase().includes(searchLower));
 });
 
+const canClearAll = computed(() => props.modelValue.some(tag => !isMandatory(tag)));
+
 function toggleTag(tagName: string) {
   if (isMandatory(tagName) && isSelected(tagName)) {
     // Prevent removing mandatory tags that are already selected
@@ -179,5 +191,10 @@ function emitAddAll(groupName: string) {
 
 function focusInput() {
   inputRef.value?.focus();
+}
+
+function clearAll() {
+  const mandatorySelection = props.modelValue.filter(tag => isMandatory(tag));
+  emit('update:modelValue', mandatorySelection);
 }
 </script>
