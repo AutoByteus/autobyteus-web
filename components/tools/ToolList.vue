@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="flex flex-col">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-medium text-gray-900">{{ title }}</h2>
       
@@ -34,7 +34,7 @@
       />
     </div>
 
-    <div v-else class="col-span-full text-center py-8 bg-white rounded-lg border border-gray-200">
+    <div v-else class="col-span-full text-center py-8 bg-white rounded-lg border border-gray-200 flex-1 flex flex-col justify-center items-center">
       <span :class="emptyIcon + ' w-10 h-10 text-gray-400 mx-auto mb-3'"></span>
       <p class="text-gray-500">{{ emptyMessage }}</p>
     </div>

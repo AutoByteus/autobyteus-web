@@ -2,9 +2,9 @@
   <div class="flex h-screen bg-gray-100">
     <ToolsSidebar :active-page="activeView" @navigate="handleNavigation" />
 
-    <main class="flex-1 p-8 overflow-y-auto">
+    <main class="flex-1 p-8 overflow-y-auto flex flex-col">
       <!-- Local Tools View -->
-      <div v-if="activeView === 'local-tools'">
+      <div v-if="activeView === 'local-tools'" class="flex flex-col h-full">
         <ToolsFilter 
           v-model:searchQuery="searchQuery"
           v-model:selectedCategory="selectedCategory"
@@ -15,7 +15,7 @@
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto mb-4"></div>
           <p>Loading tools...</p>
         </div>
-        <div v-else-if="filteredLocalToolsByCategory.length === 0" class="text-center py-16 bg-white rounded-lg border">
+        <div v-else-if="filteredLocalToolsByCategory.length === 0" class="text-center py-16 bg-white rounded-lg border flex-1 flex flex-col justify-center items-center">
           <p class="text-lg font-medium text-gray-700">No tools found</p>
           <p class="text-sm text-gray-500 mt-1">Try adjusting your search or filter.</p>
         </div>
@@ -33,12 +33,13 @@
       </div>
 
       <!-- MCP Servers List View -->
-      <div v-else-if="activeView === 'mcp-servers'">
+      <div v-else-if="activeView === 'mcp-servers'" class="flex flex-col h-full">
         <ToolsFilter 
           v-model:searchQuery="searchQuery" 
           :show-category-filter="false" 
         />
         <McpServerList
+          class="flex-1"
           :servers="filteredMcpServers"
           :loading="store.getLoading && activeView.startsWith('mcp-')"
           @add="showAddServerForm"
@@ -70,8 +71,9 @@
       </div>
 
       <!-- Tools for a specific MCP Server -->
-      <div v-else-if="activeView.startsWith('mcp-tools-')">
+      <div v-else-if="activeView.startsWith('mcp-tools-')" class="flex flex-col h-full">
          <ToolList
+          class="flex-1"
           :title="`Tools for ${currentServerId}`"
           :tools="store.getToolsForServer(currentServerId!)"
           :loading="store.getLoading && activeView === `mcp-tools-${currentServerId}`"

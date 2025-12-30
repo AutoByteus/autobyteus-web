@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="flex flex-col h-full">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-medium text-gray-900">MCP Servers</h2>
       <div class="flex items-center space-x-2">
@@ -37,7 +37,7 @@
       />
     </div>
 
-    <div v-else class="col-span-full flex flex-col items-center justify-center p-8 bg-white rounded-lg border border-gray-200 min-h-[50vh]">
+    <div v-else class="col-span-full flex-1 flex flex-col items-center justify-center p-8 bg-white rounded-lg border border-gray-200">
       <span class="i-heroicons-server-stack-20-solid w-10 h-10 text-gray-400 mx-auto mb-3"></span>
       <p class="text-gray-500">No MCP Servers configured.</p>
       <p class="text-sm text-gray-400 mt-2">Add a server or use Bulk Import to get started.</p>
