@@ -147,6 +147,45 @@
         </button>
       </div>
     </div>
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col min-h-0 relative">
+      <div v-if="!activeFile" class="flex-1 text-center py-4 flex items-center justify-center">
+        <p class="text-gray-600">No file selected</p>
+      </div>
+
+      <div v-else class="flex-1 flex flex-col min-h-0">
+        <div v-if="activeFileData?.isLoading" class="flex-1 text-center py-4 flex items-center justify-center">
+          <p class="text-gray-600">Loading file content...</p>
+        </div>
+        <div v-else-if="activeFileData?.error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative m-4" role="alert">
+          <strong class="font-bold">Error!</strong>
+          <span class="block sm:inline">{{ activeFileData.error }}</span>
+        </div>
+        <div v-else-if="activeFileData && activeViewerComponent" class="flex-1 bg-gray-50 rounded-lg overflow-hidden relative min-h-0">
+          <component
+            :is="activeViewerComponent"
+            v-bind="viewerProps"
+            @update:model-value="fileContent = $event"
+            @save="handleSave"
+            class="h-full w-full flex-1 min-h-0 overflow-auto"
+          />
+          <template v-if="activeFileData.type === 'Text' && activeFile && activeFileMode === 'edit'">
+            <div v-if="saveContentError" class="absolute bottom-2 left-2 text-red-600 bg-white px-2 py-1 rounded shadow">
+              {{ saveContentError }}
+            </div>
+            <div v-if="isSavingContent" class="absolute bottom-2 right-2 text-gray-600 bg-white px-2 py-1 rounded shadow">
+              Saving...
+            </div>
+            <div v-if="showSaveSuccess" class="absolute bottom-2 right-2 text-green-600 bg-white px-2 py-1 rounded shadow">
+              Changes saved
+            </div>
+          </template>
+        </div>
+        <div v-else class="flex-1 text-center py-4 flex items-center justify-center">
+          <p class="text-gray-500">Unsupported file type. Cannot display.</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
