@@ -62,7 +62,8 @@ export class WindowsServerManager extends BaseServerManager {
   }
 
   /**
-   * Stop the backend server on Windows using taskkill.
+   * Stop the backend server on Windows with graceful-to-forceful fallback.
+   * First tries graceful taskkill (without /f), then escalates to forceful kill after timeout.
    */
   public stopServer(): Promise<void> {
     if (!this.serverProcess) {
@@ -73,35 +74,71 @@ export class WindowsServerManager extends BaseServerManager {
     logger.info('Stopping server on Windows...');
 
     return new Promise((resolve) => {
-        const pid = this.serverProcess?.pid;
-        this.serverProcess = null; // Detach original process object
+      const pid = this.serverProcess?.pid;
+      
+      const cleanup = () => {
+        this.isServerRunning = false;
+        this.ready = false;
+        this.serverProcess = null;
+        this.emit('stopped');
+      };
 
-        if (pid) {
-            const killProcess = spawn('taskkill', ['/pid', pid.toString(), '/f', '/t']);
-            
-            const cleanup = () => {
-                this.isServerRunning = false;
-                this.ready = false;
-                this.emit('stopped');
-                resolve();
-            }
+      if (!pid) {
+        logger.warn('Server process exists but has no PID. Cannot kill.');
+        cleanup();
+        resolve();
+        return;
+      }
 
-            killProcess.on('close', () => {
-                logger.info(`taskkill for PID ${pid} completed.`);
-                cleanup();
-            });
-
-            killProcess.on('error', (err) => {
-                logger.error(`taskkill failed for PID ${pid}:`, err);
-                cleanup(); // Resolve even on error to not hang
-            });
-        } else {
-            logger.warn('Server process exists but has no PID. Cannot kill.');
-            this.isServerRunning = false;
-            this.ready = false;
-            this.emit('stopped');
-            resolve();
+      // Detach original process object
+      this.serverProcess = null;
+      
+      let forceKillTimeout: NodeJS.Timeout;
+      let isResolved = false;
+      
+      const resolveOnce = () => {
+        if (!isResolved) {
+          isResolved = true;
+          clearTimeout(forceKillTimeout);
+          cleanup();
+          resolve();
         }
+      };
+      
+      // Step 1: Try graceful kill first (without /f flag)
+      logger.info(`Sending graceful taskkill for PID ${pid}`);
+      const gracefulKill = spawn('taskkill', ['/pid', pid.toString(), '/t']);
+      
+      gracefulKill.on('close', (code) => {
+        if (code === 0) {
+          logger.info(`Graceful taskkill for PID ${pid} completed successfully`);
+          resolveOnce();
+        }
+        // If code !== 0, the timeout will handle force kill
+      });
+
+      gracefulKill.on('error', (err) => {
+        logger.error(`Graceful taskkill failed for PID ${pid}:`, err);
+        // Let the force kill timeout handle it
+      });
+      
+      // Step 2: Force kill after timeout
+      forceKillTimeout = setTimeout(() => {
+        if (!isResolved) {
+          logger.warn(`Graceful shutdown timed out after ${this.gracefulShutdownTimeoutMs}ms, forcing kill for PID ${pid}`);
+          const forceKill = spawn('taskkill', ['/pid', pid.toString(), '/f', '/t']);
+          
+          forceKill.on('close', () => {
+            logger.info(`Force taskkill for PID ${pid} completed`);
+            resolveOnce();
+          });
+          
+          forceKill.on('error', (err) => {
+            logger.error(`Force taskkill failed for PID ${pid}:`, err);
+            resolveOnce(); // Resolve anyway to not hang
+          });
+        }
+      }, this.gracefulShutdownTimeoutMs);
     });
   }
 

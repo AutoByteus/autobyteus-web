@@ -26,6 +26,7 @@ export abstract class BaseServerManager extends EventEmitter {
   protected appDataDir: string = ''
   protected firstRun: boolean = false
   protected serverDir: string = ''
+  protected gracefulShutdownTimeoutMs: number = 5000  // 5 seconds for graceful shutdown
 
   constructor() {
     super()
@@ -252,7 +253,8 @@ export abstract class BaseServerManager extends EventEmitter {
   protected abstract launchServerProcess(): Promise<void>;
 
   /**
-   * Stop the backend server asynchronously.
+   * Stop the backend server with graceful-to-forceful fallback.
+   * First sends SIGTERM for graceful shutdown, then escalates to SIGKILL if timeout expires.
    */
   public stopServer(): Promise<void> {
     if (!this.serverProcess) {
@@ -263,25 +265,50 @@ export abstract class BaseServerManager extends EventEmitter {
     const proc = this.serverProcess;
 
     return new Promise((resolve) => {
-        // The 'close' event handler in setupProcessHandlers will perform state cleanup.
-        // We just need to wait for it.
-        proc.once('close', () => {
-            resolve();
-        });
+      let forceKillTimeout: NodeJS.Timeout;
+      
+      const cleanup = () => {
+        clearTimeout(forceKillTimeout);
+        this.isServerRunning = false;
+        this.ready = false;
+        this.serverProcess = null;
+        this.emit('stopped');
+      };
+      
+      // When process closes, cleanup and resolve
+      proc.once('close', () => {
+        logger.info('Server process closed');
+        cleanup();
+        resolve();
+      });
 
-        logger.info('Stopping server...');
-        try {
-            logger.info('Sending SIGTERM signal to server process');
-            proc.kill('SIGTERM');
-        } catch (error) {
-            logger.error('Error sending SIGTERM to server:', error);
-            // If kill fails, assume process is gone and cleanup state manually.
-            this.isServerRunning = false;
-            this.ready = false;
-            this.serverProcess = null;
-            this.emit('stopped');
-            resolve();
-        }
+      logger.info('Stopping server...');
+      
+      try {
+        // Step 1: Send SIGTERM for graceful shutdown
+        logger.info('Sending SIGTERM signal for graceful shutdown');
+        proc.kill('SIGTERM');
+        
+        // Step 2: Set timeout to escalate to SIGKILL if graceful fails
+        forceKillTimeout = setTimeout(() => {
+          if (this.serverProcess) {
+            logger.warn(`Graceful shutdown timed out after ${this.gracefulShutdownTimeoutMs}ms, sending SIGKILL`);
+            try {
+              proc.kill('SIGKILL');
+            } catch (killError) {
+              logger.error('Error sending SIGKILL:', killError);
+              // Process is likely already gone, cleanup
+              cleanup();
+              resolve();
+            }
+          }
+        }, this.gracefulShutdownTimeoutMs);
+      } catch (error) {
+        logger.error('Error sending SIGTERM to server:', error);
+        // If kill fails, assume process is gone and cleanup state manually.
+        cleanup();
+        resolve();
+      }
     });
   }
 
