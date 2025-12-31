@@ -1,6 +1,10 @@
 <template>
-  <div class="server-monitor bg-white rounded-lg shadow-lg p-6">
-    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Server Status</h2>
+  <div class="server-monitor h-full flex flex-col overflow-hidden">
+    <div class="flex items-center justify-between px-8 pt-8 pb-4 flex-shrink-0">
+      <h2 class="text-xl font-semibold text-gray-900">Server Status</h2>
+    </div>
+    
+    <div class="flex-1 overflow-auto p-8">
     
     <!-- Server Status Card -->
     <div 
@@ -84,6 +88,7 @@
         v-if="serverStore.isElectron && logFilePath" 
         :logFilePath="logFilePath" 
       />
+    </div>
     </div>
   </div>
 </template>

@@ -1,6 +1,6 @@
 <template>
   <!-- Removed h-[800px], overflow-hidden, flex-col to match ServerSettingsManager behavior -->
-  <div class="conversation-history-manager bg-white rounded-lg shadow-lg">
+  <div class="conversation-history-manager h-full flex flex-col">
     
     <!-- View Switcher -->
     <HistoryList v-if="!store.selectedConversationId" />

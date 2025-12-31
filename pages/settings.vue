@@ -1,7 +1,7 @@
 <template>
   <div class="flex h-full bg-gray-100">
     <!-- Sidebar -->
-    <div class="w-64 bg-white shadow-sm">
+    <div class="w-64 bg-white border-r border-gray-100">
       <div class="p-6">
         <h2 class="text-xl font-semibold text-gray-800 mb-6">Settings</h2>
         <nav class="w-full">
@@ -92,17 +92,17 @@
     </div>
 
     <!-- Content section -->
-    <div class="flex-1 overflow-auto">
-      <div class="max-w-7xl mx-auto p-6 min-h-full flex flex-col">
+    <div class="flex-1 overflow-auto bg-white">
+      <div class="h-full w-full flex flex-col">
         <ProviderAPIKeyManager v-if="activeSection === 'api-keys'" />
         <TokenUsageStatistics v-if="activeSection === 'token-usage'" />
         <ConversationHistoryManager v-if="activeSection === 'conversation-logs'" />
         <ServerSettingsManager v-if="activeSection === 'server-settings'" />
         <ServerMonitor v-if="activeSection === 'server-status'" />
-        <div v-else-if="activeSection === ''" class="text-center text-gray-500 mt-12">
-          <span class="i-heroicons-cog-8-tooth-20-solid w-12 h-12 mx-auto mb-4"></span>
-          <h3 class="text-xl font-medium mb-2">Settings</h3>
-          <p>Select a settings category from the sidebar to get started.</p>
+        <div v-else-if="activeSection === ''" class="flex-1 flex flex-col items-center justify-center text-gray-400">
+          <span class="i-heroicons-cog-8-tooth-20-solid w-16 h-16 mb-6 opacity-20"></span>
+          <h3 class="text-xl font-medium mb-2 text-gray-500">Settings</h3>
+          <p class="text-gray-400">Select a category to configure settings.</p>
         </div>
       </div>
     </div>

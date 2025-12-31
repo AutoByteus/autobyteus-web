@@ -1,10 +1,13 @@
 <template>
-  <div class="provider-api-key-manager bg-white rounded-lg shadow-lg flex-1 flex flex-col">
-    <div class="p-6 flex-1 flex flex-col">
-      <div class="flex items-center justify-between mb-6">
-        <h2 class="text-2xl font-semibold text-gray-800">
-          API Key Management
-        </h2>
+  <div class="provider-api-key-manager flex-1 flex flex-col h-full overflow-hidden">
+    <div class="flex-1 flex flex-col h-full min-h-0">
+      <div class="flex items-center justify-between px-8 pt-8 pb-4">
+        <div class="flex flex-col">
+          <h2 class="text-xl font-semibold text-gray-900">
+            API Key Management
+          </h2>
+          <p class="text-sm text-gray-500 mt-1">Manage provider keys and reload available models</p>
+        </div>
         <button
           @click="refreshModels"
           class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
@@ -25,9 +28,9 @@
         ></div>
       </div>
 
-      <div v-else class="flex-1 flex flex-col">
+      <div v-else class="flex-1 flex flex-col overflow-auto px-8 pb-8">
         <!-- Provider Sidebar + Details Panel (includes API key config and models) -->
-        <div class="mt-4 flex-1 flex flex-col">
+        <div class="flex-1 flex flex-col">
           
           <!-- Loading state for models -->
           <div

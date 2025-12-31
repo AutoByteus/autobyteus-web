@@ -1,43 +1,47 @@
 <template>
-  <div class="token-usage-statistics bg-white rounded-lg shadow-lg p-6">
-    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Token Usage Statistics</h2>
-
-    <div class="flex items-center mb-6">
-      <label for="date-range" class="block text-sm font-medium text-gray-700 mr-4">Select Date Range:</label>
-      <input 
-        type="date" 
-        v-model="startDate" 
-        class="border rounded p-2 mr-4"
-        :max="endDate"
-      >
-      <input 
-        type="date" 
-        v-model="endDate" 
-        class="border rounded p-2"
-        :min="startDate"
-      >
-      <button 
-        @click="fetchStatistics" 
-        class="ml-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        :disabled="store.isLoading"
-      >
-        {{ store.isLoading ? 'Loading...' : 'Fetch Statistics' }}
-      </button>
+  <div class="token-usage-statistics h-full flex flex-col overflow-hidden">
+    <div class="flex items-center justify-between px-8 pt-8 pb-4 flex-shrink-0">
+      <h2 class="text-xl font-semibold text-gray-900">Token Usage Statistics</h2>
     </div>
 
-    <div v-if="store.isLoading" class="flex justify-center items-center py-8">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-    </div>
+    <div class="flex-1 overflow-auto p-8">
+      <div class="flex items-center mb-8 bg-gray-50 p-4 rounded-lg border border-gray-100">
+        <label for="date-range" class="block text-sm font-medium text-gray-700 mr-4">Select Date Range:</label>
+        <input 
+          type="date" 
+          v-model="startDate" 
+          class="border border-gray-300 rounded-md p-2 mr-4 text-sm focus:ring-blue-500 focus:border-blue-500"
+          :max="endDate"
+        >
+        <div class="text-gray-400 mr-4">to</div>
+        <input 
+          type="date" 
+          v-model="endDate" 
+          class="border border-gray-300 rounded-md p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+          :min="startDate"
+        >
+        <button 
+          @click="fetchStatistics" 
+          class="ml-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-colors"
+          :disabled="store.isLoading"
+        >
+          {{ store.isLoading ? 'Loading...' : 'Fetch Statistics' }}
+        </button>
+      </div>
 
-    <div v-else-if="store.getError" class="text-red-600 p-4">
-      {{ store.getError }}
-    </div>
+      <div v-if="store.isLoading" class="flex justify-center items-center py-20">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
 
-    <div v-else-if="store.getStatistics.length === 0" class="text-gray-600 p-4">
-      No data available for the selected date range.
-    </div>
+      <div v-else-if="store.getError" class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
+        {{ store.getError }}
+      </div>
 
-    <div v-else>
+      <div v-else-if="store.getStatistics.length === 0" class="text-gray-600 p-4">
+        No data available for the selected date range.
+      </div>
+
+      <div v-else>
       <table class="min-w-full bg-white">
         <thead>
           <tr>
@@ -72,6 +76,7 @@
 
       <div class="mt-6 h-[400px]">
         <BarChart :labels="chartLabels" :data="chartData" />
+      </div>
       </div>
     </div>
   </div>

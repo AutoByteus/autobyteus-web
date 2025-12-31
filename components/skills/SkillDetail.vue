@@ -1,75 +1,89 @@
 <template>
-  <div v-if="!skill" class="loading">Loading skill...</div>
+  <div v-if="!skill" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading...</p>
+  </div>
   <div v-else class="skill-detail">
     <!-- Header -->
-    <div class="skill-header">
-      <button class="btn-back" @click="$emit('back')">← Back to Skills</button>
-      <div class="header-content">
-        <h2>{{ skill.name }}</h2>
+    <div class="top-bar">
+      <div class="breadcrumbs">
+        <button class="btn-back" @click="$emit('back')">
+          <Icon icon="heroicons:arrow-left" class="back-icon" />
+          Back to Skills
+        </button>
+      </div>
+      <div class="header-main">
+        <div class="title-row">
+          <h2 class="skill-title">{{ skill.name }}</h2>
+          <span v-if="skill.isDisabled" class="badge-disabled">Disabled</span>
+        </div>
         <p class="description">{{ skill.description }}</p>
       </div>
     </div>
 
-    <!-- Two-panel layout -->
-    <div class="skill-panels">
-      <!-- Left: File Tree -->
-      <div class="file-tree-panel">
-        <div class="panel-header">
-          <h3>📁 Files ({{ skill.fileCount }})</h3>
-          <button v-if="!skill.isReadonly" class="btn-add" @click="showUploadDialog = true">
-            <Icon icon="heroicons:plus" class="w-4 h-4" />
-            <span>Add</span>
+    <!-- Main Workspace -->
+    <div class="workspace">
+      <!-- Left: File Sidebar -->
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h3>Files</h3>
+          <button v-if="!skill.isReadonly" class="btn-icon-sm" @click="showUploadDialog = true" title="Add File">
+            <Icon icon="heroicons:plus" />
           </button>
         </div>
         
-        <div v-if="fileTreeData" class="tree-container">
+        <div v-if="fileTreeData" class="file-tree">
           <SkillFileTreeItem 
             :node="fileTreeData" 
             :skill-name="skill.name"
+            :selected-path="selectedFile"
             @selectFile="handleSelectFile"
           />
         </div>
-        <div v-else class="empty">No files</div>
+        <div v-else class="empty-sidebar">
+          <p>No files</p>
+        </div>
       </div>
 
-      <!-- Right: Content Viewer -->
-      <div class="content-panel">
-        <div class="panel-header">
-          <h3>{{ selectedFile || 'SKILL.md' }}</h3>
-          <div class="header-actions" v-if="selectedFile">
-            <button v-if="!isEditing && !skill.isReadonly" class="btn-edit" @click="startEdit">
-              <Icon icon="heroicons:pencil" class="w-4 h-4" />
-              <span>Edit</span>
-            </button>
-            <button v-if="!isEditing && !skill.isReadonly" class="btn-delete-file" @click="confirmDeleteFile">
-              <Icon icon="heroicons:trash" class="w-4 h-4" />
-              <span>Delete</span>
-            </button>
-            <template v-if="isEditing">
-              <button class="btn-cancel" @click="cancelEdit">Cancel</button>
-              <button class="btn-save" @click="saveEdit">
-                <Icon icon="heroicons:check" class="w-4 h-4" />
-                <span>Save</span>
-              </button>
+      <!-- Right: Editor/Viewer -->
+      <div class="editor-pane">
+        <div class="editor-toolbar">
+          <div class="file-info">
+            <span class="file-name">{{ selectedFile || 'Select a file' }}</span>
+          </div>
+          
+          <div class="toolbar-actions" v-if="selectedFile">
+            <template v-if="!isEditing && !skill.isReadonly">
+              <button class="btn-text" @click="startEdit">Edit</button>
+              <button class="btn-text danger" @click="confirmDeleteFile">Delete</button>
+            </template>
+            
+            <template v-else-if="isEditing">
+              <button class="btn-secondary" @click="cancelEdit">Cancel</button>
+              <button class="btn-primary" @click="saveEdit">Save</button>
             </template>
           </div>
         </div>
         
-        <div v-if="loadingContent" class="loading-content">Loading...</div>
-        <div v-else-if="fileContent" class="content-viewer">
-          <!-- Edit mode: textarea -->
-          <textarea
-            v-if="isEditing"
-            v-model="editContent"
-            class="edit-textarea"
-            @input="autoResize"
-            ref="editTextarea"
-          ></textarea>
-          <!-- View mode: pre -->
-          <pre v-else><code>{{ fileContent }}</code></pre>
-        </div>
-        <div v-else class="empty-content">
-          <p>Select a file from the tree to view its content</p>
+        <div class="editor-content">
+          <div v-if="loadingContent" class="loading-content">
+            <div class="spinner"></div>
+          </div>
+          
+          <div v-else-if="fileContent" class="content-wrapper">
+            <textarea
+              v-if="isEditing"
+              v-model="editContent"
+              class="code-editor"
+              spellcheck="false"
+              ref="editTextarea"
+            ></textarea>
+            <pre v-else class="code-viewer"><code>{{ fileContent }}</code></pre>
+          </div>
+          
+          <div v-else class="empty-content">
+            <p>Select a file to view content</p>
+          </div>
         </div>
       </div>
     </div>
@@ -77,18 +91,43 @@
     <!-- Upload Dialog -->
     <div v-if="showUploadDialog" class="dialog-overlay" @click="showUploadDialog = false">
       <div class="dialog" @click.stop>
-        <h3>Add File</h3>
-        <div class="form-group">
-          <label>File Path:</label>
-          <input v-model="newFile.path" type="text" placeholder="e.g., scripts/run.sh" />
+        <div class="dialog-header">
+          <h3>Add New File</h3>
+          <button class="btn-close" @click="showUploadDialog = false">
+            <Icon icon="heroicons:x-mark" />
+          </button>
         </div>
-        <div class="form-group">
-          <label>Content:</label>
-          <textarea v-model="newFile.content" rows="15"></textarea>
+        
+        <div class="dialog-body">
+          <div class="form-group">
+            <label>File Path</label>
+            <input 
+              v-model="newFile.path" 
+              type="text" 
+              placeholder="e.g., scripts/run.py" 
+              autofocus
+            />
+          </div>
+          <div class="form-group">
+            <label>Content</label>
+            <textarea 
+              v-model="newFile.content" 
+              rows="12"
+              class="code-input"
+              placeholder="# File content..."
+            ></textarea>
+          </div>
         </div>
-        <div class="dialog-actions">
-          <button @click="showUploadDialog = false">Cancel</button>
-          <button class="btn-primary" @click="handleUploadFile">Upload</button>
+        
+        <div class="dialog-footer">
+          <button class="btn-secondary" @click="showUploadDialog = false">Cancel</button>
+          <button 
+            class="btn-primary" 
+            @click="handleUploadFile"
+            :disabled="!newFile.path"
+          >
+            Create File
+          </button>
         </div>
       </div>
     </div>
@@ -111,6 +150,7 @@ const emit = defineEmits<{
   back: []
 }>()
 
+// Store and state initialization
 const skillStore = useSkillStore()
 const { currentSkill, currentSkillTree } = storeToRefs(skillStore)
 
@@ -128,10 +168,12 @@ const newFile = ref({
   content: '',
 })
 
+// Lifecycle and Methods
 onMounted(async () => {
   await loadSkillDetails()
-  // Auto-load SKILL.md content
-  await loadFileContent('SKILL.md')
+  if (fileTreeData.value) {
+    await loadFileContent('SKILL.md')
+  }
 })
 
 watch(() => props.skillName, async () => {
@@ -143,7 +185,6 @@ async function loadSkillDetails() {
   skill.value = await skillStore.fetchSkill(props.skillName)
   await skillStore.fetchSkillFileTree(props.skillName)
   
-  // Parse JSON tree
   if (currentSkillTree.value) {
     try {
       fileTreeData.value = JSON.parse(currentSkillTree.value)
@@ -154,7 +195,6 @@ async function loadSkillDetails() {
 }
 
 async function handleSelectFile(filePath: string) {
-  // Cancel any pending edits
   isEditing.value = false
   selectedFile.value = filePath
   await loadFileContent(filePath)
@@ -162,11 +202,10 @@ async function handleSelectFile(filePath: string) {
 
 async function loadFileContent(filePath: string) {
   if (!skill.value) return
-  
   loadingContent.value = true
   try {
     const content = await skillStore.readFileContent(skill.value.name, filePath)
-    fileContent.value = content || 'File content not available'
+    fileContent.value = content || ''
   } catch (e) {
     console.error('Failed to load file content:', e)
     fileContent.value = 'Error loading file content'
@@ -179,10 +218,7 @@ function startEdit() {
   isEditing.value = true
   editContent.value = fileContent.value
   nextTick(() => {
-    if (editTextarea.value) {
-      autoResize()
-      editTextarea.value.focus()
-    }
+    editTextarea.value?.focus()
   })
 }
 
@@ -193,264 +229,306 @@ function cancelEdit() {
 
 async function saveEdit() {
   if (!skill.value || !selectedFile.value) return
-  
   try {
     await skillStore.uploadFile(skill.value.name, selectedFile.value, editContent.value)
     fileContent.value = editContent.value
     isEditing.value = false
-    // Reload skill details to update file count if needed
     await loadSkillDetails()
   } catch (e) {
-    console.error('Failed to save file:', e)
-    alert('Failed to save file')
+    alert('Failed to save file: ' + e)
   }
 }
 
 async function confirmDeleteFile() {
   if (!skill.value || !selectedFile.value) return
-  
   if (confirm(`Delete file "${selectedFile.value}"?`)) {
     try {
       await skillStore.deleteFile(skill.value.name, selectedFile.value)
-      // Reset selection and reload
       selectedFile.value = 'SKILL.md'
       fileContent.value = ''
       await loadSkillDetails()
       await loadFileContent('SKILL.md')
     } catch (e) {
-      console.error('Failed to delete file:', e)
-      alert('Failed to delete file')
+      alert('Failed to delete file: ' + e)
     }
-  }
-}
-
-function autoResize() {
-  const textarea = editTextarea.value
-  if (textarea) {
-    textarea.style.height = 'auto'
-    textarea.style.height = `${textarea.scrollHeight}px`
   }
 }
 
 async function handleUploadFile() {
   if (!skill.value || !newFile.value.path) return
-  
   try {
     await skillStore.uploadFile(skill.value.name, newFile.value.path, newFile.value.content)
     showUploadDialog.value = false
     newFile.value = { path: '', content: '' }
     await loadSkillDetails()
   } catch (e) {
-    console.error('Failed to upload file:', e)
-    alert('Failed to upload file')
+    alert('Failed to upload file: ' + e)
   }
 }
 </script>
 
 <style scoped>
 .skill-detail {
-  height: 100%;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   background: white;
 }
 
-.skill-header {
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #6b7280;
+}
+
+.spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+/* Header */
+.top-bar {
   padding: 1.5rem 2rem;
   border-bottom: 1px solid #e5e7eb;
+  background: white;
+}
+
+.breadcrumbs {
+  margin-bottom: 1rem;
 }
 
 .btn-back {
-  background: #f3f4f6;
-  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  color: #6b7280;
   cursor: pointer;
+  padding: 0;
   font-size: 0.875rem;
-  margin-bottom: 1rem;
-  transition: background 0.2s;
+  font-weight: 500;
+  transition: color 0.2s;
 }
 
 .btn-back:hover {
-  background: #e5e7eb;
+  color: #111827;
 }
 
-.header-content h2 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.875rem;
+.header-main {
+  max-width: 800px;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.skill-title {
+  margin: 0;
+  font-size: 1.5rem;
   font-weight: 600;
   color: #111827;
+}
+
+.badge-disabled {
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 0.75rem;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-weight: 500;
 }
 
 .description {
   margin: 0;
   color: #6b7280;
-  font-size: 1rem;
+  line-height: 1.5;
 }
 
-.skill-panels {
-  display: grid;
-  grid-template-columns: 320px 1fr;
+/* Workspace */
+.workspace {
   flex: 1;
+  display: flex;
   overflow: hidden;
 }
 
-.file-tree-panel,
-.content-panel {
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  background: #f9fafb;
+  border-right: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
-.file-tree-panel {
-  border-right: 1px solid #e5e7eb;
-  background: #f9fafb;
-}
-
-.panel-header {
-  padding: 1rem 1.5rem;
+.sidebar-header {
+  padding: 1rem;
   border-bottom: 1px solid #e5e7eb;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: white;
 }
 
-.panel-header h3 {
+.sidebar-header h3 {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: #374151;
+  text-transform: uppercase;
+  color: #9ca3af;
+  letter-spacing: 0.05em;
 }
 
-.header-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.btn-edit,
-.btn-delete-file,
-.btn-save,
-.btn-cancel {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.375rem 0.75rem;
+.btn-icon-sm {
+  background: none;
   border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.btn-edit {
-  background: #3b82f6;
-  color: white;
-}
-
-.btn-edit:hover {
-  background: #2563eb;
-}
-
-.btn-delete-file {
-  background: #ef4444;
-  color: white;
-}
-
-.btn-delete-file:hover {
-  background: #dc2626;
-}
-
-.btn-save {
-  background: #10b981;
-  color: white;
-}
-
-.btn-save:hover {
-  background: #059669;
-}
-
-.btn-cancel {
-  background: #f3f4f6;
   color: #6b7280;
-}
-
-.btn-cancel:hover {
-  background: #e5e7eb;
-}
-
-.btn-add {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  padding: 0.375rem 0.75rem;
-  border-radius: 4px;
   cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 500;
+  padding: 0.25rem;
+  border-radius: 4px;
+  display: flex;
 }
 
-.btn-add:hover {
-  background: #2563eb;
+.btn-icon-sm:hover {
+  background: #e5e7eb;
+  color: #111827;
 }
 
-.tree-container {
+.file-tree {
   flex: 1;
   overflow-y: auto;
   padding: 0.5rem;
 }
 
-.content-panel {
+.empty-sidebar {
+  padding: 2rem;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+/* Editor Pane */
+.editor-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  min-width: 0;
+}
+
+.editor-toolbar {
+  padding: 0 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 3.5rem;
   background: white;
 }
 
-.content-viewer {
-  flex: 1;
-  overflow: auto;
-  padding: 1.5rem;
+.file-name {
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.875rem;
 }
 
-.content-viewer pre {
+.toolbar-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn-text {
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  color: #3b82f6;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-text:hover {
+  text-decoration: underline;
+}
+
+.btn-text.danger {
+  color: #ef4444;
+}
+
+.btn-primary, .btn-secondary {
+  border: none;
+  padding: 0.375rem 0.875rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+}
+
+.btn-secondary {
+  background: white;
+  border: 1px solid #e5e7eb;
+  color: #374151;
+}
+
+.btn-secondary:hover {
+  background: #f9fafb;
+}
+
+.editor-content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.content-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.code-editor,
+.code-viewer {
+  flex: 1;
+  padding: 1.5rem;
   margin: 0;
-  font-family: 'Courier New', monospace;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 0.875rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-
-.content-viewer code {
-  color: #1f2937;
-}
-
-.edit-textarea {
-  width: 100%;
-  min-height: 400px;
-  padding: 1.5rem;
-  border: 2px solid #3b82f6;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  resize: vertical;
+  line-height: 1.6;
+  border: none;
+  resize: none;
   outline: none;
+  background: white;
+  color: #1f2937;
+  white-space: pre-wrap;
+  overflow: auto;
 }
 
-.edit-textarea:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+.code-editor {
+  background: #fafafa;
 }
 
-.loading,
 .loading-content,
-.empty,
 .empty-content {
-  flex: 1;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -458,7 +536,7 @@ async function handleUploadFile() {
   font-size: 0.875rem;
 }
 
-/* Dialog styles */
+/* Dialog */
 .dialog-overlay {
   position: fixed;
   top: 0;
@@ -474,17 +552,38 @@ async function handleUploadFile() {
 
 .dialog {
   background: white;
-  border-radius: 8px;
-  padding: 2rem;
+  border-radius: 12px;
   width: 90%;
-  max-width: 600px;
-  max-height: 80vh;
-  overflow-y: auto;
+  max-width: 500px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
-.dialog h3 {
-  margin: 0 0 1.5rem 0;
-  font-size: 1.25rem;
+.dialog-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dialog-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.dialog-body {
+  padding: 1.5rem;
+}
+
+.dialog-footer {
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  background: #f9fafb;
+  border-radius: 0 0 12px 12px;
 }
 
 .form-group {
@@ -495,50 +594,28 @@ async function handleUploadFile() {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: #374151;
   font-size: 0.875rem;
+  color: #374151;
 }
 
 .form-group input,
 .form-group textarea {
   width: 100%;
-  padding: 0.5rem;
+  padding: 0.625rem;
   border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
+  border-radius: 6px;
   font-size: 0.875rem;
 }
 
-.form-group textarea {
-  resize: vertical;
-}
-
-.dialog-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  margin-top: 1.5rem;
-}
-
-.dialog-actions button {
-  padding: 0.5rem 1rem;
+.btn-close {
+  background: none;
   border: none;
-  border-radius: 4px;
   cursor: pointer;
-  font-size: 0.875rem;
+  color: #9ca3af;
+  font-size: 1.25rem;
 }
 
-.dialog-actions button:first-child {
-  background: #f3f4f6;
-  color: #6b7280;
-}
-
-.btn-primary {
-  background: #3b82f6;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #2563eb;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

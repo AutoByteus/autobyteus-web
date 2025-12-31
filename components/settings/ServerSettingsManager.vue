@@ -1,7 +1,10 @@
 <template>
-  <div class="server-settings-manager bg-white rounded-lg shadow-lg">
-    <div class="p-6">
-      <h2 class="text-2xl font-semibold text-gray-800 mb-6">Server Settings</h2>
+  <div class="server-settings-manager h-full flex flex-col overflow-hidden">
+    <div class="flex items-center justify-between px-8 pt-8 pb-4 flex-shrink-0">
+      <h2 class="text-xl font-semibold text-gray-900">Server Settings</h2>
+    </div>
+    
+    <div class="flex-1 overflow-auto p-8">
       
       <div v-if="store.isLoading" class="flex justify-center items-center py-8">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -12,90 +15,83 @@
       </div>
 
       <div v-else class="space-y-6">
-        <!-- Responsive Settings List with scrolling container -->
+        <!-- Settings Table with scrolling container -->
         <div class="overflow-x-auto">
-          <div class="border border-gray-200 rounded-lg min-w-[64rem]">
-            <!-- Desktop Headers -->
-            <div class="hidden lg:table-header-group bg-blue-50">
-              <div class="lg:table-row">
-                <div class="lg:table-cell px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider w-4/12">Setting</div>
-                <div class="lg:table-cell px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider w-3/12">Value</div>
-                <div class="lg:table-cell px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider w-4/12">Description</div>
-                <div class="lg:table-cell px-6 py-3 text-right text-xs font-medium text-blue-700 uppercase tracking-wider w-1/12">Actions</div>
-              </div>
-            </div>
-            
-            <!-- Settings List Body -->
-            <div class="lg:table-row-group">
-              <!-- Existing Settings -->
-              <div v-for="setting in store.settings" :key="setting.key" class="p-4 border-b border-gray-200 lg:table-row last:border-b-0 hover:bg-gray-50 transition-colors duration-150">
-                <div class="lg:table-cell lg:px-6 lg:py-4 lg:align-middle">
-                  <label class="text-xs font-semibold text-gray-500 uppercase lg:hidden">Setting</label>
-                  <div class="text-sm font-medium text-gray-900 truncate" :title="setting.key">{{ setting.key }}</div>
-                </div>
-                <div class="mt-2 lg:mt-0 lg:table-cell lg:px-6 lg:py-4 lg:align-middle">
-                  <label class="text-xs font-semibold text-gray-500 uppercase lg:hidden">Value</label>
-                  <input
-                    v-model="editedSettings[setting.key]"
-                    type="text"
-                    :data-testid="`server-setting-value-${setting.key}`"
-                    class="w-full mt-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition-colors duration-150 text-gray-900 placeholder-gray-500"
-                    placeholder="Enter value"
-                  >
-                </div>
-                <div class="mt-2 lg:mt-0 lg:table-cell lg:px-6 lg:py-4 lg:align-middle">
-                  <label class="text-xs font-semibold text-gray-500 uppercase lg:hidden">Description</label>
-                  <div class="text-sm text-gray-700 whitespace-normal mt-1">{{ setting.description }}</div>
-                </div>
-                <div class="mt-4 text-right lg:mt-0 lg:table-cell lg:px-6 lg:py-4 lg:align-middle">
-                  <button
-                    @click="saveIndividualSetting(setting.key)"
-                    :disabled="!isSettingChanged(setting.key) || store.isUpdating"
-                    :data-testid="`server-setting-save-${setting.key}`"
-                    class="px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
-                  >
-                    <span v-if="isUpdating[setting.key]" class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1 inline-block"></span>
-                    Save
-                  </button>
-                </div>
-              </div>
-              
-              <!-- New Setting Row -->
-              <div class="p-4 bg-gray-50 lg:table-row hover:bg-gray-100 transition-colors duration-150">
-                <div class="lg:table-cell lg:px-6 lg:py-4 lg:align-middle">
-                  <label class="text-xs font-semibold text-gray-500 uppercase lg:hidden">New Setting Key</label>
-                  <input
-                    v-model="newSetting.key"
-                    type="text"
-                    placeholder="Enter new setting key"
-                    class="w-full mt-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
-                  >
-                </div>
-                <div class="mt-2 lg:mt-0 lg:table-cell lg:px-6 lg:py-4 lg:align-middle">
-                   <label class="text-xs font-semibold text-gray-500 uppercase lg:hidden">Value</label>
-                  <input
-                    v-model="newSetting.value"
-                    type="text"
-                    placeholder="Enter value"
-                    class="w-full mt-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
-                  >
-                </div>
-                <div class="mt-2 lg:mt-0 lg:table-cell lg:px-6 lg:py-4 lg:align-middle">
-                   <label class="text-xs font-semibold text-gray-500 uppercase lg:hidden">Description</label>
-                   <div class="text-sm text-gray-500 italic mt-1">Custom user-defined setting</div>
-                </div>
-                <div class="mt-4 text-right lg:mt-0 lg:table-cell lg:px-6 lg:py-4 lg:align-middle">
-                  <button
-                    @click="addNewSetting"
-                    :disabled="!isNewSettingValid || isAddingNewSetting"
-                    class="px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
-                  >
-                    <span v-if="isAddingNewSetting" class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1 inline-block"></span>
-                    Save
-                  </button>
-                </div>
-              </div>
-            </div>
+          <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-blue-50">
+                <tr>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider" style="width: 25%">Setting</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider" style="width: 25%">Value</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider" style="width: 40%">Description</th>
+                  <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-blue-700 uppercase tracking-wider" style="width: 10%">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <!-- Existing Settings -->
+                <tr v-for="setting in store.settings" :key="setting.key" class="hover:bg-gray-50 transition-colors duration-150">
+                  <td class="px-6 py-4 align-middle">
+                    <div class="text-sm font-medium text-gray-900 break-all" :title="setting.key">{{ setting.key }}</div>
+                  </td>
+                  <td class="px-6 py-4 align-middle">
+                    <input
+                      v-model="editedSettings[setting.key]"
+                      type="text"
+                      :data-testid="`server-setting-value-${setting.key}`"
+                      class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition-colors duration-150 text-gray-900 placeholder-gray-500"
+                      placeholder="Enter value"
+                    >
+                  </td>
+                  <td class="px-6 py-4 align-middle">
+                    <div class="text-sm text-gray-700">{{ setting.description }}</div>
+                  </td>
+                  <td class="px-6 py-4 text-right align-middle">
+                    <button
+                      @click="saveIndividualSetting(setting.key)"
+                      :disabled="!isSettingChanged(setting.key) || store.isUpdating"
+                      :data-testid="`server-setting-save-${setting.key}`"
+                      class="px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                    >
+                      <span v-if="isUpdating[setting.key]" class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1 inline-block"></span>
+                      Save
+                    </button>
+                  </td>
+                </tr>
+                
+                <!-- New Setting Row -->
+                <tr class="bg-gray-50 hover:bg-gray-100 transition-colors duration-150">
+                  <td class="px-6 py-4 align-middle">
+                    <input
+                      v-model="newSetting.key"
+                      type="text"
+                      placeholder="Enter new setting key"
+                      class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+                    >
+                  </td>
+                  <td class="px-6 py-4 align-middle">
+                    <input
+                      v-model="newSetting.value"
+                      type="text"
+                      placeholder="Enter value"
+                      class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+                    >
+                  </td>
+                  <td class="px-6 py-4 align-middle">
+                    <div class="text-sm text-gray-500 italic">Custom user-defined setting</div>
+                  </td>
+                  <td class="px-6 py-4 text-right align-middle">
+                    <button
+                      @click="addNewSetting"
+                      :disabled="!isNewSettingValid || isAddingNewSetting"
+                      class="px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                    >
+                      <span v-if="isAddingNewSetting" class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1 inline-block"></span>
+                      Save
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
         
