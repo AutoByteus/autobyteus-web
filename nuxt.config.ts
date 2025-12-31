@@ -14,31 +14,35 @@ const backendProxyUrl = 'http://localhost:8000'
 let serverUrls = {
   graphqlBaseUrl: '',
   restBaseUrl: '',
-  wsBaseUrl: '',
-  transcriptionWsEndpoint: ''
+  graphqlWsEndpoint: '',
+  transcriptionWsEndpoint: '',
+  terminalWsEndpoint: ''
 };
 
 if (isElectronBuild) {
   serverUrls = {
     graphqlBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/graphql`,
     restBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/rest`,
-    wsBaseUrl: `ws://localhost:${INTERNAL_SERVER_PORT}/graphql`,
-    transcriptionWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/transcribe`
+    graphqlWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/graphql`,
+    transcriptionWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/transcribe`,
+    terminalWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/ws/terminal`
   };
 } else if (isDevelopment) {
   serverUrls = {
     graphqlBaseUrl: '/graphql',
     restBaseUrl: '/rest',
-    wsBaseUrl: process.env.BACKEND_WS_BASE_URL || 'ws://localhost:8000/graphql',
-    transcriptionWsEndpoint: process.env.BACKEND_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8000/ws/transcribe'
+    graphqlWsEndpoint: process.env.BACKEND_GRAPHQL_WS_ENDPOINT || 'ws://localhost:8000/graphql',
+    transcriptionWsEndpoint: process.env.BACKEND_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8000/ws/transcribe',
+    terminalWsEndpoint: process.env.BACKEND_TERMINAL_WS_ENDPOINT || 'ws://localhost:8000/ws/terminal'
   };
 } else {
   // Read from our custom-named environment variables to prevent automatic overrides.
   serverUrls = {
     graphqlBaseUrl: process.env.BACKEND_GRAPHQL_BASE_URL || 'http://localhost:8000/graphql',
     restBaseUrl: process.env.BACKEND_REST_BASE_URL || 'http://localhost:8000/rest',
-    wsBaseUrl: process.env.BACKEND_WS_BASE_URL || 'ws://localhost:8000/graphql',
-    transcriptionWsEndpoint: process.env.BACKEND_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8000/ws/transcribe'
+    graphqlWsEndpoint: process.env.BACKEND_GRAPHQL_WS_ENDPOINT || 'ws://localhost:8000/graphql',
+    transcriptionWsEndpoint: process.env.BACKEND_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8000/ws/transcribe',
+    terminalWsEndpoint: process.env.BACKEND_TERMINAL_WS_ENDPOINT || 'ws://localhost:8000/ws/terminal'
   };
 }
 
@@ -115,7 +119,8 @@ const baseConfig = {
     public: {
       graphqlBaseUrl: serverUrls.graphqlBaseUrl,
       restBaseUrl: serverUrls.restBaseUrl,
-      wsBaseUrl: serverUrls.wsBaseUrl,
+      graphqlWsEndpoint: serverUrls.graphqlWsEndpoint,
+      terminalWsEndpoint: serverUrls.terminalWsEndpoint,
       googleSpeechApiKey: process.env.GOOGLE_SPEECH_API_KEY || '',
       
       audio: {
@@ -137,7 +142,7 @@ const baseConfig = {
     clients: {
       default: {
         httpEndpoint: serverUrls.graphqlBaseUrl,
-        wsEndpoint: serverUrls.wsBaseUrl,
+        wsEndpoint: serverUrls.graphqlWsEndpoint,
         websocketsOnly: false,
         inMemoryCacheOptions: {},
         defaultOptions: {

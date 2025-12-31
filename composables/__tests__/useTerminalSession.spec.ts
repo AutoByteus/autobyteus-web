@@ -2,11 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useTerminalSession } from '../useTerminalSession';
 import { ref } from 'vue';
 
-// Mock useRuntimeConfig
 vi.mock('#app', () => ({
   useRuntimeConfig: () => ({
     public: {
-      wsBaseUrl: 'ws://test-host:8000/graphql' // Simulating the actual env value
+      terminalWsEndpoint: 'ws://test-host:8000/ws/terminal'
     }
   })
 }));

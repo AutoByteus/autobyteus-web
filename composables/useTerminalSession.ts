@@ -63,17 +63,8 @@ export function useTerminalSession(options: TerminalSessionOptions): TerminalSes
     }
 
     const config = useRuntimeConfig();
-    // Fix: existing config might have /graphql suffix for Apollo. We need the root.
-    let wsBase = config.public.wsBaseUrl || 'ws://localhost:8000';
-    if (wsBase.endsWith('/graphql')) {
-      wsBase = wsBase.slice(0, -'/graphql'.length);
-    }
-    // Remove trailing slash if present
-    if (wsBase.endsWith('/')) {
-      wsBase = wsBase.slice(0, -1);
-    }
-    
-    const wsUrl = `${wsBase}/ws/terminal/${workspaceId}/${sessionId.value}`;
+    const wsBaseUrl = config.public.terminalWsEndpoint || 'ws://localhost:8000/ws/terminal';
+    const wsUrl = `${wsBaseUrl}/${workspaceId}/${sessionId.value}`;
 
     console.log('[useTerminalSession] Connecting to:', wsUrl);
     connectionStatus.value = 'connecting';

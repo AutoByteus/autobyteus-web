@@ -10,8 +10,9 @@ interface ServerState {
   urls: {
     graphql: string
     rest: string
-    ws: string
+    graphqlWs: string
     transcription: string
+    terminalWs: string
     health: string
   }
   errorMessage: string

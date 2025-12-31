@@ -40,8 +40,9 @@ export function getServerUrls() {
     return {
       graphql: `${baseUrl}/graphql`,
       rest: `${baseUrl}/rest`,
-      ws: `ws://localhost:${INTERNAL_SERVER_PORT}/graphql`,
+      graphqlWs: `ws://localhost:${INTERNAL_SERVER_PORT}/graphql`,
       transcription: `ws://localhost:${INTERNAL_SERVER_PORT}/transcribe`,
+      terminalWs: `ws://localhost:${INTERNAL_SERVER_PORT}/ws/terminal`,
       health: `${baseUrl}/rest/health`
     };
   }
@@ -57,8 +58,9 @@ export function getServerUrls() {
   return {
     graphql: config.public.graphqlBaseUrl,
     rest: restUrl,
-    ws: config.public.wsBaseUrl,
+    graphqlWs: config.public.graphqlWsEndpoint,
     transcription: config.public.audio.transcriptionWsEndpoint,
+    terminalWs: config.public.terminalWsEndpoint,
     health: healthUrl,
   };
 }
