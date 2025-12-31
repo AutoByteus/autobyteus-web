@@ -95,23 +95,27 @@ export const themes: Record<string, TerminalTheme> = {
     containerBackground: '#ffffff',
     colors: {
       background: '#ffffff',
-      foreground: '#24292e',
-      cursor: '#24292e',
-      selectionBackground: '#0366d625',
-      black: '#24292e',
+      foreground: '#24292f', // Slightly darker charcoal
+      cursor: '#0366d6',     // GitHub Blue cursor
+      selectionBackground: '#dbedff', // Light blue selection
+      
+      // ANSI Colors - Adjusted for Light Mode visibility (darker)
+      black: '#24292f',
       red: '#d73a49',
-      green: '#28a745',
-      yellow: '#dbab09',
+      green: '#22863a',
+      yellow: '#b08800',
       blue: '#0366d6',
       magenta: '#5a32a3',
-      cyan: '#0598bc',
+      cyan: '#1b7c83', // Darkened from #0598bc for better contrast
       white: '#6a737d',
+      
+      // Bright variants
       brightBlack: '#959da5',
       brightRed: '#cb2431',
-      brightGreen: '#22863a',
-      brightYellow: '#b08800',
-      brightBlue: '#005cc5',
-      brightMagenta: '#5a32a3',
+      brightGreen: '#28a745',
+      brightYellow: '#dbab09',
+      brightBlue: '#2188ff',
+      brightMagenta: '#8a63d2',
       brightCyan: '#3192aa',
       brightWhite: '#d1d5da'
     }

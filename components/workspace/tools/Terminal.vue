@@ -1,21 +1,5 @@
 <template>
-  <div class="terminal-container h-full flex flex-col relative group" ref="terminalContainer" :style="{ backgroundColor: currentTheme.containerBackground }">
-    <!-- Theme Selector Overlay -->
-    <div class="absolute top-2 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-      <div class="relative">
-        <select 
-          v-model="selectedThemeId"
-          @change="handleThemeChange"
-          class="bg-gray-800/80 text-white text-xs rounded px-2 py-1 border border-gray-600 outline-none backdrop-blur-sm cursor-pointer hover:bg-gray-700/80"
-          title="Change Terminal Theme"
-        >
-          <option v-for="theme in themeOptions" :key="theme.id" :value="theme.id">
-            {{ theme.name }}
-          </option>
-        </select>
-      </div>
-    </div>
-
+  <div class="terminal-container h-full flex flex-col" ref="terminalContainer">
     <div v-if="session.errorMessage.value" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 mb-2">
       <p class="text-sm">{{ session.errorMessage.value }}</p>
       <button @click="connectTerminal" class="text-xs underline mt-1">Retry Connection</button>
@@ -28,11 +12,10 @@
 import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from 'vue';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
-import { WebglAddon } from '@xterm/addon-webgl';
 import '@xterm/xterm/css/xterm.css';
 import { useWorkspaceStore } from '~/stores/workspace';
-import { useTerminalSession } from '~/composables/useTerminalSession';
-import { themes, defaultTheme, type TerminalTheme } from '~/utils/terminalThemes';
+import { useTerminalSession }
+from '~/composables/useTerminalSession';
 
 const terminalContainer = ref<HTMLDivElement | null>(null);
 const terminalElement = ref<HTMLDivElement | null>(null);
@@ -40,21 +23,6 @@ const terminalInstance = ref<Terminal | null>(null);
 const fitAddon = ref<FitAddon | null>(null);
 
 const workspaceStore = useWorkspaceStore();
-
-// Theme State
-const themeOptions = Object.values(themes);
-const storedThemeId = (typeof localStorage !== 'undefined') ? localStorage.getItem('terminal_theme') : null;
-const selectedThemeId = ref(storedThemeId && themes[storedThemeId] ? storedThemeId : defaultTheme.id);
-const currentTheme = computed(() => themes[selectedThemeId.value] || defaultTheme);
-
-const handleThemeChange = () => {
-  if (terminalInstance.value) {
-    terminalInstance.value.options.theme = currentTheme.value.colors;
-  }
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('terminal_theme', selectedThemeId.value);
-  }
-};
 
 // Initialize the terminal session composable
 const session = useTerminalSession({
@@ -66,34 +34,57 @@ let resizeObserver: ResizeObserver | null = null;
 const initializeTerminal = () => {
   if (!terminalElement.value) return;
 
-  // Modern VS Code-like Configuration
+  // High-Contrast Light Theme Configuration
   terminalInstance.value = new Terminal({
     cursorBlink: true,
     cursorStyle: 'bar', // 'block' | 'underline' | 'bar'
-    fontFamily: '"JetBrains Mono", "Fira Code", Menlo, Monaco, "Courier New", monospace',
-    fontSize: 13,
-    lineHeight: 1.3, // Slightly more breathing room
+    // standard monospaced fonts for "normal" look
+    fontFamily: 'Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+    fontSize: 14,
+    lineHeight: 1.4,
     letterSpacing: 0,
-    theme: currentTheme.value.colors, // Use reactive theme
+    fontWeight: 'normal',
+    fontWeightBold: 'bold',
+    theme: {
+      background: '#ffffff', // Pure White
+      foreground: '#000000', // Pitch Black for maximum text contrast
+      cursor: '#000000',     
+      selectionBackground: '#b4d5fe', // More visible selection
+      
+      // ANSI Colors - Ultra High Contrast for Light Mode
+      // All colors significantly darkened to ensure sharp text
+      
+      black: '#000000',
+      red: '#a80000',        // Dark Red
+      green: '#005f00',      // Dark Green
+      yellow: '#7f7f00',     // Dark Yellow
+      blue: '#0000aa',       // Dark Blue (Navy)
+      magenta: '#7f007f',    // Dark Magenta
+      cyan: '#005f5f',       // Dark Cyan (Teal)
+      white: '#333333',      // Dark Grey (replacing white)
+      
+      // Bright variants (also dark for visibility)
+      brightBlack: '#444444',
+      brightRed: '#d70000',
+      brightGreen: '#008700',
+      brightYellow: '#afaf00',
+      brightBlue: '#0000d7',
+      brightMagenta: '#af00af',
+      brightCyan: '#008787',
+      brightWhite: '#000000' // Black
+    },
     scrollback: 5000,
     allowProposedApi: true,
-    allowTransparency: true // Allows for nice compositing if needed
+    // CRITICAL FIX: Transparency false enables subpixel anti-aliasing (RGB) for sharper text
+    allowTransparency: false 
   });
 
   // Addons
   fitAddon.value = new FitAddon();
   terminalInstance.value.loadAddon(fitAddon.value);
   
-  // High-performance WebGL Rendering
-  try {
-    const webglAddon = new WebglAddon();
-    webglAddon.onContextLoss(() => {
-      webglAddon.dispose();
-    });
-    terminalInstance.value.loadAddon(webglAddon);
-  } catch (e) {
-    console.warn('WebGL addon failed to load, falling back to canvas renderer', e);
-  }
+  // NOTE: WebGL Addon removed as it was causing text blurriness/aliasing issues.
+  // Standard Canvas renderer provides sharper text.
 
   // Mount terminal
   terminalInstance.value.open(terminalElement.value);
@@ -122,8 +113,8 @@ const initializeTerminal = () => {
     terminalInstance.value?.write(data);
   });
   
-  // Clean welcome message with color
-  terminalInstance.value.writeln('\x1b[38;2;122;162;247m➜ Connected to Workspace Terminal\x1b[0m');
+  // Clear welcome message - Simple Bold Black text
+  terminalInstance.value.writeln('\x1b[1m➜ Connected to Workspace Terminal\x1b[0m');
 };
 
 const connectTerminal = () => {
@@ -191,8 +182,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .terminal-container {
   min-height: 0;
-  /* background-color handled by dynamic binding */
-  transition: background-color 0.2s ease;
+  background-color: #ffffff;
 }
 
 /* Ensure xterm fills the container */
@@ -201,30 +191,30 @@ onBeforeUnmount(() => {
   height: 100% !important;
 }
 
-/* Scrollbar styling - Sleek Dark/Dynamic if possible, mostly dark is standard for terminals */
+/* Scrollbar styling - Sleek Light */
 .terminal-container ::-webkit-scrollbar {
-  width: 8px; /* Thinner for modern look */
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 .terminal-container ::-webkit-scrollbar-track {
-  background: transparent; 
+  background: #ffffff; 
 }
 
 .terminal-container ::-webkit-scrollbar-thumb {
-  background: #ffffff30; /* Semi-transparent to blend with any theme */
-  border-radius: 4px; /* Rounded pill scrollbar */
+  background: #cccccc; 
+  border-radius: 4px;
 }
 
 .terminal-container ::-webkit-scrollbar-thumb:hover {
-  background: #ffffff50;
+  background: #999999;
 }
 
 .terminal-container ::-webkit-scrollbar-corner {
-  background: transparent;
+  background: #ffffff;
 }
 
 .xterm {
-  padding: 16px 0 0 16px; /* Slightly more breathing room */
+  padding: 16px 0 0 16px; 
 }
 </style>
