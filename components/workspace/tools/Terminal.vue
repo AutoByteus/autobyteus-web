@@ -152,11 +152,24 @@ onBeforeUnmount(() => {
   
   if (resizeObserver) {
     resizeObserver.disconnect();
+    resizeObserver = null;
   }
   window.removeEventListener('resize', handleWindowResize);
   
-  if (terminalInstance.value) {
-    terminalInstance.value.dispose();
+  try {
+    if (fitAddon.value) {
+      fitAddon.value.dispose();
+    }
+  } catch (e) {
+    // Ignore addon disposal errors
+  }
+
+  try {
+    if (terminalInstance.value) {
+        terminalInstance.value.dispose();
+    }
+  } catch (e) {
+      console.warn('Error disposing terminal:', e);
   }
 });
 </script>

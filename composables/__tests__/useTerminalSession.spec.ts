@@ -6,7 +6,7 @@ import { ref } from 'vue';
 vi.mock('#app', () => ({
   useRuntimeConfig: () => ({
     public: {
-      wsBaseUrl: 'ws://test-host:8000'
+      wsBaseUrl: 'ws://test-host:8000/graphql' // Simulating the actual env value
     }
   })
 }));
