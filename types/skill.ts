@@ -8,6 +8,8 @@ export interface Skill {
   content: string
   rootPath: string
   fileCount: number
+  isReadonly: boolean
+  isDisabled: boolean
   createdAt?: string
   updatedAt?: string
 }

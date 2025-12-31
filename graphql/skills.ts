@@ -11,6 +11,8 @@ export const GET_SKILLS = gql`
       content
       rootPath
       fileCount
+      isReadonly
+      isDisabled
     }
   }
 `
@@ -23,6 +25,8 @@ export const GET_SKILL = gql`
       content
       rootPath
       fileCount
+      isReadonly
+      isDisabled
     }
   }
 `
@@ -81,5 +85,23 @@ export const UPLOAD_SKILL_FILE = gql`
 export const DELETE_SKILL_FILE = gql`
   mutation DeleteSkillFile($skillName: String!, $path: String!) {
     deleteSkillFile(skillName: $skillName, path: $path)
+  }
+`
+
+export const DISABLE_SKILL = gql`
+  mutation DisableSkill($name: String!) {
+    disableSkill(name: $name) {
+      name
+      isDisabled
+    }
+  }
+`
+
+export const ENABLE_SKILL = gql`
+  mutation EnableSkill($name: String!) {
+    enableSkill(name: $name) {
+      name
+      isDisabled
+    }
   }
 `

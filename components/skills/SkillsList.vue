@@ -2,10 +2,15 @@
   <div class="skills-list">
     <div class="skills-header">
       <h2>Skills</h2>
-      <button class="btn-create" @click="showCreateDialog = true">
-        <span class="icon">+</span>
-        Create New Skill
-      </button>
+      <div class="actions">
+        <button class="btn-icon" @click="showSourcesDialog = true" title="Manage Skill Sources">
+          ⚙️
+        </button>
+        <button class="btn-create" @click="showCreateDialog = true">
+          <span class="icon">+</span>
+          Create New Skill
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="loading">Loading skills...</div>
@@ -20,6 +25,7 @@
         :skill="skill"
         @view="handleViewSkill"
         @delete="handleDeleteSkill"
+        @toggle-disable="handleToggleDisable"
       />
     </div>
 
@@ -45,6 +51,24 @@
         </div>
       </div>
     </div>
+
+    <!-- Skill Sources Management Dialog -->
+    <!-- Skill Sources Management Dialog -->
+    <SkillSourcesModal
+      v-if="showSourcesDialog"
+      @close="showSourcesDialog = false"
+    />
+
+    <!-- Delete Confirmation Modal -->
+    <ConfirmationModal
+      :show="showDeleteConfirm"
+      title="Delete Skill"
+      :message="`Are you sure you want to delete the skill <b>${skillToDelete?.name}</b>? This action cannot be undone.`"
+      confirm-button-text="Delete"
+      variant="danger"
+      @confirm="confirmDelete"
+      @cancel="showDeleteConfirm = false"
+    />
   </div>
 </template>
 
@@ -53,6 +77,8 @@ import { ref, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSkillStore } from '~/stores/skillStore'
 import SkillCard from './SkillCard.vue'
+import SkillSourcesModal from './SkillSourcesModal.vue'
+import ConfirmationModal from '~/components/common/ConfirmationModal.vue'
 import type { Skill } from '~/types/skill'
 
 const emit = defineEmits<{
@@ -61,11 +87,15 @@ const emit = defineEmits<{
 
 const skillStore = useSkillStore()
 const showCreateDialog = ref(false)
+const showSourcesDialog = ref(false)
 const newSkill = ref({
   name: '',
   description: '',
   content: '',
 })
+
+const showDeleteConfirm = ref(false)
+const skillToDelete = ref<Skill | null>(null)
 
 const { skills, loading, error } = storeToRefs(skillStore)
 
@@ -94,12 +124,32 @@ function handleViewSkill(skill: Skill) {
 }
 
 async function handleDeleteSkill(skill: Skill) {
-  if (confirm(`Delete skill "${skill.name}"?`)) {
-    try {
-      await skillStore.deleteSkill(skill.name)
-    } catch (e) {
-      console.error('Failed to delete skill:', e)
+  skillToDelete.value = skill
+  showDeleteConfirm.value = true
+}
+
+async function confirmDelete() {
+  if (!skillToDelete.value) return
+  
+  try {
+    await skillStore.deleteSkill(skillToDelete.value.name)
+  } catch (e) {
+    console.error('Failed to delete skill:', e)
+  } finally {
+    showDeleteConfirm.value = false
+    skillToDelete.value = null
+  }
+}
+
+async function handleToggleDisable(skill: Skill) {
+  try {
+    if (skill.isDisabled) {
+      await skillStore.enableSkill(skill.name)
+    } else {
+      await skillStore.disableSkill(skill.name)
     }
+  } catch (e) {
+    console.error(`Failed to ${skill.isDisabled ? 'enable' : 'disable'} skill:`, e)
   }
 }
 </script>
@@ -143,6 +193,29 @@ async function handleDeleteSkill(skill: Skill) {
 
 .btn-create .icon {
   font-size: 1.25rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn-icon {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
 }
 
 .loading,

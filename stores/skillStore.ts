@@ -11,6 +11,8 @@ import {
   DELETE_SKILL,
   UPLOAD_SKILL_FILE,
   DELETE_SKILL_FILE,
+  DISABLE_SKILL,
+  ENABLE_SKILL,
 } from '~/graphql/skills'
 import type {
   Skill,
@@ -175,7 +177,9 @@ export const useSkillStore = defineStore('skill', () => {
         const updatedSkill = data.updateSkill
         const index = skills.value.findIndex((s) => s.name === updatedSkill.name)
         if (index !== -1) {
-          skills.value[index] = updatedSkill
+          const newSkills = [...skills.value]
+          newSkills[index] = updatedSkill
+          skills.value = newSkills
         }
         if (currentSkill.value?.name === updatedSkill.name) {
           currentSkill.value = updatedSkill
@@ -267,6 +271,79 @@ export const useSkillStore = defineStore('skill', () => {
     }
   }
 
+
+  async function disableSkill(name: string): Promise<Skill> {
+    loading.value = true
+    error.value = ''
+
+    try {
+      const { data, errors } = await client.mutate({
+        mutation: DISABLE_SKILL,
+        variables: { name },
+      })
+
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map((e) => e.message).join(', '))
+      }
+
+      if (data?.disableSkill) {
+        const updatedSkill = data.disableSkill
+        const index = skills.value.findIndex((s) => s.name === updatedSkill.name)
+        if (index !== -1) {
+          const newSkills = [...skills.value]
+          newSkills[index] = updatedSkill
+          skills.value = newSkills
+        }
+        if (currentSkill.value?.name === updatedSkill.name) {
+          currentSkill.value = updatedSkill
+        }
+        return updatedSkill
+      }
+      throw new Error('Failed to disable skill: No data returned')
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function enableSkill(name: string): Promise<Skill> {
+    loading.value = true
+    error.value = ''
+
+    try {
+      const { data, errors } = await client.mutate({
+        mutation: ENABLE_SKILL,
+        variables: { name },
+      })
+
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map((e) => e.message).join(', '))
+      }
+
+      if (data?.enableSkill) {
+        const updatedSkill = data.enableSkill
+        const index = skills.value.findIndex((s) => s.name === updatedSkill.name)
+        if (index !== -1) {
+          const newSkills = [...skills.value]
+          newSkills[index] = updatedSkill
+          skills.value = newSkills
+        }
+        if (currentSkill.value?.name === updatedSkill.name) {
+          currentSkill.value = updatedSkill
+        }
+        return updatedSkill
+      }
+      throw new Error('Failed to enable skill: No data returned')
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
   function setCurrentSkill(skill: Skill | null) {
     currentSkill.value = skill
   }
@@ -299,6 +376,8 @@ export const useSkillStore = defineStore('skill', () => {
     deleteSkill,
     uploadFile,
     deleteFile,
+    disableSkill,
+    enableSkill,
     setCurrentSkill,
     clearError,
     // Getters

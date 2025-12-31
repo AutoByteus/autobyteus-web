@@ -16,7 +16,10 @@
       <div class="file-tree-panel">
         <div class="panel-header">
           <h3>📁 Files ({{ skill.fileCount }})</h3>
-          <button class="btn-add" @click="showUploadDialog = true">+ Add</button>
+          <button v-if="!skill.isReadonly" class="btn-add" @click="showUploadDialog = true">
+            <Icon icon="heroicons:plus" class="w-4 h-4" />
+            <span>Add</span>
+          </button>
         </div>
         
         <div v-if="fileTreeData" class="tree-container">
@@ -34,11 +37,20 @@
         <div class="panel-header">
           <h3>{{ selectedFile || 'SKILL.md' }}</h3>
           <div class="header-actions" v-if="selectedFile">
-            <button v-if="!isEditing" class="btn-edit" @click="startEdit">✏️ Edit</button>
-            <button v-if="!isEditing" class="btn-delete-file" @click="confirmDeleteFile">🗑️ Delete</button>
+            <button v-if="!isEditing && !skill.isReadonly" class="btn-edit" @click="startEdit">
+              <Icon icon="heroicons:pencil" class="w-4 h-4" />
+              <span>Edit</span>
+            </button>
+            <button v-if="!isEditing && !skill.isReadonly" class="btn-delete-file" @click="confirmDeleteFile">
+              <Icon icon="heroicons:trash" class="w-4 h-4" />
+              <span>Delete</span>
+            </button>
             <template v-if="isEditing">
               <button class="btn-cancel" @click="cancelEdit">Cancel</button>
-              <button class="btn-save" @click="saveEdit">💾 Save</button>
+              <button class="btn-save" @click="saveEdit">
+                <Icon icon="heroicons:check" class="w-4 h-4" />
+                <span>Save</span>
+              </button>
             </template>
           </div>
         </div>
@@ -89,6 +101,7 @@ import { useSkillStore } from '~/stores/skillStore'
 import { storeToRefs } from 'pinia'
 import type { Skill } from '~/types/skill'
 import SkillFileTreeItem from './SkillFileTreeItem.vue'
+import { Icon } from '@iconify/vue'
 
 const props = defineProps<{
   skillName: string
@@ -320,6 +333,9 @@ async function handleUploadFile() {
 .btn-delete-file,
 .btn-save,
 .btn-cancel {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
   padding: 0.375rem 0.75rem;
   border: none;
   border-radius: 4px;
@@ -366,6 +382,9 @@ async function handleUploadFile() {
 }
 
 .btn-add {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
   background: #3b82f6;
   color: white;
   border: none;

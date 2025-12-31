@@ -1,5 +1,5 @@
 <template>
-  <div class="skill-card">
+  <div class="skill-card" :class="{ 'is-disabled': skill.isDisabled }">
     <div class="skill-icon">📁</div>
     <div class="skill-content">
       <h3 class="skill-name">{{ skill.name }}</h3>
@@ -10,6 +10,22 @@
     </div>
     <div class="skill-actions">
       <button class="btn-view" @click="$emit('view', skill)">View</button>
+      <button 
+        v-if="!skill.isDisabled" 
+        class="btn-disable" 
+        @click="$emit('toggle-disable', skill)"
+        title="Disable Skill"
+      >
+        Disable
+      </button>
+      <button 
+        v-else 
+        class="btn-enable" 
+        @click="$emit('toggle-disable', skill)"
+        title="Enable Skill"
+      >
+        Enable
+      </button>
       <button class="btn-delete" @click="$emit('delete', skill)">Delete</button>
     </div>
   </div>
@@ -25,6 +41,7 @@ defineProps<{
 defineEmits<{
   view: [skill: Skill]
   delete: [skill: Skill]
+  'toggle-disable': [skill: Skill]
 }>()
 </script>
 
@@ -106,5 +123,34 @@ defineEmits<{
 .btn-delete:hover {
   background: #ef4444;
   color: white;
+}
+
+.btn-disable {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.btn-disable:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.btn-enable {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.btn-enable:hover {
+  background: #d1fae5;
+}
+
+.is-disabled {
+  opacity: 0.7;
+  background-color: #f9fafb;
+}
+
+.is-disabled .skill-name {
+  color: #9ca3af;
+  text-decoration: line-through;
 }
 </style>
