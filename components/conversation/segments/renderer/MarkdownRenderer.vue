@@ -2,11 +2,10 @@
   <div class="markdown-renderer-segments" @click="handleLinkClick">
     <template v-for="segment in segments" :key="segment.key">
       <div v-if="segment.type === 'html'" v-html="segment.content" class="markdown-body prose dark:prose-invert prose-gray max-w-none"></div>
-      <PlantUMLDiagram
-        v-else-if="segment.type === 'plantuml'"
+      <MermaidDiagram
+        v-else-if="segment.type === 'mermaid'"
         :content="segment.content"
-        :diagram-id="segment.diagramId"
-        class="plantuml-segment-container"
+        class="mermaid-segment-container"
       />
     </template>
   </div>
@@ -15,7 +14,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, nextTick } from 'vue';
 import { useMarkdownSegments } from '~/composables/useMarkdownSegments';
-import PlantUMLDiagram from './PlantUMLDiagram.vue'; 
+import MermaidDiagram from './MermaidDiagram.vue'; 
 import 'prismjs/themes/prism.css'; 
 // Import KaTeX CSS for math rendering
 import 'katex/dist/katex.min.css';
@@ -113,7 +112,7 @@ watch(segments, applyPostRenderEffects, { deep: true });
   margin-bottom: 0;
 }
 
-.plantuml-segment-container {
+.mermaid-segment-container {
   margin: 1em 0;
 }
 </style>

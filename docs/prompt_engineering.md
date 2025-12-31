@@ -14,6 +14,19 @@ The Prompt Engineering module enables users to:
 - Mark prompts as active/inactive
 - Delete prompts
 
+## Navigation
+
+Prompt Engineering is a **standalone top-level module** accessible via the main sidebar (lightbulb icon).
+
+**Route:** `/prompt-engineering`
+
+**Sidebar Menu Items:**
+
+- **Prompts Marketplace** - Browse all prompts
+- **My Drafts** - Manage local draft prompts
+
+> **Note:** Skills management is a separate module with its own page (`/skills`). See [skills.md](skills.md) for details.
+
 ## Module Structure
 
 ```

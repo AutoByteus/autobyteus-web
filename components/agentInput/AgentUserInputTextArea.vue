@@ -51,7 +51,7 @@
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
         </svg>
-        <PaperAirplaneIcon v-else class="h-5 w-5" />
+        <Icon v-else icon="heroicons:paper-airplane-solid" class="h-5 w-5" />
       </button>
     </div>
   </div>
@@ -67,7 +67,7 @@ import { useWorkspaceStore } from '~/stores/workspace';
 import AudioRecorder from '~/components/AudioRecorder.vue';
 
 import GroupedSelect from '~/components/agentInput/GroupedSelect.vue';
-import { PaperAirplaneIcon } from '@heroicons/vue/24/solid';
+import { Icon } from '@iconify/vue';
 import { getFilePathsFromFolder } from '~/utils/fileExplorer/fileUtils';
 import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
 

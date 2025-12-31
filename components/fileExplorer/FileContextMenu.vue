@@ -13,8 +13,8 @@
           class="menu-item flex items-center px-5 py-2.5 hover:bg-blue-50 cursor-pointer transition-colors duration-150"
           @click="item.action"
         >
-          <component 
-            :is="item.icon" 
+          <Icon 
+            :icon="item.icon" 
             class="w-5 h-5 mr-3 text-gray-500"
           />
           <span>{{ item.label }}</span>
@@ -26,12 +26,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
-import {
-  PencilSquareIcon,
-  TrashIcon,
-  PlusIcon,
-  EyeIcon
-} from '@heroicons/vue/24/outline'
+import { Icon } from '@iconify/vue'
 
 interface ContextMenuPosition {
   top: number
@@ -57,12 +52,12 @@ const menuRef = ref<HTMLElement | null>(null)
 
 // We build the menu dynamically to conditionally include Preview
 const menuItems = computed(() => {
-  const items = [] as Array<{ label: string; icon: any; action: () => void }>
+  const items = [] as Array<{ label: string; icon: string; action: () => void }>
 
   if (props.showPreview) {
     items.push({
       label: 'Open Preview',
-      icon: EyeIcon,
+      icon: 'heroicons:eye',
       action: () => emit('preview')
     })
   }
@@ -70,22 +65,22 @@ const menuItems = computed(() => {
   items.push(
     {
       label: 'Add File',
-      icon: PlusIcon,
+      icon: 'heroicons:plus',
       action: () => emit('add-file')
     },
     {
       label: 'Add Folder',
-      icon: PlusIcon,
+      icon: 'heroicons:plus',
       action: () => emit('add-folder')
     },
     {
       label: 'Rename',
-      icon: PencilSquareIcon,
+      icon: 'heroicons:pencil-square',
       action: () => emit('rename')
     },
     {
       label: 'Delete',
-      icon: TrashIcon,
+      icon: 'heroicons:trash',
       action: () => emit('delete')
     }
   )

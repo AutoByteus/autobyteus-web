@@ -527,6 +527,7 @@ export type ModelDetail = {
 export type Mutation = {
   __typename?: 'Mutation';
   addNewPromptRevision: Prompt;
+  addSkillSource: Array<SkillSource>;
   approveToolInvocation: ApproveToolInvocationResult;
   configureMcpServer: ConfigureMcpServerResult;
   createAgentDefinition: AgentDefinition;
@@ -543,13 +544,16 @@ export type Mutation = {
   deletePrompt: DeletePromptResult;
   deleteSkill: DeleteSkillResult;
   deleteSkillFile: Scalars['Boolean']['output'];
+  disableSkill: Skill;
   discoverAndRegisterMcpServerTools: DiscoverAndRegisterMcpServerToolsResult;
+  enableSkill: Skill;
   executeBashCommands: CommandExecutionResult;
   importMcpServerConfigs: ImportMcpServerConfigsResult;
   markActivePrompt: Prompt;
   moveFileOrFolder: Scalars['String']['output'];
   reloadLlmModels: Scalars['String']['output'];
   reloadToolSchema: ReloadToolSchemaResult;
+  removeSkillSource: Array<SkillSource>;
   renameFileOrFolder: Scalars['String']['output'];
   runApplication: Scalars['JSON']['output'];
   sendAgentUserInput: SendAgentUserInputResult;
@@ -570,6 +574,11 @@ export type Mutation = {
 
 export type MutationAddNewPromptRevisionArgs = {
   input: AddNewPromptRevisionInput;
+};
+
+
+export type MutationAddSkillSourceArgs = {
+  path: Scalars['String']['input'];
 };
 
 
@@ -657,8 +666,18 @@ export type MutationDeleteSkillFileArgs = {
 };
 
 
+export type MutationDisableSkillArgs = {
+  name: Scalars['String']['input'];
+};
+
+
 export type MutationDiscoverAndRegisterMcpServerToolsArgs = {
   serverId: Scalars['String']['input'];
+};
+
+
+export type MutationEnableSkillArgs = {
+  name: Scalars['String']['input'];
 };
 
 
@@ -687,6 +706,11 @@ export type MutationMoveFileOrFolderArgs = {
 
 export type MutationReloadToolSchemaArgs = {
   name: Scalars['String']['input'];
+};
+
+
+export type MutationRemoveSkillSourceArgs = {
+  path: Scalars['String']['input'];
 };
 
 
@@ -852,6 +876,7 @@ export type Query = {
   skill?: Maybe<Skill>;
   skillFileContent?: Maybe<Scalars['String']['output']>;
   skillFileTree?: Maybe<Scalars['String']['output']>;
+  skillSources: Array<SkillSource>;
   skills: Array<Skill>;
   tools: Array<ToolDefinitionDetail>;
   toolsGroupedByCategory: Array<ToolCategoryGroup>;
@@ -1033,9 +1058,18 @@ export type Skill = {
   createdAt?: Maybe<Scalars['String']['output']>;
   description: Scalars['String']['output'];
   fileCount: Scalars['Int']['output'];
+  isDisabled: Scalars['Boolean']['output'];
+  isReadonly: Scalars['Boolean']['output'];
   name: Scalars['String']['output'];
   rootPath: Scalars['String']['output'];
   updatedAt?: Maybe<Scalars['String']['output']>;
+};
+
+export type SkillSource = {
+  __typename?: 'SkillSource';
+  isDefault: Scalars['Boolean']['output'];
+  path: Scalars['String']['output'];
+  skillCount: Scalars['Int']['output'];
 };
 
 export type StdioMcpServerConfig = McpServerConfig & {
@@ -1680,17 +1714,36 @@ export type GetAllWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type GetAllWorkspacesQuery = { __typename?: 'Query', workspaces: Array<{ __typename: 'WorkspaceInfo', workspaceId: string, name: string, config: any, fileExplorer?: any | null, absolutePath?: string | null }> };
 
+export type GetSkillSourcesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetSkillSourcesQuery = { __typename?: 'Query', skillSources: Array<{ __typename?: 'SkillSource', path: string, skillCount: number, isDefault: boolean }> };
+
+export type AddSkillSourceMutationVariables = Exact<{
+  path: Scalars['String']['input'];
+}>;
+
+
+export type AddSkillSourceMutation = { __typename?: 'Mutation', addSkillSource: Array<{ __typename?: 'SkillSource', path: string, skillCount: number, isDefault: boolean }> };
+
+export type RemoveSkillSourceMutationVariables = Exact<{
+  path: Scalars['String']['input'];
+}>;
+
+
+export type RemoveSkillSourceMutation = { __typename?: 'Mutation', removeSkillSource: Array<{ __typename?: 'SkillSource', path: string, skillCount: number, isDefault: boolean }> };
+
 export type GetSkillsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetSkillsQuery = { __typename?: 'Query', skills: Array<{ __typename?: 'Skill', name: string, description: string, content: string, rootPath: string, fileCount: number }> };
+export type GetSkillsQuery = { __typename?: 'Query', skills: Array<{ __typename?: 'Skill', name: string, description: string, content: string, rootPath: string, fileCount: number, isReadonly: boolean, isDisabled: boolean }> };
 
 export type GetSkillQueryVariables = Exact<{
   name: Scalars['String']['input'];
 }>;
 
 
-export type GetSkillQuery = { __typename?: 'Query', skill?: { __typename?: 'Skill', name: string, description: string, content: string, rootPath: string, fileCount: number } | null };
+export type GetSkillQuery = { __typename?: 'Query', skill?: { __typename?: 'Skill', name: string, description: string, content: string, rootPath: string, fileCount: number, isReadonly: boolean, isDisabled: boolean } | null };
 
 export type GetSkillFileTreeQueryVariables = Exact<{
   name: Scalars['String']['input'];
@@ -1744,6 +1797,20 @@ export type DeleteSkillFileMutationVariables = Exact<{
 
 
 export type DeleteSkillFileMutation = { __typename?: 'Mutation', deleteSkillFile: boolean };
+
+export type DisableSkillMutationVariables = Exact<{
+  name: Scalars['String']['input'];
+}>;
+
+
+export type DisableSkillMutation = { __typename?: 'Mutation', disableSkill: { __typename?: 'Skill', name: string, isDisabled: boolean } };
+
+export type EnableSkillMutationVariables = Exact<{
+  name: Scalars['String']['input'];
+}>;
+
+
+export type EnableSkillMutation = { __typename?: 'Mutation', enableSkill: { __typename?: 'Skill', name: string, isDisabled: boolean } };
 
 export type NestedTeamEventFragment = { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentStatusUpdateData', newStatus: AgentStatus, oldStatus?: AgentStatus | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData' } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamStatusUpdateData', newStatus: AgentTeamStatus, oldStatus?: AgentTeamStatus | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload' } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, taskId: string, agentName: string, newTaskStatus: TaskStatus, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } | { __typename: 'GraphQLTasksCreatedEvent', teamId: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } };
 
@@ -3975,6 +4042,97 @@ export function useGetAllWorkspacesLazyQuery(options: VueApolloComposable.UseQue
   return VueApolloComposable.useLazyQuery<GetAllWorkspacesQuery, GetAllWorkspacesQueryVariables>(GetAllWorkspacesDocument, {}, options);
 }
 export type GetAllWorkspacesQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAllWorkspacesQuery, GetAllWorkspacesQueryVariables>;
+export const GetSkillSourcesDocument = gql`
+    query GetSkillSources {
+  skillSources {
+    path
+    skillCount
+    isDefault
+  }
+}
+    `;
+
+/**
+ * __useGetSkillSourcesQuery__
+ *
+ * To run a query within a Vue component, call `useGetSkillSourcesQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetSkillSourcesQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetSkillSourcesQuery();
+ */
+export function useGetSkillSourcesQuery(options: VueApolloComposable.UseQueryOptions<GetSkillSourcesQuery, GetSkillSourcesQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetSkillSourcesQuery, GetSkillSourcesQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetSkillSourcesQuery, GetSkillSourcesQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetSkillSourcesQuery, GetSkillSourcesQueryVariables>(GetSkillSourcesDocument, {}, options);
+}
+export function useGetSkillSourcesLazyQuery(options: VueApolloComposable.UseQueryOptions<GetSkillSourcesQuery, GetSkillSourcesQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetSkillSourcesQuery, GetSkillSourcesQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetSkillSourcesQuery, GetSkillSourcesQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetSkillSourcesQuery, GetSkillSourcesQueryVariables>(GetSkillSourcesDocument, {}, options);
+}
+export type GetSkillSourcesQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetSkillSourcesQuery, GetSkillSourcesQueryVariables>;
+export const AddSkillSourceDocument = gql`
+    mutation AddSkillSource($path: String!) {
+  addSkillSource(path: $path) {
+    path
+    skillCount
+    isDefault
+  }
+}
+    `;
+
+/**
+ * __useAddSkillSourceMutation__
+ *
+ * To run a mutation, you first call `useAddSkillSourceMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useAddSkillSourceMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useAddSkillSourceMutation({
+ *   variables: {
+ *     path: // value for 'path'
+ *   },
+ * });
+ */
+export function useAddSkillSourceMutation(options: VueApolloComposable.UseMutationOptions<AddSkillSourceMutation, AddSkillSourceMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<AddSkillSourceMutation, AddSkillSourceMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<AddSkillSourceMutation, AddSkillSourceMutationVariables>(AddSkillSourceDocument, options);
+}
+export type AddSkillSourceMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<AddSkillSourceMutation, AddSkillSourceMutationVariables>;
+export const RemoveSkillSourceDocument = gql`
+    mutation RemoveSkillSource($path: String!) {
+  removeSkillSource(path: $path) {
+    path
+    skillCount
+    isDefault
+  }
+}
+    `;
+
+/**
+ * __useRemoveSkillSourceMutation__
+ *
+ * To run a mutation, you first call `useRemoveSkillSourceMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useRemoveSkillSourceMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useRemoveSkillSourceMutation({
+ *   variables: {
+ *     path: // value for 'path'
+ *   },
+ * });
+ */
+export function useRemoveSkillSourceMutation(options: VueApolloComposable.UseMutationOptions<RemoveSkillSourceMutation, RemoveSkillSourceMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<RemoveSkillSourceMutation, RemoveSkillSourceMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<RemoveSkillSourceMutation, RemoveSkillSourceMutationVariables>(RemoveSkillSourceDocument, options);
+}
+export type RemoveSkillSourceMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<RemoveSkillSourceMutation, RemoveSkillSourceMutationVariables>;
 export const GetSkillsDocument = gql`
     query GetSkills {
   skills {
@@ -3983,6 +4141,8 @@ export const GetSkillsDocument = gql`
     content
     rootPath
     fileCount
+    isReadonly
+    isDisabled
   }
 }
     `;
@@ -4014,6 +4174,8 @@ export const GetSkillDocument = gql`
     content
     rootPath
     fileCount
+    isReadonly
+    isDisabled
   }
 }
     `;
@@ -4250,6 +4412,66 @@ export function useDeleteSkillFileMutation(options: VueApolloComposable.UseMutat
   return VueApolloComposable.useMutation<DeleteSkillFileMutation, DeleteSkillFileMutationVariables>(DeleteSkillFileDocument, options);
 }
 export type DeleteSkillFileMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<DeleteSkillFileMutation, DeleteSkillFileMutationVariables>;
+export const DisableSkillDocument = gql`
+    mutation DisableSkill($name: String!) {
+  disableSkill(name: $name) {
+    name
+    isDisabled
+  }
+}
+    `;
+
+/**
+ * __useDisableSkillMutation__
+ *
+ * To run a mutation, you first call `useDisableSkillMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useDisableSkillMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useDisableSkillMutation({
+ *   variables: {
+ *     name: // value for 'name'
+ *   },
+ * });
+ */
+export function useDisableSkillMutation(options: VueApolloComposable.UseMutationOptions<DisableSkillMutation, DisableSkillMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<DisableSkillMutation, DisableSkillMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<DisableSkillMutation, DisableSkillMutationVariables>(DisableSkillDocument, options);
+}
+export type DisableSkillMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<DisableSkillMutation, DisableSkillMutationVariables>;
+export const EnableSkillDocument = gql`
+    mutation EnableSkill($name: String!) {
+  enableSkill(name: $name) {
+    name
+    isDisabled
+  }
+}
+    `;
+
+/**
+ * __useEnableSkillMutation__
+ *
+ * To run a mutation, you first call `useEnableSkillMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useEnableSkillMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useEnableSkillMutation({
+ *   variables: {
+ *     name: // value for 'name'
+ *   },
+ * });
+ */
+export function useEnableSkillMutation(options: VueApolloComposable.UseMutationOptions<EnableSkillMutation, EnableSkillMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<EnableSkillMutation, EnableSkillMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<EnableSkillMutation, EnableSkillMutationVariables>(EnableSkillDocument, options);
+}
+export type EnableSkillMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<EnableSkillMutation, EnableSkillMutationVariables>;
 export const AgentTeamResponseDocument = gql`
     subscription AgentTeamResponse($teamId: String!) {
   agentTeamResponse(teamId: $teamId) {

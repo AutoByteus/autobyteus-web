@@ -9,7 +9,7 @@
           aria-label="Close"
           class="absolute -top-3 -right-3 text-white bg-zinc-800 hover:bg-zinc-900 rounded-full p-2 z-20"
         >
-          <XMarkIcon class="w-5 h-5" />
+          <Icon icon="heroicons:x-mark-solid" class="w-5 h-5" />
         </button>
 
         <!-- Copy URL Button -->
@@ -20,8 +20,8 @@
           aria-label="Copy URL"
           class="absolute -top-3 right-12 text-white bg-zinc-800 hover:bg-zinc-900 rounded-full p-2 z-20"
         >
-          <CheckIcon v-if="copyButtonState === 'copied'" class="w-5 h-5 text-green-400" />
-          <ClipboardDocumentIcon v-else class="w-5 h-5" />
+          <Icon v-if="copyButtonState === 'copied'" icon="heroicons:check-solid" class="w-5 h-5 text-green-400" />
+          <Icon v-else icon="heroicons:clipboard-document-solid" class="w-5 h-5" />
         </button>
         
         <!-- Video Player -->
@@ -46,7 +46,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { XMarkIcon, ClipboardDocumentIcon, CheckIcon } from '@heroicons/vue/24/solid';
+import { Icon } from '@iconify/vue';
 
 const props = defineProps<{
   visible: boolean;
@@ -91,3 +91,4 @@ const handleCopyUrl = async () => {
   to { opacity: 1; }
 }
 </style>
+

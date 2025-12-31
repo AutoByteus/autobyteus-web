@@ -5,7 +5,11 @@
       <!-- Left side: Status Icon and Tool Name -->
       <div class="flex items-center space-x-2 overflow-hidden">
         <div class="status-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">
-          <component :is="statusIcon" class="h-5 w-5" :class="statusIconClass" />
+          <svg v-if="statusIconName === 'spinner'" class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <Icon v-else :icon="statusIconName" class="h-5 w-5" :class="statusIconClass" />
         </div>
         <span class="font-mono text-sm font-semibold text-gray-800 dark:text-gray-200">
           Tool: {{ segment.toolName }}
@@ -112,7 +116,7 @@ import { useAgentRunStore } from '~/stores/agentRunStore';
 import FileDisplay from '~/components/conversation/segments/renderer/FileDisplay.vue';
 import CopyButton from '~/components/common/CopyButton.vue';
 import ToolCallRejectionModal from './ToolCallRejectionModal.vue';
-import { BeakerIcon, CheckCircleIcon, ClockIcon, CodeBracketIcon, ExclamationCircleIcon, HandRaisedIcon, XCircleIcon } from '@heroicons/vue/24/solid';
+import { Icon } from '@iconify/vue';
 
 const props = defineProps<{
   segment: ToolCallSegment;
@@ -139,17 +143,17 @@ const contentPreview = computed(() => {
 // --- End expand/collapse state ---
 
 const statusStyles = {
-    parsed: { class: 'border-gray-300 dark:border-gray-600', icon: CodeBracketIcon, iconClass: 'text-gray-400' },
-    'awaiting-approval': { class: 'border-yellow-400 dark:border-yellow-600', icon: HandRaisedIcon, iconClass: 'text-yellow-500' },
-    executing: { class: 'border-blue-400 dark:border-blue-600', icon: () => h('svg', { class: 'animate-spin h-5 w-5 text-blue-500', xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24" }, [h('circle', { class: "opacity-25", cx: "12", cy: "12", r: "10", stroke: "currentColor", 'stroke-width': "4" }), h('path', { class: "opacity-75", fill: "currentColor", d: "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" })]), iconClass: '' },
-    success: { class: 'border-green-400 dark:border-green-600', icon: CheckCircleIcon, iconClass: 'text-green-500' },
-    error: { class: 'border-red-400 dark:border-red-600', icon: XCircleIcon, iconClass: 'text-red-500' },
-    denied: { class: 'border-gray-400 dark:border-gray-500 opacity-70', icon: ExclamationCircleIcon, iconClass: 'text-gray-500' },
-    parsing: { class: 'border-dashed border-gray-400 dark:border-gray-500', icon: BeakerIcon, iconClass: 'text-gray-400 animate-pulse' },
+    parsed: { class: 'border-gray-300 dark:border-gray-600', iconName: 'heroicons:code-bracket-solid', iconClass: 'text-gray-400' },
+    'awaiting-approval': { class: 'border-yellow-400 dark:border-yellow-600', iconName: 'heroicons:hand-raised-solid', iconClass: 'text-yellow-500' },
+    executing: { class: 'border-blue-400 dark:border-blue-600', iconName: 'spinner', iconClass: 'text-blue-500' },
+    success: { class: 'border-green-400 dark:border-green-600', iconName: 'heroicons:check-circle-solid', iconClass: 'text-green-500' },
+    error: { class: 'border-red-400 dark:border-red-600', iconName: 'heroicons:x-circle-solid', iconClass: 'text-red-500' },
+    denied: { class: 'border-gray-400 dark:border-gray-500 opacity-70', iconName: 'heroicons:exclamation-circle-solid', iconClass: 'text-gray-500' },
+    parsing: { class: 'border-dashed border-gray-400 dark:border-gray-500', iconName: 'heroicons:beaker-solid', iconClass: 'text-gray-400 animate-pulse' },
 };
 
 const statusClass = computed(() => statusStyles[props.segment.status]?.class || 'border-gray-300 dark:border-gray-600');
-const statusIcon = computed(() => statusStyles[props.segment.status]?.icon || CodeBracketIcon);
+const statusIconName = computed(() => statusStyles[props.segment.status]?.iconName || 'heroicons:code-bracket-solid');
 const statusIconClass = computed(() => statusStyles[props.segment.status]?.iconClass || 'text-gray-400');
 
 const onApprove = () => {

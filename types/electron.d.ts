@@ -38,6 +38,7 @@ declare global {
         filePath?: string;
         error?: string;
       }>;
+      openExternalLink: (url: string) => Promise<void>;
     };
   }
 }

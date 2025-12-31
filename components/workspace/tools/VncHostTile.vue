@@ -35,8 +35,8 @@
             :disabled="!isConnected"
             :title="isMaximized ? 'Restore View (Esc)' : 'Maximize View'"
           >
-            <ArrowsPointingInIcon v-if="isMaximized" class="w-4 h-4" />
-            <ArrowsPointingOutIcon v-else class="w-4 h-4" />
+            <Icon v-if="isMaximized" icon="heroicons:arrows-pointing-in" class="w-4 h-4" />
+            <Icon v-else icon="heroicons:arrows-pointing-out" class="w-4 h-4" />
           </button>
           <button
             v-if="isConnected"
@@ -70,7 +70,7 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, nextTick, ref, watch } from 'vue';
-import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/vue/24/outline';
+import { Icon } from '@iconify/vue';
 import { useVncSession } from '~/composables/useVncSession';
 
 export interface VncHostConfig {

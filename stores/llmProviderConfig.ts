@@ -215,7 +215,10 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
           }
           this.providerConfigs[provider].apiKey = apiKey
           
-          await this.reloadModels()
+          // Only auto-reload for AUTOBYTEUS to discover internal service models
+          if (provider === 'AUTOBYTEUS') {
+            await this.reloadModels()
+          }
           return true
         }
         

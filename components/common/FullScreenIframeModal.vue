@@ -10,7 +10,7 @@
           aria-label="Close"
           title="Close"
         >
-          <XMarkIcon class="h-6 w-6" />
+          <Icon icon="heroicons:x-mark-solid" class="h-6 w-6" />
         </button>
         
         <!-- Iframe Content Wrapper: This layout remains correct for filling the container. -->
@@ -32,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { XMarkIcon } from '@heroicons/vue/24/solid';
+import { Icon } from '@iconify/vue';
 
 defineProps<{
   visible: boolean;
@@ -52,3 +52,4 @@ const closeModal = () => {
 <style scoped>
 /* Optional: Add transition effects for the modal appearance */
 </style>
+

@@ -10,7 +10,7 @@
         :title="tab.label"
       >
         <!-- Icons mapping -->
-        <component :is="getIcon(tab.name)" class="w-5 h-5" :class="activeTab === tab.name ? 'text-gray-900' : 'text-gray-500'" />
+        <Icon :icon="getIcon(tab.name)" class="w-5 h-5" :class="activeTab === tab.name ? 'text-gray-900' : 'text-gray-500'" />
         
         <!-- Tooltip -->
         <div class="absolute right-full mr-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
@@ -24,13 +24,7 @@
 <script setup lang="ts">
 import { useRightSideTabs, type TabName } from '~/composables/useRightSideTabs';
 import { useRightPanel } from '~/composables/useRightPanel';
-import { 
-  DocumentTextIcon, 
-  UserGroupIcon, 
-  ClipboardDocumentListIcon, 
-  CommandLineIcon, 
-  ComputerDesktopIcon 
-} from '@heroicons/vue/24/outline';
+import { Icon } from '@iconify/vue';
 
 const { visibleTabs, activeTab, setActiveTab } = useRightSideTabs();
 const { toggleRightPanel } = useRightPanel();
@@ -40,14 +34,15 @@ const selectTab = (tabName: TabName) => {
   toggleRightPanel(); // Re-open the panel
 };
 
-const getIcon = (name: TabName) => {
+const getIcon = (name: TabName): string => {
   switch (name) {
-    case 'files': return DocumentTextIcon;
-    case 'teamMembers': return UserGroupIcon;
-    case 'todoList': return ClipboardDocumentListIcon;
-    case 'terminal': return CommandLineIcon;
-    case 'vnc': return ComputerDesktopIcon;
-    default: return DocumentTextIcon;
+    case 'files': return 'heroicons:document-text';
+    case 'teamMembers': return 'heroicons:user-group';
+    case 'todoList': return 'heroicons:clipboard-document-list';
+    case 'terminal': return 'heroicons:command-line';
+    case 'vnc': return 'heroicons:computer-desktop';
+    default: return 'heroicons:document-text';
   }
 };
 </script>
+

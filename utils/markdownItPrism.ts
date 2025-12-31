@@ -8,8 +8,8 @@ export function markdownItPrism(md: MarkdownIt) {
     const token = tokens[idx];
     const lang = token.info.trim();
     
-    // Skip if language is plantuml, let the plantuml plugin handle it
-    if (lang === 'plantuml') {
+    // Skip if language is mermaid, let the mermaid fence rule handle it
+    if (lang === 'mermaid' || lang === 'mmd') {
       return fence(tokens, idx, options, env, slf);
     }
     

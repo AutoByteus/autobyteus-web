@@ -60,7 +60,7 @@
                 <img v-if="file.category === 'images'" :src="file.url" :alt="file.filename" class="h-full w-full object-cover transition-transform group-hover:scale-105" />
                 <!-- Video/Audio Icon Placeholder -->
                 <div v-else class="flex h-full w-full items-center justify-center bg-gray-700">
-                  <component :is="getIconForCategory(file.category)" class="h-1/3 w-1/3 text-gray-400" />
+                  <Icon :icon="getIconForCategory(file.category)" class="h-1/3 w-1/3 text-gray-400" />
                 </div>
                 <!-- Overlay -->
                 <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-opacity"></div>
@@ -147,7 +147,7 @@ import FullScreenVideoModal from '~/components/common/FullScreenVideoModal.vue';
 import FullScreenAudioModal from '~/components/common/FullScreenAudioModal.vue';
 import ConfirmationModal from '~/components/common/ConfirmationModal.vue';
 import ToastContainer from '~/components/common/ToastContainer.vue';
-import { VideoCameraIcon, MusicalNoteIcon, DocumentTextIcon, QuestionMarkCircleIcon } from '@heroicons/vue/24/solid';
+import { Icon } from '@iconify/vue';
 
 const store = useMediaLibraryStore();
 
@@ -188,12 +188,12 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown);
 });
 
-const getIconForCategory = (category: string) => {
+const getIconForCategory = (category: string): string => {
   switch (category) {
-    case 'video': return VideoCameraIcon;
-    case 'audio': return MusicalNoteIcon;
-    case 'documents': return DocumentTextIcon;
-    default: return QuestionMarkCircleIcon;
+    case 'video': return 'heroicons:video-camera-solid';
+    case 'audio': return 'heroicons:musical-note-solid';
+    case 'documents': return 'heroicons:document-text-solid';
+    default: return 'heroicons:question-mark-circle-solid';
   }
 };
 

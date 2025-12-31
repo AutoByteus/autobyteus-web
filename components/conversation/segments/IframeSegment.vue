@@ -8,7 +8,7 @@
         @click="toggleExpand" 
         class="flex items-center space-x-2 cursor-pointer flex-grow overflow-hidden"
       >
-        <CodeBracketSquareIcon class="h-5 w-5 text-gray-600 dark:text-gray-300 flex-shrink-0" />
+        <Icon icon="heroicons:code-bracket-square" class="h-5 w-5 text-gray-600 dark:text-gray-300 flex-shrink-0" />
         <span class="font-mono text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
           {{ headerTitle }}
         </span>
@@ -24,8 +24,8 @@
           class="p-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors focus:outline-none"
           :title="viewMode === 'preview' ? 'View Source' : 'View Preview'"
         >
-          <EyeIcon v-if="viewMode === 'source'" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          <CodeBracketIcon v-else class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <Icon v-if="viewMode === 'source'" icon="heroicons:eye" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <Icon v-else icon="heroicons:code-bracket" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
         </button>
         <!-- Maximize Button -->
         <button
@@ -34,7 +34,7 @@
           title="Maximize"
           v-if="isExpanded && segment.isComplete && viewMode === 'preview'"
         >
-          <ArrowsPointingOutIcon class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <Icon icon="heroicons:arrows-pointing-out" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
         </button>
         <!-- Expand/Collapse Button -->
         <button
@@ -43,7 +43,7 @@
           :aria-expanded="isExpanded"
           aria-label="Toggle content"
         >
-          <ChevronDownIcon
+          <Icon icon="heroicons:chevron-down"
             class="w-5 h-5 transform transition-transform text-gray-600 dark:text-gray-400"
             :class="{ 'rotate-180': !isExpanded }"
           />
@@ -94,7 +94,7 @@
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount, nextTick, computed } from 'vue';
 import type { IframeSegment } from '~/utils/aiResponseParser/types';
-import { CodeBracketSquareIcon, ChevronDownIcon, ArrowsPointingOutIcon, CodeBracketIcon, EyeIcon } from '@heroicons/vue/24/outline';
+import { Icon } from '@iconify/vue';
 import FullScreenIframeModal from '~/components/common/FullScreenIframeModal.vue';
 import FileDisplay from '~/components/conversation/segments/renderer/FileDisplay.vue';
 import CopyButton from '~/components/common/CopyButton.vue';

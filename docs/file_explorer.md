@@ -24,7 +24,7 @@ autobyteus-web/
 │   ├── FileContextMenu.vue           # Right-click context menu
 │   ├── AddFileOrFolderDialog.vue     # Create file/folder dialog
 │   ├── ConfirmDeleteDialog.vue       # Delete confirmation dialog
-│   ├── MinimizedFileIndicator.vue    # Minimized view indicator
+│   ├── ConfirmDeleteDialog.vue       # Delete confirmation dialog
 │   ├── MonacoEditor.vue              # Code editing component
 │   └── viewers/                      # Type-specific viewers
 │       ├── AudioPlayer.vue
@@ -55,6 +55,7 @@ flowchart TD
     subgraph "UI Layer"
         FileExplorer[FileExplorer.vue]
         FileItem[FileItem.vue]
+        RightSideTabs[RightSideTabs.vue]
         FileContentViewer[FileContentViewer.vue]
         Viewers[Type-Specific Viewers]
     end
@@ -75,7 +76,7 @@ flowchart TD
     end
 
     FileExplorer --> FileItem
-    FileExplorer --> FileContentViewer
+    RightSideTabs --> FileContentViewer
     FileContentViewer --> Viewers
 
     FileItem --> FileExplorerStore
@@ -147,25 +148,9 @@ onDrop(event: DragEvent) {
 
 ### FileContentViewer.vue
 
-Multi-tab file content viewer with type-specific rendering:
+Multi-tab file content viewer located in the **Right Side Panel** (Files Tab).
 
-**Viewing Modes:**
-
-- **Normal**: Standard view in main panel
-- **Fullscreen**: Expanded view within workspace
-- **Zen Mode**: Fullscreen overlay (teleported to body)
-
-**Supported File Types:**
-
-| Type      | Extensions                      | Viewer Component  |
-| --------- | ------------------------------- | ----------------- |
-| Text/Code | `.js`, `.py`, `.ts`, etc.       | MonacoEditor      |
-| Image     | `.jpg`, `.png`, `.gif`, `.webp` | ImageViewer       |
-| Video     | `.mp4`, `.mov`, `.webm`         | VideoPlayer       |
-| Audio     | `.mp3`, `.wav`, `.m4a`          | AudioPlayer       |
-| Markdown  | `.md`, `.markdown`              | MarkdownPreviewer |
-| HTML      | `.html`, `.htm`                 | HtmlPreviewer     |
-| Excel     | `.xlsx`, `.xls`, `.csv`         | ExcelViewer       |
+For detailed information on supported file types and the rendering architecture (including Markdown and Mermaid support), please refer to the [Content Rendering Documentation](./content_rendering.md).
 
 ## State Management
 

@@ -57,7 +57,7 @@
         @click.stop="toggleZenMode"
         title="Exit full view"
       >
-        <XMarkIcon class="h-5 w-5 text-gray-700" />
+        <Icon icon="heroicons:x-mark" class="h-5 w-5 text-gray-700" />
       </button>
     </div>
   </Teleport>
@@ -112,7 +112,7 @@
             @click.stop="setMode('edit')"
              title="Edit Mode"
           >
-            <PencilSquareIcon class="h-4 w-4" />
+            <Icon icon="heroicons:pencil-square" class="h-4 w-4" />
           </button>
           <button
             class="p-1.5 rounded-md transition-all duration-200 focus:outline-none"
@@ -122,7 +122,7 @@
             @click.stop="setMode('preview')"
              title="Preview Mode"
           >
-            <EyeIcon class="h-4 w-4" />
+            <Icon icon="heroicons:eye" class="h-4 w-4" />
           </button>
         </div>
 
@@ -132,8 +132,8 @@
           @click.stop="toggleZenMode"
           :title="isZenMode ? 'Restore view' : 'Maximize view'"
         >
-          <ArrowsPointingOutIcon v-if="!isZenMode" class="h-4 w-4" />
-          <ArrowsPointingInIcon v-else class="h-4 w-4" />
+          <Icon v-if="!isZenMode" icon="heroicons:arrows-pointing-out" class="h-4 w-4" />
+          <Icon v-else icon="heroicons:arrows-pointing-in" class="h-4 w-4" />
         </button>
 
         <!-- Close All button -->
@@ -203,7 +203,7 @@ import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { useWorkspaceStore } from '~/stores/workspace'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
 import { getLanguage } from '~/utils/aiResponseParser/languageDetector'
-import { ArrowsPointingOutIcon, ArrowsPointingInIcon, XMarkIcon, PencilSquareIcon, EyeIcon } from '@heroicons/vue/24/outline'
+import { Icon } from '@iconify/vue'
 
 // Viewer components
 import MonacoEditor from '~/components/fileExplorer/MonacoEditor.vue'

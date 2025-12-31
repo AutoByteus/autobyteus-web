@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia';
 import { v4 as uuidv4 } from 'uuid';
 
-type ViewMode = 'marketplace' | 'create' | 'details' | 'drafts';
+type ViewMode = 'marketplace' | 'create' | 'details' | 'drafts' | 'skills';
 type MarketplaceViewMode = 'grid' | 'compact';
-type SidebarContext = 'marketplace' | 'drafts';
+type SidebarContext = 'marketplace' | 'drafts' | 'skills';
 
 export interface PromptDraft {
   id: string;
@@ -69,6 +69,13 @@ export const usePromptEngineeringViewStore = defineStore('promptEngineeringView'
     showDraftsList() {
       this.currentView = 'drafts';
       this.sidebarContext = 'drafts';
+      this.selectedPromptId = null;
+      this.activeDraftId = null;
+    },
+    
+    showSkillsList() {
+      this.currentView = 'skills';
+      this.sidebarContext = 'skills';
       this.selectedPromptId = null;
       this.activeDraftId = null;
     },
@@ -198,6 +205,7 @@ export const usePromptEngineeringViewStore = defineStore('promptEngineeringView'
     isCreateView: (state): boolean => state.currentView === 'create',
     isDetailsView: (state): boolean => state.selectedPromptId !== null,
     isDraftsView: (state): boolean => state.currentView === 'drafts',
+    isSkillsView: (state): boolean => state.currentView === 'skills',
     
     activeDraft: (state) => state.drafts.find(d => d.id === state.activeDraftId) || null,
     draftCount: (state) => state.drafts.length,

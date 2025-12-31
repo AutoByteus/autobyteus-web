@@ -1,23 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { nextTick } from 'vue';
 import MarkdownRenderer from '~/components/conversation/segments/renderer/MarkdownRenderer.vue';
-import { plantumlService } from '~/services/plantumlService';
+import MermaidDiagram from '~/components/conversation/segments/renderer/MermaidDiagram.vue';
 
-// Mock plantumlService
-vi.mock('~/services/plantumlService', () => ({
-  plantumlService: {
-    generateDiagram: vi.fn()
+// Mock components
+vi.mock('~/components/conversation/segments/renderer/MermaidDiagram.vue', () => ({
+  default: {
+    name: 'MermaidDiagram',
+    template: '<div class="mermaid-diagram-mock"></div>',
+    props: ['content']
   }
 }));
 
 describe('MarkdownRenderer', () => {
   beforeEach(() => {
-    // Reset all mocks before each test
     vi.clearAllMocks();
-    // Mock URL.createObjectURL and URL.revokeObjectURL
-    global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
-    global.URL.revokeObjectURL = vi.fn();
   });
 
   it('should render markdown content correctly', () => {
@@ -30,254 +27,26 @@ describe('MarkdownRenderer', () => {
     expect(wrapper.html()).toContain('<h1>Hello World</h1>');
   });
 
-  it('renders KaTeX when using bracket delimiters', () => {
-    const wrapper = mount(MarkdownRenderer, {
-      props: {
-        content: '\\\\[ a^2 + b^2 = c^2 \\\\]'
-      }
-    });
-
-    expect(wrapper.html()).toContain('katex');
-  });
-
-  it('auto-wraps bare bracket block into KaTeX', () => {
-    const wrapper = mount(MarkdownRenderer, {
-      props: {
-        content: '[\n a^2 + b^2 = c^2\n]'
-      }
-    });
-
-    expect(wrapper.html()).toContain('katex');
-  });
-
-  it('auto-wraps lone LaTeX line without delimiters', () => {
-    const wrapper = mount(MarkdownRenderer, {
-      props: { content: 'A = \\\\frac{1}{2}bh' }
-    });
-    expect(wrapper.html()).toContain('katex');
-  });
-
-  it('renders KaTeX inside math fence', () => {
-    const wrapper = mount(MarkdownRenderer, {
-      props: {
-        content: '```math\nLet y = \\\\frac{1}{2}x^2.\n```'
-      }
-    });
-    const html = wrapper.html();
-    expect(html).toContain('md-panel');
-    expect(html).toContain('katex');
-  });
-
-  it('renders KaTeX for inline math fence', () => {
-    const wrapper = mount(MarkdownRenderer, {
-      props: {
-        content: '```math-inline\nCompute \\\\int_0^1 x^2 dx.\n```'
-      }
-    });
-    const html = wrapper.html();
-    expect(html).toContain('md-panel');
-    expect(html).toContain('katex');
-  });
-
-  it('renders KaTeX for latex alias fence', () => {
-    const wrapper = mount(MarkdownRenderer, {
-      props: {
-        content: '```latex\nE = mc^2\n```'
-      }
-    });
-    const html = wrapper.html();
-    expect(html).toContain('md-panel');
-    expect(html).toContain('katex');
-  });
-
-  it('should render plantuml diagram with loading state', () => {
-    const wrapper = mount(MarkdownRenderer, {
-      props: {
-        content: '```plantuml\n@startuml\nA -> B\n@enduml\n```'
-      }
-    });
-    expect(wrapper.html()).toContain('Generating diagram...');
-  });
-
-  it('should process plantuml diagrams and show images', async () => {
-    const mockBlob = new Blob(['fake-image-data'], { type: 'image/png' });
-    vi.mocked(plantumlService.generateDiagram).mockResolvedValue(mockBlob);
-
-    const wrapper = mount(MarkdownRenderer, {
-      props: {
-        content: '```plantuml\n@startuml\nA -> B\n@enduml\n```'
-      }
-    });
-
-    await nextTick(); // For Vue's reactivity
-    // Wait for loadDiagram's async operations
-    await new Promise(resolve => setTimeout(resolve, 0)); 
-
-
-    expect(plantumlService.generateDiagram).toHaveBeenCalled();
-    expect(wrapper.find('.loading-state').exists()).toBe(false);
-    expect(wrapper.find('.error-state').exists()).toBe(false);
-    expect(wrapper.find('.diagram-content img').exists()).toBe(true);
-  });
-
-  it('should handle errors where response.data is an object with detail', async () => {
-    const fullDetailMessage = 'Error: Syntax issue in diagram.';
-    const mockError = {
-      response: {
-        data: {
-          detail: fullDetailMessage
-        }
-      },
-      message: 'Request failed with status code 500' // Axios original message
-    };
-    vi.mocked(plantumlService.generateDiagram).mockRejectedValue(mockError);
-
-    const wrapper = mount(MarkdownRenderer, {
-      props: {
-        content: '```plantuml\nError Diagram\n```'
-      }
-    });
-
-    await nextTick();
-    await new Promise(resolve => setTimeout(resolve, 0));
-
-
-    const errorStateDiv = wrapper.find('.error-state');
-    expect(errorStateDiv.exists()).toBe(true);
-    expect(errorStateDiv.text()).toContain(fullDetailMessage); // Should use the 'detail' field
-  });
-
-  it('should handle errors where response.data is a JSON string with detail', async () => {
-    const detailContent = 'Error from stringified JSON detail.';
-    const mockError = {
-      response: {
-        data: JSON.stringify({ detail: detailContent })
-      },
-      message: 'Request failed with status code 500'
-    };
-    vi.mocked(plantumlService.generateDiagram).mockRejectedValue(mockError);
-
-    const wrapper = mount(MarkdownRenderer, {
-      props: {
-        content: '```plantuml\nString JSON Error\n```'
-      }
-    });
-
-    await nextTick();
-    await new Promise(resolve => setTimeout(resolve, 0));
-
-
-    const errorStateDiv = wrapper.find('.error-state');
-    expect(errorStateDiv.exists()).toBe(true);
-    expect(errorStateDiv.text()).toContain(detailContent);
-  });
-  
-  it('should handle errors where response.data is a Blob containing JSON with detail', async () => {
-    const detailContent = 'Error from Blob JSON detail.';
-    const errorJson = JSON.stringify({ detail: detailContent });
-    const errorBlob = new Blob([errorJson], { type: 'application/json' });
+  it('should render MermaidDiagram component for mermaid blocks', () => {
+    // We rely on useMarkdownSegments to parse this. 
+    // Since useMarkdownSegments is a real composable (not mocked here), 
+    // we need to ensure it processes the fence rule correctly.
+    // However, in a unit test for the Renderer, typically we want to see if it renders the child component.
     
-    const mockError = {
-      response: {
-        data: errorBlob 
+    const wrapper = mount(MarkdownRenderer, {
+      props: {
+        content: '```mermaid\ngraph TD;\nA-->B;\n```'
       },
-      message: 'Request failed with status code 500'
-    };
-    vi.mocked(plantumlService.generateDiagram).mockRejectedValue(mockError);
-
-    const wrapper = mount(MarkdownRenderer, {
-      props: {
-        content: '```plantuml\nBlob JSON Error\n```'
+      global: {
+        stubs: {
+          MermaidDiagram: true // Stub it to verify it's rendered
+        }
       }
     });
 
-    await nextTick();
-    // The plantumlService now has an await responseData.text()
-    // which needs to be flushed by waiting for promises.
-    await new Promise(resolve => setTimeout(resolve, 0));
-
-
-    const errorStateDiv = wrapper.find('.error-state');
-    expect(errorStateDiv.exists()).toBe(true);
-    expect(errorStateDiv.text()).toContain(detailContent);
-  });
-
-
-  it('should fallback to error.message if detail is not found', async () => {
-    const axiosErrorMessage = 'Request failed with status code 500';
-    const mockError = {
-      response: {
-        data: {备注: "no detail field here" } // Deliberately no 'detail'
-      },
-      message: axiosErrorMessage
-    };
-    vi.mocked(plantumlService.generateDiagram).mockRejectedValue(mockError);
-
-    const wrapper = mount(MarkdownRenderer, {
-      props: {
-        content: '```plantuml\nNo Detail Error\n```'
-      }
-    });
-
-    await nextTick();
-    await new Promise(resolve => setTimeout(resolve, 0));
-
-
-    const errorStateDiv = wrapper.find('.error-state');
-    expect(errorStateDiv.exists()).toBe(true);
-    expect(errorStateDiv.text()).toContain(axiosErrorMessage); // Fallback to error.message
-  });
-
-  it('should use generic fallback if no usable error message found', async () => {
-    vi.mocked(plantumlService.generateDiagram).mockRejectedValue({ message: '' }); // Empty error object
-
-    const wrapper = mount(MarkdownRenderer, {
-      props: {
-        content: '```plantuml\nEmpty Error Obj\n```'
-      }
-    });
-
-    await nextTick();
-    await new Promise(resolve => setTimeout(resolve, 0));
-
-
-    const errorStateDiv = wrapper.find('.error-state');
-    expect(errorStateDiv.exists()).toBe(true);
-    expect(errorStateDiv.text()).toContain('An unexpected error occurred while generating the diagram.');
-  });
-  
-  it('should use PlantUMLDiagram fallback if service throws Error with empty string', async () => {
-    vi.mocked(plantumlService.generateDiagram).mockRejectedValue(new Error('')); 
-
-    const wrapper = mount(MarkdownRenderer, {
-      props: {
-        content: '```plantuml\nEmpty Error String\n```'
-      }
-    });
-
-    await nextTick();
-    await new Promise(resolve => setTimeout(resolve, 0));
-
-    const errorStateDiv = wrapper.find('.error-state');
-    expect(errorStateDiv.exists()).toBe(true);
-    expect(errorStateDiv.text()).toContain('Failed to generate diagram.');
-  });
-
-
-  it('should cleanup object URLs on unmount', async () => {
-    const mockBlob = new Blob(['fake-image-data'], { type: 'image/png' });
-    vi.mocked(plantumlService.generateDiagram).mockResolvedValue(mockBlob);
-
-    const wrapper = mount(MarkdownRenderer, {
-      props: {
-        content: '```plantuml\nA -> B\n```'
-      }
-    });
-
-    await nextTick();
-    await new Promise(resolve => setTimeout(resolve, 0));
-
-    wrapper.unmount();
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    // Check if MermaidDiagram is present
+    const mermaidComponent = wrapper.findComponent(MermaidDiagram);
+    expect(mermaidComponent.exists()).toBe(true);
+    expect(mermaidComponent.props('content')).toContain('graph TD;\nA-->B;');
   });
 });

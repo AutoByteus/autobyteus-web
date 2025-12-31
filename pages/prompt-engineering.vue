@@ -42,7 +42,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { usePromptEngineeringViewStore } from '~/stores/promptEngineeringViewStore';
-import { storeToRefs } from 'pinia';
 
 import PromptMarketplace from '~/components/promptEngineering/PromptMarketplace.vue';
 import PromptDetails from '~/components/promptEngineering/PromptDetails.vue';

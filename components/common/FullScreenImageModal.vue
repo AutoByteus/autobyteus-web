@@ -23,7 +23,7 @@
             title="Reset View"
             class="p-2 text-white bg-zinc-700/70 hover:bg-zinc-800/90 backdrop-blur-sm rounded-full transition-colors"
         >
-            <ArrowUturnLeftIcon class="w-5 h-5" />
+            <Icon icon="heroicons:arrow-uturn-left-solid" class="w-5 h-5" />
         </button>
         <button
             v-if="imageUrl"
@@ -31,8 +31,8 @@
             :title="copyButtonTitle"
             class="p-2 text-white bg-zinc-700/70 hover:bg-zinc-800/90 backdrop-blur-sm rounded-full transition-colors"
         >
-            <CheckIcon v-if="copyButtonState === 'copied'" class="w-5 h-5 text-green-400" />
-            <ClipboardDocumentIcon v-else class="w-5 h-5" />
+            <Icon v-if="copyButtonState === 'copied'" icon="heroicons:check-solid" class="w-5 h-5 text-green-400" />
+            <Icon v-else icon="heroicons:clipboard-document-solid" class="w-5 h-5" />
         </button>
         <button
             v-if="imageUrl"
@@ -40,7 +40,7 @@
             title="Download"
             class="p-2 text-white bg-zinc-700/70 hover:bg-zinc-800/90 backdrop-blur-sm rounded-full transition-colors"
         >
-            <ArrowDownTrayIcon class="w-5 h-5" />
+            <Icon icon="heroicons:arrow-down-tray-solid" class="w-5 h-5" />
         </button>
         <button
           @click="closeModalAndReset"
@@ -48,7 +48,7 @@
           aria-label="Close"
           class="p-2 text-white bg-zinc-700/70 hover:bg-zinc-800/90 backdrop-blur-sm rounded-full transition-colors"
         >
-          <XMarkIcon class="w-5 h-5" />
+          <Icon icon="heroicons:x-mark-solid" class="w-5 h-5" />
         </button>
       </div>
 
@@ -81,13 +81,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onBeforeUnmount, computed } from 'vue';
-import { 
-  XMarkIcon, 
-  ArrowDownTrayIcon, 
-  ClipboardDocumentIcon, 
-  CheckIcon, 
-  ArrowUturnLeftIcon 
-} from '@heroicons/vue/24/solid';
+import { Icon } from '@iconify/vue';
 
 const props = defineProps<{
   visible: boolean;

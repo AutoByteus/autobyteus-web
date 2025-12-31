@@ -6,7 +6,7 @@
       aria-label="New Agent"
       data-tooltip="New Agent"
     >
-      <PlusCircleIcon class="w-6 h-6" />
+      <Icon icon="heroicons:plus-circle-solid" class="w-6 h-6" />
     </button>
     <button 
       @click="$emit('openHistory')" 
@@ -14,13 +14,13 @@
       aria-label="History"
       data-tooltip="History"
     >
-      <ClockIcon class="w-6 h-6" />
+      <Icon icon="heroicons:clock-solid" class="w-6 h-6" />
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { PlusCircleIcon, ClockIcon } from '@heroicons/vue/24/solid';
+import { Icon } from '@iconify/vue';
 
 defineEmits(['newAgent', 'openHistory']);
 </script>

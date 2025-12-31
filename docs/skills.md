@@ -19,12 +19,10 @@ autobyteus-web/
 ├── pages/
 │   └── skills.vue                      # Main skills management page
 ├── components/skills/
-│   ├── SkillList.vue                   # Skills listing
+│   ├── SkillsList.vue                  # Skills listing with cards
+│   ├── SkillCard.vue                   # Individual skill card
 │   ├── SkillDetail.vue                 # Skill explorer & file viewer
-│   ├── SkillCreate.vue                 # Create new skill form
-│   ├── SkillFileEdit.vue               # File editor for skill assets
-│   ├── FileContentViewer.vue           # Read-only viewer (shared)
-│   └── CreateFileModal.vue             # Add new file to skill
+│   └── SkillFileTreeItem.vue           # File tree node component
 ├── stores/
 │   └── skillStore.ts                   # Skills CRUD and file management
 └── graphql/
@@ -32,16 +30,33 @@ autobyteus-web/
     └── mutations/skillMutations.ts
 ```
 
+## Navigation
+
+Skills is a **standalone top-level module** accessible via the main sidebar (wrench/screwdriver icon). It is independent from the Prompt Engineering module.
+
+**Route:** `/skills`
+
 ## View Modes
 
-The skills page uses URL query parameters for navigation:
+The skills page uses component-based navigation (not URL query parameters):
 
-| View             | Component     | Description                     |
-| ---------------- | ------------- | ------------------------------- |
-| `list` (default) | SkillList     | Browse available skills         |
-| `create`         | SkillCreate   | Create new skill directory      |
-| `detail`         | SkillDetail   | View files within a skill       |
-| `edit-file`      | SkillFileEdit | Edit content of a specific file |
+| View             | Component   | Description                    |
+| ---------------- | ----------- | ------------------------------ |
+| `list` (default) | SkillsList  | Browse available skills        |
+| `detail`         | SkillDetail | View/edit files within a skill |
+
+## UI Components
+
+### SkillDetail Toolbar
+
+The `SkillDetail.vue` component uses Heroicons for action buttons:
+
+| Action | Icon (Heroicons) | Description                |
+| ------ | ---------------- | -------------------------- |
+| Add    | `PlusIcon`       | Add new file to skill      |
+| Edit   | `PencilIcon`     | Edit selected file content |
+| Delete | `TrashIcon`      | Delete selected file       |
+| Save   | `CheckIcon`      | Save file changes          |
 
 ## Data Models
 

@@ -9,7 +9,7 @@
           aria-label="Close"
           class="absolute top-2 right-2 p-1 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
         >
-          <XMarkIcon class="w-5 h-5" />
+          <Icon icon="heroicons:x-mark-solid" class="w-5 h-5" />
         </button>
 
         <!-- Copy URL Button -->
@@ -19,13 +19,13 @@
           :title="copyButtonTitle"
           class="absolute top-2 right-10 p-1 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
         >
-          <CheckIcon v-if="copyButtonState === 'copied'" class="w-5 h-5 text-green-500" />
-          <ClipboardDocumentIcon v-else class="w-5 h-5" />
+          <Icon v-if="copyButtonState === 'copied'" icon="heroicons:check-solid" class="w-5 h-5 text-green-500" />
+          <Icon v-else icon="heroicons:clipboard-document-solid" class="w-5 h-5" />
         </button>
         
         <!-- Header -->
         <div class="flex items-center mb-4">
-          <MusicalNoteIcon class="w-8 h-8 text-indigo-500 mr-3" />
+          <Icon icon="heroicons:musical-note-solid" class="w-8 h-8 text-indigo-500 mr-3" />
           <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Audio Player</h3>
         </div>
 
@@ -51,7 +51,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { XMarkIcon, MusicalNoteIcon, ClipboardDocumentIcon, CheckIcon } from '@heroicons/vue/24/solid';
+import { Icon } from '@iconify/vue';
 
 const props = defineProps<{
   visible: boolean;
@@ -95,3 +95,4 @@ const handleCopyUrl = async () => {
   to { opacity: 1; }
 }
 </style>
+
