@@ -366,7 +366,7 @@ async function handleUploadFile() {
 /* Sidebar */
 .sidebar {
   width: 260px;
-  background: #f9fafb;
+  background: white;
   border-right: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;

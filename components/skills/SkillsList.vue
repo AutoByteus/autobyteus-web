@@ -17,6 +17,7 @@
         </div>
         <button class="btn-secondary" @click="showSourcesDialog = true" title="Manage Skill Sources">
           <Icon icon="heroicons:cog-6-tooth" />
+          <span>Sources</span>
         </button>
         <button class="btn-primary" @click="showCreateDialog = true">
           <Icon icon="heroicons:plus" />
