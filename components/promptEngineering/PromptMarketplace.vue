@@ -10,15 +10,15 @@
     />
     
     <!-- Header with title, sync button, and other controls -->
-    <div class="flex flex-col gap-4 mb-6">
+    <div class="flex flex-col gap-4 mb-4">
       <div class="flex justify-between items-center">
-        <h2 class="text-xl font-semibold text-gray-800">Prompt Marketplace</h2>
+        <h2 class="text-xl font-bold text-gray-900 tracking-tight">Prompt Marketplace</h2>
         <div class="flex items-center gap-2">
           <button
             @click="handleReload"
-            class="flex items-center px-4 py-2 text-sm rounded-lg transition-colors"
+            class="flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 shadow-sm"
             :class="[
-              reloading ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+              reloading ? 'opacity-75 cursor-not-allowed' : '',
             ]"
             :disabled="reloading || syncing"
           >
@@ -29,9 +29,9 @@
           </button>
           <button
             @click="syncPrompts"
-            class="flex items-center px-4 py-2 text-sm rounded-lg transition-colors"
+            class="flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 shadow-sm"
             :class="[
-              syncing ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+              syncing ? 'opacity-75 cursor-not-allowed' : '',
             ]"
             :disabled="syncing || loading"
           >
@@ -43,7 +43,7 @@
           <!-- Update: Pass 'marketplace' as origin -->
           <button
             @click="viewStore.startNewDraft('marketplace')"
-            class="flex items-center px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            class="flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow transition-all duration-200"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -57,10 +57,10 @@
       <div class="flex flex-wrap items-center gap-4">
         <!-- Search Input -->
         <div class="relative flex-grow" style="min-width: 200px;">
-          <label for="prompt-search" class="block text-sm font-medium text-gray-700 mb-1">Search Prompts</label>
-          <div class="relative">
+          <label for="prompt-search" class="sr-only">Search Prompts</label>
+          <div class="relative group">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <svg class="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" />
               </svg>
             </div>
@@ -68,7 +68,7 @@
               id="prompt-search"
               v-model="searchQuery"
               type="text"
-              class="block w-full p-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              class="block w-full pl-10 pr-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm"
               placeholder="Search name, category, content..."
             />
           </div>
@@ -76,43 +76,54 @@
         
         <!-- Category Filter Dropdown -->
         <div class="relative min-w-[200px]">
-          <label for="categoryFilter" class="block text-sm font-medium text-gray-700 mb-1">Filter by Category</label>
-          <select
-            id="categoryFilter"
-            v-model="selectedCategoryFilter"
-            class="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">All Categories</option>
-            <option v-for="category in uniqueCategories" :key="category" :value="category">
-              {{ category }}
-            </option>
-          </select>
+          <label for="categoryFilter" class="sr-only">Filter by Category</label>
+          <div class="relative">
+            <select
+              id="categoryFilter"
+              v-model="selectedCategoryFilter"
+              class="block w-full pl-3 pr-10 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm appearance-none cursor-pointer"
+            >
+              <option value="">All Categories</option>
+              <option v-for="category in uniqueCategories" :key="category" :value="category">
+                {{ category }}
+              </option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
         </div>
 
         <!-- Prompt Name Filter Dropdown -->
         <div class="relative min-w-[200px]">
-          <label for="promptNameFilter" class="block text-sm font-medium text-gray-700 mb-1">Filter by Name</label>
-          <select
-            id="promptNameFilter"
-            v-model="selectedPromptNameFilter"
-            :disabled="!selectedCategoryFilter"
-            class="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-          >
-            <option value="">All Names</option>
-            <option v-for="name in promptNamesInCategory" :key="name" :value="name">
-              {{ name }}
-            </option>
-          </select>
+          <label for="promptNameFilter" class="sr-only">Filter by Name</label>
+           <div class="relative">
+             <select
+              id="promptNameFilter"
+              v-model="selectedPromptNameFilter"
+              :disabled="!selectedCategoryFilter"
+              class="block w-full pl-3 pr-10 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm appearance-none cursor-pointer disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+            >
+              <option value="">All Names</option>
+              <option v-for="name in promptNamesInCategory" :key="name" :value="name">
+                {{ name }}
+              </option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
         </div>
         
         <!-- View Toggle -->
         <div class="relative">
-          <label class="block text-sm font-medium text-gray-700 mb-1">View</label>
-          <div class="flex border border-gray-300 rounded-md overflow-hidden">
+          <label class="sr-only">View</label>
+          <div class="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
             <button 
               @click="viewMode = 'grid'"
-              class="px-3 py-2 flex items-center"
-              :class="viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'bg-white text-gray-600'"
+              class="p-1.5 rounded-md transition-all"
+              :class="viewMode === 'grid' ? 'bg-blue-50 text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'"
+              title="Grid View"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -120,8 +131,9 @@
             </button>
             <button 
               @click="viewMode = 'compact'"
-              class="px-3 py-2 flex items-center"
-              :class="viewMode === 'compact' ? 'bg-blue-50 text-blue-600' : 'bg-white text-gray-600'"
+              class="p-1.5 rounded-md transition-all"
+              :class="viewMode === 'compact' ? 'bg-blue-50 text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'"
+              title="Compact View"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -259,13 +271,13 @@
         v-for="(promptGroups, category) in promptsGroupedByCategoryAndName" 
         :key="category"
       >
-        <h3 class="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b">{{ category }}</h3>
+        <h3 v-if="category !== 'Uncategorized'" class="text-xl font-semibold text-gray-800 mb-4">{{ category }}</h3>
         
         <div class="space-y-6">
           <div v-for="(variants, groupKey) in promptGroups" :key="groupKey">
-            <!-- Sub-header for Prompt Name (for compact view) -->
-            <div v-if="viewMode === 'compact'" class="flex items-center justify-between mb-4">
-              <h4 class="text-lg font-medium text-gray-900">{{ variants.name }}</h4>
+            <!-- Sub-header for Prompt Name (for compact view) - only show when multiple variants -->
+            <div v-if="viewMode === 'compact' && variants.length > 1" class="flex items-center justify-between mb-4">
+              <h4 class="text-lg font-medium text-gray-900">{{ variants[0]?.name }}</h4>
               <button 
                 v-if="variants.length > 1"
                 @click="startCompareMode(groupKey, variants)"
@@ -310,12 +322,12 @@
 
             <!-- Grid of variants -->
             <div :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'space-y-4'">
-              <!-- Grid-specific header -->
+              <!-- Grid-specific header - only show when multiple variants -->
               <div 
-                v-if="viewMode === 'grid' && (!selectedPromptNameFilter || variants.length > 1)"
+                v-if="viewMode === 'grid' && variants.length > 1 && (!selectedPromptNameFilter || variants.length > 1)"
                 class="col-span-1 md:col-span-2 flex items-center justify-between"
               >
-                <h4 v-if="!selectedPromptNameFilter" class="text-lg font-medium text-gray-900">{{ variants.name }}</h4>
+                <h4 v-if="!selectedPromptNameFilter" class="text-lg font-medium text-gray-900">{{ variants[0]?.name }}</h4>
                 <button 
                   v-if="variants.length > 1"
                   @click="startCompareMode(groupKey, variants)"
@@ -504,7 +516,7 @@ const promptsGroupedByCategoryAndName = computed(() => {
   for (const groupKey in groupedPrompts.value) {
     const variants = groupedPrompts.value[groupKey];
     if (variants.length > 0) {
-      const category = variants.category || 'Uncategorized';
+      const category = variants[0]?.category || 'Uncategorized';
       if (!result[category]) {
         result[category] = {};
       }
