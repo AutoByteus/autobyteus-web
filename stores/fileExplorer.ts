@@ -32,7 +32,7 @@ import { TreeNode } from '~/utils/fileExplorer/TreeNode'
 import { getServerUrls } from '~/utils/serverConfig'
 
 // --- NEW TYPES FOR MULTI-CONTENT SUPPORT ---
-export type FileDataType = 'Text' | 'Image' | 'Audio' | 'Video' | 'Excel' | 'Unsupported';
+export type FileDataType = 'Text' | 'Image' | 'Audio' | 'Video' | 'Excel' | 'PDF' | 'Unsupported';
 
 export type FileOpenMode = 'edit' | 'preview';
 
@@ -261,7 +261,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
                   } catch (e) {
                       newFileState.error = e instanceof Error ? e.message : String(e);
                   }
-              } else if (['Image', 'Audio', 'Video', 'Excel'].includes(newFileState.type)) {
+              } else if (['Image', 'Audio', 'Video', 'Excel', 'PDF'].includes(newFileState.type)) {
                   // Use the custom 'local-file' protocol
                   newFileState.url = `local-file://${filePath}`;
                   console.log(`[FileExplorer] Constructed local media URL: ${newFileState.url}`);
@@ -282,7 +282,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
                   if (newFileState.type === 'Text') {
                       console.log(`[FileExplorer] Fetching text content for "${filePath}" via GraphQL.`);
                       this.fetchFileContent(filePath);
-                  } else if (['Image', 'Audio', 'Video', 'Excel'].includes(newFileState.type)) {
+                  } else if (['Image', 'Audio', 'Video', 'Excel', 'PDF'].includes(newFileState.type)) {
                       const workspaceStore = useWorkspaceStore();
                       const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
                       if (workspaceId) {

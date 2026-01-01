@@ -36,7 +36,6 @@ interface ContextMenuPosition {
 interface Props {
   visible: boolean
   position: ContextMenuPosition
-  showPreview?: boolean
 }
 
 const props = defineProps<Props>()
@@ -45,7 +44,6 @@ const emit = defineEmits<{
   (e: 'delete'): void
   (e: 'add-file'): void
   (e: 'add-folder'): void
-  (e: 'preview'): void
 }>()
 
 const menuRef = ref<HTMLElement | null>(null)
@@ -54,13 +52,7 @@ const menuRef = ref<HTMLElement | null>(null)
 const menuItems = computed(() => {
   const items = [] as Array<{ label: string; icon: string; action: () => void }>
 
-  if (props.showPreview) {
-    items.push({
-      label: 'Open Preview',
-      icon: 'heroicons:eye',
-      action: () => emit('preview')
-    })
-  }
+  /* Open Preview option removed */
 
   items.push(
     {

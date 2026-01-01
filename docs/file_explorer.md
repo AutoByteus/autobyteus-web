@@ -122,12 +122,12 @@ Main container component for the file browser panel:
 
 Recursive component for files and folders:
 
-| Feature           | Description                                |
-| ----------------- | ------------------------------------------ |
-| **Click**         | Open file / toggle folder                  |
-| **Context Menu**  | Rename, delete, add file/folder, preview   |
-| **Drag & Drop**   | Move files between folders                 |
-| **Visual States** | Open folder indicator, drag-over highlight |
+| Feature           | Description                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| **Click**         | Open file (preview mode for `.md`/`.html`/`.csv`, edit mode for code) / toggle folder |
+| **Context Menu**  | Rename, delete, add file/folder                                                       |
+| **Drag & Drop**   | Move files between folders                                                            |
+| **Visual States** | Open folder indicator, drag-over highlight                                            |
 
 **Drag & Drop Implementation:**
 

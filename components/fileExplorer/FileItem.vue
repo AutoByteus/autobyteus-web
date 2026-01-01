@@ -92,12 +92,10 @@
     <FileContextMenu
       :visible="showContextMenu"
       :position="contextMenuPosition"
-      :show-preview="isPreviewable"
       @rename="startRename"
       @delete="promptDelete"
       @add-file="promptAddFile"
       @add-folder="promptAddFolder"
-      @preview="openPreview"
     />
 
     <!-- Delete confirmation -->
@@ -152,7 +150,7 @@ const isActive = computed(() => {
 const isPreviewable = computed(() => {
   if (!props.file.is_file) return false
   const lower = props.file.name.toLowerCase()
-  return lower.endsWith('.md') || lower.endsWith('.markdown') || lower.endsWith('.html') || lower.endsWith('.htm') || lower.endsWith('.csv')
+  return lower.endsWith('.md') || lower.endsWith('.markdown') || lower.endsWith('.html') || lower.endsWith('.htm') || lower.endsWith('.csv') || lower.endsWith('.pdf')
 })
 
 const showAddDialog = ref(false)
@@ -206,7 +204,11 @@ const onGlobalDragEnd = () => {
 
 const handleClick = async () => {
   if (props.file.is_file) {
-    fileExplorerStore.openFile(props.file.path)
+    if (isPreviewable.value) {
+      fileExplorerStore.openFilePreview(props.file.path)
+    } else {
+      fileExplorerStore.openFile(props.file.path)
+    }
   } else {
     // Toggle folder open/close
     fileExplorerStore.toggleFolder(props.file.path)
@@ -229,10 +231,6 @@ const handleClick = async () => {
   }
 }
 
-const openPreview = () => {
-  if (!props.file.is_file) return
-  fileExplorerStore.openFilePreview(props.file.path)
-}
 
 const handleContextMenu = (event: MouseEvent) => {
   event.preventDefault()

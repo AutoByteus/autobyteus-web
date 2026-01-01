@@ -35,6 +35,16 @@ describe('FileItem - Lazy Loading', () => {
     )
   }
 
+  const createMockPreviewableFile = (): TreeNode => {
+    return new TreeNode(
+      'README.md',
+      'root/README.md',
+      true, // is_file
+      [],
+      'preview-file-id'
+    )
+  }
+
   const mountComponent = async (file: TreeNode) => {
     const pinia = createTestingPinia({ createSpy: vi.fn, stubActions: true })
     setActivePinia(pinia)
@@ -155,5 +165,16 @@ describe('FileItem - Lazy Loading', () => {
     expect(fileExplorerStore.openFile).toHaveBeenCalledWith('root/test-file.txt')
     expect(fileExplorerStore.toggleFolder).not.toHaveBeenCalled()
     expect(workspaceStore.fetchFolderChildren).not.toHaveBeenCalled()
+  })
+
+  it('should open file in preview mode when clicking a previewable file', async () => {
+    const file = createMockPreviewableFile()
+    const { wrapper, fileExplorerStore } = await mountComponent(file)
+
+    await wrapper.find('.file-header').trigger('click')
+    await flushPromises()
+
+    expect(fileExplorerStore.openFilePreview).toHaveBeenCalledWith('root/README.md')
+    expect(fileExplorerStore.openFile).not.toHaveBeenCalled()
   })
 })
