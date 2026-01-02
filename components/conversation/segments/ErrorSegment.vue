@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ErrorSegment } from '~/utils/aiResponseParser/types';
+import type { ErrorSegment } from '~/types/segments';
 
 defineProps<{
   segment: ErrorSegment;

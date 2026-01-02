@@ -47,7 +47,7 @@ export const useRawConversationHistoryStore = defineStore('rawConversationHistor
 
   actions: {
     // Renamed from fetchLogs to fetchRawConversationHistory for clarity and consistency
-    async fetchRawConversationHistory(page: number = this.currentPage) {
+    async fetchRawConversationHistory(this: any, page: number = this.currentPage) {
       this.loading = true;
       this.error = null;
 
@@ -166,10 +166,8 @@ export const useRawConversationHistoryStore = defineStore('rawConversationHistor
               type: 'ai',
               text: aiText,
               timestamp: new Date(msg.timestamp),
-              chunks: [aiText], 
               segments: [], 
               isComplete: true,
-              parserInstance: null as any, 
               completionTokens: msg.tokenCount || undefined,
               completionCost: msg.cost || undefined,
               reasoning: msg.reasoning,

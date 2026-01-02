@@ -52,8 +52,7 @@ export interface TeamLaunchProfile {
     workspaceConfig: WorkspaceLaunchConfig;
     autoExecuteTools: boolean;
     parseToolCalls: boolean;
-    taskNotificationMode: 'AGENT_MANUAL_NOTIFICATION' | 'SYSTEM_EVENT_DRIVEN';
-    useXmlToolFormat: boolean;
+    maxTurns: number;
   };
 
   // A list of specific overrides for individual team members.

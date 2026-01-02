@@ -50,7 +50,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import type { MediaSegment } from '~/utils/aiResponseParser/types';
+import type { MediaSegment } from '~/types/segments';
 import FullScreenImageModal from '~/components/common/FullScreenImageModal.vue';
 
 defineProps<{

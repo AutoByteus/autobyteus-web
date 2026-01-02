@@ -4,5 +4,5 @@ export interface AgentRunConfig {
   llmModelIdentifier: string;
   autoExecuteTools: boolean;
   parseToolCalls: boolean;
-  useXmlToolFormat: boolean;
+
 }

@@ -202,7 +202,7 @@ import { storeToRefs } from 'pinia'
 import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { useWorkspaceStore } from '~/stores/workspace'
 import { useFileContentDisplayModeStore } from '~/stores/fileContentDisplayMode'
-import { getLanguage } from '~/utils/aiResponseParser/languageDetector'
+import { getLanguage } from '~/utils/highlighting/languageDetector'
 import { Icon } from '@iconify/vue'
 
 // Viewer components
@@ -353,7 +353,7 @@ const viewerProps = computed(() => {
   }
 
   if (['Image', 'Audio', 'Video', 'Excel', 'PDF'].includes(file.type)) {
-    return { url: file.url }
+    return { url: file.url ?? null }
   }
 
   return {}

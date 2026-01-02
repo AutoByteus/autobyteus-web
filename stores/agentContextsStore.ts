@@ -4,32 +4,22 @@ import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileSto
 import { AgentContext } from '~/types/agent/AgentContext';
 import { AgentRunState } from '~/types/agent/AgentRunState';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
-import type { Conversation, Message, ContextFilePath, AIMessage } from '~/types/conversation';
-import { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
-import { ParserContext } from '~/utils/aiResponseParser/stateMachine/ParserContext';
-import { useLLMProviderConfigStore } from './llmProviderConfig';
-import type { MediaSegment } from '~/utils/aiResponseParser/types';
-import { LLMProvider } from '~/types/llm';
+import type { Conversation, ContextFilePath, AIMessage } from '~/types/conversation';
+import type { MediaSegment, AIResponseTextSegment } from '~/types/segments';
 
 /**
  * @interface ProfileAgentState
  * @description Manages the state for all agent contexts associated with a single launch profile.
- * It tracks the active agents and which one is currently selected by the user in the UI.
  */
 interface ProfileAgentState {
   activeAgents: Map<string, AgentContext>;
   selectedAgentId: string | null;
 }
 
-/**
- * @interface AgentContextsStoreState
- * @description The root state for this store, organizing all agent states by their launch profile ID.
- */
 interface AgentContextsStoreState {
   agentsByLaunchProfile: Map<string, ProfileAgentState>;
 }
 
-// Helper function to create a clean initial state for a new profile.
 const createDefaultProfileState = (): ProfileAgentState => ({
   activeAgents: new Map(),
   selectedAgentId: null,
@@ -37,9 +27,7 @@ const createDefaultProfileState = (): ProfileAgentState => ({
 
 /**
  * @store agentContexts
- * @description This store is the central repository for the state of all running agent contexts.
- * It is responsible for creating, updating, retrieving, and deleting agent contexts.
- * It does NOT handle any GraphQL communication; it is a pure state management store.
+ * @description Central repository for agent context state. Pure state management store.
  */
 export const useAgentContextsStore = defineStore('agentContexts', {
   state: (): AgentContextsStoreState => ({
@@ -47,42 +35,22 @@ export const useAgentContextsStore = defineStore('agentContexts', {
   }),
 
   getters: {
-    /**
-     * @getter _currentProfileState
-     * @description (Internal) Safely retrieves the state object for the currently active launch profile.
-     */
     _currentProfileState(state): ProfileAgentState | null {
       const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
       const { selectedProfileId, selectedProfileType } = selectedLaunchProfileStore;
-      
-      // This store only manages agent contexts, so ignore if a team is selected.
-      if (selectedProfileType !== 'agent' || !selectedProfileId) {
-        return null;
-      }
+      if (selectedProfileType !== 'agent' || !selectedProfileId) return null;
       return state.agentsByLaunchProfile.get(selectedProfileId) || null;
     },
 
-    /**
-     * @getter allOpenAgents
-     * @description Returns an array of all active agent contexts for the current launch profile.
-     */
     allOpenAgents(): AgentContext[] {
       return this._currentProfileState ? Array.from(this._currentProfileState.activeAgents.values()) : [];
     },
 
-    /**
-     * @getter selectedAgent
-     * @description Returns the currently selected agent context for the active launch profile.
-     */
     selectedAgent(): AgentContext | null {
       if (!this._currentProfileState || !this._currentProfileState.selectedAgentId) return null;
       return this._currentProfileState.activeAgents.get(this._currentProfileState.selectedAgentId) || null;
     },
 
-    /**
-     * @getter selectedAgentId
-     * @description Returns the ID of the currently selected agent.
-     */
     selectedAgentId(): string | null {
       return this._currentProfileState?.selectedAgentId || null;
     },
@@ -99,10 +67,6 @@ export const useAgentContextsStore = defineStore('agentContexts', {
       return this.selectedAgent?.isSending ?? false;
     },
 
-    /**
-     * @getter getAgentContextById
-     * @description Finds and returns an agent context by its ID across all launch profiles.
-     */
     getAgentContextById: (state) => (agentId: string): AgentContext | undefined => {
       for (const profileState of state.agentsByLaunchProfile.values()) {
         if (profileState.activeAgents.has(agentId)) {
@@ -114,10 +78,6 @@ export const useAgentContextsStore = defineStore('agentContexts', {
   },
 
   actions: {
-    /**
-     * @action _getOrCreateCurrentProfileState
-     * @description (Internal) A robust way to get the state for the current profile, creating it if it doesn't exist.
-     */
     _getOrCreateCurrentProfileState(): ProfileAgentState {
       const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
       const { selectedProfileId, selectedProfileType } = selectedLaunchProfileStore;
@@ -132,22 +92,14 @@ export const useAgentContextsStore = defineStore('agentContexts', {
       return this.agentsByLaunchProfile.get(selectedProfileId)!;
     },
 
-    /**
-     * @action setSelectedAgentId
-     * @description Sets the currently selected agent for the active profile.
-     */
     setSelectedAgentId(agentId: string | null) {
       const profileState = this._getOrCreateCurrentProfileState();
       profileState.selectedAgentId = agentId;
     },
 
-    /**
-     * @action createNewAgentContext
-     * @description Creates a new, temporary agent context for the current launch profile.
-     */
     createNewAgentContext() {
       const launchProfileStore = useAgentLaunchProfileStore();
-      const activeLaunchProfile = launchProfileStore.activeLaunchProfile; // This getter is now correct because it also uses selectedLaunchProfileStore
+      const activeLaunchProfile = launchProfileStore.activeLaunchProfile;
       if (!activeLaunchProfile) {
         throw new Error('Cannot create new agent context: No active launch profile.');
       }
@@ -165,10 +117,9 @@ export const useAgentContextsStore = defineStore('agentContexts', {
       const agentConfig: AgentRunConfig = {
         launchProfileId: activeLaunchProfile.id,
         workspaceId: activeLaunchProfile.workspaceId,
-        llmModelIdentifier: '', // User will select this
+        llmModelIdentifier: '',
         autoExecuteTools: false,
         parseToolCalls: true,
-        useXmlToolFormat: false,
       };
 
       const agentState = new AgentRunState(tempId, newConversation);
@@ -189,7 +140,7 @@ export const useAgentContextsStore = defineStore('agentContexts', {
 
       const newConversation: Conversation = {
         id: agentId,
-        messages: [], // Start with empty conversation for now
+        messages: [],
         createdAt: now,
         updatedAt: now,
         agentDefinitionId: activeLaunchProfile.agentDefinition.id,
@@ -198,10 +149,9 @@ export const useAgentContextsStore = defineStore('agentContexts', {
       const agentConfig: AgentRunConfig = {
         launchProfileId: activeLaunchProfile.id,
         workspaceId: activeLaunchProfile.workspaceId,
-        llmModelIdentifier: '', // This should ideally come from the agent instance info
+        llmModelIdentifier: '',
         autoExecuteTools: false,
         parseToolCalls: true,
-        useXmlToolFormat: false,
       };
 
       const agentState = new AgentRunState(agentId, newConversation);
@@ -211,37 +161,29 @@ export const useAgentContextsStore = defineStore('agentContexts', {
       this.setSelectedAgentId(agentId);
     },
     
-    /**
-     * @action promoteTemporaryAgentId
-     * @description Upgrades a temporary agent context with its permanent ID from the backend.
-     */
     promoteTemporaryAgentId(temporaryId: string, permanentId: string) {
-        const profileState = this._getOrCreateCurrentProfileState();
-        const agentContext = profileState.activeAgents.get(temporaryId);
+      const profileState = this._getOrCreateCurrentProfileState();
+      const agentContext = profileState.activeAgents.get(temporaryId);
 
-        if (agentContext) {
-            agentContext.state.promoteTemporaryId(permanentId);
-            
-            const newActiveAgents = new Map<string, AgentContext>();
-            for (const [key, value] of profileState.activeAgents.entries()) {
-                if (key === temporaryId) {
-                    newActiveAgents.set(permanentId, value);
-                } else {
-                    newActiveAgents.set(key, value);
-                }
-            }
-            profileState.activeAgents = newActiveAgents;
-
-            if (profileState.selectedAgentId === temporaryId) {
-                profileState.selectedAgentId = permanentId;
-            }
+      if (agentContext) {
+        agentContext.state.promoteTemporaryId(permanentId);
+        
+        const newActiveAgents = new Map<string, AgentContext>();
+        for (const [key, value] of profileState.activeAgents.entries()) {
+          if (key === temporaryId) {
+            newActiveAgents.set(permanentId, value);
+          } else {
+            newActiveAgents.set(key, value);
+          }
         }
+        profileState.activeAgents = newActiveAgents;
+
+        if (profileState.selectedAgentId === temporaryId) {
+          profileState.selectedAgentId = permanentId;
+        }
+      }
     },
 
-    /**
-     * @action removeAgentContext
-     * @description Removes an agent context from the store.
-     */
     removeAgentContext(agentIdToRemove: string) {
       const profileState = this._getOrCreateCurrentProfileState();
       if (profileState.activeAgents.has(agentIdToRemove)) {
@@ -249,15 +191,17 @@ export const useAgentContextsStore = defineStore('agentContexts', {
 
         if (profileState.selectedAgentId === agentIdToRemove) {
           const openAgentsArray = Array.from(profileState.activeAgents.values());
-          profileState.selectedAgentId = openAgentsArray.length > 0 ? openAgentsArray[openAgentsArray.length - 1].state.agentId : null;
+          profileState.selectedAgentId = openAgentsArray.length > 0 
+            ? openAgentsArray[openAgentsArray.length - 1].state.agentId 
+            : null;
         }
       }
     },
     
     updateSelectedAgentConfig(updates: Partial<AgentRunConfig>) {
-        if (this.selectedAgent) {
-            Object.assign(this.selectedAgent.config, updates);
-        }
+      if (this.selectedAgent) {
+        Object.assign(this.selectedAgent.config, updates);
+      }
     },
     
     updateUserRequirement(newRequirement: string) {
@@ -284,78 +228,6 @@ export const useAgentContextsStore = defineStore('agentContexts', {
       }
     },
 
-    createContextFromHistory(historicalConversationData: Conversation) {
-      const launchProfileStore = useAgentLaunchProfileStore();
-      const activeLaunchProfile = launchProfileStore.activeLaunchProfile;
-      if (!activeLaunchProfile) {
-        throw new Error("Cannot set agent from history: No active launch profile.");
-      }
-    
-      const profileState = this._getOrCreateCurrentProfileState();
-      const tempId = `temp-hist-${Date.now()}`;
-      
-      const agentConfig: AgentRunConfig = {
-        launchProfileId: activeLaunchProfile.id,
-        workspaceId: activeLaunchProfile.workspaceId,
-        llmModelIdentifier: historicalConversationData.llmModelIdentifier || '',
-        autoExecuteTools: false,
-        parseToolCalls: historicalConversationData.parseToolCalls ?? true,
-        useXmlToolFormat: historicalConversationData.useXmlToolFormat ?? false, // Use the direct flag from history
-      };
-      
-      const newAgentState = new AgentRunState(tempId, {
-        ...historicalConversationData,
-        id: tempId,
-        messages: [],
-      });
-      const newAgentContext = new AgentContext(agentConfig, newAgentState);
-    
-      const originalMessages = historicalConversationData.messages;
-      for (const msg of originalMessages) {
-        if (msg.type === 'user') {
-          newAgentContext.conversation.messages.push(msg);
-        } else if (msg.type === 'ai') {
-          const aiMessage: AIMessage = {
-            ...(msg as AIMessage),
-            // Start with a fresh segments array, which will be populated.
-            segments: [],
-            isComplete: false,
-            parserInstance: null as any,
-          };
-          newAgentContext.conversation.messages.push(aiMessage);
-    
-          // --- Start Rehydration ---
-          const parserContext = new ParserContext(newAgentContext);
-          const parser = new IncrementalAIResponseParser(parserContext);
-          aiMessage.parserInstance = parser;
-          
-          // 1. Process text content through the parser to create text/tool segments
-          if (msg.text) {
-            parser.processChunks([msg.text]);
-          }
-          parser.finalize();
-          
-          // 2. Manually add media segments from the historical data
-          if (msg.imageUrls && msg.imageUrls.length > 0) {
-            const mediaSegment: MediaSegment = { type: 'media', mediaType: 'image', urls: [...msg.imageUrls] };
-            aiMessage.segments.push(mediaSegment);
-          }
-          if (msg.audioUrls && msg.audioUrls.length > 0) {
-            const mediaSegment: MediaSegment = { type: 'media', mediaType: 'audio', urls: [...msg.audioUrls] };
-            aiMessage.segments.push(mediaSegment);
-          }
-          if (msg.videoUrls && msg.videoUrls.length > 0) {
-            const mediaSegment: MediaSegment = { type: 'media', mediaType: 'video', urls: [...msg.videoUrls] };
-            aiMessage.segments.push(mediaSegment);
-          }
-          
-          aiMessage.isComplete = true;
-          // --- End Rehydration ---
-        }
-      }
-      
-      profileState.activeAgents.set(tempId, newAgentContext);
-      profileState.selectedAgentId = tempId;
-    },
+
   },
 });

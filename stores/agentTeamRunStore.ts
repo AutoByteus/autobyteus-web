@@ -1,19 +1,15 @@
 import { defineStore } from 'pinia';
-import { useApolloClient, useSubscription } from '@vue/apollo-composable';
+import { useApolloClient } from '@vue/apollo-composable';
 import { TerminateAgentTeamInstance, SendMessageToTeam } from '~/graphql/mutations/agentTeamInstanceMutations';
-import { AgentTeamResponseSubscription } from '~/graphql/subscriptions/agentTeamResponseSubscription';
 import type {
   SendMessageToTeamMutation,
   SendMessageToTeamMutationVariables,
-  AgentTeamResponseSubscription as AgentTeamResponseSubscriptionType,
-  AgentTeamResponseSubscriptionVariables,
   ContextFileType,
   TeamMemberConfigInput,
   AgentStatus,
   TaskNotificationModeEnum,
 } from '~/generated/graphql';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
-import { processAgentTeamResponseEvent } from '~/services/agentTeamResponseProcessor';
 import { useWorkspaceStore } from '~/stores/workspace';
 import type { TeamLaunchProfile, WorkspaceLaunchConfig, TeamMemberConfigOverride } from '~/types/TeamLaunchProfile';
 import { AgentContext } from '~/types/agent/AgentContext';
@@ -22,7 +18,11 @@ import type { Conversation } from '~/types/conversation';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
+import { TeamStreamingService } from '~/services/agentStreaming';
 import type { AgentTeamDefinition } from './agentTeamDefinitionStore';
+
+// Maintain a map of streaming services per team
+const teamStreamingServices = new Map<string, TeamStreamingService>();
 
 export const useAgentTeamRunStore = defineStore('agentTeamRun', {
   state: () => ({
@@ -32,7 +32,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
   actions: {
     /**
      * @action createAndLaunchTeam
-     * @description Creates a new TeamLaunchProfile and then launches it. This is for the "Creation Flow".
+     * @description Creates a new TeamLaunchProfile and then launches it.
      */
     async createAndLaunchTeam(
       launchConfig: {
@@ -46,7 +46,6 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       try {
         const teamProfileStore = useAgentTeamLaunchProfileStore();
 
-        // 1. Create and persist the new launch profile
         const newProfile = teamProfileStore.createLaunchProfile(
           launchConfig.teamDefinition,
           {
@@ -56,7 +55,6 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
           }
         );
 
-        // 2. Delegate to the 'launchExistingTeam' action to perform the actual launch
         await this.launchExistingTeam(newProfile.id);
 
       } catch (error: any) {
@@ -69,7 +67,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
 
     /**
      * @action launchExistingTeam
-     * @description Launches a team from an existing profile ID. This is for the "Reactivation Flow".
+     * @description Launches a team from an existing profile ID.
      */
     async launchExistingTeam(profileId: string) {
       this.isLaunching = true;
@@ -81,25 +79,20 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
           throw new Error(`Cannot launch team: Profile with ID ${profileId} not found.`);
         }
 
-        // Set this as the active profile in the UI
         teamProfileStore.setActiveLaunchProfile(profileId);
         
-        // Step 1: Resolve all workspace IDs by creating new ones where necessary.
         const resolvedMemberConfigs = await this._resolveMemberConfigs(profile);
 
-        // Step 2: Store this resolved configuration as the active resolved profile for this session.
         teamContextsStore.setActiveResolvedProfile({
           profileId: profile.id,
           resolvedMemberConfigs: resolvedMemberConfigs,
         });
 
-        // Step 3: Create the first UI instance for this new session.
         await this.createNewTeamInstance();
 
       } catch(error: any) {
         console.error("Failed to launch existing team profile:", error);
         alert(`Failed to launch team: ${error.message}`);
-        // Clear session on failure
         useAgentTeamContextsStore().setActiveResolvedProfile(null);
       } finally {
         this.isLaunching = false;
@@ -108,7 +101,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
 
     /**
      * @action createNewTeamInstance
-     * @description Creates a new UI instance (tab) for the *currently active* resolved profile.
+     * @description Creates a new UI instance (tab) for the currently active resolved profile.
      */
     async createNewTeamInstance() {
       const teamContextsStore = useAgentTeamContextsStore();
@@ -140,8 +133,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
           workspaceId: configForMember.workspaceId || null,
           llmModelIdentifier: configForMember.llmModelIdentifier,
           autoExecuteTools: configForMember.autoExecuteTools,
-          parseToolCalls: true, // Team agents always parse tool calls for now
-          useXmlToolFormat: profile.globalConfig.useXmlToolFormat,
+          parseToolCalls: true,
         };
         
         const agentContext = new AgentContext(agentConfig, agentState);
@@ -152,7 +144,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
         teamId: tempId,
         launchProfile: profile,
         members: members,
-        focusedMemberName: profile.teamDefinition.coordinatorMemberName, // Default to coordinator
+        focusedMemberName: profile.teamDefinition.coordinatorMemberName,
         currentStatus: 'UNINITIALIZED' as AgentStatus,
         isSubscribed: false,
         unsubscribe: undefined,
@@ -163,42 +155,41 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       teamContextsStore.addTeamContext(newTeamContext);
     },
 
-    subscribeToTeamResponse(teamId: string) {
+    /**
+     * @action connectToTeamStream
+     * @description Establishes a WebSocket connection to receive real-time events for a team.
+     */
+    connectToTeamStream(teamId: string) {
       const teamContextsStore = useAgentTeamContextsStore();
-      const { onResult, onError, stop } = useSubscription<AgentTeamResponseSubscriptionType, AgentTeamResponseSubscriptionVariables>(
-        AgentTeamResponseSubscription, { teamId: teamId }
-      );
-      
       const teamContext = teamContextsStore.getTeamContextById(teamId);
-      if (teamContext) {
-          teamContext.isSubscribed = true;
-          teamContext.unsubscribe = stop;
-      } else {
-        console.warn(`Could not find team context for ID ${teamId} to attach subscription.`);
+      
+      if (!teamContext) {
+        console.warn(`Could not find team context for ID ${teamId} to connect stream.`);
+        return;
       }
 
-      onResult(({ data }) => {
-        if (data?.agentTeamResponse) {
-          // The caller must provide the context to the processor.
-          const currentContext = teamContextsStore.getTeamContextById(data.agentTeamResponse.teamId);
-          if (currentContext) {
-            processAgentTeamResponseEvent(currentContext, data.agentTeamResponse);
-          }
-        }
-      });
+      const service = new TeamStreamingService();
+      teamStreamingServices.set(teamId, service);
 
-      onError((error) => {
-        console.error(`Subscription error for team ${teamId}:`, error);
-        stop();
-        const teamContextOnError = teamContextsStore.getTeamContextById(teamId);
-        if (teamContextOnError) {
-            teamContextOnError.isSubscribed = false;
-        }
-      });
+      teamContext.isSubscribed = true;
+      teamContext.unsubscribe = () => {
+        service.disconnect();
+        teamStreamingServices.delete(teamId);
+      };
+
+      service.connect(teamId, teamContext);
     },
 
     async terminateTeamInstance(teamId: string) {
       const teamContextsStore = useAgentTeamContextsStore();
+      const teamContext = teamContextsStore.getTeamContextById(teamId);
+      
+      // Disconnect WebSocket if connected
+      if (teamContext?.unsubscribe) {
+        teamContext.unsubscribe();
+      }
+      teamStreamingServices.delete(teamId);
+      
       teamContextsStore.removeTeamContext(teamId);
       
       if (teamId.startsWith('temp-')) return;
@@ -240,9 +231,6 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       try {
         const { client } = useApolloClient();
         let variables: SendMessageToTeamMutationVariables;
-        const taskNotificationMode = activeTeam.launchProfile.globalConfig.taskNotificationMode as TaskNotificationModeEnum;
-        const useXmlToolFormat = activeTeam.launchProfile.globalConfig.useXmlToolFormat;
-
         if (isTemporary) {
           this.isLaunching = true;
           const memberConfigs = teamContextsStore.activeResolvedProfile?.resolvedMemberConfigs;
@@ -255,8 +243,6 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
               targetNodeName: focusedMember.state.agentId,
               teamDefinitionId: activeTeam.launchProfile.teamDefinition.id,
               memberConfigs: memberConfigs,
-              taskNotificationMode: taskNotificationMode,
-              useXmlToolFormat: useXmlToolFormat,
             }
           };
         } else {
@@ -285,7 +271,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
 
         if (isTemporary) {
           teamContextsStore.promoteTemporaryTeamId(activeTeam.teamId, permanentId);
-          this.subscribeToTeamResponse(permanentId);
+          this.connectToTeamStream(permanentId);
         }
 
       } catch (error: any) {
@@ -330,7 +316,6 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       if (config.mode === 'none') return null;
       if (config.mode === 'existing') return config.existingWorkspaceId || null;
       if (config.mode === 'new' && config.newWorkspaceConfig) {
-        // No check for typeName anymore as FileSystemWorkspace is the default and only type
         try {
           return await workspaceStore.createWorkspace(config.newWorkspaceConfig);
         } catch (e: any) {

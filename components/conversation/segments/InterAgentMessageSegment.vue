@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import type { InterAgentMessageSegment } from '~/utils/aiResponseParser/types';
+import type { InterAgentMessageSegment } from '~/types/segments';
 
 defineProps<{ segment: InterAgentMessageSegment }>();
 </script>

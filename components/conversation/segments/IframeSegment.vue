@@ -93,7 +93,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount, nextTick, computed } from 'vue';
-import type { IframeSegment } from '~/utils/aiResponseParser/types';
+import type { IframeSegment } from '~/types/segments';
 import { Icon } from '@iconify/vue';
 import FullScreenIframeModal from '~/components/common/FullScreenIframeModal.vue';
 import FileDisplay from '~/components/conversation/segments/renderer/FileDisplay.vue';

@@ -79,37 +79,7 @@
                     </label>
                   </div>
                 </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Task Notification Mode</label>
-                  <div class="space-y-2">
-                    <label class="flex items-center space-x-3 p-3 border rounded-md cursor-pointer" :class="globalConfig.taskNotificationMode === 'AGENT_MANUAL_NOTIFICATION' ? 'bg-indigo-50 border-indigo-400' : 'bg-white'">
-                      <input type="radio" v-model="globalConfig.taskNotificationMode" value="AGENT_MANUAL_NOTIFICATION" class="form-radio" />
-                      <div>
-                        <span class="font-medium">Agent Manual</span>
-                        <p class="text-xs text-gray-500">The coordinator agent is responsible for telling other agents to start tasks.</p>
-                      </div>
-                    </label>
-                    <label class="flex items-center space-x-3 p-3 border rounded-md cursor-pointer" :class="globalConfig.taskNotificationMode === 'SYSTEM_EVENT_DRIVEN' ? 'bg-indigo-50 border-indigo-400' : 'bg-white'">
-                      <input type="radio" v-model="globalConfig.taskNotificationMode" value="SYSTEM_EVENT_DRIVEN" class="form-radio" />
-                      <div>
-                        <span class="font-medium">System Event-Driven</span>
-                        <p class="text-xs text-gray-500">The system automatically notifies agents when their tasks are ready to start.</p>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-                <div class="pt-4 border-t">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Tool Parsing Format</label>
-                  <div class="space-y-2">
-                    <label class="flex items-start space-x-3 p-3 border rounded-md cursor-pointer" :class="globalConfig.useXmlToolFormat ? 'bg-indigo-50 border-indigo-400' : 'bg-white'">
-                      <input type="checkbox" v-model="globalConfig.useXmlToolFormat" class="form-checkbox h-5 w-5 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 mt-1" />
-                      <div>
-                        <span class="font-medium">Force XML Format</span>
-                        <p class="text-xs text-gray-500">Force all agents in the team to use the XML format for tool calls, overriding the provider's default (e.g., JSON).</p>
-                      </div>
-                    </label>
-                  </div>
-                </div>
+
               </div>
             </div>
 
@@ -276,8 +246,7 @@ const globalConfig = reactive<TeamLaunchProfile['globalConfig']>({
   workspaceConfig: { mode: 'none' },
   autoExecuteTools: true,
   parseToolCalls: true,
-  taskNotificationMode: 'AGENT_MANUAL_NOTIFICATION',
-  useXmlToolFormat: false,
+  maxTurns: 30, // Default value
 });
 const memberOverrides = reactive<Record<string, TeamMemberConfigOverride>>({});
 
@@ -465,8 +434,6 @@ const initializeFormState = () => {
     globalConfig.workspaceConfig = { mode: 'none' };
     globalConfig.autoExecuteTools = true;
     globalConfig.parseToolCalls = true;
-    globalConfig.taskNotificationMode = 'AGENT_MANUAL_NOTIFICATION';
-    globalConfig.useXmlToolFormat = false;
     initialConfigSnapshot = null;
   }
 
@@ -499,8 +466,6 @@ watch(() => props.show, async (isVisible) => {
       globalConfig.workspaceConfig = { mode: 'none' };
       globalConfig.autoExecuteTools = true;
       globalConfig.parseToolCalls = true;
-      globalConfig.taskNotificationMode = 'AGENT_MANUAL_NOTIFICATION';
-      globalConfig.useXmlToolFormat = false;
     }
     
     initializeFormState(); 

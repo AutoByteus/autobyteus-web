@@ -1,5 +1,4 @@
-import type { IncrementalAIResponseParser } from '~/utils/aiResponseParser/incrementalAIResponseParser';
-import type { AIResponseSegment } from '~/utils/aiResponseParser/types';
+import type { AIResponseSegment } from '~/types/segments';
 import type { ContextFileType } from '~/generated/graphql';
 
 export interface ContextFilePath {
@@ -23,10 +22,8 @@ export interface UserMessage extends Message {
 export interface AIMessage extends Message {
   type: 'ai';
   text: string;
-  chunks: string[];
   segments: AIResponseSegment[];
   isComplete: boolean;
-  parserInstance: IncrementalAIResponseParser;
   completionTokens?: number;
   completionCost?: number;
   reasoning?: string | null;
@@ -49,5 +46,4 @@ export interface Conversation {
   // This is set on the first turn and persists for the conversation.
   parseToolCalls?: boolean;
   // This will be populated from historical conversations
-  useXmlToolFormat?: boolean;
 }

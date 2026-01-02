@@ -15,9 +15,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import MarkdownRenderer from '~/components/conversation/segments/renderer/MarkdownRenderer.vue';
-import { highlightFileSegment } from '~/utils/aiResponseParser/segmentHighlighter';
-import { getLanguage } from '~/utils/aiResponseParser/languageDetector';
-import type { FileSegment } from '~/utils/aiResponseParser/types';
+import { highlightFileSegment } from '~/utils/highlighting/segmentHighlighter';
+import { getLanguage } from '~/utils/highlighting/languageDetector';
+import type { FileSegment } from '~/types/segments';
 import 'prismjs/themes/prism.css'; // Ensure PrismJS theme is available
 
 const props = defineProps<{

@@ -1,39 +1,33 @@
 import { defineStore } from 'pinia';
-import { useApolloClient, useSubscription } from '@vue/apollo-composable';
-import { SendAgentUserInput, TerminateAgentInstance, ApproveToolInvocation } from '~/graphql/mutations/agentMutations';
-import { AgentResponseSubscription } from '~/graphql/subscriptions/agent_response_subscriptions';
+import { useApolloClient } from '@vue/apollo-composable';
+import { SendAgentUserInput, TerminateAgentInstance } from '~/graphql/mutations/agentMutations';
 import type {
   SendAgentUserInputMutation,
   SendAgentUserInputMutationVariables,
-  AgentResponseSubscription as AgentResponseSubscriptionType,
-  AgentResponseSubscriptionVariables,
-  ApproveToolInvocationMutation,
-  ApproveToolInvocationMutationVariables,
   ContextFileType,
 } from '~/generated/graphql';
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
-import { processAgentResponseEvent } from '~/services/agentResponseProcessor';
-import type { ToolCallSegment } from '~/utils/aiResponseParser/types';
+import { AgentStreamingService } from '~/services/agentStreaming';
+import type { ToolCallSegment } from '~/types/segments';
+
+// Maintain a map of streaming services per agent
+const streamingServices = new Map<string, AgentStreamingService>();
 
 /**
  * @store agentRun
  * @description This store is the "service" or "orchestration" layer for agent interactions.
- * It is responsible for all GraphQL communication (mutations, subscriptions) related to an agent run.
- * It does NOT hold agent state directly; it retrieves state from and dispatches updates to the `agentContextsStore`.
+ * It uses WebSocket streaming for real-time updates and GraphQL mutations for commands.
  */
 export const useAgentRunStore = defineStore('agentRun', {
-  // NO STATE IN THIS REFACTORED STORE
   state: () => ({}),
-
-  // NO GETTERS IN THIS REFACTORED STORE
   getters: {},
 
   actions: {
     /**
      * @action sendUserInputAndSubscribe
      * @description Sends the user's input to the backend to start or continue an agent run,
-     * then ensures a subscription is active to receive live updates.
+     * then ensures a WebSocket connection is active to receive live updates.
      */
     async sendUserInputAndSubscribe(): Promise<void> {
       const agentContextsStore = useAgentContextsStore();
@@ -65,7 +59,6 @@ export const useAgentRunStore = defineStore('agentRun', {
       });
       currentAgent.state.conversation.updatedAt = new Date().toISOString();
 
-
       currentAgent.isSending = true;
 
       try {
@@ -83,7 +76,6 @@ export const useAgentRunStore = defineStore('agentRun', {
               workspaceId: config.workspaceId,
               llmModelIdentifier: config.llmModelIdentifier,
               autoExecuteTools: config.autoExecuteTools,
-              useXmlToolFormat: config.useXmlToolFormat,
             }
           }
         });
@@ -108,7 +100,7 @@ export const useAgentRunStore = defineStore('agentRun', {
         finalAgent.contextFilePaths = [];
 
         if (!finalAgent.isSubscribed) {
-          this.subscribeToAgentResponse(finalAgentId);
+          this.connectToAgentStream(finalAgentId);
         }
 
         const conversationHistoryStore = useConversationHistoryStore();
@@ -123,85 +115,59 @@ export const useAgentRunStore = defineStore('agentRun', {
     },
 
     /**
-     * @action subscribeToAgentResponse
-     * @description Sets up a GraphQL subscription to receive real-time events for a specific agent run.
+     * @action connectToAgentStream
+     * @description Establishes a WebSocket connection to receive real-time events for a specific agent.
      */
-    subscribeToAgentResponse(agentId: string) {
+    connectToAgentStream(agentId: string) {
       const agentContextsStore = useAgentContextsStore();
-      const { onResult, onError, stop } = useSubscription<AgentResponseSubscriptionType, AgentResponseSubscriptionVariables>(
-        AgentResponseSubscription, { agentId }
-      );
-      
       const agent = agentContextsStore.getAgentContextById(agentId);
-      if (agent) {
-        agent.isSubscribed = true;
-        agent.unsubscribe = stop;
-      }
+      
+      if (!agent) return;
 
-      onResult(({ data }) => {
-        if (!data?.agentResponse) return;
-        
-        const { agentId: respAgentId, data: eventData } = data.agentResponse;
-        
-        const agentToUpdate = agentContextsStore.getAgentContextById(respAgentId);
+      // Create streaming service for this agent
+      const service = new AgentStreamingService();
+      streamingServices.set(agentId, service);
 
-        if (!agentToUpdate) {
-            console.warn(`Received event for unknown or closed agent with ID: ${respAgentId}. Ignoring.`);
-            return;
-        }
+      agent.isSubscribed = true;
+      agent.unsubscribe = () => {
+        service.disconnect();
+        streamingServices.delete(agentId);
+      };
 
-        agentToUpdate.isSending = false;
-
-        if (eventData) {
-            processAgentResponseEvent(eventData, agentToUpdate);
-        }
-      });
-
-      onError((error) => {
-        console.error(`Subscription error for agent ${agentId}:`, error);
-        stop();
-        const agentOnError = agentContextsStore.getAgentContextById(agentId);
-        if(agentOnError) {
-          agentOnError.isSubscribed = false;
-          agentOnError.unsubscribe = undefined;
-        }
-      });
+      service.connect(agentId, agent);
     },
     
     /**
      * @action postToolExecutionApproval
-     * @description Sends the user's approval or denial for a tool call to the backend.
+     * @description Sends the user's approval or denial for a tool call via WebSocket.
      */
-    async postToolExecutionApproval(agentId: string, invocationId: string, isApproved: boolean, reason: string | null = null) {
-      try {
-        const { client } = useApolloClient();
-        const { errors } = await client.mutate<ApproveToolInvocationMutation, ApproveToolInvocationMutationVariables>({
-          mutation: ApproveToolInvocation,
-          variables: { input: { agentId, invocationId, isApproved, reason } },
-        });
+    async postToolExecutionApproval(agentId: string, invocationId: string, isApproved: boolean, _reason: string | null = null) {
+      const service = streamingServices.get(agentId);
+      const agentContextsStore = useAgentContextsStore();
+      const agent = agentContextsStore.getAgentContextById(agentId);
+      
+      if (service) {
+        if (isApproved) {
+          service.approveTool(invocationId);
+        } else {
+          service.denyTool(invocationId);
+        }
+      }
 
-        if (errors && errors.length > 0) {
-          throw new Error(errors.map(e => e.message).join(', '));
+      // Optimistically update the UI
+      if (agent) {
+        const segment = agent.state.conversation.messages
+          .flatMap(m => m.type === 'ai' ? m.segments : [])
+          .find(s => s.type === 'tool_call' && s.invocationId === invocationId) as ToolCallSegment | undefined;
+        if (segment) {
+          segment.status = isApproved ? 'executing' : 'denied';
         }
-        
-        const agentContextsStore = useAgentContextsStore();
-        const agent = agentContextsStore.getAgentContextById(agentId);
-        if (agent) {
-          const segment = agent.state.conversation.messages
-            .flatMap(m => m.type === 'ai' ? m.segments : [])
-            .find(s => s.type === 'tool_call' && s.invocationId === invocationId) as ToolCallSegment | undefined;
-          if (segment) {
-            segment.status = isApproved ? 'executing' : 'denied';
-          }
-        }
-      } catch (error) {
-        console.error("Error posting tool execution approval:", error);
       }
     },
 
     /**
      * @action closeAgent
-     * @description Closes an agent tab in the UI, unsubscribes from events, and optionally terminates the backend instance.
+     * @description Closes an agent tab in the UI, disconnects WebSocket, and optionally terminates the backend instance.
      */
     async closeAgent(agentIdToClose: string, options: { terminate: boolean }) {
       const agentContextsStore = useAgentContextsStore();
@@ -215,6 +181,7 @@ export const useAgentRunStore = defineStore('agentRun', {
         agentToClose.unsubscribe = undefined;
       }
 
+      streamingServices.delete(agentIdToClose);
       agentContextsStore.removeAgentContext(agentIdToClose);
       
       if (options.terminate && !agentIdToClose.startsWith('temp-')) {
@@ -233,16 +200,15 @@ export const useAgentRunStore = defineStore('agentRun', {
     /**
      * @action ensureAgentForLaunchProfile
      * @description Ensures that there is at least one agent context for a given launch profile.
-     * Creates a new one if none exist, or attaches to a specified running agent.
      */
-    ensureAgentForLaunchProfile(profileId: string, attachToAgentId?: string): void {
+    ensureAgentForLaunchProfile(_profileId: string, attachToAgentId?: string): void {
       const agentContextsStore = useAgentContextsStore();
       const profileState = agentContextsStore._getOrCreateCurrentProfileState();
 
       if (profileState.activeAgents.size === 0) {
         if (attachToAgentId) {
           agentContextsStore.createContextForExistingAgent(attachToAgentId);
-          this.subscribeToAgentResponse(attachToAgentId); // Automatically subscribe when attaching
+          this.connectToAgentStream(attachToAgentId);
         } else {
           agentContextsStore.createNewAgentContext();
         }

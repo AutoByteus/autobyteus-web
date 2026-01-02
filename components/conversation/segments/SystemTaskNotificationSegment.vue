@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import type { SystemTaskNotificationSegment } from '~/utils/aiResponseParser/types';
+import type { SystemTaskNotificationSegment } from '~/types/segments';
 
 defineProps<{
   segment: SystemTaskNotificationSegment;

@@ -111,7 +111,7 @@
 
 <script setup lang="ts">
 import { computed, h, ref } from 'vue';
-import type { ToolCallSegment } from '~/utils/aiResponseParser/types';
+import type { ToolCallSegment } from '~/types/segments';
 import { useAgentRunStore } from '~/stores/agentRunStore';
 import FileDisplay from '~/components/conversation/segments/renderer/FileDisplay.vue';
 import CopyButton from '~/components/common/CopyButton.vue';

@@ -101,7 +101,7 @@ import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { useWorkspaceStore } from '~/stores/workspace';
 import FileDisplay from '~/components/conversation/segments/renderer/FileDisplay.vue';
 import CopyButton from '~/components/common/CopyButton.vue';
-import type { FileSegment } from '~/utils/aiResponseParser/types';
+import type { FileSegment } from '~/types/segments';
 
 /* -------------------------------------------------------------------------- */
 /* Props & Stores                                                             */

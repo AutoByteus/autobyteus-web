@@ -80,7 +80,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import type { ToolCallSegment } from '~/utils/aiResponseParser/types';
+import type { ToolCallSegment } from '~/types/segments';
 import { useAgentRunStore } from '~/stores/agentRunStore';
 import ToolCallRejectionModal from './ToolCallRejectionModal.vue';
 

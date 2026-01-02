@@ -94,20 +94,7 @@
           </div>
         </label>
 
-        <!-- Use XML Tool Format Toggle -->
-        <label for="use-xml-toggle" class="flex items-center justify-between cursor-pointer">
-          <span class="text-base font-medium text-gray-800 dark:text-gray-200">Use XML Tool Format</span>
-          <div class="relative">
-            <input 
-              type="checkbox" 
-              id="use-xml-toggle" 
-              class="sr-only peer" 
-              :checked="useXmlToolFormat"
-              @change="emit('update:useXmlToolFormat', ($event.target as HTMLInputElement).checked)"
-            >
-            <div class="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-400 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-          </div>
-        </label>
+
       </div>
     </div>
   </div>
@@ -138,7 +125,6 @@ const props = withDefaults(defineProps<{
   disabled?: boolean;
   autoExecuteTools: boolean;
   parseToolCalls: boolean;
-  useXmlToolFormat: boolean;
 }>(), {
   placeholder: 'Select an option',
   loading: false,
@@ -148,8 +134,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits([
   'update:modelValue',
   'update:autoExecuteTools',
-  'update:parseToolCalls',
-  'update:useXmlToolFormat'
+  'update:parseToolCalls'
 ]);
 
 const isOpen = ref(false);

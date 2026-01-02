@@ -35,7 +35,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       this.searchQuery = ''; // Reset search on new agent selection
       this.fetchConversationHistory();
     },
-    async fetchConversationHistory(this: ConversationHistoryState, page: number = this.currentPage, pageSize: number = this.pageSize) {
+    async fetchConversationHistory(this: any, page: number = this.currentPage, pageSize: number = this.pageSize) {
       if (!this.agentDefinitionId) {
         this.error = 'Agent definition ID is not set.';
         return;
@@ -132,10 +132,8 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
               type: 'ai',
               text: aiText,
               timestamp: new Date(msg.timestamp),
-              chunks: [aiText], // Store the full text as a single chunk
               segments: [], // Segments will be populated on-demand by agentContextsStore
               isComplete: true,
-              parserInstance: null as any, // No parser instance needed at this stage
               completionTokens: msg.tokenCount || undefined,
               completionCost: msg.cost || undefined,
               reasoning: msg.reasoning,

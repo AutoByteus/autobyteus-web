@@ -26,7 +26,6 @@
         v-model="selectedModel"
         v-model:autoExecuteTools="autoExecuteTools"
         v-model:parseToolCalls="parseToolCalls"
-        v-model:useXmlToolFormat="useXmlToolFormat"
         :options="groupedModelOptions"
         :loading="isLoadingModels"
         :disabled="isLoadingModels || !activeContextStore.activeAgentContext"
@@ -117,12 +116,7 @@ const parseToolCalls = computed({
   }
 });
 
-const useXmlToolFormat = computed({
-  get: () => activeContextStore.activeConfig?.useXmlToolFormat ?? false,
-  set: (value: boolean) => {
-    activeContextStore.updateConfig({ useXmlToolFormat: value });
-  }
-});
+
 
 const groupedModelOptions = computed(() => {
   if (!providersWithModels.value) return [];
