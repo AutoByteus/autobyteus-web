@@ -14,20 +14,7 @@ import type { ToolCallSegment } from '~/types/segments';
 
 const resolveAgentWsBaseUrl = () => {
   const config = useRuntimeConfig();
-  const candidates = [config.public.terminalWsEndpoint, config.public.graphqlWsEndpoint];
-  for (const endpoint of candidates) {
-    if (!endpoint) continue;
-    try {
-      return new URL(endpoint).origin;
-    } catch {
-      // Ignore invalid URLs and try next candidate.
-    }
-  }
-  if (typeof window !== 'undefined') {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${window.location.host}`;
-  }
-  return 'ws://localhost:8000';
+  return config.public.agentWsBaseUrl || 'ws://localhost:8000';
 };
 
 // Maintain a map of streaming services per agent

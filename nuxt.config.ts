@@ -14,6 +14,7 @@ const backendProxyUrl = 'http://localhost:8000'
 let serverUrls = {
   graphqlBaseUrl: '',
   restBaseUrl: '',
+  agentWsBaseUrl: '',
   graphqlWsEndpoint: '',
   transcriptionWsEndpoint: '',
   terminalWsEndpoint: ''
@@ -23,6 +24,7 @@ if (isElectronBuild) {
   serverUrls = {
     graphqlBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/graphql`,
     restBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/rest`,
+    agentWsBaseUrl: `ws://localhost:${INTERNAL_SERVER_PORT}`,
     graphqlWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/graphql`,
     transcriptionWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/transcribe`,
     terminalWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/ws/terminal`
@@ -31,6 +33,7 @@ if (isElectronBuild) {
   serverUrls = {
     graphqlBaseUrl: '/graphql',
     restBaseUrl: '/rest',
+    agentWsBaseUrl: process.env.BACKEND_AGENT_WS_BASE_URL || 'ws://localhost:8000',
     graphqlWsEndpoint: process.env.BACKEND_GRAPHQL_WS_ENDPOINT || 'ws://localhost:8000/graphql',
     transcriptionWsEndpoint: process.env.BACKEND_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8000/ws/transcribe',
     terminalWsEndpoint: process.env.BACKEND_TERMINAL_WS_ENDPOINT || 'ws://localhost:8000/ws/terminal'
@@ -40,6 +43,7 @@ if (isElectronBuild) {
   serverUrls = {
     graphqlBaseUrl: process.env.BACKEND_GRAPHQL_BASE_URL || 'http://localhost:8000/graphql',
     restBaseUrl: process.env.BACKEND_REST_BASE_URL || 'http://localhost:8000/rest',
+    agentWsBaseUrl: process.env.BACKEND_AGENT_WS_BASE_URL || 'ws://localhost:8000',
     graphqlWsEndpoint: process.env.BACKEND_GRAPHQL_WS_ENDPOINT || 'ws://localhost:8000/graphql',
     transcriptionWsEndpoint: process.env.BACKEND_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8000/ws/transcribe',
     terminalWsEndpoint: process.env.BACKEND_TERMINAL_WS_ENDPOINT || 'ws://localhost:8000/ws/terminal'
@@ -119,6 +123,7 @@ const baseConfig = {
     public: {
       graphqlBaseUrl: serverUrls.graphqlBaseUrl,
       restBaseUrl: serverUrls.restBaseUrl,
+      agentWsBaseUrl: serverUrls.agentWsBaseUrl,
       graphqlWsEndpoint: serverUrls.graphqlWsEndpoint,
       terminalWsEndpoint: serverUrls.terminalWsEndpoint,
       googleSpeechApiKey: process.env.GOOGLE_SPEECH_API_KEY || '',
