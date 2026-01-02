@@ -65,22 +65,6 @@ export type AgentInstance = {
   workspace?: Maybe<WorkspaceInfo>;
 };
 
-export enum AgentStatus {
-  AnalyzingLlmResponse = 'ANALYZING_LLM_RESPONSE',
-  AwaitingLlmResponse = 'AWAITING_LLM_RESPONSE',
-  AwaitingToolApproval = 'AWAITING_TOOL_APPROVAL',
-  Bootstrapping = 'BOOTSTRAPPING',
-  Error = 'ERROR',
-  ExecutingTool = 'EXECUTING_TOOL',
-  Idle = 'IDLE',
-  ProcessingToolResult = 'PROCESSING_TOOL_RESULT',
-  ProcessingUserInput = 'PROCESSING_USER_INPUT',
-  ShutdownComplete = 'SHUTDOWN_COMPLETE',
-  ShuttingDown = 'SHUTTING_DOWN',
-  ToolDenied = 'TOOL_DENIED',
-  Uninitialized = 'UNINITIALIZED'
-}
-
 export type AgentTeamDefinition = {
   __typename?: 'AgentTeamDefinition';
   coordinatorMemberName: Scalars['String']['output'];
@@ -91,13 +75,6 @@ export type AgentTeamDefinition = {
   role?: Maybe<Scalars['String']['output']>;
 };
 
-export enum AgentTeamEventSourceType {
-  Agent = 'AGENT',
-  SubTeam = 'SUB_TEAM',
-  TaskPlan = 'TASK_PLAN',
-  Team = 'TEAM'
-}
-
 export type AgentTeamInstance = {
   __typename?: 'AgentTeamInstance';
   currentStatus: Scalars['String']['output'];
@@ -105,16 +82,6 @@ export type AgentTeamInstance = {
   name: Scalars['String']['output'];
   role?: Maybe<Scalars['String']['output']>;
 };
-
-export enum AgentTeamStatus {
-  Bootstrapping = 'BOOTSTRAPPING',
-  Error = 'ERROR',
-  Idle = 'IDLE',
-  Processing = 'PROCESSING',
-  ShutdownComplete = 'SHUTDOWN_COMPLETE',
-  ShuttingDown = 'SHUTTING_DOWN',
-  Uninitialized = 'UNINITIALIZED'
-}
 
 export type AgentUserInput = {
   content: Scalars['String']['input'];
@@ -283,176 +250,6 @@ export type DiscoverAndRegisterMcpServerToolsResult = {
   discoveredTools: Array<ToolDefinitionDetail>;
   message: Scalars['String']['output'];
   success: Scalars['Boolean']['output'];
-};
-
-export type GraphQlAgentEventRebroadcastPayload = {
-  __typename?: 'GraphQLAgentEventRebroadcastPayload';
-  agentEvent: GraphQlStreamEvent;
-  agentName: Scalars['String']['output'];
-};
-
-export type GraphQlAgentStatusUpdateData = {
-  __typename?: 'GraphQLAgentStatusUpdateData';
-  errorDetails?: Maybe<Scalars['String']['output']>;
-  errorMessage?: Maybe<Scalars['String']['output']>;
-  newStatus: AgentStatus;
-  oldStatus?: Maybe<AgentStatus>;
-  toolName?: Maybe<Scalars['String']['output']>;
-  trigger?: Maybe<Scalars['String']['output']>;
-};
-
-export type GraphQlAgentTeamStatusUpdateData = {
-  __typename?: 'GraphQLAgentTeamStatusUpdateData';
-  errorMessage?: Maybe<Scalars['String']['output']>;
-  newStatus: AgentTeamStatus;
-  oldStatus?: Maybe<AgentTeamStatus>;
-};
-
-export type GraphQlAgentTeamStreamDataPayload = GraphQlAgentEventRebroadcastPayload | GraphQlAgentTeamStatusUpdateData | GraphQlSubTeamEventRebroadcastPayload | GraphQlTaskStatusUpdatedEvent | GraphQlTasksCreatedEvent;
-
-export type GraphQlAgentTeamStreamEvent = {
-  __typename?: 'GraphQLAgentTeamStreamEvent';
-  data: GraphQlAgentTeamStreamDataPayload;
-  eventId: Scalars['String']['output'];
-  eventSourceType: AgentTeamEventSourceType;
-  teamId: Scalars['String']['output'];
-  timestamp: Scalars['DateTime']['output'];
-};
-
-export type GraphQlAssistantChunkData = {
-  __typename?: 'GraphQLAssistantChunkData';
-  audioUrls?: Maybe<Array<Scalars['String']['output']>>;
-  content: Scalars['String']['output'];
-  imageUrls?: Maybe<Array<Scalars['String']['output']>>;
-  isComplete: Scalars['Boolean']['output'];
-  reasoning?: Maybe<Scalars['String']['output']>;
-  usage?: Maybe<GraphQlTokenUsage>;
-  videoUrls?: Maybe<Array<Scalars['String']['output']>>;
-};
-
-export type GraphQlAssistantCompleteResponseData = {
-  __typename?: 'GraphQLAssistantCompleteResponseData';
-  audioUrls?: Maybe<Array<Scalars['String']['output']>>;
-  content: Scalars['String']['output'];
-  imageUrls?: Maybe<Array<Scalars['String']['output']>>;
-  reasoning?: Maybe<Scalars['String']['output']>;
-  usage?: Maybe<GraphQlTokenUsage>;
-  videoUrls?: Maybe<Array<Scalars['String']['output']>>;
-};
-
-export type GraphQlErrorEventData = {
-  __typename?: 'GraphQLErrorEventData';
-  details?: Maybe<Scalars['String']['output']>;
-  message: Scalars['String']['output'];
-  source: Scalars['String']['output'];
-};
-
-export type GraphQlFileDeliverable = {
-  __typename?: 'GraphQLFileDeliverable';
-  authorAgentName: Scalars['String']['output'];
-  filePath: Scalars['String']['output'];
-  summary: Scalars['String']['output'];
-  timestamp: Scalars['DateTime']['output'];
-};
-
-export type GraphQlInterAgentMessageData = {
-  __typename?: 'GraphQLInterAgentMessageData';
-  content: Scalars['String']['output'];
-  messageType: Scalars['String']['output'];
-  recipientRoleName: Scalars['String']['output'];
-  senderAgentId: Scalars['String']['output'];
-};
-
-/** Represents the data payload for a stream event. */
-export type GraphQlStreamDataPayload = GraphQlAgentStatusUpdateData | GraphQlAssistantChunkData | GraphQlAssistantCompleteResponseData | GraphQlErrorEventData | GraphQlInterAgentMessageData | GraphQlSystemTaskNotificationData | GraphQlToDoListUpdateData | GraphQlToolInteractionLogEntryData | GraphQlToolInvocationApprovalRequestedData | GraphQlToolInvocationAutoExecutingData;
-
-export type GraphQlStreamEvent = {
-  __typename?: 'GraphQLStreamEvent';
-  agentId?: Maybe<Scalars['String']['output']>;
-  data: GraphQlStreamDataPayload;
-  eventId: Scalars['String']['output'];
-  eventType: StreamEventType;
-  timestamp: Scalars['DateTime']['output'];
-};
-
-export type GraphQlSubTeamEventRebroadcastPayload = {
-  __typename?: 'GraphQLSubTeamEventRebroadcastPayload';
-  subTeamEvent: GraphQlAgentTeamStreamEvent;
-  subTeamNodeName: Scalars['String']['output'];
-};
-
-export type GraphQlSystemTaskNotificationData = {
-  __typename?: 'GraphQLSystemTaskNotificationData';
-  content: Scalars['String']['output'];
-  senderId: Scalars['String']['output'];
-};
-
-export type GraphQlTask = {
-  __typename?: 'GraphQLTask';
-  assigneeName: Scalars['String']['output'];
-  dependencies: Array<Scalars['String']['output']>;
-  description: Scalars['String']['output'];
-  fileDeliverables: Array<GraphQlFileDeliverable>;
-  taskId: Scalars['String']['output'];
-  taskName: Scalars['String']['output'];
-};
-
-export type GraphQlTaskStatusUpdatedEvent = {
-  __typename?: 'GraphQLTaskStatusUpdatedEvent';
-  agentName: Scalars['String']['output'];
-  deliverables?: Maybe<Array<GraphQlFileDeliverable>>;
-  newStatus: TaskStatus;
-  taskId: Scalars['String']['output'];
-  teamId: Scalars['String']['output'];
-};
-
-export type GraphQlTasksCreatedEvent = {
-  __typename?: 'GraphQLTasksCreatedEvent';
-  tasks: Array<GraphQlTask>;
-  teamId: Scalars['String']['output'];
-};
-
-export type GraphQlToDo = {
-  __typename?: 'GraphQLToDo';
-  description: Scalars['String']['output'];
-  status: ToDoStatus;
-  todoId: Scalars['String']['output'];
-};
-
-export type GraphQlToDoListUpdateData = {
-  __typename?: 'GraphQLToDoListUpdateData';
-  todos: Array<GraphQlToDo>;
-};
-
-export type GraphQlTokenUsage = {
-  __typename?: 'GraphQLTokenUsage';
-  completionCost?: Maybe<Scalars['Float']['output']>;
-  completionTokens: Scalars['Int']['output'];
-  promptCost?: Maybe<Scalars['Float']['output']>;
-  promptTokens: Scalars['Int']['output'];
-  totalCost?: Maybe<Scalars['Float']['output']>;
-  totalTokens: Scalars['Int']['output'];
-};
-
-export type GraphQlToolInteractionLogEntryData = {
-  __typename?: 'GraphQLToolInteractionLogEntryData';
-  logEntry: Scalars['String']['output'];
-  toolInvocationId: Scalars['String']['output'];
-  toolName?: Maybe<Scalars['String']['output']>;
-};
-
-export type GraphQlToolInvocationApprovalRequestedData = {
-  __typename?: 'GraphQLToolInvocationApprovalRequestedData';
-  arguments: Scalars['JSON']['output'];
-  invocationId: Scalars['String']['output'];
-  toolName?: Maybe<Scalars['String']['output']>;
-};
-
-export type GraphQlToolInvocationAutoExecutingData = {
-  __typename?: 'GraphQLToolInvocationAutoExecutingData';
-  arguments: Scalars['JSON']['output'];
-  invocationId: Scalars['String']['output'];
-  toolName?: Maybe<Scalars['String']['output']>;
 };
 
 export type ImportMcpServerConfigsResult = {
@@ -1091,20 +888,6 @@ export type StdioMcpServerConfigInput = {
   env?: InputMaybe<Scalars['JSON']['input']>;
 };
 
-export enum StreamEventType {
-  AgentIdle = 'AGENT_IDLE',
-  AgentStatusUpdated = 'AGENT_STATUS_UPDATED',
-  AgentTodoListUpdate = 'AGENT_TODO_LIST_UPDATE',
-  AssistantChunk = 'ASSISTANT_CHUNK',
-  AssistantCompleteResponse = 'ASSISTANT_COMPLETE_RESPONSE',
-  ErrorEvent = 'ERROR_EVENT',
-  InterAgentMessage = 'INTER_AGENT_MESSAGE',
-  SystemTaskNotification = 'SYSTEM_TASK_NOTIFICATION',
-  ToolInteractionLogEntry = 'TOOL_INTERACTION_LOG_ENTRY',
-  ToolInvocationApprovalRequested = 'TOOL_INVOCATION_APPROVAL_REQUESTED',
-  ToolInvocationAutoExecuting = 'TOOL_INVOCATION_AUTO_EXECUTING'
-}
-
 export type StreamableHttpMcpServerConfig = McpServerConfig & {
   __typename?: 'StreamableHttpMcpServerConfig';
   enabled: Scalars['Boolean']['output'];
@@ -1124,19 +907,7 @@ export type StreamableHttpMcpServerConfigInput = {
 
 export type Subscription = {
   __typename?: 'Subscription';
-  agentResponse: GraphQlStreamEvent;
-  agentTeamResponse: GraphQlAgentTeamStreamEvent;
   fileSystemChanged: Scalars['String']['output'];
-};
-
-
-export type SubscriptionAgentResponseArgs = {
-  agentId: Scalars['String']['input'];
-};
-
-
-export type SubscriptionAgentTeamResponseArgs = {
-  teamId: Scalars['String']['input'];
 };
 
 
@@ -1156,15 +927,6 @@ export type SyncPromptsResult = {
 export enum TaskNotificationModeEnum {
   AgentManualNotification = 'AGENT_MANUAL_NOTIFICATION',
   SystemEventDriven = 'SYSTEM_EVENT_DRIVEN'
-}
-
-export enum TaskStatus {
-  Blocked = 'BLOCKED',
-  Completed = 'COMPLETED',
-  Failed = 'FAILED',
-  InProgress = 'IN_PROGRESS',
-  NotStarted = 'NOT_STARTED',
-  Queued = 'QUEUED'
 }
 
 export type TeamMember = {
@@ -1206,12 +968,6 @@ export type TerminateAgentTeamInstanceResult = {
   message: Scalars['String']['output'];
   success: Scalars['Boolean']['output'];
 };
-
-export enum ToDoStatus {
-  Done = 'DONE',
-  InProgress = 'IN_PROGRESS',
-  Pending = 'PENDING'
-}
 
 export type ToolArgumentSchema = {
   __typename?: 'ToolArgumentSchema';
@@ -1812,22 +1568,6 @@ export type EnableSkillMutationVariables = Exact<{
 
 export type EnableSkillMutation = { __typename?: 'Mutation', enableSkill: { __typename?: 'Skill', name: string, isDisabled: boolean } };
 
-export type NestedTeamEventFragment = { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentStatusUpdateData', newStatus: AgentStatus, oldStatus?: AgentStatus | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData' } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamStatusUpdateData', newStatus: AgentTeamStatus, oldStatus?: AgentTeamStatus | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload' } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, taskId: string, agentName: string, newTaskStatus: TaskStatus, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } | { __typename: 'GraphQLTasksCreatedEvent', teamId: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } };
-
-export type AgentTeamResponseSubscriptionVariables = Exact<{
-  teamId: Scalars['String']['input'];
-}>;
-
-
-export type AgentTeamResponseSubscription = { __typename?: 'Subscription', agentTeamResponse: { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentStatusUpdateData', newStatus: AgentStatus, oldStatus?: AgentStatus | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData' } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamStatusUpdateData', newStatus: AgentTeamStatus, oldStatus?: AgentTeamStatus | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload', subTeamNodeName: string, subTeamEvent: { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentStatusUpdateData', newStatus: AgentStatus, oldStatus?: AgentStatus | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData' } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamStatusUpdateData', newStatus: AgentTeamStatus, oldStatus?: AgentTeamStatus | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload', subTeamNodeName: string, subTeamEvent: { __typename?: 'GraphQLAgentTeamStreamEvent', eventId: string, timestamp: any, teamId: string, eventSourceType: AgentTeamEventSourceType, data: { __typename: 'GraphQLAgentEventRebroadcastPayload', agentName: string, agentEvent: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentStatusUpdateData', newStatus: AgentStatus, oldStatus?: AgentStatus | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData' } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } } | { __typename: 'GraphQLAgentTeamStatusUpdateData', newStatus: AgentTeamStatus, oldStatus?: AgentTeamStatus | null, errorMessage?: string | null } | { __typename: 'GraphQLSubTeamEventRebroadcastPayload' } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, taskId: string, agentName: string, newTaskStatus: TaskStatus, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } | { __typename: 'GraphQLTasksCreatedEvent', teamId: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } } } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, taskId: string, agentName: string, newTaskStatus: TaskStatus, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } | { __typename: 'GraphQLTasksCreatedEvent', teamId: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } } } | { __typename: 'GraphQLTaskStatusUpdatedEvent', teamId: string, taskId: string, agentName: string, newTaskStatus: TaskStatus, deliverables?: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> | null } | { __typename: 'GraphQLTasksCreatedEvent', teamId: string, tasks: Array<{ __typename?: 'GraphQLTask', taskId: string, taskName: string, assigneeName: string, description: string, dependencies: Array<string>, fileDeliverables: Array<{ __typename?: 'GraphQLFileDeliverable', filePath: string, summary: string, authorAgentName: string, timestamp: any }> }> } } };
-
-export type AgentResponseSubscriptionVariables = Exact<{
-  agentId: Scalars['String']['input'];
-}>;
-
-
-export type AgentResponseSubscription = { __typename?: 'Subscription', agentResponse: { __typename?: 'GraphQLStreamEvent', eventId: string, timestamp: any, eventType: StreamEventType, agentId?: string | null, data: { __typename: 'GraphQLAgentStatusUpdateData', newStatus: AgentStatus, oldStatus?: AgentStatus | null, trigger?: string | null, toolName?: string | null, errorMessage?: string | null, errorDetails?: string | null } | { __typename: 'GraphQLAssistantChunkData', content: string, reasoning?: string | null, isComplete: boolean, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLAssistantCompleteResponseData', content: string, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null, usage?: { __typename?: 'GraphQLTokenUsage', promptTokens: number, completionTokens: number, totalTokens: number, promptCost?: number | null, completionCost?: number | null, totalCost?: number | null } | null } | { __typename: 'GraphQLErrorEventData', source: string, message: string, details?: string | null } | { __typename: 'GraphQLInterAgentMessageData', senderAgentId: string, recipientRoleName: string, messageType: string, content: string } | { __typename: 'GraphQLSystemTaskNotificationData', senderId: string, content: string } | { __typename: 'GraphQLToDoListUpdateData', todos: Array<{ __typename?: 'GraphQLToDo', description: string, todoId: string, status: ToDoStatus }> } | { __typename: 'GraphQLToolInteractionLogEntryData', logEntry: string, toolInvocationId: string, toolName?: string | null } | { __typename: 'GraphQLToolInvocationApprovalRequestedData', invocationId: string, toolName?: string | null, arguments: any } | { __typename: 'GraphQLToolInvocationAutoExecutingData', invocationId: string, toolName?: string | null, arguments: any } } };
-
 export type FileSystemChangedSubscriptionVariables = Exact<{
   workspaceId: Scalars['String']['input'];
 }>;
@@ -1835,131 +1575,7 @@ export type FileSystemChangedSubscriptionVariables = Exact<{
 
 export type FileSystemChangedSubscription = { __typename?: 'Subscription', fileSystemChanged: string };
 
-export const NestedTeamEventFragmentDoc = gql`
-    fragment NestedTeamEvent on GraphQLAgentTeamStreamEvent {
-  eventId
-  timestamp
-  teamId
-  eventSourceType
-  data {
-    __typename
-    ... on GraphQLAgentTeamStatusUpdateData {
-      newStatus
-      oldStatus
-      errorMessage
-    }
-    ... on GraphQLAgentEventRebroadcastPayload {
-      agentName
-      agentEvent {
-        eventId
-        timestamp
-        eventType
-        agentId
-        data {
-          __typename
-          ... on GraphQLAssistantChunkData {
-            content
-            reasoning
-            isComplete
-            usage {
-              promptTokens
-              completionTokens
-              totalTokens
-              promptCost
-              completionCost
-              totalCost
-            }
-            imageUrls
-            audioUrls
-            videoUrls
-          }
-          ... on GraphQLAssistantCompleteResponseData {
-            content
-            reasoning
-            usage {
-              promptTokens
-              completionTokens
-              totalTokens
-              promptCost
-              completionCost
-              totalCost
-            }
-            imageUrls
-            audioUrls
-            videoUrls
-          }
-          ... on GraphQLToolInteractionLogEntryData {
-            logEntry
-            toolInvocationId
-            toolName
-          }
-          ... on GraphQLAgentStatusUpdateData {
-            newStatus
-            oldStatus
-            trigger
-            toolName
-            errorMessage
-            errorDetails
-          }
-          ... on GraphQLErrorEventData {
-            source
-            message
-            details
-          }
-          ... on GraphQLInterAgentMessageData {
-            senderAgentId
-            recipientRoleName
-            messageType
-            content
-          }
-          ... on GraphQLToolInvocationApprovalRequestedData {
-            invocationId
-            toolName
-            arguments
-          }
-          ... on GraphQLToolInvocationAutoExecutingData {
-            invocationId
-            toolName
-            arguments
-          }
-          ... on GraphQLSystemTaskNotificationData {
-            senderId
-            content
-          }
-        }
-      }
-    }
-    ... on GraphQLTasksCreatedEvent {
-      teamId
-      tasks {
-        taskId
-        taskName
-        assigneeName
-        description
-        dependencies
-        fileDeliverables {
-          filePath
-          summary
-          authorAgentName
-          timestamp
-        }
-      }
-    }
-    ... on GraphQLTaskStatusUpdatedEvent {
-      teamId
-      taskId
-      newTaskStatus: newStatus
-      agentName
-      deliverables {
-        filePath
-        summary
-        authorAgentName
-        timestamp
-      }
-    }
-  }
-}
-    `;
+
 export const CreateAgentDefinitionDocument = gql`
     mutation CreateAgentDefinition($input: CreateAgentDefinitionInput!) {
   createAgentDefinition(input: $input) {
@@ -4472,158 +4088,6 @@ export function useEnableSkillMutation(options: VueApolloComposable.UseMutationO
   return VueApolloComposable.useMutation<EnableSkillMutation, EnableSkillMutationVariables>(EnableSkillDocument, options);
 }
 export type EnableSkillMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<EnableSkillMutation, EnableSkillMutationVariables>;
-export const AgentTeamResponseDocument = gql`
-    subscription AgentTeamResponse($teamId: String!) {
-  agentTeamResponse(teamId: $teamId) {
-    ...NestedTeamEvent
-    data {
-      ... on GraphQLSubTeamEventRebroadcastPayload {
-        subTeamNodeName
-        subTeamEvent {
-          ...NestedTeamEvent
-          data {
-            ... on GraphQLSubTeamEventRebroadcastPayload {
-              subTeamNodeName
-              subTeamEvent {
-                ...NestedTeamEvent
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-    ${NestedTeamEventFragmentDoc}`;
-
-/**
- * __useAgentTeamResponseSubscription__
- *
- * To run a query within a Vue component, call `useAgentTeamResponseSubscription` and pass it any options that fit your needs.
- * When your component renders, `useAgentTeamResponseSubscription` returns an object from Apollo Client that contains result, loading and error properties
- * you can use to render your UI.
- *
- * @param variables that will be passed into the subscription
- * @param options that will be passed into the subscription, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/subscription.html#options;
- *
- * @example
- * const { result, loading, error } = useAgentTeamResponseSubscription({
- *   teamId: // value for 'teamId'
- * });
- */
-export function useAgentTeamResponseSubscription(variables: AgentTeamResponseSubscriptionVariables | VueCompositionApi.Ref<AgentTeamResponseSubscriptionVariables> | ReactiveFunction<AgentTeamResponseSubscriptionVariables>, options: VueApolloComposable.UseSubscriptionOptions<AgentTeamResponseSubscription, AgentTeamResponseSubscriptionVariables> | VueCompositionApi.Ref<VueApolloComposable.UseSubscriptionOptions<AgentTeamResponseSubscription, AgentTeamResponseSubscriptionVariables>> | ReactiveFunction<VueApolloComposable.UseSubscriptionOptions<AgentTeamResponseSubscription, AgentTeamResponseSubscriptionVariables>> = {}) {
-  return VueApolloComposable.useSubscription<AgentTeamResponseSubscription, AgentTeamResponseSubscriptionVariables>(AgentTeamResponseDocument, variables, options);
-}
-export type AgentTeamResponseSubscriptionCompositionFunctionResult = VueApolloComposable.UseSubscriptionReturn<AgentTeamResponseSubscription, AgentTeamResponseSubscriptionVariables>;
-export const AgentResponseDocument = gql`
-    subscription AgentResponse($agentId: String!) {
-  agentResponse(agentId: $agentId) {
-    eventId
-    timestamp
-    eventType
-    agentId
-    data {
-      __typename
-      ... on GraphQLAssistantChunkData {
-        content
-        reasoning
-        isComplete
-        usage {
-          promptTokens
-          completionTokens
-          totalTokens
-          promptCost
-          completionCost
-          totalCost
-        }
-        imageUrls
-        audioUrls
-        videoUrls
-      }
-      ... on GraphQLAssistantCompleteResponseData {
-        content
-        reasoning
-        usage {
-          promptTokens
-          completionTokens
-          totalTokens
-          promptCost
-          completionCost
-          totalCost
-        }
-        imageUrls
-        audioUrls
-        videoUrls
-      }
-      ... on GraphQLToolInteractionLogEntryData {
-        logEntry
-        toolInvocationId
-        toolName
-      }
-      ... on GraphQLAgentStatusUpdateData {
-        newStatus
-        oldStatus
-        trigger
-        toolName
-        errorMessage
-        errorDetails
-      }
-      ... on GraphQLErrorEventData {
-        source
-        message
-        details
-      }
-      ... on GraphQLToolInvocationApprovalRequestedData {
-        invocationId
-        toolName
-        arguments
-      }
-      ... on GraphQLToolInvocationAutoExecutingData {
-        invocationId
-        toolName
-        arguments
-      }
-      ... on GraphQLSystemTaskNotificationData {
-        senderId
-        content
-      }
-      ... on GraphQLInterAgentMessageData {
-        senderAgentId
-        recipientRoleName
-        messageType
-        content
-      }
-      ... on GraphQLToDoListUpdateData {
-        todos {
-          description
-          todoId
-          status
-        }
-      }
-    }
-  }
-}
-    `;
-
-/**
- * __useAgentResponseSubscription__
- *
- * To run a query within a Vue component, call `useAgentResponseSubscription` and pass it any options that fit your needs.
- * When your component renders, `useAgentResponseSubscription` returns an object from Apollo Client that contains result, loading and error properties
- * you can use to render your UI.
- *
- * @param variables that will be passed into the subscription
- * @param options that will be passed into the subscription, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/subscription.html#options;
- *
- * @example
- * const { result, loading, error } = useAgentResponseSubscription({
- *   agentId: // value for 'agentId'
- * });
- */
-export function useAgentResponseSubscription(variables: AgentResponseSubscriptionVariables | VueCompositionApi.Ref<AgentResponseSubscriptionVariables> | ReactiveFunction<AgentResponseSubscriptionVariables>, options: VueApolloComposable.UseSubscriptionOptions<AgentResponseSubscription, AgentResponseSubscriptionVariables> | VueCompositionApi.Ref<VueApolloComposable.UseSubscriptionOptions<AgentResponseSubscription, AgentResponseSubscriptionVariables>> | ReactiveFunction<VueApolloComposable.UseSubscriptionOptions<AgentResponseSubscription, AgentResponseSubscriptionVariables>> = {}) {
-  return VueApolloComposable.useSubscription<AgentResponseSubscription, AgentResponseSubscriptionVariables>(AgentResponseDocument, variables, options);
-}
-export type AgentResponseSubscriptionCompositionFunctionResult = VueApolloComposable.UseSubscriptionReturn<AgentResponseSubscription, AgentResponseSubscriptionVariables>;
 export const FileSystemChangedDocument = gql`
     subscription FileSystemChanged($workspaceId: String!) {
   fileSystemChanged(workspaceId: $workspaceId)
