@@ -25,6 +25,23 @@ import {
   handleTaskPlanEvent,
 } from './handlers';
 
+const shouldLogStreaming = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const w = window as any;
+  if (w.__AUTOBYTEUS_DEBUG_STREAMING__ === true) return true;
+  try {
+    return w.localStorage?.getItem('autobyteus.debug.streaming') === 'true';
+  } catch {
+    return false;
+  }
+};
+
+const summarizeDelta = (delta: string, maxLen = 120): string => {
+  if (!delta) return '';
+  const clean = delta.replace(/\n/g, '\\n');
+  return clean.length > maxLen ? `${clean.slice(0, maxLen)}…` : clean;
+};
+
 export interface TeamStreamingServiceOptions {
   baseUrl?: string;
   wsClient?: IWebSocketClient;
@@ -115,6 +132,7 @@ export class TeamStreamingService {
 
     try {
       const message = parseServerMessage(raw);
+      this.logMessage(message);
       this.dispatchMessage(message, this.teamContext);
     } catch (e) {
       console.error('Failed to parse WebSocket message:', e);
@@ -132,6 +150,35 @@ export class TeamStreamingService {
   private handleError = (error: Error): void => {
     console.error('Team WebSocket error:', error);
   };
+
+  private logMessage(message: ServerMessage): void {
+    if (!shouldLogStreaming()) return;
+
+    switch (message.type) {
+      case 'SEGMENT_START': {
+        const { id, segment_type, metadata } = message.payload;
+        console.log('[stream][team][segment:start]', { id, segment_type, metadata });
+        break;
+      }
+      case 'SEGMENT_CONTENT': {
+        const { id, delta } = message.payload;
+        console.log('[stream][team][segment:content]', {
+          id,
+          deltaLen: delta?.length ?? 0,
+          deltaSample: summarizeDelta(delta || ''),
+        });
+        break;
+      }
+      case 'SEGMENT_END': {
+        const { id, metadata } = message.payload;
+        console.log('[stream][team][segment:end]', { id, metadata });
+        break;
+      }
+      default:
+        console.log('[stream][team][message]', { type: message.type, payload: message.payload });
+        break;
+    }
+  }
 
   /**
    * Route message to the appropriate team member based on agent_id.

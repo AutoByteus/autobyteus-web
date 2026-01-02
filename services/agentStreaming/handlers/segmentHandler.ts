@@ -20,10 +20,10 @@ export function handleSegmentStart(
 ): void {
   const aiMessage = findOrCreateAIMessage(context);
   const segment = createSegmentFromPayload(payload);
-  
-  // Store segment ID for lookup during CONTENT and END events
+
+  // Store segment ID(s) for lookup during CONTENT and END events
   (segment as any)._segmentId = payload.id;
-  
+
   aiMessage.segments.push(segment);
 }
 
