@@ -9,7 +9,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from 'vue';
+import { ref, shallowRef, markRaw, onMounted, onBeforeUnmount, watch, nextTick, computed } from 'vue';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
@@ -19,8 +19,8 @@ from '~/composables/useTerminalSession';
 
 const terminalContainer = ref<HTMLDivElement | null>(null);
 const terminalElement = ref<HTMLDivElement | null>(null);
-const terminalInstance = ref<Terminal | null>(null);
-const fitAddon = ref<FitAddon | null>(null);
+const terminalInstance = shallowRef<Terminal | null>(null);
+const fitAddon = shallowRef<FitAddon | null>(null);
 
 const workspaceStore = useWorkspaceStore();
 
@@ -32,10 +32,13 @@ const session = useTerminalSession({
 let resizeObserver: ResizeObserver | null = null;
 
 const initializeTerminal = () => {
+  if (terminalInstance.value) {
+    return;
+  }
   if (!terminalElement.value) return;
 
   // High-Contrast Light Theme Configuration
-  terminalInstance.value = new Terminal({
+  terminalInstance.value = markRaw(new Terminal({
     cursorBlink: true,
     cursorStyle: 'bar', // 'block' | 'underline' | 'bar'
     // standard monospaced fonts for "normal" look
@@ -77,10 +80,10 @@ const initializeTerminal = () => {
     allowProposedApi: true,
     // CRITICAL FIX: Transparency false enables subpixel anti-aliasing (RGB) for sharper text
     allowTransparency: false 
-  });
+  }));
 
   // Addons
-  fitAddon.value = new FitAddon();
+  fitAddon.value = markRaw(new FitAddon());
   terminalInstance.value.loadAddon(fitAddon.value);
   
   // NOTE: WebGL Addon removed as it was causing text blurriness/aliasing issues.
@@ -162,20 +165,15 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', handleWindowResize);
   
   try {
-    if (fitAddon.value) {
-      fitAddon.value.dispose();
-    }
-  } catch (e) {
-    // Ignore addon disposal errors
-  }
-
-  try {
     if (terminalInstance.value) {
         terminalInstance.value.dispose();
     }
   } catch (e) {
       console.warn('Error disposing terminal:', e);
   }
+
+  fitAddon.value = null;
+  terminalInstance.value = null;
 });
 </script>
 
