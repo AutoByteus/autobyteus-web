@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { useRuntimeConfig } from '#app';
 import { useApolloClient } from '@vue/apollo-composable';
 import { TerminateAgentTeamInstance, SendMessageToTeam } from '~/graphql/mutations/agentTeamInstanceMutations';
 import type {
@@ -20,6 +21,24 @@ import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
 import { TeamStreamingService } from '~/services/agentStreaming';
 import type { AgentTeamDefinition } from './agentTeamDefinitionStore';
+
+const resolveTeamWsBaseUrl = () => {
+  const config = useRuntimeConfig();
+  const candidates = [config.public.terminalWsEndpoint, config.public.graphqlWsEndpoint];
+  for (const endpoint of candidates) {
+    if (!endpoint) continue;
+    try {
+      return new URL(endpoint).origin;
+    } catch {
+      // Ignore invalid URLs and try next candidate.
+    }
+  }
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}`;
+  }
+  return 'ws://localhost:8000';
+};
 
 // Maintain a map of streaming services per team
 const teamStreamingServices = new Map<string, TeamStreamingService>();
@@ -168,7 +187,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
         return;
       }
 
-      const service = new TeamStreamingService();
+      const service = new TeamStreamingService({ baseUrl: resolveTeamWsBaseUrl() });
       teamStreamingServices.set(teamId, service);
 
       teamContext.isSubscribed = true;
