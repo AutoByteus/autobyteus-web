@@ -1,6 +1,7 @@
 import type { TeamLaunchProfile } from '~/types/TeamLaunchProfile';
 import type { AgentContext } from './AgentContext';
 import type { Task, TaskStatus } from '~/types/taskManagement';
+import type { AgentTeamStatus } from '~/types/agent/AgentTeamStatus';
 
 /**
  * @interface AgentTeamContext
@@ -13,7 +14,7 @@ export interface AgentTeamContext {
   launchProfile: TeamLaunchProfile;
   members: Map<string, AgentContext>;
   focusedMemberName: string;
-  currentStatus: string;
+  currentStatus: AgentTeamStatus;
   isSubscribed: boolean;
   unsubscribe?: () => void;
   taskPlan: Task[] | null;

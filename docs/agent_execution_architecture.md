@@ -12,7 +12,7 @@ This document outlines the end-to-end architecture of how Agent and Agent Team e
 graph TD
     User-->|Input| Store[Pinia Store Layer]
     Store-->|Mutation| Backend[Backend API]
-    Backend-->|Subscription Event| Store
+    Backend-->|WebSocket Event| Store
     Store-->|Event Data| Service[Service Layer]
     Service-->|Action| Router{Event Type}
 
@@ -31,14 +31,14 @@ graph TD
 
 ## Level 1: Orchestration Layer (Stores)
 
-The Pinia stores act as the primary interface for the UI components to interact with the agent backend. They are responsible for initiating actions (Mutations) and listening for updates (Subscriptions).
+The Pinia stores act as the primary interface for the UI components to interact with the agent backend. They are responsible for initiating actions (Mutations) and listening for updates (WebSocket streams).
 
 ### `agentRunStore.ts` (Single Agents)
 
 - **Role**: Manages the execution lifecycle of individual agents.
 - **Key Actions**:
-  - `sendUserInputAndSubscribe()`: Sends user messages via mutation and immediately establishes an `AgentResponseSubscription`.
-  - `subscribeToAgentResponse(agentId)`: Listens for real-time events specific to an agent run.
+  - `sendUserInputAndSubscribe()`: Sends user messages via mutation and ensures an agent WebSocket stream is connected.
+  - `connectToAgentStream(agentId)`: Listens for real-time events specific to an agent run via WebSocket.
   - `postToolExecutionApproval()`: Sends user decisions (Approve/Deny) for "Awaiting Approval" tool calls.
   - `closeAgent()`: Cleans up local state and unsubscribes.
 
@@ -48,7 +48,7 @@ The Pinia stores act as the primary interface for the UI components to interact 
 - **Key Actions**:
   - `createAndLaunchTeam()`: Orchestrates the creation of a new team launch profile and starts the session.
   - `launchExistingTeam()`: Resumes or starts a session from a saved profile.
-  - `subscribeToTeamResponse(teamId)`: Listens for team-level events (e.g., task updates, status changes) via `AgentTeamResponseSubscription`.
+  - `connectToTeamStream(teamId)`: Listens for team-level events (e.g., task updates, status changes) via WebSocket.
   - `sendMessageToFocusedMember()`: Routes user input to a specific agent within the team context.
 
 ---
@@ -57,10 +57,10 @@ The Pinia stores act as the primary interface for the UI components to interact 
 
 The service layer bridges the gap between raw GraphQL subscription data and the application's rich state objects (`AgentContext` / `AgentTeamContext`).
 
-### Processors
+### Stream Handlers
 
-- **`agentResponseProcessor.ts`**: The central switchboard for single-agent events.
-- **`agentTeamResponseProcessor.ts`**: The central switchboard for team events.
+- **`AgentStreamingService` / `TeamStreamingService`**: WebSocket facades that parse and dispatch incoming events.
+- **`services/agentStreaming/handlers/*`**: Layered handlers for segments, tools, status, team events, and task plan updates.
 
 ### Agent Response Handlers
 

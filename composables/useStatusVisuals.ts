@@ -1,5 +1,5 @@
 import { computed, type Ref } from 'vue';
-import { AgentStatus } from '~/generated/graphql';
+import { AgentStatus } from '~/types/agent/AgentStatus';
 
 interface StatusVisuals {
   text: string;
@@ -9,7 +9,8 @@ interface StatusVisuals {
 
 export function useStatusVisuals(status: Ref<string | undefined>) {
   const visuals = computed((): StatusVisuals => {
-    const currentStatus = status.value || AgentStatus.Uninitialized;
+    const rawStatus = status.value || AgentStatus.Uninitialized;
+    const currentStatus = String(rawStatus).toLowerCase();
 
     switch (currentStatus) {
       // Explicitly handle uninitialized state
@@ -56,4 +57,3 @@ export function useStatusVisuals(status: Ref<string | undefined>) {
 
   return { visuals };
 }
-

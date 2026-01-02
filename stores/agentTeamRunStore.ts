@@ -6,9 +6,9 @@ import type {
   SendMessageToTeamMutationVariables,
   ContextFileType,
   TeamMemberConfigInput,
-  AgentStatus,
   TaskNotificationModeEnum,
 } from '~/generated/graphql';
+import { AgentTeamStatus } from '~/types/agent/AgentTeamStatus';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useWorkspaceStore } from '~/stores/workspace';
 import type { TeamLaunchProfile, WorkspaceLaunchConfig, TeamMemberConfigOverride } from '~/types/TeamLaunchProfile';
@@ -145,7 +145,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
         launchProfile: profile,
         members: members,
         focusedMemberName: profile.teamDefinition.coordinatorMemberName,
-        currentStatus: 'UNINITIALIZED' as AgentStatus,
+        currentStatus: AgentTeamStatus.Uninitialized,
         isSubscribed: false,
         unsubscribe: undefined,
         taskPlan: null,

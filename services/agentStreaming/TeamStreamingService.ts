@@ -21,6 +21,8 @@ import {
   handleError,
   handleInterAgentMessage,
   handleSystemTaskNotification,
+  handleTeamStatus,
+  handleTaskPlanEvent,
 } from './handlers';
 
 export interface TeamStreamingServiceOptions {
@@ -196,6 +198,14 @@ export class TeamStreamingService {
 
       case 'TODO_LIST_UPDATE':
         handleTodoListUpdate(message.payload, memberContext);
+        break;
+
+      case 'TEAM_STATUS':
+        handleTeamStatus(message.payload, teamContext);
+        break;
+
+      case 'TASK_PLAN_EVENT':
+        handleTaskPlanEvent(message.payload, teamContext);
         break;
 
       case 'ERROR':

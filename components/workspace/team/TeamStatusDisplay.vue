@@ -7,12 +7,11 @@
 
 <script setup lang="ts">
 import { toRefs } from 'vue';
-import { useStatusVisuals } from '~/composables/useStatusVisuals';
+import { useTeamStatusVisuals } from '~/composables/useTeamStatusVisuals';
 
 const props = defineProps<{  status: string;
 }>();
 
 const { status } = toRefs(props);
-// Reusing the same visuals composable as single agents
-const { visuals } = useStatusVisuals(status);
+const { visuals } = useTeamStatusVisuals(status);
 </script>

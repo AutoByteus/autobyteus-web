@@ -42,6 +42,7 @@ import { useApplicationContextStore } from '~/stores/applicationContextStore';
 import AppChatInput from './components/AppChatInput.vue';
 import ChatDisplay from './components/ChatDisplay.vue';
 import type { ContextFilePath } from '~/types/conversation';
+import { AgentStatus } from '~/types/agent/AgentStatus';
 
 const props = defineProps<{
   instanceId: string;
@@ -57,6 +58,7 @@ const appContextStore = useApplicationContextStore();
 
 // Local State
 const instanceId = toRef(props, 'instanceId');
+
 const error = ref<string | null>(null);
 const problemText = ref('');
 const contextFiles = ref<ContextFilePath[]>([]);
@@ -82,8 +84,13 @@ const isLoading = computed(() => {
   if (applicationRunStore.isLaunching) return true;
   // Check the status of the coordinator agent for subsequent messages.
   const coordinatorStatus = teamContext.value?.members.get(teamContext.value.focusedMemberName)?.state.currentStatus;
-  if (coordinatorStatus && coordinatorStatus !== 'DONE' && coordinatorStatus !== 'UNINITIALIZED' && coordinatorStatus !== 'ERROR') {
-      return true;
+  if (
+    coordinatorStatus &&
+    coordinatorStatus !== AgentStatus.Idle &&
+    coordinatorStatus !== AgentStatus.Uninitialized &&
+    coordinatorStatus !== AgentStatus.Error
+  ) {
+    return true;
   }
   return false;
 });

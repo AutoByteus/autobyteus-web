@@ -14,6 +14,7 @@ import type {
 } from '../protocol/messageTypes';
 import { findOrCreateAIMessage } from './segmentHandler';
 import { ToDoStatus } from '~/types/todo';
+import { AgentStatus } from '~/types/agent/AgentStatus';
 
 /**
  * Handle AGENT_STATUS event.
@@ -22,10 +23,11 @@ export function handleAgentStatus(
   payload: AgentStatusPayload,
   context: AgentContext
 ): void {
-  context.state.currentStatus = payload.new_status;
+  const normalizedStatus = String(payload.new_status || AgentStatus.Uninitialized).toLowerCase();
+  context.state.currentStatus = normalizedStatus as AgentStatus;
   
   // If status indicates completion, mark the current AI message as complete
-  if (payload.new_status === 'idle') {
+  if (normalizedStatus === AgentStatus.Idle) {
     const lastMessage = context.conversation.messages[context.conversation.messages.length - 1];
     if (lastMessage?.type === 'ai') {
       lastMessage.isComplete = true;

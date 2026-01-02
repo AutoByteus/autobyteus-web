@@ -15,12 +15,14 @@ export type ServerMessageType =
   | 'SEGMENT_CONTENT'
   | 'SEGMENT_END'
   | 'AGENT_STATUS'
+  | 'TEAM_STATUS'
   | 'TOOL_APPROVAL_REQUESTED'
   | 'TOOL_AUTO_EXECUTING'
   | 'TOOL_LOG'
   | 'ASSISTANT_CHUNK'
   | 'ASSISTANT_COMPLETE'
   | 'TODO_LIST_UPDATE'
+  | 'TASK_PLAN_EVENT'
   | 'INTER_AGENT_MESSAGE'
   | 'SYSTEM_TASK_NOTIFICATION'
   | 'ERROR';
@@ -70,6 +72,13 @@ export interface AgentStatusPayload {
   error_details?: string | null;
 }
 
+export interface TeamStatusPayload {
+  new_status: string;
+  old_status?: string | null;
+  error_message?: string | null;
+  sub_team_node_name?: string | null;
+}
+
 export interface ToolApprovalRequestedPayload {
   invocation_id: string;
   tool_name: string;
@@ -98,6 +107,33 @@ export interface TodoListUpdatePayload {
   todos: TodoItem[];
 }
 
+export interface TaskPlanDeliverablePayload {
+  file_path: string;
+  summary: string;
+  author_agent_name: string;
+  timestamp?: string;
+}
+
+export interface TaskPlanTaskPayload {
+  task_id: string;
+  task_name: string;
+  assignee_name: string;
+  description: string;
+  dependencies: string[];
+  file_deliverables?: TaskPlanDeliverablePayload[];
+}
+
+export interface TaskPlanEventPayload {
+  event_type: 'TASKS_CREATED' | 'TASK_STATUS_UPDATED' | string;
+  team_id?: string;
+  tasks?: TaskPlanTaskPayload[];
+  task_id?: string;
+  new_status?: string;
+  agent_name?: string;
+  deliverables?: TaskPlanDeliverablePayload[];
+  sub_team_node_name?: string | null;
+}
+
 export interface InterAgentMessagePayload {
   sender_agent_id: string;
   recipient_role_name: string;
@@ -123,10 +159,12 @@ export type ServerMessage =
   | { type: 'SEGMENT_CONTENT'; payload: SegmentContentPayload }
   | { type: 'SEGMENT_END'; payload: SegmentEndPayload }
   | { type: 'AGENT_STATUS'; payload: AgentStatusPayload }
+  | { type: 'TEAM_STATUS'; payload: TeamStatusPayload }
   | { type: 'TOOL_APPROVAL_REQUESTED'; payload: ToolApprovalRequestedPayload }
   | { type: 'TOOL_AUTO_EXECUTING'; payload: ToolAutoExecutingPayload }
   | { type: 'TOOL_LOG'; payload: ToolLogPayload }
   | { type: 'TODO_LIST_UPDATE'; payload: TodoListUpdatePayload }
+  | { type: 'TASK_PLAN_EVENT'; payload: TaskPlanEventPayload }
   | { type: 'INTER_AGENT_MESSAGE'; payload: InterAgentMessagePayload }
   | { type: 'SYSTEM_TASK_NOTIFICATION'; payload: SystemTaskNotificationPayload }
   | { type: 'ERROR'; payload: ErrorPayload };

@@ -21,4 +21,6 @@ export {
 export {
   handleInterAgentMessage,
   handleSystemTaskNotification,
+  handleTeamStatus,
+  handleTaskPlanEvent,
 } from './teamHandler';

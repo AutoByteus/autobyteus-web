@@ -1,10 +1,8 @@
 import { defineStore } from 'pinia';
-import { useApolloClient, useSubscription } from '@vue/apollo-composable';
+import { useApolloClient } from '@vue/apollo-composable';
 import { v4 as uuidv4 } from 'uuid';
 import { useApplicationContextStore } from './applicationContextStore';
-import { processAgentTeamResponseEvent } from '~/services/agentTeamResponseProcessor';
 import { SendMessageToTeam, TerminateAgentTeamInstance } from '~/graphql/mutations/agentTeamInstanceMutations';
-import { AgentTeamResponseSubscription } from '~/graphql/subscriptions/agentTeamResponseSubscription';
 import type { ApplicationLaunchConfig, ApplicationRunContext } from '~/types/application/ApplicationRun';
 import type { AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
@@ -14,16 +12,15 @@ import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import type { Conversation } from '~/types/conversation';
 import type {
   TeamMemberConfigInput,
-  AgentStatus,
   SendMessageToTeamMutation,
   SendMessageToTeamMutationVariables,
-  AgentTeamResponseSubscription as AgentTeamResponseSubscriptionType,
-  AgentTeamResponseSubscriptionVariables,
   ContextFileType,
   TaskNotificationModeEnum,
 } from '~/generated/graphql';
+import { AgentTeamStatus } from '~/types/agent/AgentTeamStatus';
 import { useApplicationLaunchProfileStore } from './applicationLaunchProfileStore';
 import type { ApplicationLaunchProfile } from '~/types/application/ApplicationLaunchProfile';
+import { TeamStreamingService } from '~/services/agentStreaming';
 
 
 function _resolveAgentLlmConfig(profile: ApplicationLaunchProfile): Record<string, string> {
@@ -51,6 +48,9 @@ function _resolveApplicationMemberConfigs(
       autoExecuteTools: true,
     }));
 }
+
+// Maintain a map of streaming services per application team
+const applicationStreamingServices = new Map<string, TeamStreamingService>();
 
 export const useApplicationRunStore = defineStore('applicationRun', {
   state: () => ({
@@ -136,7 +136,7 @@ export const useApplicationRunStore = defineStore('applicationRun', {
           launchProfile: teamLaunchProfile,
           members: members,
           focusedMemberName: profile.teamDefinition.coordinatorMemberName,
-          currentStatus: 'UNINITIALIZED' as AgentStatus,
+          currentStatus: AgentTeamStatus.Uninitialized,
           isSubscribed: false,
           unsubscribe: undefined,
           taskPlan: null,
@@ -216,38 +216,30 @@ export const useApplicationRunStore = defineStore('applicationRun', {
 
         if (isTemporary) {
           appContextStore.promoteTemporaryTeamId(instanceId, permanentId);
-          this.subscribeToApplication(instanceId);
+          this.connectToApplicationStream(instanceId);
         }
       } catch (error: any) {
         throw new Error(`Failed to send message: ${error.message}`);
       }
     },
 
-    subscribeToApplication(instanceId: string) {
+    connectToApplicationStream(instanceId: string) {
       const appContextStore = useApplicationContextStore();
       const runContext = appContextStore.getRun(instanceId);
       if (!runContext || runContext.teamContext.isSubscribed) return;
 
       const { teamContext } = runContext;
 
-      const { onResult, onError, stop } = useSubscription<AgentTeamResponseSubscriptionType, AgentTeamResponseSubscriptionVariables>(
-        AgentTeamResponseSubscription, { teamId: teamContext.teamId }
-      );
-      
+      const service = new TeamStreamingService();
+      applicationStreamingServices.set(teamContext.teamId, service);
+
       teamContext.isSubscribed = true;
-      teamContext.unsubscribe = stop;
+      teamContext.unsubscribe = () => {
+        service.disconnect();
+        applicationStreamingServices.delete(teamContext.teamId);
+      };
 
-      onResult(({ data }) => {
-        if (data?.agentTeamResponse) {
-          processAgentTeamResponseEvent(teamContext, data.agentTeamResponse);
-        }
-      });
-
-      onError((error) => {
-        console.error(`Subscription error for application team ${teamContext.teamId}:`, error);
-        stop();
-        teamContext.isSubscribed = false;
-      });
+      service.connect(teamContext.teamId, teamContext);
     },
 
     async terminateApplication(instanceId: string) {
@@ -256,6 +248,9 @@ export const useApplicationRunStore = defineStore('applicationRun', {
       if (!runContext) return;
 
       const teamId = runContext.teamContext.teamId;
+
+      runContext.teamContext.unsubscribe?.();
+      applicationStreamingServices.delete(teamId);
 
       if (!teamId.startsWith('temp-')) {
         try {

@@ -43,8 +43,7 @@ autobyteus-web/
 └── graphql/
     ├── queries/agentTeamDefinitionQueries.ts
     ├── mutations/agentTeamDefinitionMutations.ts
-    ├── mutations/agentTeamInstanceMutations.ts
-    └── subscriptions/agentTeamResponseSubscription.ts
+    └── mutations/agentTeamInstanceMutations.ts
 ```
 
 ## Architecture

@@ -6,6 +6,8 @@
       <ServerShutdown />
     </template>
     
+    <UiErrorPanel />
+
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
@@ -16,6 +18,7 @@
 import { useServerStore } from '~/stores/serverStore'
 import ServerLoading from '~/components/server/ServerLoading.vue'
 import ServerShutdown from '~/components/server/ServerShutdown.vue'
+import UiErrorPanel from '~/components/ui/UiErrorPanel.vue'
 
 const serverStore = useServerStore()
 </script>
