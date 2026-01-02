@@ -26,12 +26,22 @@ export function handleAgentStatus(
   const normalizedStatus = String(payload.new_status || AgentStatus.Uninitialized).toLowerCase();
   context.state.currentStatus = normalizedStatus as AgentStatus;
   
+  const shouldStopSending = [
+    AgentStatus.Idle,
+    AgentStatus.Error,
+    AgentStatus.ShutdownComplete,
+  ].includes(normalizedStatus as AgentStatus);
+
   // If status indicates completion, mark the current AI message as complete
   if (normalizedStatus === AgentStatus.Idle) {
     const lastMessage = context.conversation.messages[context.conversation.messages.length - 1];
     if (lastMessage?.type === 'ai') {
       lastMessage.isComplete = true;
     }
+  }
+
+  if (shouldStopSending) {
+    context.isSending = false;
   }
 }
 
@@ -80,4 +90,5 @@ export function handleError(
   
   aiMessage.segments.push(errorSegment);
   aiMessage.isComplete = true;
+  context.isSending = false;
 }
