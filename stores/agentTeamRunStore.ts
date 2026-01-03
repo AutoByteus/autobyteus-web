@@ -16,7 +16,7 @@ import type { TeamLaunchProfile, WorkspaceLaunchConfig, TeamMemberConfigOverride
 import { AgentContext } from '~/types/agent/AgentContext';
 import { AgentRunState } from '~/types/agent/AgentRunState';
 import type { Conversation } from '~/types/conversation';
-import type { ToolCallSegment } from '~/types/segments';
+import type { ToolInvocationLifecycle } from '~/types/segments';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
@@ -318,7 +318,10 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       // Optimistically update the UI on the focused member's conversation
       const segment = focusedMember.state.conversation.messages
         .flatMap(m => m.type === 'ai' ? m.segments : [])
-        .find(s => s.type === 'tool_call' && s.invocationId === invocationId) as ToolCallSegment | undefined;
+        .find(s =>
+          (s.type === 'tool_call' || s.type === 'write_file' || s.type === 'terminal_command') &&
+          (s as ToolInvocationLifecycle).invocationId === invocationId
+        ) as ToolInvocationLifecycle | undefined;
       if (segment) {
         segment.status = isApproved ? 'executing' : 'denied';
       }

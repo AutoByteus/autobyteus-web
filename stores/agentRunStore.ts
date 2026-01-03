@@ -10,7 +10,7 @@ import type {
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import { AgentStreamingService } from '~/services/agentStreaming';
-import type { ToolCallSegment } from '~/types/segments';
+import type { ToolInvocationLifecycle } from '~/types/segments';
 
 // Maintain a map of streaming services per agent
 const streamingServices = new Map<string, AgentStreamingService>();
@@ -163,7 +163,10 @@ export const useAgentRunStore = defineStore('agentRun', {
       if (agent) {
         const segment = agent.state.conversation.messages
           .flatMap(m => m.type === 'ai' ? m.segments : [])
-          .find(s => s.type === 'tool_call' && s.invocationId === invocationId) as ToolCallSegment | undefined;
+          .find(s =>
+            (s.type === 'tool_call' || s.type === 'write_file' || s.type === 'terminal_command') &&
+            (s as ToolInvocationLifecycle).invocationId === invocationId
+          ) as ToolInvocationLifecycle | undefined;
         if (segment) {
           segment.status = isApproved ? 'executing' : 'denied';
         }

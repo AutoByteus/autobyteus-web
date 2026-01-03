@@ -7,7 +7,7 @@
 
 import type { AgentContext } from '~/types/agent/AgentContext';
 import type { AIMessage } from '~/types/conversation';
-import type { AIResponseSegment, ToolCallSegment, FileSegment, TerminalCommandSegment, IframeSegment, ThinkSegment, AIResponseTextSegment } from '~/types/segments';
+import type { AIResponseSegment, ToolCallSegment, WriteFileSegment, TerminalCommandSegment, IframeSegment, ThinkSegment, AIResponseTextSegment, ToolInvocationLifecycle } from '~/types/segments';
 import type { SegmentStartPayload, SegmentContentPayload, SegmentEndPayload } from '../protocol/messageTypes';
 import { createSegmentFromPayload } from '../protocol/segmentTypes';
 
@@ -132,7 +132,7 @@ function appendContentToSegment(segment: AIResponseSegment, delta: string): void
       break;
 
     case 'write_file':
-      (segment as FileSegment).originalContent += delta;
+      (segment as WriteFileSegment).originalContent += delta;
       break;
 
     case 'terminal_command':
@@ -155,8 +155,8 @@ function finalizeSegment(
   segment: AIResponseSegment,
   metadata?: Record<string, any>
 ): void {
-  if (segment.type === 'tool_call') {
-    const toolSegment = segment as ToolCallSegment;
+  if (segment.type === 'tool_call' || segment.type === 'write_file' || segment.type === 'terminal_command') {
+    const toolSegment = segment as ToolInvocationLifecycle;
     if (metadata?.arguments) {
       toolSegment.arguments = metadata.arguments;
     }

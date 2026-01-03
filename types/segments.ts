@@ -13,12 +13,31 @@ export interface ParsedFile {
   language: string;
 }
 
+export type ToolInvocationStatus =
+  | 'parsing'
+  | 'parsed'
+  | 'awaiting-approval'
+  | 'executing'
+  | 'success'
+  | 'error'
+  | 'denied';
+
+export interface ToolInvocationLifecycle {
+  invocationId: string;
+  toolName: string;
+  arguments: Record<string, any>;
+  status: ToolInvocationStatus;
+  logs: string[];
+  result: any | null;
+  error: string | null;
+}
+
 export interface AIResponseTextSegment {
   type: 'text';
   content: string;
 }
 
-export interface FileSegment {
+export interface WriteFileSegment extends ToolInvocationLifecycle {
   type: 'write_file';
   path: string;
   originalContent: string;
@@ -31,19 +50,12 @@ export interface ThinkSegment {
   content: string;
 }
 
-export interface ToolCallSegment {
+export interface ToolCallSegment extends ToolInvocationLifecycle {
   type: 'tool_call';
-  invocationId: string;
-  toolName: string;
-  arguments: Record<string, any>;
-  status: 'parsing' | 'parsed' | 'awaiting-approval' | 'executing' | 'success' | 'error' | 'denied';
-  logs: string[];
-  result: any | null;
-  error: string | null;
   rawContent?: string;
 }
 
-export interface TerminalCommandSegment {
+export interface TerminalCommandSegment extends ToolInvocationLifecycle {
   type: 'terminal_command';
   command: string;
   description: string;
@@ -84,7 +96,7 @@ export interface ErrorSegment {
 
 export type AIResponseSegment = 
   | AIResponseTextSegment 
-  | FileSegment 
+  | WriteFileSegment 
   | ThinkSegment
   | ToolCallSegment
   | TerminalCommandSegment

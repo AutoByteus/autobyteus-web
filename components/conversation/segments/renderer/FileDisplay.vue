@@ -15,9 +15,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import MarkdownRenderer from '~/components/conversation/segments/renderer/MarkdownRenderer.vue';
-import { highlightFileSegment } from '~/utils/highlighting/segmentHighlighter';
+import { highlightWriteFileSegment } from '~/utils/highlighting/segmentHighlighter';
 import { getLanguage } from '~/utils/highlighting/languageDetector';
-import type { FileSegment } from '~/types/segments';
+import type { WriteFileSegment } from '~/types/segments';
 import 'prismjs/themes/prism.css'; // Ensure PrismJS theme is available
 
 const props = defineProps<{
@@ -28,9 +28,16 @@ const props = defineProps<{
 const isMarkdownFile = computed(() => props.path.endsWith('.md'));
 const language = computed(() => getLanguage(props.path));
 
-// To use highlightFileSegment, we need to construct a temporary FileSegment-like object.
-const tempFileSegmentForHighlighting = computed((): FileSegment => ({
+// To use highlightWriteFileSegment, we need to construct a temporary WriteFileSegment-like object.
+const tempFileSegmentForHighlighting = computed((): WriteFileSegment => ({
   type: 'write_file',
+  invocationId: 'highlight-preview',
+  toolName: 'write_file',
+  arguments: {},
+  status: 'parsed',
+  logs: [],
+  result: null,
+  error: null,
   path: props.path,
   originalContent: props.content,
   language: language.value,
@@ -41,8 +48,8 @@ const highlightedCode = computed(() => {
     return ''; // MarkdownRenderer handles markdown content.
   }
   try {
-    // The highlightFileSegment function expects a FileSegment object.
-    return highlightFileSegment(tempFileSegmentForHighlighting.value).highlightedContent || '';
+    // The highlightWriteFileSegment function expects a WriteFileSegment object.
+    return highlightWriteFileSegment(tempFileSegmentForHighlighting.value).highlightedContent || '';
   } catch (err) {
     console.error(`Failed to highlight content for path: ${props.path}`, err);
     // Fallback to un-highlighted content, properly escaped to prevent XSS.

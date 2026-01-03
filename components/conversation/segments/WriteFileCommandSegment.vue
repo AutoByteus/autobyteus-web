@@ -1,8 +1,7 @@
 <template>
   <div class="write-file-command-segment my-4 border rounded-lg shadow-md" :class="statusClass">
-    <!-- Header: Tool Name, Status, and Approval Buttons -->
+    <!-- Header -->
     <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-t-md border-b border-gray-200 dark:border-gray-600">
-      <!-- Left side: Status Icon and Tool Name -->
       <div class="flex items-center space-x-2 overflow-hidden">
         <div class="status-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">
           <svg v-if="statusIconName === 'spinner'" class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -14,9 +13,10 @@
         <span class="font-mono text-sm font-semibold text-gray-800 dark:text-gray-200">
           Tool: {{ segment.toolName }}
         </span>
+        <span v-if="segment.status !== 'parsing'" class="text-xs text-gray-400">#{{ segment.invocationId.substring(5, 11) }}</span>
       </div>
       
-      <!-- Right side: Approval Buttons -->
+      <!-- Approval Buttons -->
       <div v-if="segment.status === 'awaiting-approval'" class="flex items-center justify-end space-x-2">
         <button @click="showDenyModal" class="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors">Deny</button>
         <button @click="onApprove" class="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors">Approve</button>
@@ -25,39 +25,39 @@
 
     <!-- Sub-header for file content, with expand/collapse button -->
     <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 p-2 border-b border-gray-200 dark:border-gray-600">
-        <div class="flex items-center min-w-0">
-          <button
-            @click="toggleExpand"
-            class="mr-2 p-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors focus:outline-none flex-shrink-0"
-            :aria-expanded="isExpanded"
-            aria-label="Toggle file content"
+      <div class="flex items-center min-w-0">
+        <button
+          @click="toggleExpand"
+          class="mr-2 p-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors focus:outline-none flex-shrink-0"
+          :aria-expanded="isExpanded"
+          aria-label="Toggle file content"
+        >
+          <svg
+            class="w-4 h-4 transform transition-transform text-gray-600 dark:text-gray-400"
+            :class="{ 'rotate-90': isExpanded }"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            <svg
-              class="w-4 h-4 transform transition-transform text-gray-600 dark:text-gray-400"
-              :class="{ 'rotate-90': isExpanded }"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </button>
-          <span class="font-mono text-sm text-gray-700 dark:text-gray-300 break-all" :title="segment.arguments.path">
-            File: {{ segment.arguments.path }}
-          </span>
-        </div>
-        <CopyButton v-if="segment.arguments.content" :text-to-copy="segment.arguments.content" />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </button>
+        <span class="font-mono text-sm text-gray-700 dark:text-gray-300 break-all" :title="segment.path">
+          File: {{ segment.path || '(path missing)' }}
+        </span>
+      </div>
+      <CopyButton v-if="segment.originalContent" :text-to-copy="segment.originalContent" />
     </div>
 
     <!-- Collapsed content preview -->
     <div
-      v-if="!isExpanded && segment.arguments.content"
+      v-if="!isExpanded && segment.originalContent"
       class="p-2 bg-gray-50 dark:bg-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
       @click="toggleExpand"
     >
@@ -68,19 +68,18 @@
     
     <!-- Full content when expanded -->
     <div v-else class="bg-white dark:bg-gray-800">
-       <FileDisplay 
-        v-if="segment.arguments.path && segment.arguments.content"
-        :path="segment.arguments.path" 
-        :content="segment.arguments.content" 
+      <FileDisplay 
+        v-if="segment.path && segment.originalContent"
+        :path="segment.path" 
+        :content="segment.originalContent" 
       />
       <div v-else class="p-4 text-gray-500 italic">
-        File path or content is missing in the tool call.
+        File path or content is missing in the stream.
       </div>
     </div>
 
     <!-- Logs & Error Details -->
     <div class="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-b-lg border-t border-gray-200 dark:border-gray-600">
-      <!-- Logs -->
       <div v-if="segment.logs.length > 0" class="logs-section mb-3">
         <details>
           <summary class="cursor-pointer text-xs font-semibold text-gray-600 dark:text-gray-300">Logs ({{ segment.logs.length }})</summary>
@@ -90,7 +89,6 @@
         </details>
       </div>
       
-      <!-- Error Message -->
       <div v-if="segment.status === 'error' && segment.error" class="error-section">
         <details open>
           <summary class="cursor-pointer text-xs font-semibold text-red-700 dark:text-red-400">Error</summary>
@@ -110,8 +108,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, ref } from 'vue';
-import type { ToolCallSegment } from '~/types/segments';
+import { computed, ref } from 'vue';
+import type { WriteFileSegment } from '~/types/segments';
 import { useActiveContextStore } from '~/stores/activeContextStore';
 import FileDisplay from '~/components/conversation/segments/renderer/FileDisplay.vue';
 import CopyButton from '~/components/common/CopyButton.vue';
@@ -119,7 +117,7 @@ import ToolCallRejectionModal from './ToolCallRejectionModal.vue';
 import { Icon } from '@iconify/vue';
 
 const props = defineProps<{
-  segment: ToolCallSegment;
+  segment: WriteFileSegment;
   conversationId: string; // This is the agentId
 }>();
 
@@ -134,7 +132,7 @@ const toggleExpand = () => {
 };
 
 const contentPreview = computed(() => {
-  const content = props.segment.arguments.content || '';
+  const content = props.segment.originalContent || '';
   if (!content) return 'No content to display.';
   const lines = content.split('\n');
   const preview = lines.slice(0, 5).join('\n');
@@ -143,13 +141,13 @@ const contentPreview = computed(() => {
 // --- End expand/collapse state ---
 
 const statusStyles = {
-    parsed: { class: 'border-gray-300 dark:border-gray-600', iconName: 'heroicons:code-bracket-solid', iconClass: 'text-gray-400' },
-    'awaiting-approval': { class: 'border-yellow-400 dark:border-yellow-600', iconName: 'heroicons:hand-raised-solid', iconClass: 'text-yellow-500' },
-    executing: { class: 'border-blue-400 dark:border-blue-600', iconName: 'spinner', iconClass: 'text-blue-500' },
-    success: { class: 'border-green-400 dark:border-green-600', iconName: 'heroicons:check-circle-solid', iconClass: 'text-green-500' },
-    error: { class: 'border-red-400 dark:border-red-600', iconName: 'heroicons:x-circle-solid', iconClass: 'text-red-500' },
-    denied: { class: 'border-gray-400 dark:border-gray-500 opacity-70', iconName: 'heroicons:exclamation-circle-solid', iconClass: 'text-gray-500' },
-    parsing: { class: 'border-dashed border-gray-400 dark:border-gray-500', iconName: 'heroicons:beaker-solid', iconClass: 'text-gray-400 animate-pulse' },
+  parsed: { class: 'border-gray-300 dark:border-gray-600', iconName: 'heroicons:code-bracket-solid', iconClass: 'text-gray-400' },
+  'awaiting-approval': { class: 'border-yellow-400 dark:border-yellow-600', iconName: 'heroicons:hand-raised-solid', iconClass: 'text-yellow-500' },
+  executing: { class: 'border-blue-400 dark:border-blue-600', iconName: 'spinner', iconClass: 'text-blue-500' },
+  success: { class: 'border-green-400 dark:border-green-600', iconName: 'heroicons:check-circle-solid', iconClass: 'text-green-500' },
+  error: { class: 'border-red-400 dark:border-red-600', iconName: 'heroicons:x-circle-solid', iconClass: 'text-red-500' },
+  denied: { class: 'border-gray-400 dark:border-gray-500 opacity-70', iconName: 'heroicons:exclamation-circle-solid', iconClass: 'text-gray-500' },
+  parsing: { class: 'border-dashed border-gray-400 dark:border-gray-500', iconName: 'heroicons:beaker-solid', iconClass: 'text-gray-400 animate-pulse' },
 };
 
 const statusClass = computed(() => statusStyles[props.segment.status]?.class || 'border-gray-300 dark:border-gray-600');

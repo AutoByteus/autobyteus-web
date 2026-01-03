@@ -6,7 +6,7 @@
  */
 
 import type { AgentContext } from '~/types/agent/AgentContext';
-import type { ToolCallSegment } from '~/types/segments';
+import type { ToolCallSegment, WriteFileSegment, TerminalCommandSegment } from '~/types/segments';
 import type { 
   ToolApprovalRequestedPayload, 
   ToolAutoExecutingPayload, 
@@ -23,9 +23,9 @@ export function handleToolApprovalRequested(
   payload: ToolApprovalRequestedPayload,
   context: AgentContext
 ): void {
-  const segment = findToolCallSegment(context, payload.invocation_id);
+  const segment = findToolLifecycleSegment(context, payload.invocation_id);
   if (!segment) {
-    console.warn(`ToolCallSegment not found for approval request: ${payload.invocation_id}`);
+    console.warn(`Tool segment not found for approval request: ${payload.invocation_id}`);
     return;
   }
 
@@ -37,6 +37,7 @@ export function handleToolApprovalRequested(
   if (!segment.toolName) {
     segment.toolName = payload.tool_name;
   }
+  hydrateSegmentContentFromArguments(segment, payload.arguments);
 }
 
 /**
@@ -46,9 +47,9 @@ export function handleToolAutoExecuting(
   payload: ToolAutoExecutingPayload,
   context: AgentContext
 ): void {
-  const segment = findToolCallSegment(context, payload.invocation_id);
+  const segment = findToolLifecycleSegment(context, payload.invocation_id);
   if (!segment) {
-    console.warn(`ToolCallSegment not found for auto-execution: ${payload.invocation_id}`);
+    console.warn(`Tool segment not found for auto-execution: ${payload.invocation_id}`);
     return;
   }
 
@@ -59,6 +60,7 @@ export function handleToolAutoExecuting(
   if (!segment.toolName) {
     segment.toolName = payload.tool_name;
   }
+  hydrateSegmentContentFromArguments(segment, payload.arguments);
 }
 
 /**
@@ -68,9 +70,9 @@ export function handleToolLog(
   payload: ToolLogPayload,
   context: AgentContext
 ): void {
-  const segment = findToolCallSegment(context, payload.tool_invocation_id);
+  const segment = findToolLifecycleSegment(context, payload.tool_invocation_id);
   if (!segment) {
-    console.warn(`ToolCallSegment not found for log: ${payload.tool_invocation_id}`);
+    console.warn(`Tool segment not found for log: ${payload.tool_invocation_id}`);
     return;
   }
 
@@ -101,13 +103,17 @@ export function handleToolLog(
 /**
  * Find a ToolCallSegment by invocation ID.
  */
-function findToolCallSegment(
+function findToolLifecycleSegment(
   context: AgentContext,
   invocationId: string
-): ToolCallSegment | null {
+): ToolCallSegment | WriteFileSegment | TerminalCommandSegment | null {
   const segment = findSegmentById(context, invocationId);
-  if (segment?.type === 'tool_call') {
-    return segment as ToolCallSegment;
+  if (
+    segment?.type === 'tool_call' ||
+    segment?.type === 'write_file' ||
+    segment?.type === 'terminal_command'
+  ) {
+    return segment as ToolCallSegment | WriteFileSegment | TerminalCommandSegment;
   }
   return null;
 }
@@ -161,4 +167,19 @@ function parseErrorFromLog(logEntry: string): string | null {
   }
   
   return null;
+}
+
+function hydrateSegmentContentFromArguments(
+  segment: ToolCallSegment | WriteFileSegment | TerminalCommandSegment,
+  argumentsPayload: Record<string, any>
+): void {
+  if (segment.type === 'terminal_command' && !segment.command && argumentsPayload?.command) {
+    segment.command = String(argumentsPayload.command);
+  }
+  if (segment.type === 'write_file' && !segment.originalContent && argumentsPayload?.content) {
+    segment.originalContent = String(argumentsPayload.content);
+  }
+  if (segment.type === 'write_file' && !segment.path && argumentsPayload?.path) {
+    segment.path = String(argumentsPayload.path);
+  }
 }

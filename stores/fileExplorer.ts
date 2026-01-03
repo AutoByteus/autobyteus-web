@@ -52,11 +52,6 @@ interface WorkspaceFileExplorerState {
   openFiles: OpenFileState[];
   activeFile: string | null;
   
-  // State for AI message "Apply" buttons
-  applyChangeError: Record<string, Record<number, Record<string, string | null>>>;
-  applyChangeLoading: Record<string, Record<number, Record<string, boolean>>>;
-  appliedChanges: Record<string, Record<number, Record<string, boolean>>>;
-  
   // State for file search
   searchResults: any[];
   searchLoading: boolean;
@@ -89,9 +84,6 @@ const createDefaultWorkspaceFileExplorerState = (): WorkspaceFileExplorerState =
   openFolders: {},
   openFiles: [],
   activeFile: null,
-  applyChangeError: {},
-  applyChangeLoading: {},
-  appliedChanges: {},
   searchResults: [],
   searchLoading: false,
   searchError: null,
@@ -499,38 +491,6 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
 
-    /**
-     * Applies a file change that was proposed in an AI message.
-     * Manages the complex UI state related to a specific message segment.
-     */
-    async applyFileChangeFromAIMessage(
-      workspaceId: string, filePath: string, content: string,
-      conversationId: string, messageIndex: number
-    ) {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
-      // Initialize nested state objects if they don't exist
-      if (!wsState.applyChangeError[conversationId]) wsState.applyChangeError[conversationId] = {};
-      if (!wsState.applyChangeError[conversationId][messageIndex]) wsState.applyChangeError[conversationId][messageIndex] = {};
-      if (!wsState.applyChangeLoading[conversationId]) wsState.applyChangeLoading[conversationId] = {};
-      if (!wsState.applyChangeLoading[conversationId][messageIndex]) wsState.applyChangeLoading[conversationId][messageIndex] = {};
-
-      wsState.applyChangeError[conversationId][messageIndex][filePath] = null;
-      wsState.applyChangeLoading[conversationId][messageIndex][filePath] = true;
-
-      try {
-        await this._writeFileCore(workspaceId, filePath, content);
-        
-        // On success, update the 'applied' status for this specific message segment
-        if (!wsState.appliedChanges[conversationId]) wsState.appliedChanges[conversationId] = {};
-        if (!wsState.appliedChanges[conversationId][messageIndex]) wsState.appliedChanges[conversationId][messageIndex] = {};
-        wsState.appliedChanges[conversationId][messageIndex][filePath] = true;
-      } catch (err) {
-        wsState.applyChangeError[conversationId][messageIndex][filePath] = err instanceof Error ? err.message : 'An unknown error occurred';
-        throw err;
-      } finally {
-        wsState.applyChangeLoading[conversationId][messageIndex][filePath] = false;
-      }
-    },
     
     async deleteFileOrFolder(filePath: string) {
       const wsState = this._getOrCreateCurrentWorkspaceState();
@@ -788,17 +748,5 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
     
-    isApplyChangeInProgress(conversationId: string, messageIndex: number, filePath: string): boolean {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
-      return !!(wsState.applyChangeLoading[conversationId]?.[messageIndex]?.[filePath]);
-    },
-    isChangeApplied(conversationId: string, messageIndex: number, filePath: string): boolean {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
-      return wsState.appliedChanges[conversationId]?.[messageIndex]?.[filePath] || false;
-    },
-    getApplyChangeError(conversationId: string, messageIndex: number, filePath: string): string | null {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
-      return wsState.applyChangeError[conversationId]?.[messageIndex]?.[filePath] || null;
-    },
   }
 });

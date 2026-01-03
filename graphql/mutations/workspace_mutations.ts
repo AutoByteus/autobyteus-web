@@ -11,13 +11,3 @@ export const CreateWorkspace = gql`
     }
   }
 `
-
-export const EXECUTE_BASH_COMMANDS = gql`
-  mutation ExecuteBashCommands($workspaceId: String!, $command: String!) {
-    executeBashCommands(workspaceId: $workspaceId, command: $command) {
-      __typename
-      success
-      message
-    }
-  }
-`

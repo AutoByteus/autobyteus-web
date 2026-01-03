@@ -8,7 +8,7 @@ import type { SegmentStartPayload, SegmentType } from './messageTypes';
 import type { 
   AIResponseSegment,
   AIResponseTextSegment,
-  FileSegment,
+  WriteFileSegment,
   ThinkSegment,
   ToolCallSegment,
   TerminalCommandSegment,
@@ -32,10 +32,10 @@ export function createSegmentFromPayload(payload: SegmentStartPayload): AIRespon
       return createToolCallSegment(id, metadata);
 
     case 'write_file':
-      return createFileSegment(metadata);
+      return createWriteFileSegment(id, metadata);
 
     case 'run_terminal_cmd':
-      return createTerminalCommandSegment();
+      return createTerminalCommandSegment(id);
 
     case 'iframe':
       return createIframeSegment();
@@ -74,18 +74,33 @@ function createToolCallSegment(
   };
 }
 
-function createFileSegment(metadata?: Record<string, any>): FileSegment {
+function createWriteFileSegment(invocationId: string, metadata?: Record<string, any>): WriteFileSegment {
+  const path = metadata?.path || '';
   return {
     type: 'write_file',
-    path: metadata?.path || '',
+    invocationId,
+    toolName: 'write_file',
+    arguments: {},
+    status: 'parsing',
+    logs: [],
+    result: null,
+    error: null,
+    path,
     originalContent: '',
-    language: detectLanguageFromPath(metadata?.path || ''),
+    language: detectLanguageFromPath(path),
   };
 }
 
-function createTerminalCommandSegment(): TerminalCommandSegment {
+function createTerminalCommandSegment(invocationId: string): TerminalCommandSegment {
   return {
     type: 'terminal_command',
+    invocationId,
+    toolName: 'run_terminal_cmd',
+    arguments: {},
+    status: 'parsing',
+    logs: [],
+    result: null,
+    error: null,
     command: '',
     description: '',
   };

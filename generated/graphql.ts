@@ -478,12 +478,6 @@ export type MutationEnableSkillArgs = {
 };
 
 
-export type MutationExecuteBashCommandsArgs = {
-  command: Scalars['String']['input'];
-  workspaceId: Scalars['String']['input'];
-};
-
-
 export type MutationImportMcpServerConfigsArgs = {
   jsonString: Scalars['String']['input'];
 };
@@ -1313,14 +1307,6 @@ export type CreateWorkspaceMutationVariables = Exact<{
 
 
 export type CreateWorkspaceMutation = { __typename?: 'Mutation', createWorkspace: { __typename: 'WorkspaceInfo', workspaceId: string, name: string, fileExplorer?: any | null, absolutePath?: string | null } };
-
-export type ExecuteBashCommandsMutationVariables = Exact<{
-  workspaceId: Scalars['String']['input'];
-  command: Scalars['String']['input'];
-}>;
-
-
-export type ExecuteBashCommandsMutation = { __typename?: 'Mutation', executeBashCommands: { __typename: 'CommandExecutionResult', success: boolean, message: string } };
 
 export type GetAgentCustomizationOptionsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -2703,38 +2689,6 @@ export function useCreateWorkspaceMutation(options: VueApolloComposable.UseMutat
   return VueApolloComposable.useMutation<CreateWorkspaceMutation, CreateWorkspaceMutationVariables>(CreateWorkspaceDocument, options);
 }
 export type CreateWorkspaceMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<CreateWorkspaceMutation, CreateWorkspaceMutationVariables>;
-export const ExecuteBashCommandsDocument = gql`
-    mutation ExecuteBashCommands($workspaceId: String!, $command: String!) {
-  executeBashCommands(workspaceId: $workspaceId, command: $command) {
-    __typename
-    success
-    message
-  }
-}
-    `;
-
-/**
- * __useExecuteBashCommandsMutation__
- *
- * To run a mutation, you first call `useExecuteBashCommandsMutation` within a Vue component and pass it any options that fit your needs.
- * When your component renders, `useExecuteBashCommandsMutation` returns an object that includes:
- * - A mutate function that you can call at any time to execute the mutation
- * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
- *
- * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
- *
- * @example
- * const { mutate, loading, error, onDone } = useExecuteBashCommandsMutation({
- *   variables: {
- *     workspaceId: // value for 'workspaceId'
- *     command: // value for 'command'
- *   },
- * });
- */
-export function useExecuteBashCommandsMutation(options: VueApolloComposable.UseMutationOptions<ExecuteBashCommandsMutation, ExecuteBashCommandsMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<ExecuteBashCommandsMutation, ExecuteBashCommandsMutationVariables>> = {}) {
-  return VueApolloComposable.useMutation<ExecuteBashCommandsMutation, ExecuteBashCommandsMutationVariables>(ExecuteBashCommandsDocument, options);
-}
-export type ExecuteBashCommandsMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<ExecuteBashCommandsMutation, ExecuteBashCommandsMutationVariables>;
 export const GetAgentCustomizationOptionsDocument = gql`
     query GetAgentCustomizationOptions {
   availableToolNames

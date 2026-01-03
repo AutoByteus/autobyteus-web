@@ -21,11 +21,8 @@ autobyteus-web/
 │   ├── RightSideTabs.vue         # Tab container with Terminal tab
 │   └── RightSidebarStrip.vue     # Collapsed sidebar with Terminal icon
 ├── composables/
-│   └── useRightSideTabs.ts       # Tab state management
-├── stores/
-│   └── terminalCommand.ts        # Command execution Pinia store
-└── graphql/mutations/
-    └── workspace_mutations.ts    # ExecuteBashCommands mutation
+│   ├── useRightSideTabs.ts       # Tab state management
+│   └── useTerminalSession.ts     # Terminal WebSocket session
 ```
 
 ## Architecture
@@ -38,25 +35,15 @@ flowchart TD
         XTerm[xterm.js Library]
     end
 
-    subgraph "State Management"
-        TerminalCommandStore[terminalCommand.ts]
-        WorkspaceStore[workspace.ts]
-    end
-
-    subgraph "GraphQL"
-        Mutation[ExecuteBashCommands]
-    end
-
     subgraph "Backend"
         Server[autobyteus-server]
     end
 
     RightSideTabs --> Terminal
     Terminal --> XTerm
-    Terminal --> TerminalCommandStore
     Terminal --> WorkspaceStore
-    TerminalCommandStore --> Mutation
-    Mutation --> Server
+    Terminal --> TerminalSession[useTerminalSession.ts]
+    TerminalSession --> Server
 ```
 
 ## Core Components
@@ -107,57 +94,37 @@ sequenceDiagram
     participant User
     participant Terminal as Terminal.vue
     participant XTerm as xterm.js
-    participant Store as terminalCommand.ts
-    participant Backend as GraphQL
+    participant Session as useTerminalSession.ts
+    participant Backend as WebSocket
 
     User->>XTerm: Types command
     XTerm->>Terminal: onData callback
-    Terminal->>Terminal: Buffer in currentCommand
-    User->>XTerm: Press Enter
-    XTerm->>Terminal: onData (code 13)
-    Terminal->>Terminal: Add to commandHistory
-    Terminal->>Store: executeTerminalCommand()
-    Store->>Backend: ExecuteBashCommands mutation
-    Backend-->>Store: CommandExecutionResult
-    Store-->>Terminal: Result available
-    Terminal->>XTerm: writeln(result.message)
-    Terminal->>XTerm: writePrompt()
+    Terminal->>Session: sendInput(data)
+    Session->>Backend: WebSocket input (base64)
+    Backend-->>Session: WebSocket output (base64)
+    Session-->>Terminal: onOutput callback
+    Terminal->>XTerm: write(output)
 ```
 
-### terminalCommand.ts (Pinia Store)
+### useTerminalSession.ts (Composable)
 
-Manages command execution state and API communication.
+Manages the terminal WebSocket session and streaming I/O.
 
-**State:**
+**Key Responsibilities:**
 
-```typescript
-interface TerminalCommandState {
-  // Results keyed by unique command identifier
-  commandResults: Record<string, TerminalCommandResult>;
-  // Tracks in-progress commands to prevent duplicates
-  commandsInProgress: Set<string>;
-}
+- Connect/disconnect WebSocket sessions per workspace
+- Send input and resize events to the backend
+- Receive output streams and forward to xterm.js
 
-interface TerminalCommandResult {
-  success: boolean;
-  message: string;
-}
-```
+**Core API:**
 
-**Actions:**
-
-| Action                    | Parameters                       | Description                 |
-| ------------------------- | -------------------------------- | --------------------------- |
-| `executeTerminalCommand`  | workspaceId, command, commandKey | Execute command via GraphQL |
-
-**Getters:**
-
-| Getter                     | Returns                | Description                   |
-| -------------------------- | ---------------------- | ----------------------------- |
-| `isApplyCommandInProgress` | `boolean`              | True if command is executing  |
-| `isCommandExecuted`        | `boolean`              | True if command has completed |
-| `getApplyCommandResult`    | `TerminalCommandResult`| Get result for command key    |
-| `getApplyCommandError`     | `string \| null`       | Get error message if failed   |
+| Function       | Description                          |
+| -------------- | ------------------------------------ |
+| `connect()`    | Opens the WebSocket session          |
+| `disconnect()` | Closes the session                   |
+| `sendInput()`  | Sends user input (base64 encoded)    |
+| `sendResize()` | Sends terminal resize events         |
+| `onOutput()`   | Registers output callback for xterm  |
 
 ### RightSideTabs.vue
 
@@ -173,28 +140,14 @@ Tab container that hosts the Terminal alongside other workspace tools.
 | `terminal`    | Terminal   | Always     | Terminal           |
 | `vnc`         | VNC Viewer | Always     | VncViewer          |
 
-## GraphQL API
+## WebSocket Protocol (Summary)
 
-### Mutation
+The terminal session communicates via WebSocket using JSON messages:
 
-```graphql
-mutation ExecuteBashCommands($workspaceId: String!, $command: String!) {
-  executeBashCommands(workspaceId: $workspaceId, command: $command) {
-    __typename
-    success
-    message
-  }
-}
-```
-
-### Response Type
-
-```typescript
-interface CommandExecutionResult {
-  success: boolean; // True if exit code was 0
-  message: string; // stdout/stderr output
-}
-```
+- **Input**: `{ "type": "input", "data": "<base64>" }`
+- **Resize**: `{ "type": "resize", "rows": number, "cols": number }`
+- **Output**: `{ "type": "output", "data": "<base64>" }`
+- **Error**: `{ "type": "error", "message": "..." }`
 
 ## Styling
 

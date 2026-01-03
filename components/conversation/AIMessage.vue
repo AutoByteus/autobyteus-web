@@ -12,11 +12,10 @@
           v-if="segment.type === 'text'"
           :content="segment.content"
         />
-        <FileContentSegment
+        <WriteFileCommandSegment
           v-else-if="segment.type === 'write_file'"
-          :fileSegment="segment"
+          :segment="segment"
           :conversation-id="agentId"
-          :message-index="messageIndex"
         />
         <TerminalCommandSegment
           v-else-if="segment.type === 'terminal_command'"
@@ -30,18 +29,11 @@
           v-else-if="segment.type === 'think'"
           :content="segment.content"
         />
-        <template v-else-if="segment.type === 'tool_call'">
-          <WriteFileCommandSegment
-            v-if="isWriteFileTool(segment.toolName)"
-            :segment="segment"
-            :conversation-id="agentId"
-          />
-          <ToolCallSegment
-            v-else
-            :segment="segment"
-            :conversation-id="agentId"
-          />
-        </template>
+        <ToolCallSegment
+          v-else-if="segment.type === 'tool_call'"
+          :segment="segment"
+          :conversation-id="agentId"
+        />
         <SystemTaskNotificationSegment
           v-else-if="segment.type === 'system_task_notification'"
           :segment="segment"
@@ -70,7 +62,6 @@
 <script setup lang="ts">
 import type { AIMessage } from '~/types/conversation';
 import TextSegment from '~/components/conversation/segments/TextSegment.vue';
-import FileContentSegment from '~/components/conversation/segments/FileContentSegment.vue';
 import TerminalCommandSegment from '~/components/conversation/segments/TerminalCommandSegment.vue';
 import ThinkSegment from '~/components/conversation/segments/ThinkSegment.vue';
 import ToolCallSegment from '~/components/conversation/segments/ToolCallSegment.vue';
@@ -88,7 +79,6 @@ const props = defineProps<{
   messageIndex: number;
 }>();
 
-const isWriteFileTool = (toolName: string) => toolName === 'write_file';
 </script>
 
 <style scoped>

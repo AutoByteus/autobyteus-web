@@ -1,5 +1,5 @@
 import highlightService from '~/services/highlightService';
-import type { FileSegment } from '~/types/segments';
+import type { WriteFileSegment } from '~/types/segments';
 
 /**
  * Highlights the content of a file segment using syntax highlighting
@@ -8,7 +8,7 @@ import type { FileSegment } from '~/types/segments';
  * @param fileSegment - The file segment to highlight
  * @returns A new file segment with highlighted content
  */
-export function highlightFileSegment(fileSegment: FileSegment): FileSegment {
+export function highlightWriteFileSegment(fileSegment: WriteFileSegment): WriteFileSegment {
   if (!fileSegment.originalContent) {
     return fileSegment;
   }

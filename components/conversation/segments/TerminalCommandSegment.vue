@@ -1,199 +1,142 @@
 <template>
-  <div class="bg-zinc-800 p-4 rounded-lg border border-zinc-700 shadow-lg my-4">
-    <div 
-      :class="[
-        'bg-zinc-900/50 p-3 border border-zinc-700',
-        wasExecuted && commandResult ? 'rounded-t' : 'rounded'
-      ]"
-    >
-      <div class="flex items-start justify-between">
-        <!-- Left side: Command and Description -->
-        <div class="flex-grow min-w-0 pr-4">
-          <!-- Command block that now wraps text -->
-          <div class="w-full rounded-sm bg-black/20 p-2">
-            <code class="text-zinc-200 font-mono text-sm whitespace-pre-wrap break-words">{{ command }}</code>
-          </div>
-          <!-- Description below -->
-          <p v-if="description" class="text-zinc-400 text-xs mt-2 whitespace-pre-wrap">{{ description }}</p>
+  <div class="terminal-command-segment my-4 border rounded-lg shadow-md" :class="statusClass">
+    <!-- Header -->
+    <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-t-md border-b border-gray-200 dark:border-gray-600">
+      <div class="flex items-center space-x-2 overflow-hidden">
+        <div class="status-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">
+          <svg v-if="statusIconName === 'spinner'" class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <Icon v-else :icon="statusIconName" class="h-5 w-5" :class="statusIconClass" />
         </div>
-        
-        <!-- Right side: Button -->
-        <button
-          @click="handleExecute"
-          :disabled="isDisabled"
-          :class="[
-            'px-3 py-1 rounded text-xs font-medium transition-colors duration-200 flex-shrink-0',
-            isDisabled
-              ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
-              : 'bg-indigo-500 hover:bg-indigo-600 text-zinc-100'
-          ]"
-        >
-          <span v-if="isInProgress" class="flex items-center">
-            <svg class="animate-spin -ml-1 mr-1 h-3 w-3" xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5_373 0 0 5_373 0 12h4zm2 5_291A7_962 7_962 0 014 12H0c0 3_042 1_135 5_824 3 7_938l3-2_647z"></path>
-            </svg>
-            Running
-          </span>
-          <span v-else-if="wasExecuted && commandResult?.success">✓ Re-run</span>
-          <span v-else-if="wasExecuted && !commandResult?.success">Retry</span>
-          <span v-else>Execute</span>
-        </button>
+        <span class="font-mono text-sm font-semibold text-gray-800 dark:text-gray-200">
+          Tool: {{ segment.toolName }}
+        </span>
+        <span v-if="segment.status !== 'parsing'" class="text-xs text-gray-400">#{{ segment.invocationId.substring(5, 11) }}</span>
+      </div>
+
+      <!-- Approval Buttons -->
+      <div v-if="segment.status === 'awaiting-approval'" class="flex items-center justify-end space-x-2">
+        <button @click="showDenyModal" class="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors">Deny</button>
+        <button @click="onApprove" class="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors">Approve</button>
       </div>
     </div>
-    
-    <!-- Output/Error Display -->
-    <div v-if="wasExecuted && commandResult" class="p-3 rounded-b bg-black/30 text-sm font-mono border border-t-0 border-zinc-700">
-      <!-- Error Display -->
-      <div v-if="!commandResult.success" class="text-red-400 relative group">
-        <div class="flex items-center justify-between">
-            <p class="font-bold">Error:</p>
-            <button
-              v-if="commandResult.message"
-              @click="handleCopyOutput"
-              title="Use as Input"
-              class="absolute top-1 right-1 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-700 hover:bg-zinc-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <svg xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-zinc-300">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-              </svg>
-            </button>
-        </div>
-        <pre class="whitespace-pre-wrap mt-1">{{ commandResult.message }}</pre>
+
+    <!-- Command Display -->
+    <div class="p-3 bg-gray-50 dark:bg-gray-800">
+      <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Command</div>
+      <pre class="mt-2 text-xs text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 p-2 rounded overflow-auto whitespace-pre-wrap"><code>{{ segment.command || 'Awaiting command stream...' }}</code></pre>
+    </div>
+
+    <!-- Logs & Error Details -->
+    <div class="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-b-lg border-t border-gray-200 dark:border-gray-600">
+      <div v-if="segment.logs.length > 0" class="logs-section mb-3">
+        <details>
+          <summary class="cursor-pointer text-xs font-semibold text-gray-600 dark:text-gray-300">Logs ({{ segment.logs.length }})</summary>
+          <div class="mt-2 p-2 bg-gray-900 text-white font-mono text-xs rounded overflow-auto max-h-48">
+            <pre class="whitespace-pre-wrap"><code>{{ formattedLogs }}</code></pre>
+          </div>
+        </details>
       </div>
-      
-      <!-- Success Output Display -->
-      <div v-else class="text-zinc-300 relative group">
-        <div class="flex items-center justify-between">
-            <p class="font-bold text-green-400">Output:</p>
-             <!-- The 'Use as Input' button is now always visible for short outputs or expanded long outputs -->
-             <button
-              v-if="commandResult.message && (!isLongOutput || isOutputExpanded)"
-              @click="handleCopyOutput"
-              title="Use as Input"
-              class="absolute top-1 right-1 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-700 hover:bg-zinc-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-zinc-300">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-              </svg>
-            </button>
-        </div>
-        
-        <!-- Short Output -->
-        <pre v-if="!isLongOutput" class="whitespace-pre-wrap mt-1">{{ commandResult.message || '(No output)' }}</pre>
-        
-        <!-- Long, Collapsible Output -->
-        <div v-else>
-          <!-- Collapsed View -->
-          <div v-if="!isOutputExpanded">
-            <pre class="whitespace-pre-wrap mt-1">{{ outputPreview }}</pre>
-            <button @click="toggleOutputExpansion" class="text-indigo-400 hover:text-indigo-300 text-xs mt-2">
-              Show More...
-            </button>
-          </div>
-          
-          <!-- Expanded View -->
-          <div v-else>
-            <div class="max-h-96 overflow-y-auto mt-1 border border-zinc-700 rounded p-2 bg-black/30">
-              <pre class="whitespace-pre-wrap">{{ commandResult.message }}</pre>
-            </div>
-            <button @click="toggleOutputExpansion" class="text-indigo-400 hover:text-indigo-300 text-xs mt-2">
-              Show Less
-            </button>
-          </div>
-        </div>
+
+      <div v-if="segment.status === 'success' && segment.result" class="result-section mb-3">
+        <details>
+          <summary class="cursor-pointer text-xs font-semibold text-green-700 dark:text-green-400">Result</summary>
+          <pre class="mt-2 text-xs text-green-800 dark:text-green-200 bg-green-50 dark:bg-gray-800 p-2 rounded overflow-auto whitespace-pre-wrap"><code>{{ prettyResult }}</code></pre>
+        </details>
+      </div>
+
+      <div v-if="segment.status === 'error' && segment.error" class="error-section">
+        <details open>
+          <summary class="cursor-pointer text-xs font-semibold text-red-700 dark:text-red-400">Error</summary>
+          <pre class="mt-2 text-xs text-red-800 dark:text-red-200 bg-red-50 dark:bg-gray-800 p-2 rounded overflow-auto whitespace-pre-wrap"><code>{{ prettyError }}</code></pre>
+        </details>
       </div>
     </div>
+
+    <ToolCallRejectionModal
+      :visible="isRejectionModalVisible"
+      title="Reject Terminal Command"
+      message="Please provide a reason for rejecting this terminal command."
+      @close="isRejectionModalVisible = false"
+      @confirm="handleDenyConfirm"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watchEffect } from 'vue';
-import { useTerminalCommandStore } from '~/stores/terminalCommand';
-import { useWorkspaceStore } from '~/stores/workspace';
+import { computed, ref } from 'vue';
+import type { TerminalCommandSegment } from '~/types/segments';
 import { useActiveContextStore } from '~/stores/activeContextStore';
+import ToolCallRejectionModal from './ToolCallRejectionModal.vue';
+import { Icon } from '@iconify/vue';
 
 const props = defineProps<{
-  command: string;
-  description: string;
-  conversationId: string;
-  messageIndex: number;
-  segmentIndex: number;
+  segment: TerminalCommandSegment;
+  conversationId: string; // This is the agentId
 }>();
 
-const terminalCommandStore = useTerminalCommandStore();
-const workspaceStore = useWorkspaceStore();
 const activeContextStore = useActiveContextStore();
-const wasExecuted = ref(false);
+const isRejectionModalVisible = ref(false);
 
-// Create a unique key for this specific command segment instance.
-const commandKey = computed(() => `${props.conversationId}:${props.messageIndex}:${props.segmentIndex}`);
-
-const isInProgress = computed(() => 
-  terminalCommandStore.isApplyCommandInProgress(commandKey.value)
-);
-
-const commandResult = computed(() => 
-  terminalCommandStore.getApplyCommandResult(commandKey.value)
-);
-
-const isDisabled = computed(() => isInProgress.value);
-
-// --- New state and logic for collapsible output ---
-const isOutputExpanded = ref(false);
-const OUTPUT_COLLAPSE_THRESHOLD = 15; // Number of lines to show before collapsing
-
-const outputLines = computed(() => commandResult.value?.message?.split('\n') || []);
-const isLongOutput = computed(() => outputLines.value.length > OUTPUT_COLLAPSE_THRESHOLD);
-
-const outputPreview = computed(() => {
-  return outputLines.value.slice(0, OUTPUT_COLLAPSE_THRESHOLD).join('\n') + '\n...';
-});
-
-const toggleOutputExpansion = () => {
-  isOutputExpanded.value = !isOutputExpanded.value;
-};
-// --- End new logic ---
-
-// Check if a result already exists in the store for this command (e.g., after reloading a conversation)
-watchEffect(() => {
-  if (terminalCommandStore.getApplyCommandResult(commandKey.value)) {
-    wasExecuted.value = true;
+function prettyPrintJsonString(value: any): string {
+  let stringified: string;
+  if (typeof value === 'string') {
+    try {
+      const data = JSON.parse(value);
+      stringified = JSON.stringify(data, null, 2);
+    } catch (e) {
+      stringified = value;
+    }
+  } else if (value !== undefined) {
+    stringified = JSON.stringify(value, null, 2);
+  } else {
+    return 'undefined';
   }
-});
 
-// Reset expansion state if the command is re-run
-watchEffect(() => {
-  if (isInProgress.value) {
-    isOutputExpanded.value = false;
-  }
-});
+  return stringified.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+}
 
-
-const handleExecute = async () => {
-  const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
-  if (!workspaceId) {
-    console.error("No active workspace selected. Cannot execute command.");
-    // Optionally update state to show an error in the UI
-    return;
-  }
-  
-  wasExecuted.value = true; // Mark as executed as soon as the button is clicked.
-  
-  await terminalCommandStore.executeTerminalCommand(
-    workspaceId,
-    props.command,
-    commandKey.value,
-  );
+const statusStyles = {
+  parsed: { class: 'border-gray-300 dark:border-gray-600', iconName: 'heroicons:code-bracket-solid', iconClass: 'text-gray-400' },
+  'awaiting-approval': { class: 'border-yellow-400 dark:border-yellow-600', iconName: 'heroicons:hand-raised-solid', iconClass: 'text-yellow-500' },
+  executing: { class: 'border-blue-400 dark:border-blue-600', iconName: 'spinner', iconClass: 'text-blue-500' },
+  success: { class: 'border-green-400 dark:border-green-600', iconName: 'heroicons:check-circle-solid', iconClass: 'text-green-500' },
+  error: { class: 'border-red-400 dark:border-red-600', iconName: 'heroicons:x-circle-solid', iconClass: 'text-red-500' },
+  denied: { class: 'border-gray-400 dark:border-gray-500 opacity-70', iconName: 'heroicons:exclamation-circle-solid', iconClass: 'text-gray-500' },
+  parsing: { class: 'border-dashed border-gray-400 dark:border-gray-500', iconName: 'heroicons:beaker-solid', iconClass: 'text-gray-400 animate-pulse' },
 };
 
-const handleCopyOutput = () => {
-  if (commandResult.value?.message) {
-    activeContextStore.updateRequirement(commandResult.value.message);
-  }
+const statusClass = computed(() => statusStyles[props.segment.status]?.class || 'border-gray-300 dark:border-gray-600');
+const statusIconName = computed(() => statusStyles[props.segment.status]?.iconName || 'heroicons:code-bracket-solid');
+const statusIconClass = computed(() => statusStyles[props.segment.status]?.iconClass || 'text-gray-400');
+
+const formattedLogs = computed(() => {
+  return props.segment.logs.map(log => prettyPrintJsonString(log)).join('\n');
+});
+
+const prettyResult = computed(() => prettyPrintJsonString(props.segment.result));
+const prettyError = computed(() => prettyPrintJsonString(props.segment.error));
+
+const onApprove = () => {
+  activeContextStore.postToolExecutionApproval(props.segment.invocationId, true);
+};
+
+const showDenyModal = () => {
+  isRejectionModalVisible.value = true;
+};
+
+const handleDenyConfirm = (reason?: string) => {
+  const finalReason = reason || 'User denied terminal command without providing a reason.';
+  activeContextStore.postToolExecutionApproval(props.segment.invocationId, false, finalReason);
+  isRejectionModalVisible.value = false;
 };
 </script>
 
 <style scoped>
-/* Add any component-specific styles here */
+pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
 </style>
