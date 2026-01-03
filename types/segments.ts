@@ -53,6 +53,8 @@ export interface ThinkSegment {
 export interface ToolCallSegment extends ToolInvocationLifecycle {
   type: 'tool_call';
   rawContent?: string;
+  /** Maps argument names to their streaming content (updated in real-time) */
+  streamingArgs?: Record<string, string>;
 }
 
 export interface TerminalCommandSegment extends ToolInvocationLifecycle {
@@ -81,12 +83,6 @@ export interface MediaSegment {
   urls: string[];
 }
 
-export interface IframeSegment {
-  type: 'iframe';
-  content: string;
-  isComplete: boolean;
-}
-
 export interface ErrorSegment {
   type: 'error';
   source: string;
@@ -103,7 +99,6 @@ export type AIResponseSegment =
   | SystemTaskNotificationSegment
   | InterAgentMessageSegment
   | MediaSegment
-  | IframeSegment
   | ErrorSegment;
 
 export interface ParsedAIResponse {

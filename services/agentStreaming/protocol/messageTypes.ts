@@ -32,7 +32,6 @@ export type SegmentType =
   | 'tool_call' 
   | 'write_file'
   | 'run_terminal_cmd'
-  | 'iframe' 
   | 'reasoning';
 
 // --- Payload Types ---
@@ -56,6 +55,10 @@ export interface SegmentContentPayload {
   delta: string;
   agent_id?: string;
   agent_name?: string;
+  /** Argument name context for tool call streaming */
+  arg_name?: string;
+  /** Argument boundary state: 'start', 'delta', or 'end' */
+  arg_state?: 'start' | 'delta' | 'end';
 }
 
 export interface SegmentEndPayload {

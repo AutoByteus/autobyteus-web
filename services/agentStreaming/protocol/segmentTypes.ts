@@ -12,7 +12,6 @@ import type {
   ThinkSegment,
   ToolCallSegment,
   TerminalCommandSegment,
-  IframeSegment,
 } from '~/types/segments';
 
 /**
@@ -36,9 +35,6 @@ export function createSegmentFromPayload(payload: SegmentStartPayload): AIRespon
 
     case 'run_terminal_cmd':
       return createTerminalCommandSegment(id);
-
-    case 'iframe':
-      return createIframeSegment();
 
     case 'reasoning':
       return createThinkSegment();
@@ -103,14 +99,6 @@ function createTerminalCommandSegment(invocationId: string): TerminalCommandSegm
     error: null,
     command: '',
     description: '',
-  };
-}
-
-function createIframeSegment(): IframeSegment {
-  return {
-    type: 'iframe',
-    content: '',
-    isComplete: false,
   };
 }
 

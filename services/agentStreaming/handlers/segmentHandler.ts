@@ -7,7 +7,7 @@
 
 import type { AgentContext } from '~/types/agent/AgentContext';
 import type { AIMessage } from '~/types/conversation';
-import type { AIResponseSegment, ToolCallSegment, WriteFileSegment, TerminalCommandSegment, IframeSegment, ThinkSegment, AIResponseTextSegment, ToolInvocationLifecycle } from '~/types/segments';
+import type { AIResponseSegment, ToolCallSegment, WriteFileSegment, TerminalCommandSegment, ThinkSegment, AIResponseTextSegment, ToolInvocationLifecycle } from '~/types/segments';
 import type { SegmentStartPayload, SegmentContentPayload, SegmentEndPayload } from '../protocol/messageTypes';
 import { createSegmentFromPayload } from '../protocol/segmentTypes';
 
@@ -139,10 +139,6 @@ function appendContentToSegment(segment: AIResponseSegment, delta: string): void
       (segment as TerminalCommandSegment).command += delta;
       break;
 
-    case 'iframe':
-      (segment as IframeSegment).content += delta;
-      break;
-
     default:
       console.warn(`Unknown segment type for content append: ${segment.type}`);
   }
@@ -167,9 +163,5 @@ function finalizeSegment(
     if (toolSegment.status === 'parsing') {
       toolSegment.status = 'parsed';
     }
-  }
-
-  if (segment.type === 'iframe') {
-    (segment as IframeSegment).isComplete = true;
   }
 }
