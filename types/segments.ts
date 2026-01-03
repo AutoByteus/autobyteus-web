@@ -53,8 +53,6 @@ export interface ThinkSegment {
 export interface ToolCallSegment extends ToolInvocationLifecycle {
   type: 'tool_call';
   rawContent?: string;
-  /** Maps argument names to their streaming content (updated in real-time) */
-  streamingArgs?: Record<string, string>;
 }
 
 export interface TerminalCommandSegment extends ToolInvocationLifecycle {
