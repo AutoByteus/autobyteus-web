@@ -477,8 +477,12 @@ The `FileExplorerStreamingService` provides real-time file system change notific
 
 ```typescript
 import { FileExplorerStreamingService } from "~/services/fileExplorerStreaming";
+import { useRuntimeConfig } from "#app";
 
-const service = new FileExplorerStreamingService({
+const config = useRuntimeConfig();
+const wsEndpoint = config.public.fileExplorerWsEndpoint as string;
+
+const service = new FileExplorerStreamingService(wsEndpoint, {
   onFileSystemChange: (event) => {
     console.log("File system changed:", event);
     // Apply changes to local tree state
