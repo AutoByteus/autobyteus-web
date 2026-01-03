@@ -103,18 +103,18 @@ export class TeamStreamingService {
     this.wsClient.send(serializeClientMessage(message));
   }
 
-  approveTool(invocationId: string): void {
+  approveTool(invocationId: string, agentName?: string, reason?: string): void {
     const message: ClientMessage = {
       type: 'APPROVE_TOOL',
-      payload: { invocation_id: invocationId },
+      payload: { invocation_id: invocationId, agent_name: agentName, reason },
     };
     this.wsClient.send(serializeClientMessage(message));
   }
 
-  denyTool(invocationId: string): void {
+  denyTool(invocationId: string, agentName?: string, reason?: string): void {
     const message: ClientMessage = {
       type: 'DENY_TOOL',
-      payload: { invocation_id: invocationId },
+      payload: { invocation_id: invocationId, agent_name: agentName, reason },
     };
     this.wsClient.send(serializeClientMessage(message));
   }
@@ -185,8 +185,14 @@ export class TeamStreamingService {
 
     // Extract agent_id from the message payload if present
     // Use type assertion since not all message types have agent_id
-    const payload = 'payload' in message ? message.payload as { agent_id?: string } : null;
+    const payload = 'payload' in message ? message.payload as { agent_id?: string; agent_name?: string } : null;
+    const agentName = payload?.agent_name;
     const agentId = payload?.agent_id;
+
+    if (agentName) {
+      const directMatch = this.teamContext.members.get(agentName);
+      if (directMatch) return directMatch;
+    }
 
     if (agentId) {
       // Find member by checking their agentState.agentId

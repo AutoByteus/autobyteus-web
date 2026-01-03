@@ -47,6 +47,7 @@ export interface SegmentStartPayload {
   id: string;
   segment_type: SegmentType;
   agent_id?: string;
+  agent_name?: string;
   metadata?: Record<string, any>;
 }
 
@@ -54,11 +55,13 @@ export interface SegmentContentPayload {
   id: string;
   delta: string;
   agent_id?: string;
+  agent_name?: string;
 }
 
 export interface SegmentEndPayload {
   id: string;
   agent_id?: string;
+  agent_name?: string;
   metadata?: Record<string, any>;
 }
 
@@ -66,6 +69,7 @@ export interface AgentStatusPayload {
   new_status: string;
   old_status?: string | null;
   agent_id?: string;
+  agent_name?: string;
   trigger?: string | null;
   tool_name?: string | null;
   error_message?: string | null;
@@ -83,18 +87,24 @@ export interface ToolApprovalRequestedPayload {
   invocation_id: string;
   tool_name: string;
   arguments: Record<string, any>;
+  agent_name?: string;
+  agent_id?: string;
 }
 
 export interface ToolAutoExecutingPayload {
   invocation_id: string;
   tool_name: string;
   arguments: Record<string, any>;
+  agent_name?: string;
+  agent_id?: string;
 }
 
 export interface ToolLogPayload {
   log_entry: string;
   tool_invocation_id: string;
   tool_name: string;
+  agent_name?: string;
+  agent_id?: string;
 }
 
 export interface TodoItem {
@@ -105,6 +115,8 @@ export interface TodoItem {
 
 export interface TodoListUpdatePayload {
   todos: TodoItem[];
+  agent_name?: string;
+  agent_id?: string;
 }
 
 export interface TaskPlanDeliverablePayload {
@@ -139,11 +151,15 @@ export interface InterAgentMessagePayload {
   recipient_role_name: string;
   content: string;
   message_type: string;
+  agent_name?: string;
+  agent_id?: string;
 }
 
 export interface SystemTaskNotificationPayload {
   sender_id: string;
   content: string;
+  agent_name?: string;
+  agent_id?: string;
 }
 
 export interface ErrorPayload {
@@ -188,6 +204,9 @@ export interface SendMessagePayload {
 
 export interface ToolActionPayload {
   invocation_id: string;
+  agent_name?: string;
+  agent_id?: string;
+  reason?: string;
 }
 
 export type ClientMessage =

@@ -108,10 +108,10 @@ export class AgentStreamingService {
   /**
    * Approve a tool invocation.
    */
-  approveTool(invocationId: string): void {
+  approveTool(invocationId: string, reason?: string): void {
     const message: ClientMessage = {
       type: 'APPROVE_TOOL',
-      payload: { invocation_id: invocationId },
+      payload: { invocation_id: invocationId, reason },
     };
     this.wsClient.send(serializeClientMessage(message));
   }
@@ -119,10 +119,10 @@ export class AgentStreamingService {
   /**
    * Deny a tool invocation.
    */
-  denyTool(invocationId: string): void {
+  denyTool(invocationId: string, reason?: string): void {
     const message: ClientMessage = {
       type: 'DENY_TOOL',
-      payload: { invocation_id: invocationId },
+      payload: { invocation_id: invocationId, reason },
     };
     this.wsClient.send(serializeClientMessage(message));
   }

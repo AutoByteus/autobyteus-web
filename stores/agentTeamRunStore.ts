@@ -16,6 +16,7 @@ import type { TeamLaunchProfile, WorkspaceLaunchConfig, TeamMemberConfigOverride
 import { AgentContext } from '~/types/agent/AgentContext';
 import { AgentRunState } from '~/types/agent/AgentRunState';
 import type { Conversation } from '~/types/conversation';
+import type { ToolCallSegment } from '~/types/segments';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
@@ -286,6 +287,40 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
         if (isTemporary) {
           this.isLaunching = false;
         }
+      }
+    },
+
+    /**
+     * @action postToolExecutionApproval
+     * @description Sends the user's approval or denial for a tool call via team WebSocket.
+     */
+    async postToolExecutionApproval(invocationId: string, isApproved: boolean, reason: string | null = null) {
+      const teamContextsStore = useAgentTeamContextsStore();
+      const activeTeam = teamContextsStore.activeTeamContext;
+      const focusedMember = teamContextsStore.focusedMemberContext;
+
+      if (!activeTeam || !focusedMember) {
+        console.warn('No active team or focused member for tool approval.');
+        return;
+      }
+
+      const service = teamStreamingServices.get(activeTeam.teamId);
+      const agentName = focusedMember.state.agentId || activeTeam.focusedMemberName;
+
+      if (service) {
+        if (isApproved) {
+          service.approveTool(invocationId, agentName, reason || undefined);
+        } else {
+          service.denyTool(invocationId, agentName, reason || undefined);
+        }
+      }
+
+      // Optimistically update the UI on the focused member's conversation
+      const segment = focusedMember.state.conversation.messages
+        .flatMap(m => m.type === 'ai' ? m.segments : [])
+        .find(s => s.type === 'tool_call' && s.invocationId === invocationId) as ToolCallSegment | undefined;
+      if (segment) {
+        segment.status = isApproved ? 'executing' : 'denied';
       }
     },
     

@@ -81,7 +81,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { ToolCallSegment } from '~/types/segments';
-import { useAgentRunStore } from '~/stores/agentRunStore';
+import { useActiveContextStore } from '~/stores/activeContextStore';
 import ToolCallRejectionModal from './ToolCallRejectionModal.vue';
 
 const props = defineProps<{
@@ -89,7 +89,7 @@ const props = defineProps<{
   conversationId: string; // This is the agentId
 }>();
 
-const agentRunStore = useAgentRunStore();
+const activeContextStore = useActiveContextStore();
 const isRejectionModalVisible = ref(false);
 
 /**
@@ -148,7 +148,7 @@ const prettyResult = computed(() => prettyPrintJsonString(props.segment.result))
 const prettyError = computed(() => prettyPrintJsonString(props.segment.error));
 
 const onApprove = () => {
-  agentRunStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, true);
+  activeContextStore.postToolExecutionApproval(props.segment.invocationId, true);
 };
 
 const showDenyModal = () => {
@@ -157,7 +157,7 @@ const showDenyModal = () => {
 
 const handleDenyConfirm = (reason?: string) => {
   const finalReason = reason || 'User denied execution without providing a reason.';
-  agentRunStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, false, finalReason);
+  activeContextStore.postToolExecutionApproval(props.segment.invocationId, false, finalReason);
   isRejectionModalVisible.value = false;
 };
 </script>

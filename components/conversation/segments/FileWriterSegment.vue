@@ -112,7 +112,7 @@
 <script setup lang="ts">
 import { computed, h, ref } from 'vue';
 import type { ToolCallSegment } from '~/types/segments';
-import { useAgentRunStore } from '~/stores/agentRunStore';
+import { useActiveContextStore } from '~/stores/activeContextStore';
 import FileDisplay from '~/components/conversation/segments/renderer/FileDisplay.vue';
 import CopyButton from '~/components/common/CopyButton.vue';
 import ToolCallRejectionModal from './ToolCallRejectionModal.vue';
@@ -123,7 +123,7 @@ const props = defineProps<{
   conversationId: string; // This is the agentId
 }>();
 
-const agentRunStore = useAgentRunStore();
+const activeContextStore = useActiveContextStore();
 const isRejectionModalVisible = ref(false);
 
 // --- State for expand/collapse functionality ---
@@ -157,7 +157,7 @@ const statusIconName = computed(() => statusStyles[props.segment.status]?.iconNa
 const statusIconClass = computed(() => statusStyles[props.segment.status]?.iconClass || 'text-gray-400');
 
 const onApprove = () => {
-  agentRunStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, true);
+  activeContextStore.postToolExecutionApproval(props.segment.invocationId, true);
 };
 
 const showDenyModal = () => {
@@ -166,7 +166,7 @@ const showDenyModal = () => {
 
 const handleDenyConfirm = (reason?: string) => {
   const finalReason = reason || 'User denied file write operation without providing a reason.';
-  agentRunStore.postToolExecutionApproval(props.conversationId, props.segment.invocationId, false, finalReason);
+  activeContextStore.postToolExecutionApproval(props.segment.invocationId, false, finalReason);
   isRejectionModalVisible.value = false;
 };
 </script>

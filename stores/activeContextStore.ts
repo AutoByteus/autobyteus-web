@@ -111,6 +111,23 @@ export const useActiveContextStore = defineStore('activeContext', () => {
   };
 
   /**
+   * @action postToolExecutionApproval
+   * @description Routes tool approval/denial to the correct run store based on active profile type.
+   */
+  const postToolExecutionApproval = async (invocationId: string, isApproved: boolean, reason: string | null = null) => {
+    const context = activeAgentContext.value;
+    _assertContext(context);
+
+    if (selectedLaunchProfileStore.selectedProfileType === 'agent') {
+      await agentRunStore.postToolExecutionApproval(context.state.agentId, invocationId, isApproved, reason);
+    } else if (selectedLaunchProfileStore.selectedProfileType === 'team') {
+      await agentTeamRunStore.postToolExecutionApproval(invocationId, isApproved, reason);
+    } else {
+      throw new Error("Cannot approve tool: Unknown profile type.");
+    }
+  };
+
+  /**
    * @action send
    * @description The primary action for sending user input. It intelligently
    * routes the call to the correct run store based on the active profile type.
@@ -156,5 +173,6 @@ export const useActiveContextStore = defineStore('activeContext', () => {
     clearContextFilePaths,
     updateConfig,
     send,
+    postToolExecutionApproval,
   };
 });

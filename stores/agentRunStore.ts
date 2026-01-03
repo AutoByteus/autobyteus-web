@@ -153,9 +153,9 @@ export const useAgentRunStore = defineStore('agentRun', {
       
       if (service) {
         if (isApproved) {
-          service.approveTool(invocationId);
+          service.approveTool(invocationId, _reason || undefined);
         } else {
-          service.denyTool(invocationId);
+          service.denyTool(invocationId, _reason || undefined);
         }
       }
 
