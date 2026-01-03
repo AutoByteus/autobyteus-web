@@ -43,26 +43,23 @@ const summarizeDelta = (delta: string, maxLen = 120): string => {
 };
 
 export interface TeamStreamingServiceOptions {
-  baseUrl?: string;
   wsClient?: IWebSocketClient;
 }
 
 export class TeamStreamingService {
   private wsClient: IWebSocketClient;
   private teamContext: AgentTeamContext | null = null;
-  private baseUrl: string;
+  private wsEndpoint: string;
 
-  constructor(options: TeamStreamingServiceOptions = {}) {
+  /**
+   * Create a TeamStreamingService.
+   * 
+   * @param wsEndpoint - WebSocket endpoint from runtime config (e.g., 'ws://localhost:8000/ws/agent-team')
+   * @param options - Optional configuration for testing
+   */
+  constructor(wsEndpoint: string, options: TeamStreamingServiceOptions = {}) {
     this.wsClient = options.wsClient || new WebSocketClient();
-    this.baseUrl = options.baseUrl || this.detectBaseUrl();
-  }
-
-  private detectBaseUrl(): string {
-    if (typeof window === 'undefined') {
-      return 'ws://localhost:8000';
-    }
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${window.location.host}`;
+    this.wsEndpoint = wsEndpoint;
   }
 
   get connectionState(): ConnectionState {
@@ -80,7 +77,7 @@ export class TeamStreamingService {
     this.wsClient.on('onDisconnect', this.handleDisconnect);
     this.wsClient.on('onError', this.handleError);
 
-    const url = `${this.baseUrl}/ws/agent-team/${teamId}`;
+    const url = `${this.wsEndpoint}/${teamId}`;
     this.wsClient.connect(url);
   }
 

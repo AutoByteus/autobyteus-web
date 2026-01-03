@@ -22,11 +22,6 @@ import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileS
 import { TeamStreamingService } from '~/services/agentStreaming';
 import type { AgentTeamDefinition } from './agentTeamDefinitionStore';
 
-const resolveTeamWsBaseUrl = () => {
-  const config = useRuntimeConfig();
-  return config.public.agentWsBaseUrl || 'ws://localhost:8000';
-};
-
 // Maintain a map of streaming services per team
 const teamStreamingServices = new Map<string, TeamStreamingService>();
 
@@ -174,7 +169,11 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
         return;
       }
 
-      const service = new TeamStreamingService({ baseUrl: resolveTeamWsBaseUrl() });
+      // Get the WebSocket endpoint from runtime config (like terminal and file explorer)
+      const config = useRuntimeConfig();
+      const wsEndpoint = config.public.teamWsEndpoint as string || 'ws://localhost:8000/ws/agent-team';
+
+      const service = new TeamStreamingService(wsEndpoint);
       teamStreamingServices.set(teamId, service);
 
       teamContext.isSubscribed = true;

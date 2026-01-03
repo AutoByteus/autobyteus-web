@@ -1,14 +1,11 @@
 import { defineStore } from 'pinia'
-import { useSubscription, useApolloClient } from '@vue/apollo-composable'
+import { useApolloClient } from '@vue/apollo-composable'
 import { CreateWorkspace } from '~/graphql/mutations/workspace_mutations'
 import { GetAllWorkspaces } from '~/graphql/queries/workspace_queries'
-import { FileSystemChangedSubscription } from '~/graphql/subscriptions/fileSystemSubscription'
 import type {
   CreateWorkspaceMutation,
   CreateWorkspaceMutationVariables,
   GetAllWorkspacesQuery,
-  FileSystemChangedSubscription as FileSystemChangedSubscriptionResult,
-  FileSystemChangedSubscriptionVariables,
 } from '~/generated/graphql'
 import { TreeNode, convertJsonToTreeNode } from '~/utils/fileExplorer/TreeNode'
 import { createNodeIdToNodeDictionary, handleFileSystemChange as applyTreeChanges } from '~/utils/fileExplorer/fileUtils'
@@ -17,7 +14,8 @@ import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
 import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useFileExplorerStore } from '~/stores/fileExplorer'
-import { watch } from 'vue'
+import { FileExplorerStreamingService } from '~/services/fileExplorerStreaming/FileExplorerStreamingService'
+import { useRuntimeConfig } from '#app'
 
 export interface WorkspaceType {
   name: string;
@@ -47,7 +45,7 @@ interface WorkspaceState {
   loading: boolean;
   error: any;
   workspacesFetched: boolean;
-  fileSystemSubscriptions: Map<string, () => void>;
+  fileSystemConnections: Map<string, FileExplorerStreamingService>;
 }
 
 export const useWorkspaceStore = defineStore('workspace', {
@@ -56,7 +54,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     loading: false,
     error: null,
     workspacesFetched: false,
-    fileSystemSubscriptions: new Map(),
+    fileSystemConnections: new Map(),
   }),
   actions: {    
     async createWorkspace(config: { root_path: string }): Promise<string> {
@@ -92,8 +90,8 @@ export const useWorkspaceStore = defineStore('workspace', {
             absolutePath: newWorkspace.absolutePath,
           };
           
-          // Subscribe to changes for the newly created workspace
-          this.subscribeToWorkspaceChanges(newWorkspace.workspaceId);
+          // Connect to WebSocket for file system changes
+          this.connectToFileSystemChanges(newWorkspace.workspaceId);
 
           return newWorkspace.workspaceId;
         } else {
@@ -134,8 +132,8 @@ export const useWorkspaceStore = defineStore('workspace', {
               workspaceConfig: ws.config,
               absolutePath: ws.absolutePath,
             };
-            // Subscribe to changes for each fetched workspace
-            this.subscribeToWorkspaceChanges(ws.workspaceId);
+            // Connect to WebSocket for file system changes
+            this.connectToFileSystemChanges(ws.workspaceId);
           });
           this.workspacesFetched = true;
         }
@@ -179,52 +177,51 @@ export const useWorkspaceStore = defineStore('workspace', {
       });
     },
 
-    subscribeToWorkspaceChanges(workspaceId: string) {
-      // If already subscribed for this workspace, do nothing.
-      if (this.fileSystemSubscriptions.has(workspaceId)) {
+    /**
+     * Connect to WebSocket for real-time file system changes.
+     * Replaces the GraphQL subscription with direct WebSocket connection.
+     */
+    connectToFileSystemChanges(workspaceId: string) {
+      // If already connected for this workspace, do nothing.
+      if (this.fileSystemConnections.has(workspaceId)) {
         return;
       }
 
-      console.log(`Subscribing to file system changes for workspace: ${workspaceId}`);
-      const { onResult, onError, subscription } = useSubscription<FileSystemChangedSubscriptionResult, FileSystemChangedSubscriptionVariables>(
-        FileSystemChangedSubscription,
-        { workspaceId }
-      );
+      console.log(`[Workspace] Connecting to file system changes for workspace: ${workspaceId}`);
       
-      onResult(result => {
-        if (result.data?.fileSystemChanged) {
-          try {
-            const changeEvent: FileSystemChangeEvent = JSON.parse(result.data.fileSystemChanged);
-            console.log(`Received file system change for ${workspaceId}:`, changeEvent);
-            this.handleFileSystemChange(workspaceId, changeEvent);
-          } catch (e) {
-            console.error('Failed to parse file system change event:', e);
-          }
+      // Get the WebSocket endpoint from runtime config (like terminal does)
+      const config = useRuntimeConfig();
+      const wsEndpoint = config.public.fileExplorerWsEndpoint as string || 'ws://localhost:8000/ws/file-explorer';
+
+      const service = new FileExplorerStreamingService(wsEndpoint, {
+        onFileSystemChange: (event: FileSystemChangeEvent) => {
+          console.log(`[Workspace] Received file system change for ${workspaceId}:`, event);
+          this.handleFileSystemChange(workspaceId, event);
+        },
+        onConnect: (sessionId: string) => {
+          console.log(`[Workspace] Connected to file system changes: ${sessionId}`);
+        },
+        onDisconnect: (reason?: string) => {
+          console.log(`[Workspace] Disconnected from file system changes: ${reason}`);
+        },
+        onError: (error: Error) => {
+          console.error(`[Workspace] File system WebSocket error for ${workspaceId}:`, error);
         }
       });
 
-      onError(error => {
-        console.error(`Subscription error for workspace ${workspaceId}:`, error);
-        // Clean up the subscription on error
-        if (this.fileSystemSubscriptions.has(workspaceId)) {
-          this.fileSystemSubscriptions.delete(workspaceId);
-        }
-      });
-      
-      if (subscription) {
-        // Store the subscription's unsubscribe method in the map
-        this.fileSystemSubscriptions.set(workspaceId, () => subscription.unsubscribe());
-      }
+      service.connect(workspaceId);
+      this.fileSystemConnections.set(workspaceId, service);
     },
 
-    unsubscribeFromWorkspaceChanges(workspaceId: string) {
-      if (this.fileSystemSubscriptions.has(workspaceId)) {
-        const unsubscribe = this.fileSystemSubscriptions.get(workspaceId);
-        if (unsubscribe) {
-          unsubscribe();
-        }
-        this.fileSystemSubscriptions.delete(workspaceId);
-        console.log(`Unsubscribed from file system watcher for workspace: ${workspaceId}`);
+    /**
+     * Disconnect from file system changes WebSocket.
+     */
+    disconnectFromFileSystemChanges(workspaceId: string) {
+      const service = this.fileSystemConnections.get(workspaceId);
+      if (service) {
+        service.disconnect();
+        this.fileSystemConnections.delete(workspaceId);
+        console.log(`[Workspace] Disconnected from file system watcher for workspace: ${workspaceId}`);
       }
     },
 
@@ -317,10 +314,3 @@ export const useWorkspaceStore = defineStore('workspace', {
     }
   }
 });
-
-// The watcher plugin is no longer needed with this persistent subscription model.
-// Leaving the empty function here for now, but will remove the plugin file.
-export function initializeWorkspaceSubscriptionWatcher() {
-  // This function is no longer necessary as subscriptions are managed
-  // directly within the actions that load/create workspaces.
-}

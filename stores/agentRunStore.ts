@@ -12,11 +12,6 @@ import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import { AgentStreamingService } from '~/services/agentStreaming';
 import type { ToolCallSegment } from '~/types/segments';
 
-const resolveAgentWsBaseUrl = () => {
-  const config = useRuntimeConfig();
-  return config.public.agentWsBaseUrl || 'ws://localhost:8000';
-};
-
 // Maintain a map of streaming services per agent
 const streamingServices = new Map<string, AgentStreamingService>();
 
@@ -130,8 +125,12 @@ export const useAgentRunStore = defineStore('agentRun', {
       
       if (!agent) return;
 
+      // Get the WebSocket endpoint from runtime config (like terminal and file explorer)
+      const config = useRuntimeConfig();
+      const wsEndpoint = config.public.agentWsEndpoint as string || 'ws://localhost:8000/ws/agent';
+
       // Create streaming service for this agent
-      const service = new AgentStreamingService({ baseUrl: resolveAgentWsBaseUrl() });
+      const service = new AgentStreamingService(wsEndpoint);
       streamingServices.set(agentId, service);
 
       agent.isSubscribed = true;

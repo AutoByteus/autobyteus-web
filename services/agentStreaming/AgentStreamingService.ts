@@ -38,8 +38,6 @@ const summarizeDelta = (delta: string, maxLen = 120): string => {
 };
 
 export interface AgentStreamingServiceOptions {
-  /** Base URL for WebSocket connections (default: uses current host) */
-  baseUrl?: string;
   /** Custom WebSocket client for testing */
   wsClient?: IWebSocketClient;
 }
@@ -47,19 +45,17 @@ export interface AgentStreamingServiceOptions {
 export class AgentStreamingService {
   private wsClient: IWebSocketClient;
   private context: AgentContext | null = null;
-  private baseUrl: string;
+  private wsEndpoint: string;
 
-  constructor(options: AgentStreamingServiceOptions = {}) {
+  /**
+   * Create an AgentStreamingService.
+   * 
+   * @param wsEndpoint - WebSocket endpoint from runtime config (e.g., 'ws://localhost:8000/ws/agent')
+   * @param options - Optional configuration for testing
+   */
+  constructor(wsEndpoint: string, options: AgentStreamingServiceOptions = {}) {
     this.wsClient = options.wsClient || new WebSocketClient();
-    this.baseUrl = options.baseUrl || this.detectBaseUrl();
-  }
-
-  private detectBaseUrl(): string {
-    if (typeof window === 'undefined') {
-      return 'ws://localhost:8000';
-    }
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${window.location.host}`;
+    this.wsEndpoint = wsEndpoint;
   }
 
   get connectionState(): ConnectionState {
@@ -77,7 +73,7 @@ export class AgentStreamingService {
     this.wsClient.on('onDisconnect', this.handleDisconnect);
     this.wsClient.on('onError', this.handleError);
 
-    const url = `${this.baseUrl}/ws/agent/${agentId}`;
+    const url = `${this.wsEndpoint}/${agentId}`;
     this.wsClient.connect(url);
   }
 

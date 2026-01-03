@@ -33,14 +33,18 @@ autobyteus-web/
 │       ├── ImageViewer.vue
 │       ├── MarkdownPreviewer.vue
 │       └── VideoPlayer.vue
+├── services/
+│   └── fileExplorerStreaming/        # WebSocket streaming service
+│       ├── FileExplorerStreamingService.ts  # WebSocket client
+│       ├── types.ts                         # Protocol types
+│       └── index.ts                         # Exports
 ├── stores/
 │   ├── workspace.ts                  # Workspace & tree state
 │   ├── fileExplorer.ts               # File explorer UI state
 │   └── workspaceLeftPanelLayoutStore.ts  # Layout state
 ├── graphql/
 │   ├── queries/file_explorer_queries.ts
-│   ├── mutations/file_explorer_mutations.ts
-│   └── subscriptions/fileSystemSubscription.ts
+│   └── mutations/file_explorer_mutations.ts
 ├── utils/fileExplorer/
 │   ├── TreeNode.ts                   # TreeNode class
 │   └── fileUtils.ts                  # Tree manipulation utilities
@@ -65,10 +69,10 @@ flowchart TD
         FileExplorerStore[fileExplorer.ts]
     end
 
-    subgraph "GraphQL Communication"
-        Queries[Queries]
-        Mutations[Mutations]
-        Subscriptions[Subscriptions]
+    subgraph "Communication"
+        Queries[GraphQL Queries]
+        Mutations[GraphQL Mutations]
+        WebSocket[FileExplorerStreamingService]
     end
 
     subgraph "Backend"
@@ -85,11 +89,11 @@ flowchart TD
 
     FileExplorerStore --> Queries
     FileExplorerStore --> Mutations
-    WorkspaceStore --> Subscriptions
+    WorkspaceStore --> WebSocket
 
     Queries --> Server
     Mutations --> Server
-    Subscriptions --> Server
+    WebSocket --> Server
 ```
 
 ## Core Components
@@ -457,37 +461,100 @@ mutation MoveFileOrFolder($workspaceId: String!, $sourcePath: String!, $destinat
 mutation RenameFileOrFolder($workspaceId: String!, $targetPath: String!, $newName: String!)
 ```
 
-### Subscriptions
+### Subscriptions (Removed)
 
-```graphql
-# Real-time file system changes
-subscription FileSystemChanged($workspaceId: String!) {
-  fileSystemChanged(workspaceId: $workspaceId)
+> [!NOTE]
+> The GraphQL subscription `FileSystemChanged` has been removed.
+> Real-time file system changes are now delivered via WebSocket (see below).
+
+## Real-Time Synchronization (WebSocket)
+
+The frontend maintains sync with the backend filesystem through direct WebSocket connections:
+
+### WebSocket Service
+
+The `FileExplorerStreamingService` provides real-time file system change notifications:
+
+```typescript
+import { FileExplorerStreamingService } from "~/services/fileExplorerStreaming";
+
+const service = new FileExplorerStreamingService({
+  onFileSystemChange: (event) => {
+    console.log("File system changed:", event);
+    // Apply changes to local tree state
+  },
+  onConnect: (sessionId) => {
+    console.log("Connected to file system watcher:", sessionId);
+  },
+  onDisconnect: (reason) => {
+    console.log("Disconnected:", reason);
+  },
+  onError: (error) => {
+    console.error("WebSocket error:", error);
+  },
+});
+
+// Connect to workspace
+service.connect(workspaceId);
+
+// Disconnect when done
+service.disconnect();
+```
+
+### Integration with Workspace Store
+
+The `workspace.ts` store manages WebSocket connections for each workspace:
+
+```typescript
+// In workspace.ts actions:
+connectToFileSystemChanges(workspaceId: string) {
+  const service = new FileExplorerStreamingService({
+    onFileSystemChange: (event) => {
+      this.handleFileSystemChange(workspaceId, event);
+    }
+  });
+  service.connect(workspaceId);
+  this.fileSystemConnections.set(workspaceId, service);
+},
+
+disconnectFromFileSystemChanges(workspaceId: string) {
+  const service = this.fileSystemConnections.get(workspaceId);
+  if (service) {
+    service.disconnect();
+    this.fileSystemConnections.delete(workspaceId);
+  }
 }
 ```
 
-## Real-Time Synchronization
-
-The frontend maintains sync with the backend filesystem through GraphQL subscriptions:
+### Sequence Diagram
 
 ```mermaid
 sequenceDiagram
     participant User
     participant Frontend
+    participant WebSocket
     participant Backend as Backend (watchdog)
     participant FS as File System
 
-    Frontend->>Backend: Subscribe to fileSystemChanged
+    Frontend->>WebSocket: Connect /ws/file-explorer/{workspace_id}
+    WebSocket-->>Frontend: {"type": "CONNECTED", ...}
 
     FS-->>Backend: File created/modified/deleted
-    Backend->>Backend: Batch events (100ms window)
-    Backend-->>Frontend: FileSystemChangeEvent (JSON)
+    Backend->>Backend: Batch events (250ms window)
+    Backend-->>WebSocket: {"type": "FILE_SYSTEM_CHANGE", ...}
+    WebSocket-->>Frontend: FileSystemChangeEvent (JSON)
 
     Frontend->>Frontend: Parse change event
     Frontend->>Frontend: Apply tree mutations
     Frontend->>Frontend: Invalidate cached content (if modified)
     Frontend->>User: Update UI
 ```
+
+### Key Files
+
+- `services/fileExplorerStreaming/FileExplorerStreamingService.ts` - WebSocket client
+- `services/fileExplorerStreaming/types.ts` - Protocol types
+- `stores/workspace.ts` - Connection management and event handling
 
 ### Change Event Types
 

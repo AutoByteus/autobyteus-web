@@ -14,39 +14,47 @@ const backendProxyUrl = 'http://localhost:8000'
 let serverUrls = {
   graphqlBaseUrl: '',
   restBaseUrl: '',
-  agentWsBaseUrl: '',
+  agentWsEndpoint: '',
+  teamWsEndpoint: '',
   graphqlWsEndpoint: '',
   transcriptionWsEndpoint: '',
-  terminalWsEndpoint: ''
+  terminalWsEndpoint: '',
+  fileExplorerWsEndpoint: ''
 };
 
 if (isElectronBuild) {
   serverUrls = {
     graphqlBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/graphql`,
     restBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/rest`,
-    agentWsBaseUrl: `ws://localhost:${INTERNAL_SERVER_PORT}`,
+    agentWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/ws/agent`,
+    teamWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/ws/agent-team`,
     graphqlWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/graphql`,
     transcriptionWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/transcribe`,
-    terminalWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/ws/terminal`
+    terminalWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/ws/terminal`,
+    fileExplorerWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/ws/file-explorer`
   };
 } else if (isDevelopment) {
   serverUrls = {
     graphqlBaseUrl: '/graphql',
     restBaseUrl: '/rest',
-    agentWsBaseUrl: process.env.BACKEND_AGENT_WS_BASE_URL || 'ws://localhost:8000',
+    agentWsEndpoint: process.env.BACKEND_AGENT_WS_ENDPOINT || 'ws://localhost:8000/ws/agent',
+    teamWsEndpoint: process.env.BACKEND_TEAM_WS_ENDPOINT || 'ws://localhost:8000/ws/agent-team',
     graphqlWsEndpoint: process.env.BACKEND_GRAPHQL_WS_ENDPOINT || 'ws://localhost:8000/graphql',
     transcriptionWsEndpoint: process.env.BACKEND_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8000/ws/transcribe',
-    terminalWsEndpoint: process.env.BACKEND_TERMINAL_WS_ENDPOINT || 'ws://localhost:8000/ws/terminal'
+    terminalWsEndpoint: process.env.BACKEND_TERMINAL_WS_ENDPOINT || 'ws://localhost:8000/ws/terminal',
+    fileExplorerWsEndpoint: process.env.BACKEND_FILE_EXPLORER_WS_ENDPOINT || 'ws://localhost:8000/ws/file-explorer'
   };
 } else {
   // Read from our custom-named environment variables to prevent automatic overrides.
   serverUrls = {
     graphqlBaseUrl: process.env.BACKEND_GRAPHQL_BASE_URL || 'http://localhost:8000/graphql',
     restBaseUrl: process.env.BACKEND_REST_BASE_URL || 'http://localhost:8000/rest',
-    agentWsBaseUrl: process.env.BACKEND_AGENT_WS_BASE_URL || 'ws://localhost:8000',
+    agentWsEndpoint: process.env.BACKEND_AGENT_WS_ENDPOINT || 'ws://localhost:8000/ws/agent',
+    teamWsEndpoint: process.env.BACKEND_TEAM_WS_ENDPOINT || 'ws://localhost:8000/ws/agent-team',
     graphqlWsEndpoint: process.env.BACKEND_GRAPHQL_WS_ENDPOINT || 'ws://localhost:8000/graphql',
     transcriptionWsEndpoint: process.env.BACKEND_TRANSCRIPTION_WS_ENDPOINT || 'ws://localhost:8000/ws/transcribe',
-    terminalWsEndpoint: process.env.BACKEND_TERMINAL_WS_ENDPOINT || 'ws://localhost:8000/ws/terminal'
+    terminalWsEndpoint: process.env.BACKEND_TERMINAL_WS_ENDPOINT || 'ws://localhost:8000/ws/terminal',
+    fileExplorerWsEndpoint: process.env.BACKEND_FILE_EXPLORER_WS_ENDPOINT || 'ws://localhost:8000/ws/file-explorer'
   };
 }
 
@@ -123,9 +131,11 @@ const baseConfig = {
     public: {
       graphqlBaseUrl: serverUrls.graphqlBaseUrl,
       restBaseUrl: serverUrls.restBaseUrl,
-      agentWsBaseUrl: serverUrls.agentWsBaseUrl,
+      agentWsEndpoint: serverUrls.agentWsEndpoint,
+      teamWsEndpoint: serverUrls.teamWsEndpoint,
       graphqlWsEndpoint: serverUrls.graphqlWsEndpoint,
       terminalWsEndpoint: serverUrls.terminalWsEndpoint,
+      fileExplorerWsEndpoint: serverUrls.fileExplorerWsEndpoint,
       googleSpeechApiKey: process.env.GOOGLE_SPEECH_API_KEY || '',
       
       audio: {
