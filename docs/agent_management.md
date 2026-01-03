@@ -43,7 +43,7 @@ autobyteus-web/
 ├── stores/
 │   ├── agentDefinitionStore.ts         # Agent definition CRUD
 │   ├── agentLaunchProfileStore.ts      # Launch profile management
-│   ├── agentRunStore.ts                # Agent execution & subscriptions
+│   ├── agentRunStore.ts                # Agent execution & streaming
 │   ├── agentContextsStore.ts           # Running agent state
 │   ├── agentTeamDefinitionStore.ts     # Team definition CRUD
 │   └── agentTeamLaunchProfileStore.ts  # Team launch profiles
@@ -52,8 +52,7 @@ autobyteus-web/
 └── graphql/
     ├── queries/agentDefinitionQueries.ts
     ├── mutations/agentDefinitionMutations.ts
-    ├── mutations/agentMutations.ts
-    └── subscriptions/agent_response_subscriptions.ts
+    └── mutations/agentMutations.ts
 ```
 
 ## Architecture
@@ -79,7 +78,7 @@ flowchart TD
 
     subgraph "Backend"
         GraphQL[GraphQL API]
-        Subscription[GraphQL Subscription]
+        WS[WebSocket Streaming]
     end
 
     AgentsPage --> LaunchProfiles
@@ -91,7 +90,7 @@ flowchart TD
 
     ProfileStore --> RunStore
     RunStore --> ContextStore
-    RunStore --> Subscription
+    RunStore --> WS
 
     DefStore --> GraphQL
     RunStore --> GraphQL
@@ -209,9 +208,9 @@ Handles agent execution and real-time communication:
 
 | Action                              | Description                                    |
 | ----------------------------------- | ---------------------------------------------- |
-| `sendUserInputAndSubscribe()`       | Send input to agent and start subscription     |
-| `subscribeToAgentResponse(agentId)` | Set up GraphQL subscription for events         |
-| `postToolExecutionApproval(...)`    | Approve/reject tool invocation                 |
+| `sendUserInputAndSubscribe()`       | Send input to agent and connect WebSocket stream |
+| `connectToAgentStream(agentId)`     | Open WebSocket stream for events               |
+| `postToolExecutionApproval(...)`    | Approve/reject tool invocation (WebSocket)     |
 | `closeAgent(agentId, options)`      | Close agent tab, optionally terminate instance |
 | `ensureAgentForLaunchProfile(id)`   | Create or attach agent context for profile     |
 
@@ -274,19 +273,10 @@ mutation ApproveToolInvocation($input: ApproveToolInvocationInput!) {
 }
 ```
 
-### Agent Response Subscription
+### Streaming (WebSocket)
 
-Real-time events from running agents:
-
-```graphql
-subscription AgentResponse($agentId: String!) {
-  agentResponse(agentId: $agentId) {
-    type # thinking, response, tool_call, error, etc.
-    content
-    metadata
-  }
-}
-```
+Agent events stream over WebSocket via `AgentStreamingService`. GraphQL subscriptions
+are no longer used for agent output streaming.
 
 ## User Flows
 
@@ -330,10 +320,10 @@ sequenceDiagram
     ProfileList->>RunStore: sendUserInputAndSubscribe()
     RunStore->>Backend: SendAgentUserInput mutation
     Backend-->>RunStore: agentId
-    RunStore->>Backend: Subscribe to AgentResponse
+    RunStore->>Backend: Connect to WebSocket stream
 
     loop Real-time Events
-        Backend-->>RunStore: Streaming response chunks
+        Backend-->>RunStore: Streaming response chunks (WebSocket)
         RunStore-->>User: Display in conversation
     end
 ```

@@ -4,8 +4,8 @@
 
 This document outlines the end-to-end architecture of how Agent and Agent Team executions are managed in the frontend. The data flow follows a top-down approach:
 
-1.  **Orchestration Layer (Stores)**: Manages lifecycle, user input, and GraphQL subscriptions.
-2.  **Service Layer (Event Routing)**: Dispatches incoming GraphQL events to specific handlers.
+1.  **Orchestration Layer (Stores)**: Manages lifecycle, user input, and WebSocket streaming connections.
+2.  **Service Layer (Event Routing)**: Dispatches incoming WebSocket events to specific handlers.
 3.  **Parsing Engine (Utils)**: Incrementally parses raw text streams into structured segments (UI elements).
 
 ```mermaid
@@ -55,7 +55,7 @@ The Pinia stores act as the primary interface for the UI components to interact 
 
 ## Level 2: Service Layer (Event Routing)
 
-The service layer bridges the gap between raw GraphQL subscription data and the application's rich state objects (`AgentContext` / `AgentTeamContext`).
+The service layer bridges the gap between raw WebSocket event data and the application's rich state objects (`AgentContext` / `AgentTeamContext`).
 
 ### Stream Handlers
 

@@ -27,7 +27,7 @@ describe('AgentStreamingService', () => {
     let mockAgentContext: any;
 
     beforeEach(() => {
-        service = new AgentStreamingService();
+        service = new AgentStreamingService('ws://localhost:8000/ws/agent');
         mockAgentContext = {
             state: { 
                 agentId: 'test-agent-id',
@@ -38,15 +38,15 @@ describe('AgentStreamingService', () => {
     });
 
     it('should initialize with disconnected state', () => {
-        expect((service as any).client).toBeDefined(); 
+        expect((service as any).wsClient).toBeDefined();
     });
 
     it('should connect and set agent context', async () => {
         const agentId = 'test-agent-id';
-        await service.connect(agentId, mockAgentContext);
+        service.connect(agentId, mockAgentContext);
         
         expect((service as any).context).toBe(mockAgentContext);
-        const clientMock = (service as any).client;
+        const clientMock = (service as any).wsClient;
         expect(clientMock.connect).toHaveBeenCalledWith(expect.stringContaining(agentId));
     });
 });

@@ -36,7 +36,7 @@ autobyteus-web/
 ├── stores/
 │   ├── agentTeamDefinitionStore.ts     # Team definition CRUD
 │   ├── agentTeamLaunchProfileStore.ts  # Team launch profile management
-│   ├── agentTeamRunStore.ts            # Team execution & subscriptions
+│   ├── agentTeamRunStore.ts            # Team execution & streaming
 │   └── agentTeamContextsStore.ts       # Running team state
 ├── types/
 │   └── TeamLaunchProfile.ts            # Launch profile types
@@ -70,7 +70,7 @@ flowchart TD
 
     subgraph "Backend"
         GraphQL[GraphQL API]
-        Subscription[GraphQL Subscription]
+        WS[WebSocket Streaming]
     end
 
     AgentsPage --> TeamList
@@ -81,7 +81,7 @@ flowchart TD
     LaunchModal --> ProfileStore
     ProfileStore --> RunStore
     RunStore --> ContextStore
-    RunStore --> Subscription
+    RunStore --> WS
 
     DefStore --> GraphQL
     RunStore --> GraphQL
@@ -246,7 +246,7 @@ Handles team execution and real-time communication:
 | `createAndLaunchTeam(config)`     | Create profile and launch (creation flow)   |
 | `launchExistingTeam(profileId)`   | Launch existing profile (reactivation flow) |
 | `createNewTeamInstance()`         | Create new instance for active profile      |
-| `subscribeToTeamResponse(teamId)` | Subscribe to team events                    |
+| `connectToTeamStream(teamId)`     | Connect to team WebSocket events            |
 | `terminateTeamInstance(teamId)`   | Stop running team instance                  |
 | `sendMessageToFocusedMember(...)` | Send message to specific member             |
 
@@ -300,18 +300,11 @@ mutation DeleteAgentTeamDefinition($id: String!) {
 ### Team Instance Mutations
 
 ```graphql
-mutation LaunchAgentTeam($input: LaunchAgentTeamInput!) {
-  launchAgentTeam(input: $input) {
-    success
-    message
-    teamId
-  }
-}
-
 mutation SendMessageToTeam($input: SendMessageToTeamInput!) {
   sendMessageToTeam(input: $input) {
     success
     message
+    teamId
   }
 }
 
@@ -371,10 +364,10 @@ sequenceDiagram
     RunStore->>ProfileStore: createLaunchProfile(...)
     ProfileStore-->>RunStore: New profile
 
-    RunStore->>Backend: LaunchAgentTeam mutation
+    RunStore->>Backend: SendMessageToTeam mutation (lazy create)
     Backend-->>RunStore: teamId
 
-    RunStore->>Backend: Subscribe to team response
+    RunStore->>Backend: Connect to team WebSocket stream
     RunStore->>User: Navigate to workspace view
 ```
 
