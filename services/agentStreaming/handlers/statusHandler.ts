@@ -10,7 +10,8 @@ import type { ErrorSegment } from '~/types/segments';
 import type { 
   AgentStatusPayload, 
   TodoListUpdatePayload,
-  ErrorPayload 
+  ErrorPayload,
+  AssistantCompletePayload,
 } from '../protocol/messageTypes';
 import { findOrCreateAIMessage } from './segmentHandler';
 import { ToDoStatus } from '~/types/todo';
@@ -42,6 +43,20 @@ export function handleAgentStatus(
 
   if (shouldStopSending) {
     context.isSending = false;
+  }
+}
+
+/**
+ * Handle ASSISTANT_COMPLETE event.
+ * Marks the current AI message as complete so the next response starts a new message.
+ */
+export function handleAssistantComplete(
+  _payload: AssistantCompletePayload,
+  context: AgentContext
+): void {
+  const lastMessage = context.conversation.messages[context.conversation.messages.length - 1];
+  if (lastMessage?.type === 'ai') {
+    lastMessage.isComplete = true;
   }
 }
 

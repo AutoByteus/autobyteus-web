@@ -111,12 +111,6 @@ export type ApproveToolInvocationResult = {
   success: Scalars['Boolean']['output'];
 };
 
-export type CommandExecutionResult = {
-  __typename?: 'CommandExecutionResult';
-  message: Scalars['String']['output'];
-  success: Scalars['Boolean']['output'];
-};
-
 export type ConfigureMcpServerResult = {
   __typename?: 'ConfigureMcpServerResult';
   savedConfig: McpServerConfigUnion;
@@ -344,7 +338,6 @@ export type Mutation = {
   disableSkill: Skill;
   discoverAndRegisterMcpServerTools: DiscoverAndRegisterMcpServerToolsResult;
   enableSkill: Skill;
-  executeBashCommands: CommandExecutionResult;
   importMcpServerConfigs: ImportMcpServerConfigsResult;
   markActivePrompt: Prompt;
   moveFileOrFolder: Scalars['String']['output'];
@@ -897,16 +890,6 @@ export type StreamableHttpMcpServerConfigInput = {
   headers?: InputMaybe<Scalars['JSON']['input']>;
   token?: InputMaybe<Scalars['String']['input']>;
   url: Scalars['String']['input'];
-};
-
-export type Subscription = {
-  __typename?: 'Subscription';
-  fileSystemChanged: Scalars['String']['output'];
-};
-
-
-export type SubscriptionFileSystemChangedArgs = {
-  workspaceId: Scalars['String']['input'];
 };
 
 export type SyncPromptsResult = {
@@ -1553,13 +1536,6 @@ export type EnableSkillMutationVariables = Exact<{
 
 
 export type EnableSkillMutation = { __typename?: 'Mutation', enableSkill: { __typename?: 'Skill', name: string, isDisabled: boolean } };
-
-export type FileSystemChangedSubscriptionVariables = Exact<{
-  workspaceId: Scalars['String']['input'];
-}>;
-
-
-export type FileSystemChangedSubscription = { __typename?: 'Subscription', fileSystemChanged: string };
 
 
 export const CreateAgentDefinitionDocument = gql`
@@ -4042,28 +4018,3 @@ export function useEnableSkillMutation(options: VueApolloComposable.UseMutationO
   return VueApolloComposable.useMutation<EnableSkillMutation, EnableSkillMutationVariables>(EnableSkillDocument, options);
 }
 export type EnableSkillMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<EnableSkillMutation, EnableSkillMutationVariables>;
-export const FileSystemChangedDocument = gql`
-    subscription FileSystemChanged($workspaceId: String!) {
-  fileSystemChanged(workspaceId: $workspaceId)
-}
-    `;
-
-/**
- * __useFileSystemChangedSubscription__
- *
- * To run a query within a Vue component, call `useFileSystemChangedSubscription` and pass it any options that fit your needs.
- * When your component renders, `useFileSystemChangedSubscription` returns an object from Apollo Client that contains result, loading and error properties
- * you can use to render your UI.
- *
- * @param variables that will be passed into the subscription
- * @param options that will be passed into the subscription, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/subscription.html#options;
- *
- * @example
- * const { result, loading, error } = useFileSystemChangedSubscription({
- *   workspaceId: // value for 'workspaceId'
- * });
- */
-export function useFileSystemChangedSubscription(variables: FileSystemChangedSubscriptionVariables | VueCompositionApi.Ref<FileSystemChangedSubscriptionVariables> | ReactiveFunction<FileSystemChangedSubscriptionVariables>, options: VueApolloComposable.UseSubscriptionOptions<FileSystemChangedSubscription, FileSystemChangedSubscriptionVariables> | VueCompositionApi.Ref<VueApolloComposable.UseSubscriptionOptions<FileSystemChangedSubscription, FileSystemChangedSubscriptionVariables>> | ReactiveFunction<VueApolloComposable.UseSubscriptionOptions<FileSystemChangedSubscription, FileSystemChangedSubscriptionVariables>> = {}) {
-  return VueApolloComposable.useSubscription<FileSystemChangedSubscription, FileSystemChangedSubscriptionVariables>(FileSystemChangedDocument, variables, options);
-}
-export type FileSystemChangedSubscriptionCompositionFunctionResult = VueApolloComposable.UseSubscriptionReturn<FileSystemChangedSubscription, FileSystemChangedSubscriptionVariables>;

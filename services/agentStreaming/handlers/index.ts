@@ -14,6 +14,7 @@ export {
 
 export {
   handleAgentStatus,
+  handleAssistantComplete,
   handleTodoListUpdate,
   handleError,
 } from './statusHandler';

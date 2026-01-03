@@ -16,6 +16,7 @@ import {
   handleToolAutoExecuting,
   handleToolLog,
   handleAgentStatus,
+  handleAssistantComplete,
   handleTodoListUpdate,
   handleError,
 } from './handlers';
@@ -228,6 +229,10 @@ export class AgentStreamingService {
 
       case 'AGENT_STATUS':
         handleAgentStatus(message.payload, context);
+        break;
+
+      case 'ASSISTANT_COMPLETE':
+        handleAssistantComplete(message.payload, context);
         break;
 
       case 'TODO_LIST_UPDATE':

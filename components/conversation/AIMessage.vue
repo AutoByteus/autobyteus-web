@@ -19,11 +19,8 @@
         />
         <TerminalCommandSegment
           v-else-if="segment.type === 'terminal_command'"
-          :command="segment.command"
-          :description="segment.description"
+          :segment="segment"
           :conversation-id="agentId"
-          :message-index="messageIndex"
-          :segment-index="segmentIndex"
         />
         <ThinkSegment
           v-else-if="segment.type === 'think'"

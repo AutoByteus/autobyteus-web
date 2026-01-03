@@ -107,6 +107,14 @@ export interface ToolLogPayload {
   agent_id?: string;
 }
 
+export interface AssistantCompletePayload {
+  content?: string | null;
+  reasoning?: string | null;
+  usage?: Record<string, any>;
+  agent_name?: string;
+  agent_id?: string;
+}
+
 export interface TodoItem {
   todo_id: string;
   description: string;
@@ -179,6 +187,7 @@ export type ServerMessage =
   | { type: 'TOOL_APPROVAL_REQUESTED'; payload: ToolApprovalRequestedPayload }
   | { type: 'TOOL_AUTO_EXECUTING'; payload: ToolAutoExecutingPayload }
   | { type: 'TOOL_LOG'; payload: ToolLogPayload }
+  | { type: 'ASSISTANT_COMPLETE'; payload: AssistantCompletePayload }
   | { type: 'TODO_LIST_UPDATE'; payload: TodoListUpdatePayload }
   | { type: 'TASK_PLAN_EVENT'; payload: TaskPlanEventPayload }
   | { type: 'INTER_AGENT_MESSAGE'; payload: InterAgentMessagePayload }

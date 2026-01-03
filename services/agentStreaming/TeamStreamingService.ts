@@ -17,6 +17,7 @@ import {
   handleToolAutoExecuting,
   handleToolLog,
   handleAgentStatus,
+  handleAssistantComplete,
   handleTodoListUpdate,
   handleError,
   handleInterAgentMessage,
@@ -244,6 +245,10 @@ export class TeamStreamingService {
 
       case 'AGENT_STATUS':
         handleAgentStatus(message.payload, memberContext);
+        break;
+
+      case 'ASSISTANT_COMPLETE':
+        handleAssistantComplete(message.payload, memberContext);
         break;
 
       case 'TODO_LIST_UPDATE':
