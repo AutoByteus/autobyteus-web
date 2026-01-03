@@ -30,8 +30,8 @@ export type ServerMessageType =
 export type SegmentType = 
   | 'text' 
   | 'tool_call' 
-  | 'file' 
-  | 'bash' 
+  | 'write_file'
+  | 'run_terminal_cmd'
   | 'iframe' 
   | 'reasoning';
 

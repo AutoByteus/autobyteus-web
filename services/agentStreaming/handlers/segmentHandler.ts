@@ -7,7 +7,7 @@
 
 import type { AgentContext } from '~/types/agent/AgentContext';
 import type { AIMessage } from '~/types/conversation';
-import type { AIResponseSegment, ToolCallSegment, FileSegment, BashCommandSegment, IframeSegment, ThinkSegment, AIResponseTextSegment } from '~/types/segments';
+import type { AIResponseSegment, ToolCallSegment, FileSegment, TerminalCommandSegment, IframeSegment, ThinkSegment, AIResponseTextSegment } from '~/types/segments';
 import type { SegmentStartPayload, SegmentContentPayload, SegmentEndPayload } from '../protocol/messageTypes';
 import { createSegmentFromPayload } from '../protocol/segmentTypes';
 
@@ -131,12 +131,12 @@ function appendContentToSegment(segment: AIResponseSegment, delta: string): void
       toolSegment.rawContent = (toolSegment.rawContent || '') + delta;
       break;
 
-    case 'file':
+    case 'write_file':
       (segment as FileSegment).originalContent += delta;
       break;
 
-    case 'bash_command':
-      (segment as BashCommandSegment).command += delta;
+    case 'terminal_command':
+      (segment as TerminalCommandSegment).command += delta;
       break;
 
     case 'iframe':

@@ -11,7 +11,7 @@ import type {
   FileSegment,
   ThinkSegment,
   ToolCallSegment,
-  BashCommandSegment,
+  TerminalCommandSegment,
   IframeSegment,
 } from '~/types/segments';
 
@@ -31,11 +31,11 @@ export function createSegmentFromPayload(payload: SegmentStartPayload): AIRespon
     case 'tool_call':
       return createToolCallSegment(id, metadata);
 
-    case 'file':
+    case 'write_file':
       return createFileSegment(metadata);
 
-    case 'bash':
-      return createBashSegment();
+    case 'run_terminal_cmd':
+      return createTerminalCommandSegment();
 
     case 'iframe':
       return createIframeSegment();
@@ -76,16 +76,16 @@ function createToolCallSegment(
 
 function createFileSegment(metadata?: Record<string, any>): FileSegment {
   return {
-    type: 'file',
+    type: 'write_file',
     path: metadata?.path || '',
     originalContent: '',
     language: detectLanguageFromPath(metadata?.path || ''),
   };
 }
 
-function createBashSegment(): BashCommandSegment {
+function createTerminalCommandSegment(): TerminalCommandSegment {
   return {
-    type: 'bash_command',
+    type: 'terminal_command',
     command: '',
     description: '',
   };

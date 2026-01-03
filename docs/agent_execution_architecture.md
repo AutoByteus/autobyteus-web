@@ -107,9 +107,9 @@ The parser uses the **State Pattern** to handle complex, interleaved mixed-media
 
 - **`TextState`** (Default): Captures standard markdown text. Transitions out when it detects specific triggers (`<`, `{`).
 - **`XmlTagInitializationState`**: Analyzes specific tags to fork logic:
-  - `<file path="...">` -> **`FileParsingState`** (Captures code content).
+  - `<write_file path="...">` -> **`WriteFileParsingState`** (Captures code content).
   - `<tool name="...">` -> **`ToolParsingState`** (Captures tool arguments).
-  - `<bash>` -> **`BashParsingState`** (Captures shell commands).
+  - `<run_terminal_cmd>` -> **`RunTerminalCmdParsingState`** (Captures shell commands).
   - `<!DOCTYPE html>` -> **`IframeParsingState`** (Captures HTML for preview).
 - **`JsonInitializationState`**: If configured for JSON tool calls, detects structure beginnings and parses JSON blobs into tool segments.
 

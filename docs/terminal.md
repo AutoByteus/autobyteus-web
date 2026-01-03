@@ -1,12 +1,12 @@
 # Terminal Module - Frontend
 
-This document describes the design and implementation of the **Terminal** module in the autobyteus-web frontend, which provides an interactive command-line interface for executing bash commands within workspace context.
+This document describes the design and implementation of the **Terminal** module in the autobyteus-web frontend, which provides an interactive command-line interface for executing terminal commands within workspace context.
 
 ## Overview
 
 The Terminal module enables users to:
 
-- Execute bash commands in the active workspace directory
+- Execute terminal commands in the active workspace directory
 - View command output with syntax-highlighted results
 - Navigate command history with arrow keys
 - Use keyboard shortcuts (Ctrl+C for interrupt)
@@ -23,7 +23,7 @@ autobyteus-web/
 ├── composables/
 │   └── useRightSideTabs.ts       # Tab state management
 ├── stores/
-│   └── bashCommand.ts            # Command execution Pinia store
+│   └── terminalCommand.ts        # Command execution Pinia store
 └── graphql/mutations/
     └── workspace_mutations.ts    # ExecuteBashCommands mutation
 ```
@@ -39,7 +39,7 @@ flowchart TD
     end
 
     subgraph "State Management"
-        BashCommandStore[bashCommand.ts]
+        TerminalCommandStore[terminalCommand.ts]
         WorkspaceStore[workspace.ts]
     end
 
@@ -53,9 +53,9 @@ flowchart TD
 
     RightSideTabs --> Terminal
     Terminal --> XTerm
-    Terminal --> BashCommandStore
+    Terminal --> TerminalCommandStore
     Terminal --> WorkspaceStore
-    BashCommandStore --> Mutation
+    TerminalCommandStore --> Mutation
     Mutation --> Server
 ```
 
@@ -107,7 +107,7 @@ sequenceDiagram
     participant User
     participant Terminal as Terminal.vue
     participant XTerm as xterm.js
-    participant Store as bashCommand.ts
+    participant Store as terminalCommand.ts
     participant Backend as GraphQL
 
     User->>XTerm: Types command
@@ -116,7 +116,7 @@ sequenceDiagram
     User->>XTerm: Press Enter
     XTerm->>Terminal: onData (code 13)
     Terminal->>Terminal: Add to commandHistory
-    Terminal->>Store: executeBashCommand()
+    Terminal->>Store: executeTerminalCommand()
     Store->>Backend: ExecuteBashCommands mutation
     Backend-->>Store: CommandExecutionResult
     Store-->>Terminal: Result available
@@ -124,21 +124,21 @@ sequenceDiagram
     Terminal->>XTerm: writePrompt()
 ```
 
-### bashCommand.ts (Pinia Store)
+### terminalCommand.ts (Pinia Store)
 
 Manages command execution state and API communication.
 
 **State:**
 
 ```typescript
-interface BashCommandState {
+interface TerminalCommandState {
   // Results keyed by unique command identifier
-  commandResults: Record<string, BashCommandResult>;
+  commandResults: Record<string, TerminalCommandResult>;
   // Tracks in-progress commands to prevent duplicates
   commandsInProgress: Set<string>;
 }
 
-interface BashCommandResult {
+interface TerminalCommandResult {
   success: boolean;
   message: string;
 }
@@ -146,18 +146,18 @@ interface BashCommandResult {
 
 **Actions:**
 
-| Action               | Parameters                       | Description                 |
-| -------------------- | -------------------------------- | --------------------------- |
-| `executeBashCommand` | workspaceId, command, commandKey | Execute command via GraphQL |
+| Action                    | Parameters                       | Description                 |
+| ------------------------- | -------------------------------- | --------------------------- |
+| `executeTerminalCommand`  | workspaceId, command, commandKey | Execute command via GraphQL |
 
 **Getters:**
 
-| Getter                     | Returns             | Description                   |
-| -------------------------- | ------------------- | ----------------------------- |
-| `isApplyCommandInProgress` | `boolean`           | True if command is executing  |
-| `isCommandExecuted`        | `boolean`           | True if command has completed |
-| `getApplyCommandResult`    | `BashCommandResult` | Get result for command key    |
-| `getApplyCommandError`     | `string \| null`    | Get error message if failed   |
+| Getter                     | Returns                | Description                   |
+| -------------------------- | ---------------------- | ----------------------------- |
+| `isApplyCommandInProgress` | `boolean`              | True if command is executing  |
+| `isCommandExecuted`        | `boolean`              | True if command has completed |
+| `getApplyCommandResult`    | `TerminalCommandResult`| Get result for command key    |
+| `getApplyCommandError`     | `string \| null`       | Get error message if failed   |
 
 ### RightSideTabs.vue
 

@@ -30,7 +30,7 @@ const language = computed(() => getLanguage(props.path));
 
 // To use highlightFileSegment, we need to construct a temporary FileSegment-like object.
 const tempFileSegmentForHighlighting = computed((): FileSegment => ({
-  type: 'file',
+  type: 'write_file',
   path: props.path,
   originalContent: props.content,
   language: language.value,

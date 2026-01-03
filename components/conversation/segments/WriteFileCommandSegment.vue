@@ -1,5 +1,5 @@
 <template>
-  <div class="file-writer-segment my-4 border rounded-lg shadow-md" :class="statusClass">
+  <div class="write-file-command-segment my-4 border rounded-lg shadow-md" :class="statusClass">
     <!-- Header: Tool Name, Status, and Approval Buttons -->
     <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-t-md border-b border-gray-200 dark:border-gray-600">
       <!-- Left side: Status Icon and Tool Name -->

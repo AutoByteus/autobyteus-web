@@ -109,7 +109,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watchEffect } from 'vue';
-import { useBashCommandStore } from '~/stores/bashCommand';
+import { useTerminalCommandStore } from '~/stores/terminalCommand';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useActiveContextStore } from '~/stores/activeContextStore';
 
@@ -121,7 +121,7 @@ const props = defineProps<{
   segmentIndex: number;
 }>();
 
-const bashCommandStore = useBashCommandStore();
+const terminalCommandStore = useTerminalCommandStore();
 const workspaceStore = useWorkspaceStore();
 const activeContextStore = useActiveContextStore();
 const wasExecuted = ref(false);
@@ -130,11 +130,11 @@ const wasExecuted = ref(false);
 const commandKey = computed(() => `${props.conversationId}:${props.messageIndex}:${props.segmentIndex}`);
 
 const isInProgress = computed(() => 
-  bashCommandStore.isApplyCommandInProgress(commandKey.value)
+  terminalCommandStore.isApplyCommandInProgress(commandKey.value)
 );
 
 const commandResult = computed(() => 
-  bashCommandStore.getApplyCommandResult(commandKey.value)
+  terminalCommandStore.getApplyCommandResult(commandKey.value)
 );
 
 const isDisabled = computed(() => isInProgress.value);
@@ -157,7 +157,7 @@ const toggleOutputExpansion = () => {
 
 // Check if a result already exists in the store for this command (e.g., after reloading a conversation)
 watchEffect(() => {
-  if (bashCommandStore.getApplyCommandResult(commandKey.value)) {
+  if (terminalCommandStore.getApplyCommandResult(commandKey.value)) {
     wasExecuted.value = true;
   }
 });
@@ -180,7 +180,7 @@ const handleExecute = async () => {
   
   wasExecuted.value = true; // Mark as executed as soon as the button is clicked.
   
-  await bashCommandStore.executeBashCommand(
+  await terminalCommandStore.executeTerminalCommand(
     workspaceId,
     props.command,
     commandKey.value,

@@ -6,28 +6,28 @@ import type {
   ExecuteBashCommandsMutationVariables
 } from '~/generated/graphql'
 
-interface BashCommandResult {
+interface TerminalCommandResult {
   success: boolean;
   message: string;
 }
 
-interface BashCommandState {
+interface TerminalCommandState {
   // Stores the result of a command execution, keyed by a unique composite key.
   // Key format: `${conversationId}:${messageIndex}:${segmentIndex}`
-  commandResults: Record<string, BashCommandResult>;
+  commandResults: Record<string, TerminalCommandResult>;
   
   // Tracks the keys of commands currently being executed.
   commandsInProgress: Set<string>;
 }
 
-export const useBashCommandStore = defineStore('bashCommand', {
-  state: (): BashCommandState => ({
+export const useTerminalCommandStore = defineStore('terminalCommand', {
+  state: (): TerminalCommandState => ({
     commandResults: {},
     commandsInProgress: new Set(),
   }),
 
   actions: {
-    async executeBashCommand(
+    async executeTerminalCommand(
       workspaceId: string,
       command: string,
       commandKey: string,
@@ -61,11 +61,11 @@ export const useBashCommandStore = defineStore('bashCommand', {
           const { success, message } = data.executeBashCommands;
           this.commandResults[commandKey] = { success, message };
         } else {
-          throw new Error('Failed to execute bash command: No data returned.');
+          throw new Error('Failed to execute terminal command: No data returned.');
         }
       } catch (error) {
         const errorMessage = (error as Error).message;
-        console.error(`Error executing bash command for ${commandKey}:`, errorMessage);
+        console.error(`Error executing terminal command for ${commandKey}:`, errorMessage);
         this.commandResults[commandKey] = { success: false, message: errorMessage };
       } finally {
         this.commandsInProgress.delete(commandKey);
@@ -83,7 +83,7 @@ export const useBashCommandStore = defineStore('bashCommand', {
       return !!state.commandResults[commandKey] && !state.commandsInProgress.has(commandKey);
     },
 
-    getApplyCommandResult: (state) => (commandKey: string): BashCommandResult | null => {
+    getApplyCommandResult: (state) => (commandKey: string): TerminalCommandResult | null => {
       return state.commandResults[commandKey] || null;
     },
     

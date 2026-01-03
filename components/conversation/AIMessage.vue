@@ -13,13 +13,13 @@
           :content="segment.content"
         />
         <FileContentSegment
-          v-else-if="segment.type === 'file'"
+          v-else-if="segment.type === 'write_file'"
           :fileSegment="segment"
           :conversation-id="agentId"
           :message-index="messageIndex"
         />
-        <BashCommandSegment
-          v-else-if="segment.type === 'bash_command'"
+        <TerminalCommandSegment
+          v-else-if="segment.type === 'terminal_command'"
           :command="segment.command"
           :description="segment.description"
           :conversation-id="agentId"
@@ -31,7 +31,7 @@
           :content="segment.content"
         />
         <template v-else-if="segment.type === 'tool_call'">
-          <FileWriterSegment
+          <WriteFileCommandSegment
             v-if="isWriteFileTool(segment.toolName)"
             :segment="segment"
             :conversation-id="agentId"
@@ -71,10 +71,10 @@
 import type { AIMessage } from '~/types/conversation';
 import TextSegment from '~/components/conversation/segments/TextSegment.vue';
 import FileContentSegment from '~/components/conversation/segments/FileContentSegment.vue';
-import BashCommandSegment from '~/components/conversation/segments/BashCommandSegment.vue';
+import TerminalCommandSegment from '~/components/conversation/segments/TerminalCommandSegment.vue';
 import ThinkSegment from '~/components/conversation/segments/ThinkSegment.vue';
 import ToolCallSegment from '~/components/conversation/segments/ToolCallSegment.vue';
-import FileWriterSegment from '~/components/conversation/segments/FileWriterSegment.vue';
+import WriteFileCommandSegment from '~/components/conversation/segments/WriteFileCommandSegment.vue';
 import SystemTaskNotificationSegment from '~/components/conversation/segments/SystemTaskNotificationSegment.vue';
 import InterAgentMessageSegment from '~/components/conversation/segments/InterAgentMessageSegment.vue';
 import MediaSegment from '~/components/conversation/segments/MediaSegment.vue';
@@ -88,7 +88,7 @@ const props = defineProps<{
   messageIndex: number;
 }>();
 
-const isWriteFileTool = (toolName: string) => toolName === 'write_file' || toolName === 'FileWriter';
+const isWriteFileTool = (toolName: string) => toolName === 'write_file';
 </script>
 
 <style scoped>

@@ -19,7 +19,7 @@ export interface AIResponseTextSegment {
 }
 
 export interface FileSegment {
-  type: 'file';
+  type: 'write_file';
   path: string;
   originalContent: string;
   highlightedContent?: string;
@@ -43,8 +43,8 @@ export interface ToolCallSegment {
   rawContent?: string;
 }
 
-export interface BashCommandSegment {
-  type: 'bash_command';
+export interface TerminalCommandSegment {
+  type: 'terminal_command';
   command: string;
   description: string;
 }
@@ -87,7 +87,7 @@ export type AIResponseSegment =
   | FileSegment 
   | ThinkSegment
   | ToolCallSegment
-  | BashCommandSegment
+  | TerminalCommandSegment
   | SystemTaskNotificationSegment
   | InterAgentMessageSegment
   | MediaSegment
