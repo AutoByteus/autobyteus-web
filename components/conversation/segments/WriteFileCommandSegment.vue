@@ -11,7 +11,7 @@
           <Icon v-else :icon="statusIconName" class="h-5 w-5" :class="statusIconClass" />
         </div>
         <span class="font-mono text-sm font-semibold text-gray-800 dark:text-gray-200">
-          Tool: {{ segment.toolName }}
+        {{ segment.toolName }}
         </span>
         <span v-if="segment.status !== 'parsing'" class="text-xs text-gray-400">#{{ segment.invocationId.substring(5, 11) }}</span>
       </div>

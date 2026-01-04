@@ -22,6 +22,10 @@
         <span class="font-mono text-sm font-semibold">{{ segment.toolName || 'Parsing Tool...' }}</span>
         <span v-if="segment.status !== 'parsing' && segment.toolName" class="text-xs text-gray-400">#{{ segment.invocationId.substring(5, 11) }}</span>
       </div>
+      <div v-if="segment.status === 'awaiting-approval'" class="flex items-center justify-end space-x-2">
+        <button @click="showDenyModal" class="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors">Deny</button>
+        <button @click="onApprove" class="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors">Approve</button>
+      </div>
     </div>
 
     <!-- Raw Content Streaming View -->
@@ -38,11 +42,7 @@
       </details>
     </div>
 
-    <!-- Approval Buttons -->
-    <div v-if="segment.status === 'awaiting-approval'" class="flex items-center justify-end space-x-2 mb-3">
-      <button @click="showDenyModal" class="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors">Deny</button>
-      <button @click="onApprove" class="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors">Approve</button>
-    </div>
+
     
     <!-- Logs -->
     <div v-if="segment.logs.length > 0" class="logs-section mb-3">
