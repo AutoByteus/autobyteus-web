@@ -153,9 +153,6 @@ function finalizeSegment(
 ): void {
   if (segment.type === 'tool_call' || segment.type === 'write_file' || segment.type === 'terminal_command') {
     const toolSegment = segment as ToolInvocationLifecycle;
-    if (metadata?.arguments) {
-      toolSegment.arguments = metadata.arguments;
-    }
     if (metadata?.tool_name) {
       toolSegment.toolName = metadata.tool_name;
     }
