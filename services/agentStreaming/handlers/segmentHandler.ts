@@ -11,8 +11,11 @@ import type { AIResponseSegment, ToolCallSegment, WriteFileSegment, TerminalComm
 import type { SegmentStartPayload, SegmentContentPayload, SegmentEndPayload } from '../protocol/messageTypes';
 import { createSegmentFromPayload } from '../protocol/segmentTypes';
 
+import { useAgentArtifactsStore } from '~/stores/agentArtifactsStore';
+
 /**
  * Handle SEGMENT_START event - creates a new segment and adds it to the current AI message.
+ * Also initializes streaming artifacts for 'write_file' segments.
  */
 export function handleSegmentStart(
   payload: SegmentStartPayload,
@@ -25,6 +28,12 @@ export function handleSegmentStart(
   (segment as any)._segmentId = payload.id;
 
   aiMessage.segments.push(segment);
+
+  // --- Live Artifact Streaming ---
+  if (payload.segment_type === 'write_file' && payload.metadata?.path) {
+    const store = useAgentArtifactsStore();
+    store.createPendingArtifact(context.state.agentId, payload.metadata.path, 'file');
+  }
 }
 
 /**
@@ -41,6 +50,12 @@ export function handleSegmentContent(
   }
 
   appendContentToSegment(segment, payload.delta);
+
+  // --- Live Artifact Streaming ---
+  if (segment.type === 'write_file') {
+    const store = useAgentArtifactsStore();
+    store.appendArtifactContent(context.state.agentId, payload.delta);
+  }
 }
 
 /**
@@ -57,6 +72,12 @@ export function handleSegmentEnd(
   }
 
   finalizeSegment(segment, payload.metadata);
+
+  // --- Live Artifact Streaming ---
+  if (segment.type === 'write_file') {
+     const store = useAgentArtifactsStore();
+     store.finalizeArtifactStream(context.state.agentId);
+  }
 }
 
 // ============================================================================

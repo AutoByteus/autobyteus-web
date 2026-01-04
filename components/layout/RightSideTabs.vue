@@ -37,12 +37,15 @@
       <div v-if="activeTab === 'vnc'" class="h-full">
         <VncViewer />
       </div>
+      <div v-if="activeTab === 'artifacts'" class="h-full">
+        <ArtifactsTab />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue';
+import { watch, computed } from 'vue';
 import { useActiveContextStore } from '~/stores/activeContextStore';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { useRightPanel } from '~/composables/useRightPanel';
@@ -54,10 +57,15 @@ import TodoListPanel from '~/components/workspace/agent/TodoListPanel.vue';
 import Terminal from '~/components/workspace/tools/Terminal.vue';
 import VncViewer from '~/components/workspace/tools/VncViewer.vue';
 import FileExplorerLayout from '~/components/fileExplorer/FileExplorerLayout.vue';
+import ArtifactsTab from '~/components/workspace/agent/ArtifactsTab.vue';
 
 const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
 const activeContextStore = useActiveContextStore();
 const fileExplorerStore = useFileExplorerStore();
+import { useAgentArtifactsStore } from '~/stores/agentArtifactsStore';
+import { useAgentContextsStore } from '~/stores/agentContextsStore';
+const artifactsStore = useAgentArtifactsStore();
+const agentContextsStore = useAgentContextsStore();
 const { toggleRightPanel } = useRightPanel();
 const { activeTab, visibleTabs, setActiveTab } = useRightSideTabs();
 
@@ -95,6 +103,14 @@ watch(() => fileExplorerStore.getOpenFiles, (openFiles) => {
     setActiveTab('files');
   }
 }, { deep: true });
+
+// Auto-switch to Artifacts tab when a new artifact starts streaming
+const currentAgentId = computed(() => agentContextsStore.selectedAgentId || "");
+watch(() => artifactsStore.getActiveStreamingArtifact(currentAgentId.value), (newArtifact) => {
+  if (newArtifact && activeTab.value !== 'artifacts') {
+    setActiveTab('artifacts');
+  }
+});
 
 </script>
 

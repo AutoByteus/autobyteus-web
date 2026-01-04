@@ -1,7 +1,7 @@
 <template>
   <div class="write-file-command-segment my-4 border rounded-lg shadow-md" :class="statusClass">
     <!-- Header -->
-    <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-t-md border-b border-gray-200 dark:border-gray-600">
+    <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-t-lg border-b border-gray-200 dark:border-gray-600">
       <div class="flex items-center space-x-2 overflow-hidden">
         <div class="status-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">
           <svg v-if="statusIconName === 'spinner'" class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -16,65 +16,23 @@
         <span v-if="segment.status !== 'parsing'" class="text-xs text-gray-400">#{{ segment.invocationId.substring(5, 11) }}</span>
       </div>
       
-      <!-- Approval Buttons -->
-      <div v-if="segment.status === 'awaiting-approval'" class="flex items-center justify-end space-x-2">
-        <button @click="showDenyModal" class="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors">Deny</button>
-        <button @click="onApprove" class="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors">Approve</button>
-      </div>
-    </div>
-
-    <!-- Sub-header for file content, with expand/collapse button -->
-    <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 p-2 border-b border-gray-200 dark:border-gray-600">
-      <div class="flex items-center min-w-0">
-        <button
-          @click="toggleExpand"
-          class="mr-2 p-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors focus:outline-none flex-shrink-0"
-          :aria-expanded="isExpanded"
-          aria-label="Toggle file content"
+      <div class="flex items-center space-x-2">
+        <!-- View Artifact Button (Icon Only) -->
+        <button 
+          @click="openArtifactsTab"
+          class="p-1 text-gray-500 hover:text-blue-600 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+          :class="{ 'opacity-50 cursor-not-allowed': segment.status === 'success' }"
+          :disabled="segment.status === 'success'"
+          title="View in Artifacts Panel"
         >
-          <svg
-            class="w-4 h-4 transform transition-transform text-gray-600 dark:text-gray-400"
-            :class="{ 'rotate-90': isExpanded }"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
+          <Icon icon="heroicons:arrow-top-right-on-square" class="w-4 h-4" />
         </button>
-        <span class="font-mono text-sm text-gray-700 dark:text-gray-300 break-all" :title="segment.path">
-          File: {{ segment.path || '(path missing)' }}
-        </span>
-      </div>
-      <CopyButton v-if="segment.originalContent" :text-to-copy="segment.originalContent" />
-    </div>
 
-    <!-- Collapsed content preview -->
-    <div
-      v-if="!isExpanded && segment.originalContent"
-      class="p-2 bg-gray-50 dark:bg-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-      @click="toggleExpand"
-    >
-      <div class="preview-content">
-        <code class="text-sm font-mono text-gray-600 dark:text-gray-400">{{ contentPreview }}</code>
-      </div>
-    </div>
-    
-    <!-- Full content when expanded -->
-    <div v-else class="bg-white dark:bg-gray-800">
-      <FileDisplay 
-        v-if="segment.path && segment.originalContent"
-        :path="segment.path" 
-        :content="segment.originalContent" 
-      />
-      <div v-else class="p-4 text-gray-500 italic">
-        File path or content is missing in the stream.
+        <!-- Approval Buttons -->
+        <div v-if="segment.status === 'awaiting-approval'" class="flex items-center space-x-2">
+          <button @click="showDenyModal" class="px-2 py-0.5 text-xs font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors">Deny</button>
+          <button @click="onApprove" class="px-2 py-0.5 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors">Approve</button>
+        </div>
       </div>
     </div>
 
@@ -111,48 +69,24 @@
 import { computed, ref } from 'vue';
 import type { WriteFileSegment } from '~/types/segments';
 import { useActiveContextStore } from '~/stores/activeContextStore';
-import FileDisplay from '~/components/conversation/segments/renderer/FileDisplay.vue';
-import CopyButton from '~/components/common/CopyButton.vue';
+import { useRightSideTabs } from '~/composables/useRightSideTabs';
 import ToolCallRejectionModal from './ToolCallRejectionModal.vue';
 import { Icon } from '@iconify/vue';
 
+// Define Props
 const props = defineProps<{
   segment: WriteFileSegment;
-  conversationId: string; // This is the agentId
+  conversationId: string;
 }>();
 
+// Initializations
 const activeContextStore = useActiveContextStore();
+const { setActiveTab } = useRightSideTabs();
 const isRejectionModalVisible = ref(false);
 
-// --- State for expand/collapse functionality ---
-const isExpanded = ref(false);
-
-const toggleExpand = () => {
-  isExpanded.value = !isExpanded.value;
+const openArtifactsTab = () => {
+  setActiveTab('artifacts');
 };
-
-const contentPreview = computed(() => {
-  const content = props.segment.originalContent || '';
-  if (!content) return 'No content to display.';
-  const lines = content.split('\n');
-  const preview = lines.slice(0, 5).join('\n');
-  return lines.length > 5 ? preview + '\n...' : preview;
-});
-// --- End expand/collapse state ---
-
-const statusStyles = {
-  parsed: { class: 'border-gray-300 dark:border-gray-600', iconName: 'heroicons:code-bracket-solid', iconClass: 'text-gray-400' },
-  'awaiting-approval': { class: 'border-yellow-400 dark:border-yellow-600', iconName: 'heroicons:hand-raised-solid', iconClass: 'text-yellow-500' },
-  executing: { class: 'border-blue-400 dark:border-blue-600', iconName: 'spinner', iconClass: 'text-blue-500' },
-  success: { class: 'border-green-400 dark:border-green-600', iconName: 'heroicons:check-circle-solid', iconClass: 'text-green-500' },
-  error: { class: 'border-red-400 dark:border-red-600', iconName: 'heroicons:x-circle-solid', iconClass: 'text-red-500' },
-  denied: { class: 'border-gray-400 dark:border-gray-500 opacity-70', iconName: 'heroicons:exclamation-circle-solid', iconClass: 'text-gray-500' },
-  parsing: { class: 'border-dashed border-gray-400 dark:border-gray-500', iconName: 'heroicons:beaker-solid', iconClass: 'text-gray-400 animate-pulse' },
-};
-
-const statusClass = computed(() => statusStyles[props.segment.status]?.class || 'border-gray-300 dark:border-gray-600');
-const statusIconName = computed(() => statusStyles[props.segment.status]?.iconName || 'heroicons:code-bracket-solid');
-const statusIconClass = computed(() => statusStyles[props.segment.status]?.iconClass || 'text-gray-400');
 
 const onApprove = () => {
   activeContextStore.postToolExecutionApproval(props.segment.invocationId, true);
@@ -167,19 +101,26 @@ const handleDenyConfirm = (reason?: string) => {
   activeContextStore.postToolExecutionApproval(props.segment.invocationId, false, finalReason);
   isRejectionModalVisible.value = false;
 };
+
+// Status Styles
+const statusStyles: Record<string, { class: string; iconName: string; iconClass: string }> = {
+  parsed: { class: 'border-gray-300 dark:border-gray-600', iconName: 'heroicons:code-bracket-solid', iconClass: 'text-gray-400' },
+  'awaiting-approval': { class: 'border-yellow-400 dark:border-yellow-600', iconName: 'heroicons:hand-raised-solid', iconClass: 'text-yellow-500' },
+  executing: { class: 'border-blue-400 dark:border-blue-600', iconName: 'spinner', iconClass: 'text-blue-500' },
+  success: { class: 'border-green-400 dark:border-green-600', iconName: 'heroicons:check-circle-solid', iconClass: 'text-green-500' },
+  error: { class: 'border-red-400 dark:border-red-600', iconName: 'heroicons:x-circle-solid', iconClass: 'text-red-500' },
+  denied: { class: 'border-gray-400 dark:border-gray-500 opacity-70', iconName: 'heroicons:exclamation-circle-solid', iconClass: 'text-gray-500' },
+  parsing: { class: 'border-dashed border-gray-400 dark:border-gray-500', iconName: 'heroicons:beaker-solid', iconClass: 'text-gray-400 animate-pulse' },
+};
+
+const statusClass = computed(() => statusStyles[props.segment.status]?.class || 'border-gray-300 dark:border-gray-600');
+const statusIconName = computed(() => statusStyles[props.segment.status]?.iconName || 'heroicons:code-bracket-solid');
+const statusIconClass = computed(() => statusStyles[props.segment.status]?.iconClass || 'text-gray-400');
 </script>
 
 <style scoped>
 pre {
   white-space: pre-wrap;
   word-wrap: break-word;
-}
-.preview-content {
-  max-height: 7.5em; /* ≈5 lines */
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 5;
-  -webkit-box-orient: vertical;
-  line-height: 1.5;
 }
 </style>
