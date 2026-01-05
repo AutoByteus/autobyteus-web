@@ -1,110 +1,150 @@
 <template>
-  <div class="activity-item border-b border-gray-100 last:border-0">
-    <!-- Header Row -->
+  <div 
+    class="border rounded-lg mb-3 bg-white transition-all duration-200 shadow-sm"
+    :class="containerClasses"
+  >
+    <!-- Header -->
     <div 
-      class="flex items-center gap-3 px-3 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
+      class="flex items-center justify-between px-4 py-3 cursor-pointer select-none"
       @click="toggleExpand"
     >
-      <!-- Status Icon -->
-      <div class="flex-shrink-0 w-6 flex justify-center">
-        <template v-if="activity.status === 'executing' || activity.status === 'parsing'">
-          <div class="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-        </template>
-        <template v-else-if="activity.status === 'success'">
-          <Icon name="heroicons:check-circle" class="w-6 h-6 text-green-600" />
-        </template>
-        <template v-else-if="activity.status === 'error'">
-          <Icon name="heroicons:x-circle" class="w-6 h-6 text-red-600" />
-        </template>
-        <template v-else-if="activity.status === 'awaiting-approval'">
-          <Icon name="heroicons:exclamation-triangle" class="w-6 h-6 text-amber-500 animate-pulse" />
-        </template>
-        <template v-else-if="activity.status === 'denied'">
-          <Icon name="heroicons:no-symbol" class="w-6 h-6 text-gray-400" />
-        </template>
-        <template v-else>
-          <Icon name="heroicons:question-mark-circle" class="w-6 h-6 text-gray-300" />
-        </template>
-      </div>
-
-      <!-- Content -->
-      <div class="flex-1 min-w-0 flex flex-col">
+      <!-- Left: Icon + Title + ID -->
+      <div class="flex items-center gap-3">
+        <!-- Icon -->
+        <Icon :icon="statusIconName" class="w-5 h-5 flex-shrink-0" :class="iconColorClass" />
+        
+        <!-- Title & ID -->
         <div class="flex items-center gap-2">
-          <span class="font-mono text-base font-bold text-gray-900 truncate">
-            {{ activity.toolName }}
-          </span>
-          <span 
-            v-if="activity.status === 'awaiting-approval'"
-            class="text-[11px] uppercase tracking-wider font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded"
-          >
-            Review Required
-          </span>
-        </div>
-        <div class="text-xs text-gray-500 truncate font-mono mt-1" :title="activity.contextText">
-          {{ activity.contextText }}
+          <span class="font-bold text-gray-800 text-sm">{{ activity.toolName }}</span>
+          <span class="font-mono text-xs text-gray-400">#{{ shortId }}</span>
         </div>
       </div>
 
-      <!-- Time or Expand Icon -->
-      <div class="text-gray-400 flex items-center">
-        <Icon 
-          :name="isExpanded ? 'heroicons:chevron-up' : 'heroicons:chevron-down'" 
-          class="w-5 h-5 transition-transform duration-200"
-        />
+      <!-- Right: Status Chip -->
+      <div>
+        <span 
+          class="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide border shadow-sm"
+          :class="statusChipClasses"
+        >
+          {{ statusLabel }}
+        </span>
       </div>
     </div>
 
-    <!-- Details (Expanded) -->
-    <div v-show="isExpanded" class="bg-gray-50 px-3 py-3 pl-12 text-sm font-mono border-t border-gray-100">
-      
-      <!-- Result Section -->
-      <div v-if="activity.result" class="mb-4">
-        <div class="text-green-700 font-bold mb-1">Result:</div>
-        <pre class="whitespace-pre-wrap text-gray-800 bg-white border border-gray-200 p-3 rounded shadow-sm max-h-60 overflow-y-auto">{{ formatJson(activity.result) }}</pre>
-      </div>
-
-      <!-- Error Section -->
-      <div v-if="activity.error" class="mb-4">
-        <div class="text-red-700 font-bold mb-1">Error:</div>
-        <pre class="whitespace-pre-wrap text-red-800 bg-red-50 border border-red-200 p-3 rounded">{{ activity.error }}</pre>
-      </div>
-
-      <!-- Arguments Section (if interesting) -->
-      <div v-if="hasInterestingArgs" class="mb-4">
-        <div class="text-blue-700 font-bold mb-1">Arguments:</div>
-        <pre class="whitespace-pre-wrap text-gray-700 bg-white border border-gray-200 p-3 rounded shadow-sm">{{ formatJson(activity.arguments) }}</pre>
-      </div>
-
-      <!-- Logs -->
-      <div v-if="activity.logs.length > 0">
-        <div class="text-gray-600 font-bold mb-1">Logs:</div>
-        <div class="space-y-1">
-          <div v-for="(log, idx) in activity.logs" :key="idx" class="text-gray-600 border-l-2 border-gray-300 pl-3">
-            {{ log }}
+    <!-- Expanded Details -->
+    <div v-show="isExpanded" class="px-4 pb-4">
+      <div class="pt-2 space-y-3 border-t border-gray-100 mt-1">
+        
+        <!-- Arguments Section -->
+        <div v-if="hasInterestingArgs">
+          <div 
+            class="flex items-center gap-1.5 mb-1.5 cursor-pointer hover:text-gray-800 transition-colors"
+            @click.stop="toggleSection('args')"
+          >
+            <Icon 
+              :icon="sectionStates.args ? 'heroicons:chevron-down' : 'heroicons:chevron-right'" 
+              class="w-3.5 h-3.5 text-gray-400"
+            />
+            <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Arguments</span>
+          </div>
+          <div v-show="sectionStates.args" class="pl-5">
+             <div class="bg-gray-50 border border-gray-100 rounded p-2.5 font-mono text-xs text-gray-700 whitespace-pre-wrap overflow-x-auto">
+               {{ formatJson(activity.arguments) }}
+             </div>
           </div>
         </div>
-      </div>
 
-      <div v-if="!activity.result && !activity.error && activity.logs.length === 0 && !hasInterestingArgs" class="text-gray-400 italic">
-        No details available yet...
+        <!-- Logs Section -->
+        <div v-if="activity.logs.length > 0">
+           <div 
+            class="flex items-center gap-1.5 mb-1.5 cursor-pointer hover:text-gray-800 transition-colors"
+            @click.stop="toggleSection('logs')"
+          >
+            <Icon 
+              :icon="sectionStates.logs ? 'heroicons:chevron-down' : 'heroicons:chevron-right'" 
+              class="w-3.5 h-3.5 text-gray-400"
+            />
+            <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Logs ({{ activity.logs.length }})</span>
+          </div>
+          <div v-show="sectionStates.logs" class="pl-5">
+             <div class="bg-gray-50 border border-gray-100 rounded p-2.5 font-mono text-xs text-gray-700 space-y-1">
+               <div v-for="(log, idx) in activity.logs" :key="idx" class="whitespace-pre-wrap break-all">
+                 {{ log }}
+               </div>
+             </div>
+          </div>
+        </div>
+
+        <!-- Result Section -->
+        <div v-if="activity.result">
+           <div 
+            class="flex items-center gap-1.5 mb-1.5 cursor-pointer hover:text-gray-800 transition-colors"
+            @click.stop="toggleSection('result')"
+          >
+            <Icon 
+              :icon="sectionStates.result ? 'heroicons:chevron-down' : 'heroicons:chevron-right'" 
+              class="w-3.5 h-3.5 text-gray-400"
+            />
+            <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Result</span>
+          </div>
+          <div v-show="sectionStates.result" class="pl-5">
+             <div class="bg-white border border-gray-200 rounded p-3 font-mono text-xs text-gray-800 whitespace-pre-wrap shadow-sm overflow-x-auto">
+               {{ formatJson(activity.result) }}
+             </div>
+          </div>
+        </div>
+
+        <!-- Error Section -->
+        <div v-if="activity.error">
+           <div 
+            class="flex items-center gap-1.5 mb-1.5 cursor-pointer hover:text-red-800 transition-colors"
+            @click.stop="toggleSection('error')"
+          >
+            <Icon 
+              :icon="sectionStates.error ? 'heroicons:chevron-down' : 'heroicons:chevron-right'" 
+              class="w-3.5 h-3.5 text-red-500"
+            />
+            <span class="text-xs font-semibold text-red-600 uppercase tracking-wide">Error</span>
+          </div>
+          <div v-show="sectionStates.error" class="pl-5">
+             <div class="bg-red-50 border border-red-200 rounded p-2.5 font-mono text-xs text-red-700 whitespace-pre-wrap">
+               {{ activity.error }}
+             </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, reactive } from 'vue';
+import { Icon } from '@iconify/vue';
 import type { ToolActivity } from '~/stores/agentActivityStore';
 
 const props = defineProps<{
   activity: ToolActivity;
 }>();
 
-const isExpanded = ref(false);
+const isExpanded = ref(true); 
+
+const sectionStates = reactive({
+  args: true,
+  logs: true,
+  result: true,
+  error: true
+});
 
 const toggleExpand = () => {
   isExpanded.value = !isExpanded.value;
 };
+
+const toggleSection = (section: keyof typeof sectionStates) => {
+  sectionStates[section] = !sectionStates[section];
+};
+
+const shortId = computed(() => props.activity.invocationId.slice(0, 6));
 
 const hasInterestingArgs = computed(() => {
   const args = props.activity.arguments;
@@ -119,10 +159,72 @@ const formatJson = (val: any) => {
     return String(val);
   }
 };
+
+// --- Styling Logic ---
+
+const statusIconName = computed(() => {
+  switch (props.activity.status) {
+    case 'success': return 'heroicons:check-circle-solid';
+    case 'error': return 'heroicons:x-circle-solid';
+    case 'executing':
+    case 'parsing': return 'heroicons:clock-solid'; 
+    case 'awaiting-approval': return 'heroicons:hand-raised-solid';
+    case 'denied': return 'heroicons:no-symbol-solid';
+    default: return 'heroicons:wrench-screwdriver-solid';
+  }
+});
+
+const iconColorClass = computed(() => {
+  switch (props.activity.status) {
+    case 'success': return 'text-green-500';
+    case 'error': return 'text-red-500';
+    case 'executing':
+    case 'parsing': return 'text-blue-500';
+    case 'awaiting-approval': return 'text-amber-500';
+    case 'denied': return 'text-gray-400';
+    default: return 'text-gray-400';
+  }
+});
+
+const containerClasses = computed(() => {
+  // Border colors based on status
+  switch (props.activity.status) {
+    case 'success': return 'border-green-200 hover:border-green-300';
+    case 'error': return 'border-red-200 hover:border-red-300';
+    case 'executing':
+    case 'parsing': return 'border-blue-200 hover:border-blue-300';
+    case 'awaiting-approval': return 'border-amber-200 hover:border-amber-300';
+    case 'denied': return 'border-gray-200 opacity-75';
+    default: return 'border-gray-200';
+  }
+});
+
+const statusLabel = computed(() => {
+  switch (props.activity.status) {
+    case 'success': return 'Success';
+    case 'error': return 'Failed';
+    case 'executing':
+    case 'parsing': return 'Running';
+    case 'awaiting-approval': return 'Review';
+    case 'denied': return 'Denied';
+    default: return 'Unknown';
+  }
+});
+
+const statusChipClasses = computed(() => {
+  switch (props.activity.status) {
+    case 'success': return 'bg-green-100 text-green-700 border-green-200';
+    case 'error': return 'bg-red-100 text-red-700 border-red-200';
+    case 'executing':
+    case 'parsing': return 'bg-blue-100 text-blue-700 border-blue-200';
+    case 'awaiting-approval': return 'bg-amber-100 text-amber-700 border-amber-200';
+    case 'denied': return 'bg-gray-100 text-gray-500 border-gray-200';
+    default: return 'bg-gray-100 text-gray-600 border-gray-200';
+  }
+});
+
 </script>
 
 <style scoped>
-.activity-item {
-  @apply transition-all duration-200;
-}
+/* No extra styles needed */
 </style>

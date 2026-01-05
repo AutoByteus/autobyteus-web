@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full flex flex-col bg-white overflow-hidden">
+  <div class="h-full flex flex-col bg-gray-50 overflow-hidden">
     <!-- Header -->
     <div class="px-3 py-2 bg-gray-50 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
       <h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest leading-none">Activity Log</h3>
