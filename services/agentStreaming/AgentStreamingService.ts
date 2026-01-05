@@ -19,6 +19,7 @@ import {
   handleAssistantComplete,
   handleTodoListUpdate,
   handleError,
+  handleArtifactPersisted,
 } from './handlers';
 
 const shouldLogStreaming = (): boolean => {
@@ -241,6 +242,10 @@ export class AgentStreamingService {
 
       case 'ERROR':
         handleError(message.payload, context);
+        break;
+
+      case 'ARTIFACT_PERSISTED':
+        handleArtifactPersisted(message.payload, context);
         break;
 
       case 'CONNECTED':

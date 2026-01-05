@@ -25,6 +25,7 @@ export type ServerMessageType =
   | 'TASK_PLAN_EVENT'
   | 'INTER_AGENT_MESSAGE'
   | 'SYSTEM_TASK_NOTIFICATION'
+  | 'ARTIFACT_PERSISTED'
   | 'ERROR';
 
 export type SegmentType = 
@@ -169,6 +170,14 @@ export interface SystemTaskNotificationPayload {
   agent_id?: string;
 }
 
+export interface ArtifactPersistedPayload {
+  artifact_id: string;
+  status: string;
+  path: string;
+  agent_id: string;
+  type: string;
+}
+
 export interface ErrorPayload {
   code: string;
   message: string;
@@ -191,6 +200,7 @@ export type ServerMessage =
   | { type: 'TASK_PLAN_EVENT'; payload: TaskPlanEventPayload }
   | { type: 'INTER_AGENT_MESSAGE'; payload: InterAgentMessagePayload }
   | { type: 'SYSTEM_TASK_NOTIFICATION'; payload: SystemTaskNotificationPayload }
+  | { type: 'ARTIFACT_PERSISTED'; payload: ArtifactPersistedPayload }
   | { type: 'ERROR'; payload: ErrorPayload };
 
 // ============================================================================

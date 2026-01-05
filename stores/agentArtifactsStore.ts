@@ -107,6 +107,34 @@ export const useAgentArtifactsStore = defineStore('agentArtifacts', {
         if (artifact) {
             artifact.status = 'failed';
         }
-    }
+    },
+
+    /**
+     * Fetch persisted artifacts from the backend for an agent.
+     * Use this when loading a previous session or restoring state after page refresh.
+     * Not actively used yet - ready for future session restoration feature.
+     */
+    async fetchArtifactsForAgent(agentId: string) {
+      try {
+        const { useGetAgentArtifactsLazyQuery } = await import('~/generated/graphql');
+        const { load, result } = useGetAgentArtifactsLazyQuery({ agentId });
+        await load();
+        
+        if (result.value?.agentArtifacts) {
+          const artifacts: AgentArtifact[] = result.value.agentArtifacts.map(a => ({
+            id: a.id,
+            agentId: a.agentId,
+            path: a.path,
+            type: a.type as 'file' | 'image' | 'video' | 'pdf' | 'other',
+            status: 'persisted' as ArtifactStatus, // Backend only stores persisted artifacts
+            createdAt: a.createdAt,
+          }));
+          this.artifactsByAgent.set(agentId, artifacts);
+        }
+      } catch (error) {
+        console.error('Failed to fetch artifacts for agent:', agentId, error);
+      }
+    },
   },
 });
+

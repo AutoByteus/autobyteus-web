@@ -25,3 +25,7 @@ export {
   handleTeamStatus,
   handleTaskPlanEvent,
 } from './teamHandler';
+
+export {
+  handleArtifactPersisted,
+} from './artifactHandler';
