@@ -70,11 +70,25 @@ Located in `services/agentResponseHandlers`.
 | :--------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `assistantResponseHandler.ts`      | **Core Handler**. Processes `AssistantChunk` and `AssistantCompleteResponse`. Routes text/reasoning to the **Parsing Engine** (see Level 3). Handles final media URLs and token usage. |
 | `toolCallHandler.ts`               | Manages tool lifecycles: `awaiting-approval` -> `executing` -> `success` / `error`. Updates `ToolCallSegment`s in real-time.                                                           |
-| `statusUpdateHandler.ts`           | Updates the agent's high-level status (e.g., `RUNNING`, `IDLE`, `PAUSED`).                                                                                                             |
+| `agentStatusHandler.ts`            | Updates the agent's high-level status (e.g., `RUNNING`, `IDLE`, `PAUSED`). Listen for lifecycle events.                                                                                |
+| `todoHandler.ts`                   | **Sidecar Handler**. Updates the `agentTodoStore` with the agent's current goal list.                                                                                                  |
 | `systemTaskNotificationHandler.ts` | Injects system notifications into the chat stream.                                                                                                                                     |
 | `errorEventHandler.ts`             | Handles fatal errors, creating error segments and terminating the generation turn.                                                                                                     |
-| `todoListUpdateHandler.ts`         | Syncs the backend To-Do list state with the frontend.                                                                                                                                  |
 | `interAgentMessageHandler.ts`      | Visualizes direct communication between agents in a team setting.                                                                                                                      |
+
+### Sidecar Store Pattern
+
+A key architectural pattern in `autobyteus-web` is the **Sidecar Store Pattern** for runtime data. Instead of keeping all state in a monolithic `AgentContext`, distinct data streams are routed to dedicated stores:
+
+`WebSocket` -> `AgentStreamingService` -> `Specialized Handler` -> `Dedicated Store`
+
+**Examples:**
+
+- **To-Do List**: `TODO_LIST_UPDATE` event -> `todoHandler.ts` -> `agentTodoStore.ts`
+- **Artifacts**: `ARTIFACT_PERSISTED` event -> `artifactHandler.ts` -> `agentArtifactStore.ts`
+- **Activities**: Tool events -> `toolHandler.ts` -> `agentActivityStore.ts` (Planned)
+
+This decouples the "Core Identity" (Context) from "Runtime Projections" (Todos, Artifacts, Logs).
 
 ### Agent Team Response Handlers
 

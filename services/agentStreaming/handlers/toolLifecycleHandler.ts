@@ -13,6 +13,7 @@ import type {
   ToolLogPayload 
 } from '../protocol/messageTypes';
 import { findSegmentById } from './segmentHandler';
+import { useAgentActivityStore } from '~/stores/agentActivityStore';
 
 /**
  * Handle TOOL_APPROVAL_REQUESTED event.
@@ -38,6 +39,10 @@ export function handleToolApprovalRequested(
     segment.toolName = payload.tool_name;
   }
   hydrateSegmentContentFromArguments(segment, payload.arguments);
+
+  // Sidecar Store Update
+  const activityStore = useAgentActivityStore();
+  activityStore.updateActivityStatus(context.state.agentId, payload.invocation_id, 'awaiting-approval');
 }
 
 /**
@@ -61,6 +66,10 @@ export function handleToolAutoExecuting(
     segment.toolName = payload.tool_name;
   }
   hydrateSegmentContentFromArguments(segment, payload.arguments);
+
+  // Sidecar Store Update
+  const activityStore = useAgentActivityStore();
+  activityStore.updateActivityStatus(context.state.agentId, payload.invocation_id, 'executing');
 }
 
 /**
@@ -79,20 +88,33 @@ export function handleToolLog(
   // Append log
   segment.logs.push(payload.log_entry);
 
+  const info = { result: null as any, error: null as string | null, status: null as any };
+
   // Parse log for result/error status
-  const result = parseResultFromLog(payload.log_entry);
-  if (result !== null) {
+  const maybeResult = parseResultFromLog(payload.log_entry);
+  if (maybeResult !== null) {
     segment.status = 'success';
-    segment.result = result;
+    segment.result = maybeResult;
     segment.error = null;
-    return;
+    info.result = maybeResult;
+    info.status = 'success';
+  } else {
+    const maybeError = parseErrorFromLog(payload.log_entry);
+    if (maybeError !== null) {
+      segment.status = 'error';
+      segment.error = maybeError;
+      segment.result = null;
+      info.error = maybeError;
+      info.status = 'error';
+    }
   }
 
-  const error = parseErrorFromLog(payload.log_entry);
-  if (error !== null) {
-    segment.status = 'error';
-    segment.error = error;
-    segment.result = null;
+  // Sidecar Store Update
+  const activityStore = useAgentActivityStore();
+  activityStore.addActivityLog(context.state.agentId, payload.tool_invocation_id, payload.log_entry);
+  if (info.status) {
+    activityStore.updateActivityStatus(context.state.agentId, payload.tool_invocation_id, info.status);
+    activityStore.setActivityResult(context.state.agentId, payload.tool_invocation_id, info.result, info.error);
   }
 }
 

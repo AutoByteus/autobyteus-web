@@ -8,7 +8,7 @@ import { useAgentTeamRunStore } from './agentTeamRunStore';
 import type { AgentContext } from '~/types/agent/AgentContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import type { ContextFilePath } from '~/types/conversation';
-import type { ToDo } from '~/types/todo';
+
 
 /**
  * @store useActiveContextStore
@@ -50,7 +50,7 @@ export const useActiveContextStore = defineStore('activeContext', () => {
   const currentRequirement = computed<string>(() => activeAgentContext.value?.requirement ?? '');
   const currentContextPaths = computed<ContextFilePath[]>(() => activeAgentContext.value?.contextFilePaths ?? []);
   const activeConfig = computed<AgentRunConfig | null>(() => activeAgentContext.value?.config ?? null);
-  const currentTodoList = computed<ToDo[]>(() => activeAgentContext.value?.state.todoList ?? []);
+
 
   // --- ACTIONS (Facade Actions) ---
 
@@ -165,7 +165,7 @@ export const useActiveContextStore = defineStore('activeContext', () => {
     currentRequirement,
     currentContextPaths,
     activeConfig,
-    currentTodoList,
+
     // Actions
     updateRequirement,
     addContextFilePath,

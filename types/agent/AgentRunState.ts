@@ -8,7 +8,6 @@ export class AgentRunState {
   public currentStatus: AgentStatus = AgentStatus.Uninitialized;
   public conversation: Conversation;
   public agent_tool_invocation_counts = new Map<string, number>();
-  public todoList: ToDo[] = [];
 
   constructor(initialId: string, initialConversation: Conversation) {
     this.agentId = initialId;
@@ -27,7 +26,7 @@ export class AgentRunState {
   get lastAIMessage(): AIMessage | undefined {
     // Uses the lastMessage getter to efficiently find the last AI message.
     const lastMsg = this.lastMessage;
-    return (lastMsg?.type === 'ai') ? lastMsg : undefined;
+    return (lastMsg?.type === 'ai') ? (lastMsg as AIMessage) : undefined;
   }
   // --- End: New helper getters ---
 

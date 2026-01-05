@@ -12,6 +12,23 @@ import type { SegmentStartPayload, SegmentContentPayload, SegmentEndPayload } fr
 import { createSegmentFromPayload } from '../protocol/segmentTypes';
 
 import { useAgentArtifactsStore } from '~/stores/agentArtifactsStore';
+import { useAgentActivityStore } from '~/stores/agentActivityStore';
+
+/**
+ * Extract context text for the activity store (e.g. filename, command, or partial tool name).
+ */
+function extractContextText(payload: SegmentStartPayload): string {
+  if (payload.segment_type === 'write_file') {
+    return payload.metadata?.path || 'new file';
+  }
+  if (payload.segment_type === 'run_terminal_cmd') {
+    return 'terminal'; // Command content comes later
+  }
+  if (payload.segment_type === 'tool_call') {
+    return payload.metadata?.tool_name || 'tool';
+  }
+  return '';
+}
 
 /**
  * Handle SEGMENT_START event - creates a new segment and adds it to the current AI message.
@@ -33,6 +50,32 @@ export function handleSegmentStart(
   if (payload.segment_type === 'write_file' && payload.metadata?.path) {
     const store = useAgentArtifactsStore();
     store.createPendingArtifact(context.state.agentId, payload.metadata.path, 'file');
+  }
+
+  // --- Sidecar Activity Store ---
+  if (
+    ['tool_call', 'write_file', 'run_terminal_cmd'].includes(payload.segment_type)
+  ) {
+    const activityStore = useAgentActivityStore();
+    const contextText = extractContextText(payload);
+    
+    // Map backend type to frontend store type
+    let storeType: 'tool_call' | 'write_file' | 'terminal_command' = 'tool_call';
+    if (payload.segment_type === 'write_file') storeType = 'write_file';
+    if (payload.segment_type === 'run_terminal_cmd') storeType = 'terminal_command';
+
+    activityStore.addActivity(context.state.agentId, {
+      invocationId: payload.id,
+      toolName: payload.segment_type, // Initial name
+      type: storeType,
+      status: 'parsing',
+      contextText,
+      arguments: {},
+      logs: [],
+      result: null,
+      error: null,
+      timestamp: new Date(),
+    });
   }
 }
 
@@ -77,6 +120,16 @@ export function handleSegmentEnd(
   if (segment.type === 'write_file') {
      const store = useAgentArtifactsStore();
      store.finalizeArtifactStream(context.state.agentId);
+  }
+
+  // --- Sidecar Activity Store ---
+  if (['tool_call', 'write_file', 'terminal_command'].includes(segment.type)) {
+    const activityStore = useAgentActivityStore();
+    // Update status to 'parsed' (handlers will move it to executing/awaiting later)
+    activityStore.updateActivityStatus(context.state.agentId, payload.id, 'parsed');
+    
+    // Potentially update context text if it was empty (e.g. terminal command)
+    // For now, we rely on the initial extraction or specific handlers.
   }
 }
 

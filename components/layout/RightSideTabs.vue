@@ -28,9 +28,6 @@
       <div v-if="activeTab === 'teamMembers'" class="h-full">
         <TeamOverviewPanel />
       </div>
-      <div v-if="activeTab === 'todoList'" class="h-full">
-        <TodoListPanel :todos="activeContextStore.currentTodoList" />
-      </div>
       <div v-if="activeTab === 'terminal'" class="h-full">
         <Terminal />
       </div>
@@ -40,34 +37,49 @@
       <div v-if="activeTab === 'artifacts'" class="h-full">
         <ArtifactsTab />
       </div>
+      <div v-if="activeTab === 'progress'" class="h-full">
+        <ProgressPanel :todos="todos" />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { watch, computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useActiveContextStore } from '~/stores/activeContextStore';
+import { useAgentTodoStore } from '~/stores/agentTodoStore';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { useRightPanel } from '~/composables/useRightPanel';
 import { useRightSideTabs } from '~/composables/useRightSideTabs';
 import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
+import { useAgentArtifactsStore } from '~/stores/agentArtifactsStore';
+import { useAgentContextsStore } from '~/stores/agentContextsStore';
+import { useAgentActivityStore } from '~/stores/agentActivityStore';
 import TabList from '~/components/tabs/TabList.vue';
 import TeamOverviewPanel from '~/components/workspace/team/TeamOverviewPanel.vue';
-import TodoListPanel from '~/components/workspace/agent/TodoListPanel.vue';
 import Terminal from '~/components/workspace/tools/Terminal.vue';
 import VncViewer from '~/components/workspace/tools/VncViewer.vue';
 import FileExplorerLayout from '~/components/fileExplorer/FileExplorerLayout.vue';
 import ArtifactsTab from '~/components/workspace/agent/ArtifactsTab.vue';
+import ProgressPanel from '~/components/progress/ProgressPanel.vue';
 
 const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
 const activeContextStore = useActiveContextStore();
 const fileExplorerStore = useFileExplorerStore();
-import { useAgentArtifactsStore } from '~/stores/agentArtifactsStore';
-import { useAgentContextsStore } from '~/stores/agentContextsStore';
 const artifactsStore = useAgentArtifactsStore();
 const agentContextsStore = useAgentContextsStore();
+const todoStore = useAgentTodoStore();
+const activityStore = useAgentActivityStore();
+
 const { toggleRightPanel } = useRightPanel();
 const { activeTab, visibleTabs, setActiveTab } = useRightSideTabs();
+
+const currentAgentId = computed(() => activeContextStore.activeAgentContext?.state.agentId ?? '');
+
+const todos = computed(() => {
+  if (!currentAgentId.value) return [];
+  return todoStore.getTodos(currentAgentId.value);
+});
 
 const handleTabSelect = (tabName: string) => {
   setActiveTab(tabName as any);
@@ -78,7 +90,7 @@ watch(() => selectedLaunchProfileStore.selectedProfileType, (newType) => {
   if (newType === 'team') {
     setActiveTab('teamMembers');
   } else if (newType === 'agent') {
-    setActiveTab('todoList');
+    setActiveTab('progress');
   }
 }, { immediate: true });
 
@@ -91,9 +103,10 @@ watch(visibleTabs, (newVisibleTabs) => {
 });
 
 // Watch the ToDo list for the active agent. If it becomes populated, switch to the To-Do tab.
-watch(() => activeContextStore.currentTodoList, (newTodoList) => {
-  if (selectedLaunchProfileStore.selectedProfileType === 'agent' && newTodoList.length > 0 && activeTab.value !== 'todoList') {
-    setActiveTab('todoList');
+// Watch the ToDo list for the active agent. If it becomes populated, switch to the To-Do tab.
+watch(todos, (newTodoList) => {
+  if (selectedLaunchProfileStore.selectedProfileType === 'agent' && newTodoList.length > 0 && activeTab.value !== 'progress') {
+    setActiveTab('progress');
   }
 });
 
@@ -105,10 +118,21 @@ watch(() => fileExplorerStore.getOpenFiles, (openFiles) => {
 }, { deep: true });
 
 // Auto-switch to Artifacts tab when a new artifact starts streaming
-const currentAgentId = computed(() => agentContextsStore.selectedAgentId || "");
 watch(() => artifactsStore.getActiveStreamingArtifact(currentAgentId.value), (newArtifact) => {
   if (newArtifact && activeTab.value !== 'artifacts') {
     setActiveTab('artifacts');
+  }
+});
+
+// Auto-switch to Activity tab on approval request
+const hasAwaitingApproval = computed(() => {
+  if (!currentAgentId.value) return false;
+  return activityStore.hasAwaitingApproval(currentAgentId.value);
+});
+
+watch(hasAwaitingApproval, (newVal) => {
+  if (newVal && activeTab.value !== 'progress') {
+    setActiveTab('progress');
   }
 });
 

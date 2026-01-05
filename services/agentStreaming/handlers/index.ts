@@ -10,14 +10,17 @@ export {
   handleToolApprovalRequested,
   handleToolAutoExecuting,
   handleToolLog,
-} from './toolHandler';
+} from './toolLifecycleHandler';
 
 export {
   handleAgentStatus,
   handleAssistantComplete,
-  handleTodoListUpdate,
   handleError,
-} from './statusHandler';
+} from './agentStatusHandler';
+
+export {
+  handleTodoListUpdate,
+} from './todoHandler';
 
 export {
   handleInterAgentMessage,
