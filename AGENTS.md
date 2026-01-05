@@ -33,7 +33,8 @@ The tools and environments where agents live and users interact.
 
 ## 🛠️ Developer Guidelines
 
-For detailed setup, build instructions, and specific test commands, please refer to the **[README](./README.md)**.
+### Git Guidelines
+*   **NEVER use `git add .` or `git add -A`**. Always stage files individually or by specific patterns to avoid committing unintended changes.
 
 ### Testing Overview
 We follow a **colocated testing strategy** where tests live alongside the code in `__tests__` directories.
