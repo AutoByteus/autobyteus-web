@@ -39,8 +39,24 @@ export const useAgentArtifactsStore = defineStore('agentArtifacts', {
   actions: {
     /**
      * Start streaming a new artifact (e.g. write_file start)
+     * If an artifact with the same path already exists for this agent,
+     * it will be updated (reset to streaming) instead of creating a duplicate.
      */
     createPendingArtifact(agentId: string, path: string, type: 'file' | 'image' = 'file') {
+      // Check if an artifact with the same path already exists
+      const existingArtifacts = this.artifactsByAgent.get(agentId) || [];
+      const existingArtifact = existingArtifacts.find(a => a.path === path);
+
+      if (existingArtifact) {
+        // Update existing artifact - reset for new streaming session
+        existingArtifact.status = 'streaming';
+        existingArtifact.content = '';
+        existingArtifact.createdAt = new Date().toISOString();
+        this.activeStreamingArtifactByAgent.set(agentId, existingArtifact);
+        return;
+      }
+
+      // Create new artifact
       const artifact: AgentArtifact = {
         id: `pending-${Date.now()}`, // Temp ID
         agentId,

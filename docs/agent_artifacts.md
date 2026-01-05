@@ -81,14 +81,14 @@ interface AgentArtifact {
 
 The `agentArtifactsStore` provides the following actions:
 
-| Action                     | Trigger                      | Description                                              |
-| -------------------------- | ---------------------------- | -------------------------------------------------------- |
-| `createPendingArtifact()`  | `SEGMENT_START` (write_file) | Creates a new artifact in `streaming` status.            |
-| `appendArtifactContent()`  | `SEGMENT_CONTENT`            | Appends streamed content delta to the active artifact.   |
-| `finalizeArtifactStream()` | `SEGMENT_END`                | Transitions artifact to `pending_approval` status.       |
-| `markArtifactPersisted()`  | Backend event                | Updates status to `persisted` after tool execution.      |
-| `markArtifactFailed()`     | Backend event                | Updates status to `failed` if tool rejected/errored.     |
-| `fetchArtifactsForAgent()` | Session restore              | Loads persisted artifacts from backend (future feature). |
+| Action                     | Trigger                      | Description                                                                                                                        |
+| -------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `createPendingArtifact()`  | `SEGMENT_START` (write_file) | Creates a new artifact in `streaming` status. If an artifact with the same path exists, resets it instead of creating a duplicate. |
+| `appendArtifactContent()`  | `SEGMENT_CONTENT`            | Appends streamed content delta to the active artifact.                                                                             |
+| `finalizeArtifactStream()` | `SEGMENT_END`                | Transitions artifact to `pending_approval` status.                                                                                 |
+| `markArtifactPersisted()`  | Backend event                | Updates status to `persisted` after tool execution.                                                                                |
+| `markArtifactFailed()`     | Backend event                | Updates status to `failed` if tool rejected/errored.                                                                               |
+| `fetchArtifactsForAgent()` | Session restore              | Loads persisted artifacts from backend (future feature).                                                                           |
 
 ---
 
@@ -165,6 +165,7 @@ yarn test:nuxt stores/__tests__/agentArtifactsStore.spec.ts --run
 - Appending streamed content
 - Finalizing artifact streams
 - Marking artifacts as persisted
+- Updating existing artifact when same path is used (no duplicates)
 
 ---
 

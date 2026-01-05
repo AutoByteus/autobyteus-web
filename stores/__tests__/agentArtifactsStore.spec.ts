@@ -63,4 +63,26 @@ describe('AgentArtifactsStore', () => {
     const all = store.getArtifactsForAgent(agentId);
     expect(all[0].status).toBe('persisted');
   });
+
+  it('should update existing artifact instead of creating duplicate when same path is used', () => {
+    const store = useAgentArtifactsStore();
+    const agentId = 'agent-1';
+
+    // First write to fibonacci.py
+    store.createPendingArtifact(agentId, 'fibonacci.py');
+    store.appendArtifactContent(agentId, 'version 1');
+    store.finalizeArtifactStream(agentId);
+    store.markArtifactPersisted(agentId, 'fibonacci.py');
+
+    // Second write to same file
+    store.createPendingArtifact(agentId, 'fibonacci.py');
+    store.appendArtifactContent(agentId, 'version 2');
+    store.finalizeArtifactStream(agentId);
+
+    // Should still only have ONE artifact
+    const all = store.getArtifactsForAgent(agentId);
+    expect(all).toHaveLength(1);
+    expect(all[0].content).toBe('version 2');
+    expect(all[0].status).toBe('pending_approval');
+  });
 });
