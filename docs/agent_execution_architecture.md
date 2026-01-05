@@ -115,3 +115,9 @@ The parser uses the **State Pattern** to handle complex, interleaved mixed-media
 ### Integration
 
 The `assistantResponseHandler` (Level 2) feeds the `writer` function of the parser. The `ParserContext` directly pushes segments into the reactive `AgentContext` used by the Vue UI, ensuring instant visual feedback as the LLM types. Tool arguments are populated later via tool lifecycle events (`TOOL_APPROVAL_REQUESTED` / `TOOL_AUTO_EXECUTING`).
+
+## Related Documentation
+
+- **[Agent Management](./agent_management.md)**: Defines the agents whose execution is described here.
+- **[Agent Teams](./agent_teams.md)**: Describes the orchestration of multiple agents.
+- **[Content Rendering](./content_rendering.md)**: Details how the parsed segments (Markdown, Mermaid, etc.) are visualized.

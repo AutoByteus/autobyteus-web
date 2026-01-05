@@ -429,8 +429,8 @@ The `TeamLaunchConfigModal.vue` provides a comprehensive wizard:
 | Monitoring    | Single conversation      | Tabbed per-member views       |
 | Workspace     | One per agent            | Per-member or shared          |
 
-## Related Modules
+## Related Documentation
 
-- **Agent Management**: Individual agents that compose teams
-- **Workspace**: Workspaces configured per-member
-- **Conversation**: Team responses displayed with member attribution
+- **[Agent Management](./agent_management.md)**: Individual agents are the building blocks of teams.
+- **[File Explorer](./file_explorer.md)**: Teams operate within workspaces managed by the File Explorer.
+- **[Agent Execution Architecture](./agent_execution_architecture.md)**: Details the underlying execution engine for agents and teams.

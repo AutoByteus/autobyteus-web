@@ -340,3 +340,8 @@ Where:
 - **Linux**: `~/.config/autobyteus/` and `~/.cache/autobyteus/`
 - **macOS**: `~/Library/Application Support/autobyteus/`
 - **Windows**: `%APPDATA%\autobyteus\` and `%LOCALAPPDATA%\autobyteus\`
+
+## Related Documentation
+
+- **[System Architecture](../ARCHITECTURE.md)**: High-level overview of the system including the Electron integration.
+- **[Settings](./settings.md)**: Server status and logs can be monitored via the Settings page.

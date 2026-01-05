@@ -64,3 +64,8 @@ Displays the real-time health and connection status of the backend server.
 - **Status Indicators:** Visual feedback on whether the server is `Running`, `Starting`, or in an `Error` state.
 - **Technical Details:** Displays the Server URL and, if running in Electron mode, the path to the local log file.
 - **Controls:** Options to "Refresh Status" or "Restart Server".
+
+## Related Documentation
+
+- **[Agent Management](./agent_management.md)**: API keys configured in Settings are used by Agents.
+- **[Electron Packaging](./electron_packaging.md)**: The Server Status monitor interacts with the bundled Electron server.

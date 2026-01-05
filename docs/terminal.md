@@ -191,5 +191,5 @@ workspace-name:~$ <your-command>
 
 ## Related Documentation
 
-- **Backend**: See [terminal.md](../../autobyteus-server/docs/modules/terminal.md) for backend implementation
-- **Workspaces**: See workspaces documentation for workspace context
+- **[File Explorer](./file_explorer.md)**: The terminal executes commands within the directory context of the File Explorer.
+- **[Agent Execution Architecture](./agent_execution_architecture.md)**: Agents can sometimes execute terminal commands (via tools), which is a separate but related capability.

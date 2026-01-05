@@ -373,8 +373,7 @@ For MCP servers accessed over HTTP:
 | `token`   | Optional authentication token |
 | `headers` | Optional custom headers       |
 
-## Related Modules
+## Related Documentation
 
-- **Agents**: Agents use tools during conversations
-- **Conversation**: Tool calls appear as ToolCallSegment components
-- **Backend**: See autobyteus-server documentation for tool registry and MCP integration
+- **[Agent Management](./agent_management.md)**: Tools are assigned to agents to extend their capabilities.
+- **[Agent Execution Architecture](./agent_execution_architecture.md)**: Describes how tool calls are streamed, parsed, and executed during an agent run.

@@ -91,3 +91,8 @@ This architecture ensures that diagram rendering is:
 - **Fast**: Client-side only, no network requests to generate images.
 - **Secure**: Uses `securityLevel: 'loose'` but runs in the browser sandbox (note: 'loose' allows HTML in labels).
 - **Theme-aware**: Can adapt to the application's light/dark mode.
+
+## Related Documentation
+
+- **[File Explorer](./file_explorer.md)**: Files selected in the explorer are rendered using the logic described here.
+- **[Agent Execution Architecture](./agent_execution_architecture.md)**: Agent responses (streamed text) are parsed and rendered using these components.

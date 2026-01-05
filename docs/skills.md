@@ -102,3 +102,8 @@ It calls `skillStore.fetchAllSkills()` to populate the available skills.
 - **Data Field**: `skillNames` (List of strings)
 
 When an agent is created, the selected `skillNames` are sent to the backend `AgentDefinition`.
+
+## Related Documentation
+
+- **[Agent Management](./agent_management.md)**: Skills are attached to agents to provide capabilities.
+- **[File Explorer](./file_explorer.md)**: Skills are essentially files (scripts) managed within the file system.

@@ -342,7 +342,7 @@ sequenceDiagram
 4. New/updated prompts are imported
 5. Sync result shows count of changes
 
-## Related Modules
+## Related Documentation
 
-- **Backend**: See autobyteus-server documentation for prompt storage and sync implementation
-- **Agents**: Prompts can be associated with agents via `isForAgentTeam` flag
+- **[Agent Management](./agent_management.md)**: Prompts are assigned to agents to define their behavior.
+- **[Agent Teams](./agent_teams.md)**: Teams may use specific system prompts for coordination.

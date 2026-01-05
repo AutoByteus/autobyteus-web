@@ -358,10 +358,10 @@ The `AgentDefinitionForm.vue` component allows configuring:
 | Lifecycle Processors             | Hook into agent lifecycle events   |
 | Skills                           | File-based capabilities (scripts)  |
 
-## Related Modules
+## Related Documentation
 
-- **Workspace**: Agents are associated with workspaces for file context
-- **Skills**: Agents can be equipped with file-based skills
-- **Tools**: Agents invoke configured tools during execution
-- **Prompts**: System prompts define agent behavior
-- **Conversation**: Agent responses displayed in conversation segments
+- **[Agent Teams](./agent_teams.md)**: Agents can be combined into teams for complex workflows.
+- **[Skills](./skills.md)**: Agents can be equipped with file-based skills (scripts).
+- **[Tools & MCP](./tools_and_mcp.md)**: Agents invoke configured tools and MCP servers during execution.
+- **[Prompt Engineering](./prompt_engineering.md)**: System prompts define the core persona and behavior of the agent.
+- **[Settings](./settings.md)**: API keys for LLMs must be configured in Settings.

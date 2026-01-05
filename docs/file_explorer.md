@@ -689,8 +689,8 @@ fileExplorerStore.closeAllFiles();
 fileExplorerStore.closeOtherFiles("/src/app.ts"); // Keep only app.ts
 ```
 
-## Related Modules
+## Related Documentation
 
-- **Backend**: See [autobyteus-server/docs/modules/file_explorer.md](../../autobyteus-server/docs/modules/file_explorer.md) for backend implementation
-- **Workspaces**: See [autobyteus-server/docs/modules/workspaces.md](../../autobyteus-server/docs/modules/workspaces.md) for workspace concepts
-- **Components**: `/components/workspace/` - Workspace configuration and views
+- **[Content Rendering](./content_rendering.md)**: Details how file content (Markdown, Code, Media) is displayed.
+- **[Terminal](./terminal.md)**: The terminal often operates within the context of the active workspace.
+- **[Skills](./skills.md)**: Skills are file-based and often managed or viewed within the file system context.

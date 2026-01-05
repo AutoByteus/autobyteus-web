@@ -1,36 +1,51 @@
-# AutoByteus Web - Agent Guidelines
+# AutoByteus Web - Documentation & Developer Guide
 
-## Testing Guidelines
+Welcome to the AutoByteus Web documentation. This project is structured around distinct "Concerns"—modular functional areas that interact to create the full application. Think of this documentation as a book, where each chapter covers a specific concern or architectural layer.
 
-### Test Organization (Best Practice)
+## 📚 Documentation Catalog
 
-Tests are **colocated** with their source files in `__tests__` directories. Do not separate tests into a top-level `tests/` folder unless they are true integration/e2e tests.
+### Chapter 1: Architecture & Foundation
+Understanding the system's backbone, how the pieces fit together, and how the application is delivered.
 
-**Structure:**
+*   **[System Architecture](./ARCHITECTURE.md)**: The high-level map of the system, defining the frontend, backend, and Electron integration. Start here.
+*   **[Agent Execution Architecture](./docs/agent_execution_architecture.md)**: A deep dive into the runtime behavior—how user input flows to agents and how streaming responses are parsed and rendered.
+*   **[Electron Packaging & Server Management](./docs/electron_packaging.md)**: How the web app and Python backend are bundled into a single desktop executable.
+*   **[Testing Strategy](./ARCHITECTURE.md#testing-strategy)**: Our approach to quality assurance, including test colocation and tools.
 
-```
-utils/
-  fileExplorer/
-    TreeNode.ts
-    __tests__/               # Colocated test directory
-      treeNode.test.ts       # Tests for TreeNode.ts
-components/
-  fileExplorer/
-    FileItem.vue
-    __tests__/               # Colocated test directory
-      FileItem.spec.ts       # Tests for FileItem.vue
-```
+### Chapter 2: Core Entities (The "Brain")
+The primary actors and capabilities within the system.
 
-### Running Tests
+*   **[Agent Management](./docs/agent_management.md)**: How single agents are defined, configured, and managed.
+*   **[Agent Teams](./docs/agent_teams.md)**: Orchestrating multiple agents to work together in workflows.
+*   **[Skills](./docs/skills.md)**: Reusable, file-based capabilities (scripts) that agents can learn.
+*   **[Tools & MCP](./docs/tools_and_mcp.md)**: External tools and the Model Context Protocol (MCP) integration for expanding agent capabilities.
+*   **[Prompt Engineering](./docs/prompt_engineering.md)**: Managing the system prompts that define agent personas and behaviors.
 
-- **Run all tests:** `yarn test` (Runs both Nuxt and Electron tests)
-- **Run Nuxt/Web tests (Recommended):** `yarn test:nuxt`
-- **Run specific file:** `yarn test:nuxt path/to/file.spec.ts --run`
-- **Run specific test case:** `yarn test:nuxt path/to/file.spec.ts -t "test name pattern" --run`
+### Chapter 3: Interface & Environment (The "Body")
+The tools and environments where agents live and users interact.
 
-> **Note:** Always use the `--run` flag when running specific tests to avoid starting the watch mode.
+*   **[File Explorer](./docs/file_explorer.md)**: The file system interface, workspace management, and real-time synchronization.
+*   **[Terminal](./docs/terminal.md)**: The integrated terminal emulator for executing system commands.
+*   **[Content Rendering](./docs/content_rendering.md)**: How the system displays rich content like Markdown, Code, and Mermaid diagrams.
+*   **[Settings](./docs/settings.md)**: Application configuration, API key management, and system monitoring.
 
-## Project Structure
+---
+
+## 🛠️ Developer Guidelines
+
+For detailed setup, build instructions, and specific test commands, please refer to the **[README](./README.md)**.
+
+### Testing Overview
+We follow a **colocated testing strategy** where tests live alongside the code in `__tests__` directories.
+*   **Philosophy**: See **[Testing Strategy in Architecture](./ARCHITECTURE.md#testing-strategy)**.
+*   **Key Commands**:
+    *   `yarn test`: Run all tests (Nuxt + Electron).
+    *   `yarn test:nuxt`: Run only web/frontend tests (Recommended).
+    *   `yarn test:electron`: Run only Electron-specific tests.
+    *   *Note: Use `--run` (e.g., `yarn test:nuxt path/to/test --run`) to execute once without watch mode.*
+*   **Full Guide**: See **[Testing in README](./README.md#testing)**.
+
+### Project Structure
 
 - `components/`: Vue components
 - `stores/`: Pinia stores
