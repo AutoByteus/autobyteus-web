@@ -33,7 +33,7 @@ export function createSegmentFromPayload(payload: SegmentStartPayload): AIRespon
     case 'write_file':
       return createWriteFileSegment(id, metadata);
 
-    case 'run_terminal_cmd':
+    case 'run_bash':
       return createTerminalCommandSegment(id);
 
     case 'reasoning':
@@ -91,7 +91,7 @@ function createTerminalCommandSegment(invocationId: string): TerminalCommandSegm
   return {
     type: 'terminal_command',
     invocationId,
-    toolName: 'run_terminal_cmd',
+    toolName: 'run_bash',
     arguments: {},
     status: 'parsing',
     logs: [],

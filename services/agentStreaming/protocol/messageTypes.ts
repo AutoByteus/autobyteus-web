@@ -32,7 +32,7 @@ export type SegmentType =
   | 'text' 
   | 'tool_call' 
   | 'write_file'
-  | 'run_terminal_cmd'
+  | 'run_bash'
   | 'reasoning';
 
 // --- Payload Types ---

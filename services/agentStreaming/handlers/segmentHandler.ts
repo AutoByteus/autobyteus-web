@@ -21,7 +21,7 @@ function extractContextText(payload: SegmentStartPayload): string {
   if (payload.segment_type === 'write_file') {
     return payload.metadata?.path || 'new file';
   }
-  if (payload.segment_type === 'run_terminal_cmd') {
+  if (payload.segment_type === 'run_bash') {
     return 'terminal'; // Command content comes later
   }
   if (payload.segment_type === 'tool_call') {
@@ -54,7 +54,7 @@ export function handleSegmentStart(
 
   // --- Sidecar Activity Store ---
   if (
-    ['tool_call', 'write_file', 'run_terminal_cmd'].includes(payload.segment_type)
+    ['tool_call', 'write_file', 'run_bash'].includes(payload.segment_type)
   ) {
     const activityStore = useAgentActivityStore();
     const contextText = extractContextText(payload);
@@ -66,9 +66,9 @@ export function handleSegmentStart(
     if (payload.segment_type === 'write_file') {
       storeType = 'write_file';
       // toolName remains 'write_file'
-    } else if (payload.segment_type === 'run_terminal_cmd') {
+    } else if (payload.segment_type === 'run_bash') {
       storeType = 'terminal_command';
-      // toolName remains 'run_terminal_cmd'
+      // toolName remains 'run_bash' (default from payload.segment_type)
     } else if (payload.segment_type === 'tool_call') {
       // For generic tool calls, we STRICTLY require the tool name from metadata.
       // If it's missing, it's a backend bug.
@@ -88,7 +88,7 @@ export function handleSegmentStart(
       contextText,
       arguments: payload.segment_type === 'write_file' 
         ? { path: payload.metadata?.path } 
-        : (payload.segment_type === 'run_terminal_cmd' ? { command: '' } : {}),
+        : (payload.segment_type === 'run_bash' ? { command: '' } : {}),
       logs: [],
       result: null,
       error: null,

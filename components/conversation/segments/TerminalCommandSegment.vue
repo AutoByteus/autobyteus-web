@@ -1,9 +1,10 @@
 <template>
   <ToolCallIndicator
     :invocation-id="segment.invocationId"
-    :tool-name="segment.toolName || 'run_terminal_cmd'"
+    :tool-name="segment.toolName || 'run_bash'"
     :status="segment.status"
     :error-message="segment.error ?? undefined"
+    :context-text="segment.command"
   />
 </template>
 
