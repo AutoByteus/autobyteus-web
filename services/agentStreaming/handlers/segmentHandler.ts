@@ -61,12 +61,28 @@ export function handleSegmentStart(
     
     // Map backend type to frontend store type
     let storeType: 'tool_call' | 'write_file' | 'terminal_command' = 'tool_call';
-    if (payload.segment_type === 'write_file') storeType = 'write_file';
-    if (payload.segment_type === 'run_terminal_cmd') storeType = 'terminal_command';
+    let toolName: string = payload.segment_type; // Default generic name
+
+    if (payload.segment_type === 'write_file') {
+      storeType = 'write_file';
+      // toolName remains 'write_file'
+    } else if (payload.segment_type === 'run_terminal_cmd') {
+      storeType = 'terminal_command';
+      // toolName remains 'run_terminal_cmd'
+    } else if (payload.segment_type === 'tool_call') {
+      // For generic tool calls, we STRICTLY require the tool name from metadata.
+      // If it's missing, it's a backend bug.
+      if (payload.metadata?.tool_name) {
+        toolName = payload.metadata.tool_name;
+      } else {
+        console.error(`[SegmentHandler] Backend Bug: Missing tool_name in metadata for tool_call segment ${payload.id}`);
+        toolName = 'MISSING_TOOL_NAME';
+      }
+    }
 
     activityStore.addActivity(context.state.agentId, {
       invocationId: payload.id,
-      toolName: payload.segment_type, // Initial name
+      toolName: toolName, 
       type: storeType,
       status: 'parsing',
       contextText,
