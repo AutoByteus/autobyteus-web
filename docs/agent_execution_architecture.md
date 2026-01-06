@@ -2,11 +2,13 @@
 
 ## Overview
 
-This document outlines the end-to-end architecture of how Agent and Agent Team executions are managed in the frontend. The data flow follows a top-down approach:
+This document outlines the end-to-end architecture of how Agent and Agent Team executions are managed in the frontend. The architecture has evolved to offload complex parsing to the backend. The frontend now acts as a **Renderer** of structured events rather than a parser of raw text.
+
+The data flow follows a top-down approach:
 
 1.  **Orchestration Layer (Stores)**: Manages lifecycle, user input, and WebSocket streaming connections.
-2.  **Service Layer (Event Routing)**: Dispatches incoming WebSocket events to specific handlers.
-3.  **Parsing Engine (Utils)**: Incrementally parses raw text streams into structured segments (UI elements).
+2.  **Service Layer (Event Routing)**: Dispatches incoming structured WebSocket events to specific handlers.
+3.  **Segment Processing (Handlers)**: Updates the reactive `AgentContext` and sidecar stores based on event payloads.
 
 ```mermaid
 graph TD
@@ -14,17 +16,17 @@ graph TD
     Store-->|Mutation| Backend[Backend API]
     Backend-->|WebSocket Event| Store
     Store-->|Event Data| Service[Service Layer]
-    Service-->|Action| Router{Event Type}
 
-    Router-->|Text Chunk| Parser[Parsing Engine]
-    Router-->|Tool Event| Handler1[Tool Handler]
-    Router-->|Status Update| Handler2[Status Handler]
+    Service-->|Dispatch| Handler{Event Handlers}
 
-    Parser-->|Segments| State[Agent Context State]
-    Handler1-->|Updates| State
-    Handler2-->|Updates| State
+    Handler-->|Segment Created/Updated| Context[Agent Context State]
+    Handler-->|Artifact Persistence| ArtifactStore[Artifact Store]
+    Handler-->|Activity Log| ActivityStore[Activity Store]
+    Handler-->|Task/Todo Update| TodoStore[Todo Store]
 
-    State-->|Reactivity| UI[Vue Component UI]
+    Context-->|Reactivity| UI[Vue Component UI]
+    ArtifactStore-->|Reactivity| UI
+    ActivityStore-->|Reactivity| UI
 ```
 
 ---
@@ -55,80 +57,66 @@ The Pinia stores act as the primary interface for the UI components to interact 
 
 ## Level 2: Service Layer (Event Routing)
 
-The service layer bridges the gap between raw WebSocket event data and the application's rich state objects (`AgentContext` / `AgentTeamContext`).
+The service layer bridges the gap between the WebSocket transport and the application's business logic. It essentially functions as a router.
 
-### Stream Handlers
+### `AgentStreamingService.ts`
 
-- **`AgentStreamingService` / `TeamStreamingService`**: WebSocket facades that parse and dispatch incoming events.
-- **`services/agentStreaming/handlers/*`**: Layered handlers for segments, tools, status, team events, and task plan updates.
+- **Role**: WebSocket facade for single-agent streams.
+- **Responsibilities**:
+  1.  Maintains the WebSocket connection (`transport/WebSocketClient`).
+  2.  Parses raw JSON messages into typed `ServerMessage` objects (`protocol/messageTypes`).
+  3.  Dispatches messages to the appropriate pure-function handler.
 
-### Agent Response Handlers
+### Dispatch Logic
 
-Located in `services/agentResponseHandlers`.
+Incoming events are routed based on their `type`:
 
-| Handler File                       | Description                                                                                                                                                                            |
-| :--------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `assistantResponseHandler.ts`      | **Core Handler**. Processes `AssistantChunk` and `AssistantCompleteResponse`. Routes text/reasoning to the **Parsing Engine** (see Level 3). Handles final media URLs and token usage. |
-| `toolCallHandler.ts`               | Manages tool lifecycles: `awaiting-approval` -> `executing` -> `success` / `error`. Updates `ToolCallSegment`s in real-time.                                                           |
-| `agentStatusHandler.ts`            | Updates the agent's high-level status (e.g., `RUNNING`, `IDLE`, `PAUSED`). Listen for lifecycle events.                                                                                |
-| `todoHandler.ts`                   | **Sidecar Handler**. Updates the `agentTodoStore` with the agent's current goal list.                                                                                                  |
-| `systemTaskNotificationHandler.ts` | Injects system notifications into the chat stream.                                                                                                                                     |
-| `errorEventHandler.ts`             | Handles fatal errors, creating error segments and terminating the generation turn.                                                                                                     |
-| `interAgentMessageHandler.ts`      | Visualizes direct communication between agents in a team setting.                                                                                                                      |
-
-### Sidecar Store Pattern
-
-A key architectural pattern in `autobyteus-web` is the **Sidecar Store Pattern** for runtime data. Instead of keeping all state in a monolithic `AgentContext`, distinct data streams are routed to dedicated stores:
-
-`WebSocket` -> `AgentStreamingService` -> `Specialized Handler` -> `Dedicated Store`
-
-**Examples:**
-
-- **To-Do List**: `TODO_LIST_UPDATE` event -> `todoHandler.ts` -> `agentTodoStore.ts`
-- **Artifacts**: `ARTIFACT_PERSISTED` event -> `artifactHandler.ts` -> `agentArtifactStore.ts`
-- **Activities**: Tool events -> `toolHandler.ts` -> `agentActivityStore.ts` (Planned)
-
-This decouples the "Core Identity" (Context) from "Runtime Projections" (Todos, Artifacts, Logs).
-
-### Agent Team Response Handlers
-
-Located in `services/agentTeamResponseHandlers`.
-
-| Handler File                 | Description                                                                                                    |
-| :--------------------------- | :------------------------------------------------------------------------------------------------------------- |
-| `taskPlanHandler.ts`         | Manages the dynamic Task Plan (Kanban/List). Handles task creation and status updates (`IN_PROGRESS`, `DONE`). |
-| `teamStatusUpdateHandler.ts` | Updates the overall team orchestration status.                                                                 |
+| Event Type                | Handler Function                                   | Purpose                                                         |
+| :------------------------ | :------------------------------------------------- | :-------------------------------------------------------------- |
+| `SEGMENT_START`           | `segmentHandler.handleSegmentStart`                | Creates a new UI segment (Text, Code, Tool).                    |
+| `SEGMENT_CONTENT`         | `segmentHandler.handleSegmentContent`              | Appends streaming content (deltas) to an existing segment.      |
+| `SEGMENT_END`             | `segmentHandler.handleSegmentEnd`                  | Finalizes a segment, setting final status or metadata.          |
+| `TOOL_APPROVAL_REQUESTED` | `toolLifecycleHandler.handleToolApprovalRequested` | Sets segment status to `awaiting-approval`.                     |
+| `TOOL_AUTO_EXECUTING`     | `toolLifecycleHandler.handleToolAutoExecuting`     | Sets segment status to `executing`.                             |
+| `TOOL_LOG`                | `toolLifecycleHandler.handleToolLog`               | Appends execution logs, results, or errors to the tool segment. |
+| `ARTIFACT_PERSISTED`      | `artifactHandler.handleArtifactPersisted`          | Updates the `AgentArtifactsStore` with a saved file.            |
+| `TODO_LIST_UPDATE`        | `todoHandler.handleTodoListUpdate`                 | Syncs the agent's internal todo list with the UI.               |
 
 ---
 
-## Level 3: Parsing Engine (Utils)
+## Level 3: Segment Processing & State Management
 
-The **Parsing Engine** is responsible for taking raw, unstructured streaming text from the LLM and converting it into structured `AIResponseSegment` objects that the UI can render (e.g., File Viewers, Code Blocks, Tool Invocation Cards).
+Unlike the previous architecture, the frontend **does not** parse raw text/XML tags. The backend is responsible for all parsing and sends "Segments" as its primary unit of communication.
 
-**Location**: `utils/aiResponseParser`
+### Segment Handlers (`services/agentStreaming/handlers`)
 
-### Components
+These handlers are pure functions that take a payload and an `AgentContext`, and mutate the context.
 
-1.  **`IncrementalAIResponseParser`**: The driver that ingests string chunks and cycles the State Machine.
-2.  **`StateMachine`**: Manages the current parsing state (e.g., "Reading Text", "Reading File Name", "Parsing Tool Args").
-3.  **`ParserContext`**: Holds the buffer, cursor position, and the resulting list of segments.
+#### `segmentHandler.ts`
 
-### State Machine Logic
+- **`handleSegmentStart`**: Finds the current AI message (or creates one) and pushes a new Segment object (e.g., `ToolCallSegment`, `WriteFileSegment`). It also initializes "Sidecar" entries (see below) for things like live file artifacts.
+- **`handleSegmentContent`**: Finds the segment by ID and appends string deltas. This powers the "typewriter" effect.
+- **`handleSegmentEnd`**: Performs cleanup, sets the final tool name if it was streamed lazily, and marks the segment as "parsed" (ready for execution state changes).
 
-The parser uses the **State Pattern** to handle complex, interleaved mixed-media responses.
+#### `toolLifecycleHandler.ts`
 
-#### Key States
+- Manages the state transitions of tool segments _after_ they have been parsed.
+- Updates the status: `parsing` -> `parsed` -> `awaiting-approval` | `executing` -> `success` | `error`.
+- Hydrates arguments: When a tool is ready to execute, the full arguments JSON is attached to the segment.
 
-- **`TextState`** (Default): Captures standard markdown text. Transitions out when it detects specific triggers (`<`, `{`).
-- **`XmlTagInitializationState`**: Analyzes specific tags to fork logic:
-  - `<write_file path="...">` -> **`WriteFileParsingState`** (Captures code content).
-  - `<tool name="...">` -> **`ToolParsingState`** (Streams tool content only).
-  - `<run_terminal_cmd>` -> **`RunTerminalCmdParsingState`** (Captures shell commands).
-- **`JsonInitializationState`**: If configured for JSON tool calls, detects structure beginnings and streams JSON tool content as a segment (arguments parsed later).
+### Sidecar Store Pattern
 
-### Integration
+A key architectural pattern is the **Sidecar Store Pattern** for runtime data. Instead of keeping all state in a monolithic `AgentContext` (which is optimized for Chat UI), distinct data streams are routed to dedicated stores:
 
-The `assistantResponseHandler` (Level 2) feeds the `writer` function of the parser. The `ParserContext` directly pushes segments into the reactive `AgentContext` used by the Vue UI, ensuring instant visual feedback as the LLM types. Tool arguments are populated later via tool lifecycle events (`TOOL_APPROVAL_REQUESTED` / `TOOL_AUTO_EXECUTING`).
+1.  **Artifacts (`AgentArtifactsStore`)**:
+    - Listens to `write_file` segment events.
+    - Builds a real-time, read-only preview of files being written _before_ they are saved to disk.
+    - When `ARTIFACT_PERSISTED` arrives, it marks the file as saved.
+2.  **Activity (`AgentActivityStore`)**:
+    - Tracks every tool call, file write, and terminal command as a linear history of "Activities".
+    - Used for the "Activity Feed" UI in the backend/sidebar.
+3.  **Todos (`AgentTodoStore`)**:
+    - Maintains the agent's Todo list separately from the chat history.
 
 ## Related Documentation
 
