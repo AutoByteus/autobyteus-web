@@ -99,6 +99,14 @@ export const useAgentActivityStore = defineStore('agentActivity', {
       }
     },
 
+    updateActivityArguments(agentId: string, invocationId: string, args: Record<string, any>) {
+      const state = this._ensureAgentState(agentId);
+      const activity = state.activities.find((a) => a.invocationId === invocationId);
+      if (activity) {
+        activity.arguments = { ...activity.arguments, ...args };
+      }
+    },
+
     setHighlightedActivity(agentId: string, invocationId: string | null) {
       const state = this._ensureAgentState(agentId);
       state.highlightedActivityId = invocationId;

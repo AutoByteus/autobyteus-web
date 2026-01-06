@@ -136,6 +136,18 @@ watch(hasAwaitingApproval, (newVal) => {
   }
 });
 
+// Auto-switch to Progress tab when an activity is highlighted (e.g. running tool)
+const highlightedActivityId = computed(() => {
+  if (!currentAgentId.value) return null;
+  return activityStore.getHighlightedActivityId(currentAgentId.value);
+});
+
+watch(highlightedActivityId, (newVal) => {
+  if (newVal && activeTab.value !== 'progress') {
+    setActiveTab('progress');
+  }
+});
+
 </script>
 
 <style scoped>

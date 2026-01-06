@@ -3,7 +3,6 @@
     :invocation-id="segment.invocationId"
     :tool-name="segment.toolName || 'run_terminal_cmd'"
     :status="segment.status"
-    :context-text="segment.command"
     :error-message="segment.error ?? undefined"
   />
 </template>

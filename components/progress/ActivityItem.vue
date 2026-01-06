@@ -125,6 +125,7 @@ import type { ToolActivity } from '~/stores/agentActivityStore';
 
 const props = defineProps<{
   activity: ToolActivity;
+  isHighlighted?: boolean;
 }>();
 
 const isExpanded = ref(true); 
@@ -187,16 +188,23 @@ const iconColorClass = computed(() => {
 });
 
 const containerClasses = computed(() => {
+  // Highlight effect: strong outer glow + inner glow for maximum visibility (like neon effect)
+  const baseClasses = props.isHighlighted 
+    ? 'ring-2 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6),0_0_40px_rgba(34,197,94,0.4),inset_0_0_20px_rgba(34,197,94,0.3)]' 
+    : '';
+  
   // Border colors based on status
+  let borderClass = 'border-gray-200';
   switch (props.activity.status) {
-    case 'success': return 'border-green-200 hover:border-green-300';
-    case 'error': return 'border-red-200 hover:border-red-300';
+    case 'success': borderClass = 'border-green-200 hover:border-green-300'; break;
+    case 'error': borderClass = 'border-red-200 hover:border-red-300'; break;
     case 'executing':
-    case 'parsing': return 'border-blue-200 hover:border-blue-300';
-    case 'awaiting-approval': return 'border-amber-200 hover:border-amber-300';
-    case 'denied': return 'border-gray-200 opacity-75';
-    default: return 'border-gray-200';
+    case 'parsing': borderClass = 'border-blue-200 hover:border-blue-300'; break;
+    case 'awaiting-approval': borderClass = 'border-amber-200 hover:border-amber-300'; break;
+    case 'denied': borderClass = 'border-gray-200 opacity-75'; break;
   }
+  
+  return `${baseClasses} ${borderClass}`;
 });
 
 const statusLabel = computed(() => {

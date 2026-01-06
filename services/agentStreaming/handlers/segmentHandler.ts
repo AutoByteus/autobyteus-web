@@ -70,7 +70,9 @@ export function handleSegmentStart(
       type: storeType,
       status: 'parsing',
       contextText,
-      arguments: {},
+      arguments: payload.segment_type === 'write_file' 
+        ? { path: payload.metadata?.path } 
+        : (payload.segment_type === 'run_terminal_cmd' ? { command: '' } : {}),
       logs: [],
       result: null,
       error: null,
@@ -130,6 +132,21 @@ export function handleSegmentEnd(
     
     // Potentially update context text if it was empty (e.g. terminal command)
     // For now, we rely on the initial extraction or specific handlers.
+
+    // Update Arguments in Sidecar (e.g. command content or file content)
+    if (segment.type === 'write_file') {
+      const wfSegment = segment as WriteFileSegment;
+      activityStore.updateActivityArguments(context.state.agentId, payload.id, { 
+        path: wfSegment.path,
+        content: wfSegment.originalContent 
+      });
+    }
+    if (segment.type === 'terminal_command') {
+      const tcSegment = segment as TerminalCommandSegment;
+      activityStore.updateActivityArguments(context.state.agentId, payload.id, { 
+        command: tcSegment.command 
+      });
+    }
   }
 }
 

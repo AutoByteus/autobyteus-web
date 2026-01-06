@@ -19,6 +19,7 @@
 
           <!-- Tool Name -->
           <span class="font-medium text-gray-700 text-base">{{ toolName }}</span>
+          <span class="font-mono text-xs text-gray-400">#{{ invocationId.slice(0, 6) }}</span>
         </div>
 
         <!-- Right Section: Actions or Link -->

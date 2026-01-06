@@ -17,6 +17,7 @@
           v-for="activity in activities" 
           :key="activity.invocationId" 
           :activity="activity"
+          :isHighlighted="activity.invocationId === highlightedId"
           :ref="(el) => setItemRef(activity.invocationId, el)"
         />
       </div>
@@ -65,13 +66,17 @@ const highlightedId = computed(() =>
 );
 
 watch(highlightedId, (newId) => {
-  if (newId && itemRefs.value[newId]) {
-    // Determine strict Vue component or DOM element
-    const el = itemRefs.value[newId].$el || itemRefs.value[newId]; 
-    if (el && typeof el.scrollIntoView === 'function') {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // Identify visual highlight logic here if needed (e.g. flash CSS class)
-    }
+  if (newId) {
+    nextTick(() => {
+      const refEntry = itemRefs.value[newId];
+      if (refEntry) {
+        // Determine strict Vue component or DOM element
+        const el = refEntry.$el || refEntry; 
+        if (el && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    });
   }
 });
 </script>

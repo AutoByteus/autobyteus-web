@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full flex flex-col bg-gray-900 border-l border-gray-700">
+  <div class="h-full flex flex-col bg-white">
     <!-- Top Section: To-Do List (Goals) -->
     <!-- We keep it collapsible or fixed height? 
          For now, simpler is fixed structure: Todo Panel auto-sizes or has max height.
