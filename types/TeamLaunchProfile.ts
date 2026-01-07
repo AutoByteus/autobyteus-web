@@ -33,7 +33,7 @@ export interface TeamMemberConfigOverride {
   llmModelIdentifier?: string;
   workspaceConfig?: WorkspaceLaunchConfig;
   autoExecuteTools?: boolean;
-  parseToolCalls?: boolean;
+
 }
 
 /**
@@ -51,7 +51,7 @@ export interface TeamLaunchProfile {
     llmModelIdentifier: string;
     workspaceConfig: WorkspaceLaunchConfig;
     autoExecuteTools: boolean;
-    parseToolCalls: boolean;
+
     maxTurns: number;
   };
 

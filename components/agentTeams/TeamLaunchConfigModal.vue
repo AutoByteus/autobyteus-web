@@ -245,7 +245,7 @@ const globalConfig = reactive<TeamLaunchProfile['globalConfig']>({
   llmModelIdentifier: '',
   workspaceConfig: { mode: 'none' },
   autoExecuteTools: true,
-  parseToolCalls: true,
+
   maxTurns: 30, // Default value
 });
 const memberOverrides = reactive<Record<string, TeamMemberConfigOverride>>({});
@@ -433,7 +433,7 @@ const initializeFormState = () => {
     globalConfig.llmModelIdentifier = '';
     globalConfig.workspaceConfig = { mode: 'none' };
     globalConfig.autoExecuteTools = true;
-    globalConfig.parseToolCalls = true;
+
     initialConfigSnapshot = null;
   }
 
@@ -465,7 +465,7 @@ watch(() => props.show, async (isVisible) => {
       globalConfig.llmModelIdentifier = '';
       globalConfig.workspaceConfig = { mode: 'none' };
       globalConfig.autoExecuteTools = true;
-      globalConfig.parseToolCalls = true;
+
     }
     
     initializeFormState(); 

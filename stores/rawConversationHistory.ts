@@ -182,7 +182,7 @@ export const useRawConversationHistoryStore = defineStore('rawConversationHistor
         createdAt: agentConversation.createdAt,
         updatedAt: agentConversation.createdAt,
         llmModelIdentifier: agentConversation.llmModel || undefined,
-        parseToolCalls: true,
+
         agentDefinitionId: agentConversation.agentDefinitionId,
         agentName: agentConversation.agentName,
         useXmlToolFormat: agentConversation.useXmlToolFormat,

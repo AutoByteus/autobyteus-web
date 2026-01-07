@@ -25,7 +25,7 @@
         class="min-w-[240px] w-full sm:w-auto"
         v-model="selectedModel"
         v-model:autoExecuteTools="autoExecuteTools"
-        v-model:parseToolCalls="parseToolCalls"
+
         :options="groupedModelOptions"
         :loading="isLoadingModels"
         :disabled="isLoadingModels || !activeContextStore.activeAgentContext"
@@ -109,12 +109,6 @@ const autoExecuteTools = computed({
   }
 });
 
-const parseToolCalls = computed({
-  get: () => activeContextStore.activeConfig?.parseToolCalls ?? true,
-  set: (value: boolean) => {
-    activeContextStore.updateConfig({ parseToolCalls: value });
-  }
-});
 
 
 

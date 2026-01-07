@@ -44,6 +44,6 @@ export interface Conversation {
   // This is set on the first turn and persists for the conversation.
   llmModelIdentifier?: string;
   // This is set on the first turn and persists for the conversation.
-  parseToolCalls?: boolean;
+
   // This will be populated from historical conversations
 }

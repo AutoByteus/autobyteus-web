@@ -48,7 +48,7 @@ export const useAgentRunStore = defineStore('agentRun', {
 
       if (isNewAgent) {
         state.conversation.llmModelIdentifier = config.llmModelIdentifier;
-        state.conversation.parseToolCalls = config.parseToolCalls;
+
       }
 
       // Add the user message to the conversation

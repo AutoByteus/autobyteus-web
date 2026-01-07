@@ -57,7 +57,7 @@ describe('agentRunStore', () => {
                 workspaceId: 'ws-1',
                 llmModelIdentifier: 'gpt-4',
                 autoExecuteTools: false,
-                parseToolCalls: true,
+
             },
             state: {
                 agentId: 'temp-1',

@@ -119,7 +119,7 @@ export const useAgentContextsStore = defineStore('agentContexts', {
         workspaceId: activeLaunchProfile.workspaceId,
         llmModelIdentifier: '',
         autoExecuteTools: false,
-        parseToolCalls: true,
+
       };
 
       const agentState = new AgentRunState(tempId, newConversation);
@@ -151,7 +151,7 @@ export const useAgentContextsStore = defineStore('agentContexts', {
         workspaceId: activeLaunchProfile.workspaceId,
         llmModelIdentifier: '',
         autoExecuteTools: false,
-        parseToolCalls: true,
+
       };
 
       const agentState = new AgentRunState(agentId, newConversation);

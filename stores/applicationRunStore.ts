@@ -126,7 +126,7 @@ export const useApplicationRunStore = defineStore('applicationRun', {
             workspaceId: null,
             llmModelIdentifier: resolvedLlmConfig[memberName],
             autoExecuteTools: true,
-            parseToolCalls: true,
+
             useXmlToolFormat: teamLaunchProfile.globalConfig.useXmlToolFormat,
           };
           members.set(memberName, new AgentContext(agentConfig, agentState));

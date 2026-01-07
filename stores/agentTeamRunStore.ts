@@ -11,6 +11,7 @@ import type {
 } from '~/generated/graphql';
 import { AgentTeamStatus } from '~/types/agent/AgentTeamStatus';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
+import { useAgentActivityStore } from '~/stores/agentActivityStore';
 import { useWorkspaceStore } from '~/stores/workspace';
 import type { TeamLaunchProfile, WorkspaceLaunchConfig, TeamMemberConfigOverride } from '~/types/TeamLaunchProfile';
 import { AgentContext } from '~/types/agent/AgentContext';
@@ -135,7 +136,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
           workspaceId: configForMember.workspaceId || null,
           llmModelIdentifier: configForMember.llmModelIdentifier,
           autoExecuteTools: configForMember.autoExecuteTools,
-          parseToolCalls: true,
+
         };
         
         const agentContext = new AgentContext(agentConfig, agentState);
@@ -196,6 +197,13 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       }
       teamStreamingServices.delete(teamId);
       
+      // Clear activity store for all members
+      if (teamContext) {
+        teamContext.members.forEach((member) => {
+          useAgentActivityStore().clearActivities(member.state.agentId);
+        });
+      }
+
       teamContextsStore.removeTeamContext(teamId);
       
       if (teamId.startsWith('temp-')) return;

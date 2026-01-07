@@ -11,7 +11,7 @@ describe('AgentContext', () => {
             workspaceId: 'ws-1',
             llmModelIdentifier: 'gpt-4',
             autoExecuteTools: true,
-            parseToolCalls: true,
+
         };
 
         const mockConversation: Conversation = {
@@ -40,7 +40,7 @@ describe('AgentContext', () => {
             workspaceId: 'ws-1',
             llmModelIdentifier: 'gpt-4',
             autoExecuteTools: true,
-            parseToolCalls: true,
+
         };
         const mockConversation: Conversation = {
             id: 'conv-1',
@@ -55,19 +55,5 @@ describe('AgentContext', () => {
         expect(context.conversation).toBe(mockConversation);
     });
 
-    it('should provide access to parseToolCalls from config', () => {
-        const mockConfig: AgentRunConfig = {
-            launchProfileId: 'profile-1',
-            workspaceId: 'ws-1',
-            llmModelIdentifier: 'gpt-4',
-            autoExecuteTools: true,
-            parseToolCalls: true, // true here
-        };
-        // @ts-ignore
-        const context = new AgentContext(mockConfig, {} as any);
-        expect(context.parseToolCalls).toBe(true);
 
-        mockConfig.parseToolCalls = false;
-        expect(context.parseToolCalls).toBe(false);
-    });
 });

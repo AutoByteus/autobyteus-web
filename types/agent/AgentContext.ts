@@ -40,8 +40,6 @@ export class AgentContext {
     return this.state.lastAIMessage;
   }
 
-  get parseToolCalls(): boolean {
-    return this.config.parseToolCalls;
-  }
+
   // --- End: New helper getters (Facade) ---
 }
