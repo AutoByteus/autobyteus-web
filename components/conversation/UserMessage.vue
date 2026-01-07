@@ -32,14 +32,17 @@ import type { UserMessage } from '~/types/conversation';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import CopyButton from '~/components/common/CopyButton.vue';
 
+import { useWorkspaceStore } from '~/stores/workspace';
 const props = defineProps<{
   message: UserMessage;
 }>();
 
 const fileExplorerStore = useFileExplorerStore();
+const workspaceStore = useWorkspaceStore();
 
 const handleFileClick = (filePath: string) => {
-  fileExplorerStore.openFile(filePath);
+  const wsId = workspaceStore.activeWorkspace?.workspaceId;
+  if(wsId) fileExplorerStore.openFile(filePath, wsId);
 };
 </script>
 

@@ -7,9 +7,9 @@ This document describes the design and implementation of the **Skills Management
 The Skills module allows users to:
 
 - View available skills (file-based capabilities).
-- View the content of skill files (scripts, docs).
+- View the content of skill files (scripts, docs) using the **generic File Explorer**.
 - Create new skills.
-- Edit skill files directly in the browser.
+- Edit skill files directly in the browser with **Monaco Editor**.
 - Assign skills to agents during agent creation.
 
 ## Module Structure
@@ -22,9 +22,10 @@ autobyteus-web/
 │   ├── SkillsList.vue                  # Skills listing with cards
 │   ├── SkillCard.vue                   # Individual skill card
 │   ├── SkillDetail.vue                 # Skill explorer & file viewer
-│   └── SkillFileTreeItem.vue           # File tree node component
+│   └── SkillWorkspaceLoader.vue        # [NEW] Transient workspace lifecycle manager
 ├── stores/
-│   └── skillStore.ts                   # Skills CRUD and file management
+│   ├── skillStore.ts                   # Skills CRUD operations
+│   └── workspace.ts                    # Workspace registration (incl. skill workspaces)
 └── graphql/
     ├── queries/skillQueries.ts
     └── mutations/skillMutations.ts
@@ -45,18 +46,69 @@ The skills page uses component-based navigation (not URL query parameters):
 | `list` (default) | SkillsList  | Browse available skills        |
 | `detail`         | SkillDetail | View/edit files within a skill |
 
-## UI Components
+## Architecture: Skill Workspaces
 
-### SkillDetail Toolbar
+Skills integrate with the **workspace-agnostic File Explorer** architecture. When viewing a skill's files, a **transient SkillWorkspace** is created on-demand.
 
-The `SkillDetail.vue` component uses Heroicons for action buttons:
+```mermaid
+flowchart TD
+    subgraph "SkillDetail View"
+        SkillDetail[SkillDetail.vue]
+        Loader[SkillWorkspaceLoader.vue]
+        FileExplorer[FileExplorer.vue]
+        FileViewer[FileContentViewer.vue]
+    end
 
-| Action | Icon (Heroicons) | Description                |
-| ------ | ---------------- | -------------------------- |
-| Add    | `PlusIcon`       | Add new file to skill      |
-| Edit   | `PencilIcon`     | Edit selected file content |
-| Delete | `TrashIcon`      | Delete selected file       |
-| Save   | `CheckIcon`      | Save file changes          |
+    subgraph "Stores"
+        WorkspaceStore[workspace.ts]
+        FileExplorerStore[fileExplorer.ts]
+    end
+
+    subgraph "Backend"
+        SkillWorkspace[SkillWorkspace]
+        FileExplorerWS[WebSocket]
+    end
+
+    SkillDetail --> Loader
+    Loader --> |"registerSkillWorkspace()"| WorkspaceStore
+    Loader --> FileExplorer
+    Loader --> FileViewer
+
+    FileExplorer --> |":workspaceId prop"| FileExplorerStore
+    FileViewer --> |":workspaceId prop"| FileExplorerStore
+
+    WorkspaceStore --> |"skill_ws_{name}"| SkillWorkspace
+    WorkspaceStore <--> FileExplorerWS
+```
+
+### SkillWorkspaceLoader.vue
+
+A lifecycle component that manages transient skill workspaces:
+
+```vue
+<SkillWorkspaceLoader :skillId="skill.name">
+    <template #default="{ workspaceId }">
+        <FileExplorer :workspaceId="workspaceId" />
+        <FileContentViewer :workspaceId="workspaceId" />
+    </template>
+</SkillWorkspaceLoader>
+```
+
+**Lifecycle:**
+
+1. `onMounted`: Calls `workspaceStore.registerSkillWorkspace(skillId)` → returns `skill_ws_{skillId}`
+2. Provides `workspaceId` to child components via scoped slot
+3. `onBeforeUnmount`: Calls `workspaceStore.unregisterSkillWorkspace(workspaceId)` → cleans up
+
+### Workspace ID Convention
+
+Skill workspaces use the prefix `skill_ws_` followed by the skill name:
+
+```typescript
+const workspaceId = `skill_ws_${skillId}`; // e.g., "skill_ws_brand-guidelines"
+```
+
+This prefix allows the backend `WorkspaceManager.get_or_create_workspace()` to dynamically create `SkillWorkspace` instances on first connection.
 
 ## Data Models
 
@@ -78,18 +130,23 @@ interface Skill {
 
 ### skillStore.ts
 
-Manages skill state and file system interactions specific to skills.
+Manages skill metadata (NOT file operations - those are delegated to the FileExplorer):
 
-**Actions:**
+| Action                 | Description                              |
+| :--------------------- | :--------------------------------------- |
+| `fetchAllSkills()`     | Load all skills from the server.         |
+| `fetchSkill(name)`     | Load a specific skill by name.           |
+| `createSkill(payload)` | Create a new skill directory + SKILL.md. |
+| `deleteSkill(name)`    | Delete the entire skill directory.       |
 
-| Action                     | Description                               |
-| :------------------------- | :---------------------------------------- |
-| `fetchAllSkills()`         | Load all skills from the server.          |
-| `fetchSkill(name)`         | Load a specific skill by name.            |
-| `createSkill(payload)`     | Create a new skill directory + SKILL.md.  |
-| `updateSkillFile(payload)` | Write content to a file in the skill dir. |
-| `deleteSkill(name)`        | Delete the entire skill directory.        |
-| `deleteSkillFile(payload)` | Delete a specific file within a skill.    |
+> **Note:** File operations (view, edit, save) are now handled by the generic `FileExplorerStore` via the skill's transient workspace.
+
+### workspace.ts (Skill Registration)
+
+| Action                            | Description                                  |
+| :-------------------------------- | :------------------------------------------- |
+| `registerSkillWorkspace(skillId)` | Creates transient workspace, returns ID.     |
+| `unregisterSkillWorkspace(wsId)`  | Cleans up workspace and file explorer state. |
 
 ## Agent Integration
 
@@ -106,4 +163,4 @@ When an agent is created, the selected `skillNames` are sent to the backend `Age
 ## Related Documentation
 
 - **[Agent Management](./agent_management.md)**: Skills are attached to agents to provide capabilities.
-- **[File Explorer](./file_explorer.md)**: Skills are essentially files (scripts) managed within the file system.
+- **[File Explorer](./file_explorer.md)**: Skills use the generic, workspace-agnostic File Explorer.

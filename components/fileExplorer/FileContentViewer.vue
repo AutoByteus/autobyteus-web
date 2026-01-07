@@ -220,18 +220,25 @@ const workspaceStore = useWorkspaceStore()
 const fileContentDisplayModeStore = useFileContentDisplayModeStore()
 const { isZenMode } = storeToRefs(fileContentDisplayModeStore)
 
-const contentRef = ref<HTMLElement | null>(null)
+const props = defineProps<{
+  workspaceId?: string
+}>()
 
-const openFiles = computed(() => fileExplorerStore.getOpenFiles)
-const activeFile = computed(() => fileExplorerStore.getActiveFile)
-const activeFileData = computed(() => fileExplorerStore.getActiveFileData)
+const contentRef = ref<HTMLElement | null>(null)
+// File Content Viewer is currently Global / Desktop level, so it binds to the Active Workspace.
+// In the future, if we want multiple viewers for split screens, this component would need a workspaceId prop.
+const currentWorkspaceId = computed(() => props.workspaceId || workspaceStore.activeWorkspace?.workspaceId)
+
+const openFiles = computed(() => currentWorkspaceId.value ? fileExplorerStore.getOpenFiles(currentWorkspaceId.value) : [])
+const activeFile = computed(() => currentWorkspaceId.value ? fileExplorerStore.getActiveFile(currentWorkspaceId.value) : null)
+const activeFileData = computed(() => currentWorkspaceId.value ? fileExplorerStore.getActiveFileData(currentWorkspaceId.value) : null)
 
 const fileContent = ref<string | null>(null)
 const showSaveSuccess = ref(false)
 let saveSuccessTimeout: ReturnType<typeof setTimeout> | null = null
 
-const isSavingContent = computed(() => activeFile.value ? fileExplorerStore.isSaveContentLoading(activeFile.value) : false)
-const saveContentError = computed(() => activeFile.value ? fileExplorerStore.getSaveContentError(activeFile.value) : null)
+const isSavingContent = computed(() => (activeFile.value && currentWorkspaceId.value) ? fileExplorerStore.isSaveContentLoading(activeFile.value, currentWorkspaceId.value) : false)
+const saveContentError = computed(() => (activeFile.value && currentWorkspaceId.value) ? fileExplorerStore.getSaveContentError(activeFile.value, currentWorkspaceId.value) : null)
 
 const getFileName = (filePath: string) => {
   try {
@@ -242,14 +249,14 @@ const getFileName = (filePath: string) => {
     return filePath.split('/').pop() || filePath;
   }
 };
-const setActiveFile = (filePath: string) => fileExplorerStore.setActiveFile(filePath)
-const closeFile = (filePath: string) => fileExplorerStore.closeFile(filePath)
-const closeAllFiles = () => fileExplorerStore.closeAllFiles()
-const closeOtherFiles = (filePath: string) => fileExplorerStore.closeOtherFiles(filePath)
+const setActiveFile = (filePath: string) => currentWorkspaceId.value && fileExplorerStore.setActiveFile(filePath, currentWorkspaceId.value)
+const closeFile = (filePath: string) => currentWorkspaceId.value && fileExplorerStore.closeFile(filePath, currentWorkspaceId.value)
+const closeAllFiles = () => currentWorkspaceId.value && fileExplorerStore.closeAllFiles(currentWorkspaceId.value)
+const closeOtherFiles = (filePath: string) => currentWorkspaceId.value && fileExplorerStore.closeOtherFiles(filePath, currentWorkspaceId.value)
 const getFileLanguage = (filePath: string) => getLanguage(filePath)
 const setMode = (mode: 'edit' | 'preview') => {
-  if (!activeFile.value) return
-  fileExplorerStore.setFileMode(activeFile.value, mode)
+  if (!activeFile.value || !currentWorkspaceId.value) return
+  fileExplorerStore.setFileMode(activeFile.value, mode, currentWorkspaceId.value)
 }
 
 const isPreviewableText = computed(() => {
@@ -384,7 +391,7 @@ const handleSave = async () => {
   if (!activeFile.value || fileContent.value === null || isSavingContent.value) return;
 
   try {
-    const workspaceId = workspaceStore.activeWorkspace?.workspaceId
+    const workspaceId = currentWorkspaceId.value
     if (!workspaceId) throw new Error('No workspace selected, cannot save file.')
 
     await fileExplorerStore.saveFileContentFromEditor(
@@ -412,11 +419,11 @@ const handleKeydown = async (event: KeyboardEvent) => {
   if (!isEditorFocused() && openFiles.value.length > 1) {
     if (event.key === 'ArrowLeft') {
       event.preventDefault()
-      fileExplorerStore.navigateToPreviousTab()
+      if (currentWorkspaceId.value) fileExplorerStore.navigateToPreviousTab(currentWorkspaceId.value)
     }
     if (event.key === 'ArrowRight') {
       event.preventDefault()
-      fileExplorerStore.navigateToNextTab()
+      if (currentWorkspaceId.value) fileExplorerStore.navigateToNextTab(currentWorkspaceId.value)
     }
   }
 }

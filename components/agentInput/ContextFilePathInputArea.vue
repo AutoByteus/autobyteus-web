@@ -128,6 +128,8 @@ const activeContextStore = useActiveContextStore();
 const fileUploadStore = useFileUploadStore();
 const serverStore = useServerStore();
 const fileExplorerStore = useFileExplorerStore();
+import { useWorkspaceStore } from '~/stores/workspace';
+const workspaceStore = useWorkspaceStore();
 const { isElectron } = storeToRefs(serverStore);
 
 const contextFilePaths = computed(() => activeContextStore.currentContextPaths);
@@ -160,7 +162,12 @@ const handleContextFileClick = (filePath: ContextFilePath) => {
   if (uploadingFiles.value.includes(filePath.path)) {
     return;
   }
-  fileExplorerStore.openFile(filePath.path);
+  const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
+  if (workspaceId) {
+      fileExplorerStore.openFile(filePath.path, workspaceId);
+  } else {
+      console.warn("Cannot open file: No active workspace found.");
+  }
 };
 
 const removeContextFilePath = (index: number) => {

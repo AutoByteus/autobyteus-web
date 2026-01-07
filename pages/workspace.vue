@@ -24,7 +24,11 @@ const isDesktop = ref(true);
 let mediaQuery: MediaQueryList | null = null;
 
 // RESTORED: This is the original, correct implementation for this computed property.
-const showFileContent = computed(() => fileExplorerStore.getOpenFiles.length > 0);
+// RESTORED: This is the original, correct implementation for this computed property.
+const showFileContent = computed(() => {
+    const wsId = workspaceStore.activeWorkspace?.workspaceId;
+    return wsId ? fileExplorerStore.getOpenFiles(wsId).length > 0 : false;
+});
 
 const handleMediaChange = (event: MediaQueryList | MediaQueryListEvent) => {
   isDesktop.value = event.matches;

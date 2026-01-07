@@ -1,7 +1,7 @@
 <template>
   <div class="flex h-full bg-gray-50">
     <!-- Main Content Area -->
-    <div class="flex-1 p-6 overflow-auto">
+    <div :class="['flex-1', selectedSkillName ? 'overflow-hidden' : 'p-6 overflow-auto']">
       <transition name="fade" mode="out-in">
         <!-- Skills List View -->
         <SkillsList 

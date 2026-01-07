@@ -212,6 +212,57 @@ interface OpenFileState {
 | `searchFiles()`                                   | Searches files via GraphQL   |
 | `navigateToNextTab()` / `navigateToPreviousTab()` | Tab navigation               |
 
+> **Important:** All actions and getters in `FileExplorerStore` require a mandatory `workspaceId` parameter. The store is **workspace-agnostic** and does not assume any "active" workspace.
+
+### useWorkspaceFileExplorer Composable
+
+The `useWorkspaceFileExplorer` composable provides a scoped, workspace-bound interface to the `FileExplorerStore`. It is the recommended way for components to interact with the file explorer.
+
+**Location:** `composables/useWorkspaceFileExplorer.ts`
+
+**Purpose:**
+
+- Binds all file explorer operations to a specific `workspaceId`
+- Falls back to `activeWorkspace` if no explicit ID is provided
+- Provides a clean API for components without needing to pass `workspaceId` to every call
+
+**Usage:**
+
+```typescript
+import { useWorkspaceFileExplorer } from "~/composables/useWorkspaceFileExplorer";
+
+// Option 1: Explicit workspace ID (for Skills, transient workspaces)
+const explorer = useWorkspaceFileExplorer(toRef(props, "workspaceId"));
+
+// Option 2: Use the active workspace (for main agent views)
+const explorer = useWorkspaceFileExplorer();
+
+// Scoped actions - no need to pass workspaceId
+explorer.openFile("/src/main.ts");
+explorer.toggleFolder("/src");
+explorer.searchFiles("utils");
+
+// Scoped state
+const files = explorer.openFiles; // ComputedRef<string[]>
+const activeFile = explorer.activeFile; // ComputedRef<string | null>
+```
+
+**Provide/Inject Pattern:**
+
+`FileExplorer.vue` provides the composable instance to its children:
+
+```typescript
+// FileExplorer.vue
+const explorer = useWorkspaceFileExplorer(toRef(props, "workspaceId"));
+provide("workspaceFileExplorer", explorer);
+
+// FileItem.vue (child)
+const explorer = inject("workspaceFileExplorer")!;
+explorer.openFile(props.file.path); // Uses the correct workspace context
+```
+
+This pattern is critical for **Skill workspaces**, which are NOT the "active" workspace but need their own isolated file explorer context.
+
 ## TreeNode Data Structure
 
 Client-side representation of files/folders:

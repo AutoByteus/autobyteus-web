@@ -38,7 +38,7 @@
         <ArtifactsTab />
       </div>
       <div v-if="activeTab === 'progress'" class="h-full">
-        <ProgressPanel :todos="todos" />
+        <ProgressPanel />
       </div>
     </div>
   </div>
@@ -62,6 +62,7 @@ import VncViewer from '~/components/workspace/tools/VncViewer.vue';
 import FileExplorerLayout from '~/components/fileExplorer/FileExplorerLayout.vue';
 import ArtifactsTab from '~/components/workspace/agent/ArtifactsTab.vue';
 import ProgressPanel from '~/components/progress/ProgressPanel.vue';
+import { useWorkspaceStore } from '~/stores/workspace';
 
 const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
 const activeContextStore = useActiveContextStore();
@@ -70,16 +71,11 @@ const artifactsStore = useAgentArtifactsStore();
 const agentContextsStore = useAgentContextsStore();
 const todoStore = useAgentTodoStore();
 const activityStore = useAgentActivityStore();
+const workspaceStore = useWorkspaceStore();
 
-const { toggleRightPanel } = useRightPanel();
 const { activeTab, visibleTabs, setActiveTab } = useRightSideTabs();
 
 const currentAgentId = computed(() => activeContextStore.activeAgentContext?.state.agentId ?? '');
-
-const todos = computed(() => {
-  if (!currentAgentId.value) return [];
-  return todoStore.getTodos(currentAgentId.value);
-});
 
 const handleTabSelect = (tabName: string) => {
   setActiveTab(tabName as any);
@@ -104,14 +100,20 @@ watch(visibleTabs, (newVisibleTabs) => {
 
 // Watch the ToDo list for the active agent. If it becomes populated, switch to the To-Do tab.
 // Watch the ToDo list for the active agent. If it becomes populated, switch to the To-Do tab.
-watch(todos, (newTodoList) => {
+watch(() => currentAgentId.value ? todoStore.getTodos(currentAgentId.value) : [], (newTodoList) => {
   if (selectedLaunchProfileStore.selectedProfileType === 'agent' && newTodoList.length > 0 && activeTab.value !== 'progress') {
     setActiveTab('progress');
   }
 });
 
 // Auto-switch to Files tab when a file is opened
-watch(() => fileExplorerStore.getOpenFiles, (openFiles) => {
+watch(() => {
+    const wsId = activeContextStore.activeAgentContext?.workspaceId || (selectedLaunchProfileStore.selectedProfileType === 'team' ? workspaceStore.activeWorkspace?.workspaceId : null);
+    // Fallback to active workspace for main sidebar
+    const targetId = wsId || workspaceStore.activeWorkspace?.workspaceId || '';
+    if (!targetId) return [];
+    return fileExplorerStore.getOpenFiles(targetId);
+}, (openFiles) => {
   if (openFiles.length > 0 && activeTab.value !== 'files') {
     setActiveTab('files');
   }

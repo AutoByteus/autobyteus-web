@@ -125,99 +125,99 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
   }),
 
   getters: {
-    _currentWorkspaceFileExplorerState(state): WorkspaceFileExplorerState | null {
-      const workspaceStore = useWorkspaceStore();
-      const activeWorkspaceId = workspaceStore.activeWorkspace?.workspaceId;
-      if (!activeWorkspaceId) return null;
-      return state.fileExplorerStateByWorkspace.get(activeWorkspaceId) || null;
+    _getWorkspaceState: (state) => (workspaceId: string): WorkspaceFileExplorerState | null => {
+      if (!workspaceId) return null;
+      return state.fileExplorerStateByWorkspace.get(workspaceId) || null;
     },
 
-    isFolderOpen: (state) => (folderPath: string): boolean => {
-      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+    isFolderOpen: (state) => (folderPath: string, workspaceId: string): boolean => {
+      const wsState = state.fileExplorerStateByWorkspace.get(workspaceId);
       return wsState ? !!wsState.openFolders[folderPath] : false;
     },
-    getOpenFiles: (state): string[] => {
-      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+    getOpenFiles: (state) => (workspaceId: string): string[] => {
+      const wsState = state.fileExplorerStateByWorkspace.get(workspaceId);
       return wsState ? wsState.openFiles.map(f => f.path) : [];
     },
-    getActiveFile: (state): string | null => {
-      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+    getActiveFile: (state) => (workspaceId: string): string | null => {
+      const wsState = state.fileExplorerStateByWorkspace.get(workspaceId);
       return wsState ? wsState.activeFile : null;
     },
-    getActiveFileData(state): OpenFileState | null {
-      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+    getActiveFileData: (state) => (workspaceId: string): OpenFileState | null => {
+      const wsState = state.fileExplorerStateByWorkspace.get(workspaceId);
       if (!wsState || !wsState.activeFile) return null;
       return wsState.openFiles.find(f => f.path === wsState.activeFile) || null;
     },
-    getFileContent: (state) => (filePath: string): string | null => {
-      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+    getFileContent: (state) => (filePath: string, workspaceId: string): string | null => {
+      const wsState = state.fileExplorerStateByWorkspace.get(workspaceId);
       if (!wsState) return null;
       const file = wsState.openFiles.find(f => f.path === filePath);
       return file ? file.content : null;
     },
-    isContentLoading: (state) => (filePath: string): boolean => {
-      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+    isContentLoading: (state) => (filePath: string, workspaceId: string): boolean => {
+      const wsState = state.fileExplorerStateByWorkspace.get(workspaceId);
       if (!wsState) return false;
       const file = wsState.openFiles.find(f => f.path === filePath);
       return file ? file.isLoading : false;
     },
-    getContentError: (state) => (filePath: string): string | null => {
-      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+    getContentError: (state) => (filePath: string, workspaceId: string): string | null => {
+      const wsState = state.fileExplorerStateByWorkspace.get(workspaceId);
       if (!wsState) return null;
       const file = wsState.openFiles.find(f => f.path === filePath);
       return file ? file.error : null;
     },
-    getSearchResults: (state): any[] => {
-      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+    getSearchResults: (state) => (workspaceId: string): any[] => {
+      const wsState = state.fileExplorerStateByWorkspace.get(workspaceId);
       return wsState ? wsState.searchResults : [];
     },
-    isSearchLoading: (state): boolean => {
-      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+    isSearchLoading: (state) => (workspaceId: string): boolean => {
+        const wsState = state.fileExplorerStateByWorkspace.get(workspaceId);
       return wsState ? wsState.searchLoading : false;
     },
-    getSearchError: (state): string | null => {
-      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+    getSearchError: (state) => (workspaceId: string): string | null => {
+        const wsState = state.fileExplorerStateByWorkspace.get(workspaceId);
       return wsState ? wsState.searchError : null;
     },
-    isSaveContentLoading: (state) => (filePath: string): boolean => {
-      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+    isSaveContentLoading: (state) => (filePath: string, workspaceId: string): boolean => {
+        const wsState = state.fileExplorerStateByWorkspace.get(workspaceId);
       return wsState?.saveContentLoading[filePath] || false;
     },
-    getSaveContentError: (state) => (filePath: string): string | null => {
-      const wsState = (state as any)._currentWorkspaceFileExplorerState;
+    getSaveContentError: (state) => (filePath: string, workspaceId: string): string | null => {
+        const wsState = state.fileExplorerStateByWorkspace.get(workspaceId);
       return wsState?.saveContentError[filePath] || null;
     },
   },
 
   actions: {
-    _getOrCreateCurrentWorkspaceState(): WorkspaceFileExplorerState {
-      const workspaceStore = useWorkspaceStore();
-      const activeWorkspaceId = workspaceStore.activeWorkspace?.workspaceId;
-      if (!activeWorkspaceId) {
-        throw new Error("Cannot get file explorer state: No active workspace session.");
+    /**
+     * Internal helper to get state. THROWS if workspaceId is missing or session invalid.
+     * Callers must ensure workspaceId is provided.
+     */
+    _getOrCreateWorkspaceState(workspaceId: string): WorkspaceFileExplorerState {
+      if (!workspaceId) {
+        throw new Error("Cannot get file explorer state: workspaceId is required.");
       }
-      if (!this.fileExplorerStateByWorkspace.has(activeWorkspaceId)) {
-        this.fileExplorerStateByWorkspace.set(activeWorkspaceId, createDefaultWorkspaceFileExplorerState());
+      if (!this.fileExplorerStateByWorkspace.has(workspaceId)) {
+        this.fileExplorerStateByWorkspace.set(workspaceId, createDefaultWorkspaceFileExplorerState());
       }
-      return this.fileExplorerStateByWorkspace.get(activeWorkspaceId)!;
+      return this.fileExplorerStateByWorkspace.get(workspaceId)!;
     },
 
-    toggleFolder(folderPath: string) {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+    toggleFolder(folderPath: string, workspaceId: string) {
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       wsState.openFolders[folderPath] = !wsState.openFolders[folderPath];
     },
 
-    async openFile(filePath: string) {
-      return this._openFileWithMode(filePath, 'edit');
+    async openFile(filePath: string, workspaceId: string) {
+      return this._openFileWithMode(filePath, 'edit', workspaceId);
     },
 
-    async openFilePreview(filePath: string) {
-      return this._openFileWithMode(filePath, 'preview');
+    async openFilePreview(filePath: string, workspaceId: string) {
+      return this._openFileWithMode(filePath, 'preview', workspaceId);
     },
 
-    async _openFileWithMode(filePath: string, mode: FileOpenMode) {
+    async _openFileWithMode(filePath: string, mode: FileOpenMode, workspaceId: string) {
       console.log(`[FileExplorer] Opening file: ${filePath}`);
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       const serverStore = useServerStore();
       const { isElectron } = storeToRefs(serverStore);
 
@@ -273,10 +273,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
                   console.log(`[FileExplorer] Handling as a workspace path.`);
                   if (newFileState.type === 'Text') {
                       console.log(`[FileExplorer] Fetching text content for "${filePath}" via GraphQL.`);
-                      this.fetchFileContent(filePath);
+                      this.fetchFileContent(filePath, workspaceId);
                   } else if (['Image', 'Audio', 'Video', 'Excel', 'PDF'].includes(newFileState.type)) {
-                      const workspaceStore = useWorkspaceStore();
-                      const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
                       if (workspaceId) {
                           const serverUrls = getServerUrls();
                           const restBaseUrl = serverUrls.rest.replace(/\/$/, '');
@@ -285,7 +283,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
                           newFileState.isLoading = false;
                           console.log(`[FileExplorer] Constructed absolute media URL for "${filePath}": ${newFileState.url}`);
                       } else {
-                          newFileState.error = "No active workspace to construct file URL.";
+                          newFileState.error = "No workspaceId provided for media URL.";
                           newFileState.isLoading = false;
                           console.error(`[FileExplorer] Cannot construct media URL: No active workspace.`);
                       }
@@ -303,16 +301,16 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       wsState.activeFile = filePath;
   },
 
-    setFileMode(filePath: string, mode: FileOpenMode) {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+    setFileMode(filePath: string, mode: FileOpenMode, workspaceId: string) {
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       const file = wsState.openFiles.find(f => f.path === filePath);
       if (file) {
         file.mode = mode;
       }
     },
 
-    closeFile(filePath: string) {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+    closeFile(filePath: string, workspaceId: string) {
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       wsState.openFiles = wsState.openFiles.filter(file => file.path !== filePath);
 
       if (wsState.activeFile === filePath) {
@@ -321,21 +319,21 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
 
-    setActiveFile(filePath: string) {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+    setActiveFile(filePath: string, workspaceId: string) {
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       if (wsState.openFiles.some(f => f.path === filePath)) {
         wsState.activeFile = filePath;
       }
     },
 
-    closeAllFiles() {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+    closeAllFiles(workspaceId: string) {
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       wsState.openFiles = [];
       wsState.activeFile = null;
     },
 
-    closeOtherFiles(exceptFilePath: string) {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+    closeOtherFiles(exceptFilePath: string, workspaceId: string) {
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       // Keep only the file that matches the exceptFilePath
       wsState.openFiles = wsState.openFiles.filter(file => file.path === exceptFilePath);
       // Ensure the kept file is active
@@ -346,8 +344,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
 
-    navigateToNextTab() {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+    navigateToNextTab(workspaceId: string) {
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       if (wsState.openFiles.length <= 1) return;
       
       const currentIndex = wsState.openFiles.findIndex(f => f.path === wsState.activeFile);
@@ -357,8 +355,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       wsState.activeFile = wsState.openFiles[nextIndex].path;
     },
 
-    navigateToPreviousTab() {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+    navigateToPreviousTab(workspaceId: string) {
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       if (wsState.openFiles.length <= 1) return;
       
       const currentIndex = wsState.openFiles.findIndex(f => f.path === wsState.activeFile);
@@ -368,17 +366,15 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       wsState.activeFile = wsState.openFiles[prevIndex].path;
     },
 
-    async fetchFileContent(filePath: string) {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+    async fetchFileContent(filePath: string, workspaceId: string) {
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       const file = wsState.openFiles.find(f => f.path === filePath);
       if (!file || file.content !== null) return;
 
       file.isLoading = true;
       file.error = null;
 
-      const workspaceStore = useWorkspaceStore();
-      const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
-      if (!workspaceId) throw new Error("No active workspace session");
+      if (!workspaceId) throw new Error("workspaceId required for fetching content");
 
       try {
         const { client } = useApolloClient();
@@ -410,8 +406,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
     
-    invalidateFileContent(filePath: string) {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+    invalidateFileContent(filePath: string, workspaceId: string) {
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       const file = wsState.openFiles.find(f => f.path === filePath);
 
       if (file && file.type === 'Text') {
@@ -427,7 +423,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
      */
     async _writeFileCore(workspaceId: string, filePath: string, content: string) {
       const { client } = useApolloClient();
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       
       // "Tag" this file to ignore the incoming subscription event echo for 'modify'
       wsState.filesToIgnoreNextModify.add(filePath);
@@ -476,7 +472,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
      * Manages UI state for save indicators in the editor.
      */
     async saveFileContentFromEditor(workspaceId: string, filePath: string, content: string) {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       wsState.saveContentError[filePath] = null;
       wsState.saveContentLoading[filePath] = true;
 
@@ -492,14 +488,14 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     },
 
     
-    async deleteFileOrFolder(filePath: string) {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+    async deleteFileOrFolder(filePath: string, workspaceId: string) {
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       wsState.deleteError[filePath] = null;
       wsState.deleteLoading[filePath] = true;
 
-      const workspaceStore = useWorkspaceStore();
-      const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
-      if (!workspaceId) throw new Error("No active workspace session");
+      // const workspaceStore = useWorkspaceStore();
+      // const actualWorkspaceId = workspaceId || workspaceStore.activeWorkspace?.workspaceId;
+      if (!workspaceId) throw new Error("workspaceId required");
 
       try {
         const { client } = useApolloClient();
@@ -517,6 +513,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
           wsState.openFiles = wsState.openFiles.filter(file => !file.path.startsWith(filePath + '/'));
           
           const changeEvent: FileSystemChangeEvent = JSON.parse(data.deleteFileOrFolder);
+          const workspaceStore = useWorkspaceStore();
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
         }
         wsState.deleteLoading[filePath] = false;
@@ -529,14 +526,12 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
     
-    async renameFileOrFolder(targetPath: string, newName: string) {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+    async renameFileOrFolder(targetPath: string, newName: string, workspaceId: string) {
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       wsState.renameError[targetPath] = null;
       wsState.renameLoading[targetPath] = true;
     
-      const workspaceStore = useWorkspaceStore();
-      const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
-      if (!workspaceId) throw new Error("No active workspace session");
+      if (!workspaceId) throw new Error("workspaceId required");
     
     
       try {
@@ -564,6 +559,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
           }
     
           const changeEvent: FileSystemChangeEvent = JSON.parse(data.renameFileOrFolder);
+          const workspaceStore = useWorkspaceStore();
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
         }
     
@@ -577,14 +573,12 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
     
-    async moveFileOrFolder(sourcePath: string, destinationPath: string) {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+    async moveFileOrFolder(sourcePath: string, destinationPath: string, workspaceId: string) {
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       wsState.moveError[sourcePath] = null;
       wsState.moveLoading[sourcePath] = true;
     
-      const workspaceStore = useWorkspaceStore();
-      const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
-      if (!workspaceId) throw new Error("No active workspace session");
+      if (!workspaceId) throw new Error("workspaceId required");
       
       try {
         const { client } = useApolloClient();
@@ -607,6 +601,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
           }
    
           const changeEvent: FileSystemChangeEvent = JSON.parse(data.moveFileOrFolder);
+          const workspaceStore = useWorkspaceStore();
           workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
         }
         wsState.moveLoading[sourcePath] = false;
@@ -620,14 +615,12 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
 
-    async createFileOrFolder(path: string, isFile: boolean) {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+    async createFileOrFolder(path: string, isFile: boolean, workspaceId: string) {
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       wsState.createError[path] = null;
       wsState.createLoading[path] = true;
 
-      const workspaceStore = useWorkspaceStore();
-      const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
-      if (!workspaceId) throw new Error("No active workspace session");
+      if (!workspaceId) throw new Error("workspaceId required");
 
       try {
         const { client } = useApolloClient();
@@ -642,6 +635,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
 
         if (data?.createFileOrFolder) {
             const changeEvent: FileSystemChangeEvent = JSON.parse(data.createFileOrFolder);
+            const workspaceStore = useWorkspaceStore();
             workspaceStore.handleFileSystemChange(workspaceId, changeEvent);
         }
         wsState.createLoading[path] = false;
@@ -655,8 +649,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
     },
 
-    async searchFiles(query: string) {
-      const wsState = this._getOrCreateCurrentWorkspaceState();
+    async searchFiles(query: string, workspaceId: string) {
+      const wsState = this._getOrCreateWorkspaceState(workspaceId);
       const workspaceStore = useWorkspaceStore();
       
       // Cancel any previous in-flight search request
@@ -675,9 +669,8 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         return;
       }
       
-      const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
       if (!workspaceId) {
-        wsState.searchError = "No active workspace session.";
+        wsState.searchError = "workspaceId required for search.";
         wsState.searchLoading = false;
         return;
       }

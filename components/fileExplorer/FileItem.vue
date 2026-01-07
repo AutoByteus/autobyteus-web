@@ -46,7 +46,7 @@
         'border-transparent': !isActive || isDragging,
         'opacity-50': isDragging
       }"
-      :style="{ paddingLeft: (props.file.is_file && !fileExplorerStore.isFolderOpen(props.file.path.split('/').slice(0, -1).join('/'))) ? '' : '' }"
+      :style="{ paddingLeft: (props.file.is_file && !explorer.openFolders.value[props.file.path.split('/').slice(0, -1).join('/')]) ? '' : '' }"
     >
       <div class="icon w-4 h-4 flex-shrink-0 flex items-center justify-center">
         <!-- Folder Icons -->
@@ -118,16 +118,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick, inject } from 'vue'
 import { TreeNode } from '~/utils/fileExplorer/TreeNode'
-import { useFileExplorerStore } from '~/stores/fileExplorer'
+// import { useFileExplorerStore } from '~/stores/fileExplorer'  <-- REMOVED
 import { useWorkspaceStore } from '~/stores/workspace'
 import FileContextMenu from './FileContextMenu.vue'
 import ConfirmDeleteDialog from './ConfirmDeleteDialog.vue'
 import AddFileOrFolderDialog from './AddFileOrFolderDialog.vue'
+import type { useWorkspaceFileExplorer } from '~/composables/useWorkspaceFileExplorer'
 
 const props = defineProps<{ file: TreeNode }>()
-const fileExplorerStore = useFileExplorerStore()
+// Inject the scoped controller provided by FileExplorer.vue
+const explorer = inject<ReturnType<typeof useWorkspaceFileExplorer>>('workspaceFileExplorer')!
+if (!explorer) throw new Error("FileItem must be used within a component providing 'workspaceFileExplorer'")
+
 const workspaceStore = useWorkspaceStore()
 const isLoadingChildren = ref(false)
 
@@ -144,7 +148,7 @@ const isDragOver = ref(false)
 const isGlobalDragging = ref(false)
 
 const isActive = computed(() => {
-  return props.file.is_file && fileExplorerStore.getActiveFile === props.file.path
+  return props.file.is_file && explorer.activeFile.value === props.file.path
 })
 
 const isPreviewable = computed(() => {
@@ -171,7 +175,7 @@ onBeforeUnmount(() => {
 })
 
 const isFolderOpen = computed(() => {
-  return !props.file.is_file && fileExplorerStore.isFolderOpen(props.file.path)
+  return !props.file.is_file && !!explorer.openFolders.value[props.file.path]
 })
 
 const isValidDropTarget = computed(() => {
@@ -205,22 +209,24 @@ const onGlobalDragEnd = () => {
 const handleClick = async () => {
   if (props.file.is_file) {
     if (isPreviewable.value) {
-      fileExplorerStore.openFilePreview(props.file.path)
+      explorer.openFilePreview(props.file.path)
     } else {
-      fileExplorerStore.openFile(props.file.path)
+      explorer.openFile(props.file.path)
     }
   } else {
     // Toggle folder open/close
-    fileExplorerStore.toggleFolder(props.file.path)
+    explorer.toggleFolder(props.file.path)
     
     // Lazy load children if folder is being opened and children not yet loaded
-    const willBeOpen = fileExplorerStore.isFolderOpen(props.file.path)
+    const willBeOpen = !!explorer.openFolders.value[props.file.path]
     if (willBeOpen && !props.file.childrenLoaded && !isLoadingChildren.value) {
-      const activeWorkspace = workspaceStore.activeWorkspace
-      if (activeWorkspace) {
+      // Use the injected workspaceId from the explorer context, NOT the global activeWorkspace.
+      // This is critical for skill workspaces which are NOT the active workspace.
+      const wsId = explorer.workspaceId.value
+      if (wsId) {
         isLoadingChildren.value = true
         try {
-          await workspaceStore.fetchFolderChildren(activeWorkspace.workspaceId, props.file.path)
+          await workspaceStore.fetchFolderChildren(wsId, props.file.path)
         } catch (error) {
           console.error('Error loading folder children:', error)
         } finally {
@@ -283,7 +289,7 @@ const confirmRename = async () => {
   }
 
   try {
-    await fileExplorerStore.renameFileOrFolder(props.file.path, newName)
+    await explorer.renameFileOrFolder(props.file.path, newName)
   } catch (error) {
     renameInput.value = originalName
     console.error('Rename failed:', error)
@@ -303,7 +309,7 @@ const promptDelete = () => {
 const onDeleteConfirmed = async () => {
   showDeleteConfirm.value = false
   try {
-    await fileExplorerStore.deleteFileOrFolder(props.file.path)
+    await explorer.deleteFileOrFolder(props.file.path)
   } catch (error) {
     console.error('Failed to delete:', error)
   }
@@ -338,7 +344,7 @@ async function onAddConfirmed(newName: string) {
     } else {
       finalPath = props.file.path ? `${props.file.path}/${newName}` : newName
     }
-    await fileExplorerStore.createFileOrFolder(finalPath, addFileMode.value)
+    await explorer.createFileOrFolder(finalPath, addFileMode.value)
   } catch (error) {
     console.error('Failed to create file/folder:', error)
   }
@@ -439,7 +445,7 @@ const onDrop = async (event: DragEvent) => {
     if (sourcePath) {
       const sourceBasename = sourcePath.split('/').pop() || ''
       const destinationPath = props.file.path + '/' + sourceBasename
-      await fileExplorerStore.moveFileOrFolder(sourcePath, destinationPath)
+      await explorer.moveFileOrFolder(sourcePath, destinationPath)
     }
   } catch (error) {
     console.error('Drop operation failed:', error)

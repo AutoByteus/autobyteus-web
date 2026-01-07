@@ -34,24 +34,46 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, watch, computed, onMounted, onUnmounted, nextTick, toRef, provide } from 'vue';
 import FileItem from "~/components/fileExplorer/FileItem.vue";
 import { useWorkspaceStore } from '~/stores/workspace';
-import { useFileExplorerStore } from '~/stores/fileExplorer';
+import { useWorkspaceFileExplorer } from '~/composables/useWorkspaceFileExplorer';
+
+const props = defineProps<{
+  workspaceId?: string
+}>();
+
 const workspaceStore = useWorkspaceStore();
-const fileExplorerStore = useFileExplorerStore();
+// Use the new composable scoped to the provided workspace ID
+const explorer = useWorkspaceFileExplorer(toRef(props, 'workspaceId'));
+
+// Provide the explorer instance to all children (FileItem)
+provide('workspaceFileExplorer', explorer);
+
 const searchQuery = ref('');
 const searchInputRef = ref<HTMLInputElement | null>(null);
 
 const hasWorkspaces = computed(() => workspaceStore.allWorkspaceIds.length > 0);
-const searchLoading = computed(() => fileExplorerStore.isSearchLoading);
-const activeWorkspace = computed(() => workspaceStore.activeWorkspace);
+const searchLoading = computed(() => explorer.isSearchLoading.value);
+
+// Determine the relevant workspace (prop-based or active store-based)
+const currentWorkspace = computed(() => {
+  if (props.workspaceId) {
+    return workspaceStore.workspaces[props.workspaceId];
+  }
+  return workspaceStore.activeWorkspace;
+});
+const activeWorkspace = currentWorkspace; // Alias for template compatibility
 
 const displayedFiles = computed(() => {
   if (searchQuery.value) {
-    return fileExplorerStore.getSearchResults;
+    return explorer.searchResults.value || [];
   } else {
-    return workspaceStore.currentWorkspaceTree?.children || [];
+    // If we have a specific workspace context, use its tree
+    if (currentWorkspace.value) {
+       return currentWorkspace.value.fileExplorer.children || [];
+    }
+    return [];
   }
 });
 
@@ -66,7 +88,7 @@ watch(searchQuery, (newQuery) => {
   
   // Debounce 500ms before triggering search (industry best practice for detecting typing completion)
   searchDebounceTimer = setTimeout(() => {
-    fileExplorerStore.searchFiles(newQuery);
+    explorer.searchFiles(newQuery);
   }, 500);
 });
 
@@ -86,15 +108,16 @@ onUnmounted(() => {
   }
 });
 
-watch(activeWorkspace, (newWorkspace) => {
+watch(currentWorkspace, (newWorkspace) => {
   if (!newWorkspace) {
     searchQuery.value = '';
   }
 });
 
 onMounted(() => {
-  if (searchQuery.value && activeWorkspace.value) {
-    fileExplorerStore.searchFiles(searchQuery.value);
+  // If we have a query (e.g. restored state) and a workspace, trigger search
+  if (searchQuery.value && currentWorkspace.value) {
+    explorer.searchFiles(searchQuery.value);
   }
 });
 </script>
