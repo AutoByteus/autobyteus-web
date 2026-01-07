@@ -38,9 +38,10 @@ const getIcon = (name: TabName): string => {
   switch (name) {
     case 'files': return 'heroicons:document-text';
     case 'teamMembers': return 'heroicons:user-group';
-    case 'todoList': return 'heroicons:clipboard-document-list';
     case 'terminal': return 'heroicons:command-line';
     case 'vnc': return 'heroicons:computer-desktop';
+    case 'progress': return 'heroicons:clock';
+    case 'artifacts': return 'heroicons:cube';
     default: return 'heroicons:document-text';
   }
 };
