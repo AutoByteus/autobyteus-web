@@ -155,7 +155,7 @@ export class TeamStreamingService {
     switch (message.type) {
       case 'SEGMENT_START': {
         const { id, segment_type, metadata } = message.payload;
-        console.log('[stream][team][segment:start]', { id, segment_type, metadata });
+        console.log('[stream][team][segment:start]', { id, segment_type, metadata, payload: message.payload });
         break;
       }
       case 'SEGMENT_CONTENT': {
@@ -164,12 +164,13 @@ export class TeamStreamingService {
           id,
           deltaLen: delta?.length ?? 0,
           deltaSample: summarizeDelta(delta || ''),
+          payload: message.payload,
         });
         break;
       }
       case 'SEGMENT_END': {
         const { id, metadata } = message.payload;
-        console.log('[stream][team][segment:end]', { id, metadata });
+        console.log('[stream][team][segment:end]', { id, metadata, payload: message.payload });
         break;
       }
       default:

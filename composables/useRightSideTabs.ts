@@ -14,8 +14,8 @@ export function useRightSideTabs() {
     { name: 'files' as TabName, label: 'Files', requires: 'any' },
     { name: 'teamMembers' as TabName, label: 'Team', requires: 'team' },
     { name: 'terminal' as TabName, label: 'Terminal', requires: 'any' },
-    { name: 'progress' as TabName, label: 'Progress', requires: 'agent' },
-    { name: 'artifacts' as TabName, label: 'Artifacts', requires: 'agent' },
+    { name: 'progress' as TabName, label: 'Activity', requires: 'any' },
+    { name: 'artifacts' as TabName, label: 'Artifacts', requires: 'any' },
     { name: 'vnc' as TabName, label: 'VNC Viewer', requires: 'any' },
   ];
 

@@ -57,7 +57,7 @@
       </div>
 
       <!-- Arguments Section (classic disclosure) -->
-      <div v-if="hasArgs" class="border-t border-black/5 px-3 pb-3 pt-1">
+      <div v-if="hasArgs" class="px-3 pb-3 pt-1">
         <div class="bg-[#f2f2f2] dark:bg-gray-800 rounded px-3 py-2">
           <details>
             <summary class="cursor-pointer text-xs font-semibold text-gray-600 dark:text-gray-300 list-inside">

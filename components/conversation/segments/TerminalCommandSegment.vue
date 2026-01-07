@@ -3,8 +3,8 @@
     :invocation-id="segment.invocationId"
     :tool-name="segment.toolName || 'run_bash'"
     :status="segment.status"
+    :args="{ command: segment.command }"
     :error-message="segment.error ?? undefined"
-    :context-text="segment.command"
   />
 </template>
 

@@ -1,14 +1,34 @@
 <template>
-  <div class="h-full flex flex-col bg-gray-50 overflow-hidden">
+  <div class="h-full flex flex-col bg-white overflow-hidden">
     <!-- Header -->
-    <div class="px-3 py-2 bg-gray-50 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
-      <h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest leading-none">Activity Log</h3>
-      <span class="text-[10px] text-gray-400 font-mono">{{ activities.length }} Events</span>
+    <div 
+      class="px-3 py-2 bg-white border-b border-gray-200 flex justify-between items-center flex-shrink-0 cursor-pointer hover:bg-gray-50 transition-colors select-none"
+      @click="$emit('toggle')"
+    >
+      <div class="flex items-center gap-2">
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          width="16" 
+          height="16" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          stroke-width="2" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"
+          class="text-gray-500 transition-transform duration-300 transform"
+          :class="collapsed ? 'rotate-180' : ''"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+        <h3 class="text-xs font-bold text-gray-900 tracking-wider leading-none">Activity</h3>
+      </div>
+      <span class="text-xs text-gray-600 font-medium">{{ activities.length }} Events</span>
     </div>
 
     <!-- Feed -->
-    <div ref="feedContainer" class="flex-1 overflow-y-auto custom-scrollbar">
-      <div v-if="activities.length === 0" class="p-8 text-center text-gray-500 text-sm">
+    <div v-show="!collapsed" ref="feedContainer" class="flex-1 overflow-y-auto custom-scrollbar">
+      <div v-if="activities.length === 0" class="p-8 text-center text-gray-700 text-sm">
         No activity history yet.
       </div>
       
@@ -30,6 +50,14 @@ import { computed, ref, watch, nextTick } from 'vue';
 import { useAgentActivityStore } from '~/stores/agentActivityStore';
 import { useActiveContextStore } from '~/stores/activeContextStore';
 import ActivityItem from './ActivityItem.vue';
+
+const props = defineProps<{
+  collapsed?: boolean;
+}>();
+
+defineEmits<{
+  (e: 'toggle'): void;
+}>();
 
 const activityStore = useAgentActivityStore();
 const activeContext = useActiveContextStore();

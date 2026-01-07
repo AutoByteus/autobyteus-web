@@ -1,41 +1,62 @@
 <template>
-  <div class="h-full flex flex-col bg-white">
+  <div class="h-full flex flex-col bg-white overflow-hidden">
     <!-- Top Section: To-Do List (Goals) -->
-    <!-- We keep it collapsible or fixed height? 
-         For now, simpler is fixed structure: Todo Panel auto-sizes or has max height.
-         TodoListPanel usually takes full height. We need to wrap it.
-    -->
-    <div class="flex-shrink-0 border-b border-gray-700 bg-white" style="max-height: 40%">
-      <!-- Wrapper to constrain height if needed, or let it grow until a limit -->
-      <TodoListPanel :todos="todos" class="h-full overflow-y-auto custom-scrollbar" />
+    <div 
+      class="flex flex-col transition-all duration-300 ease-in-out border-b border-gray-200"
+      :class="[ expandedSection === 'todo' ? 'flex-1 min-h-0' : 'flex-none' ]"
+    >
+      <TodoListPanel 
+        :todos="todos" 
+        :collapsed="expandedSection !== 'todo'"
+        @toggle="toggleSection('todo')"
+        class="h-full" 
+      />
     </div>
 
     <!-- Bottom Section: Activity Feed (Actions) -->
-    <div class="flex-1 min-h-0">
-      <ActivityFeed />
+    <div 
+      class="flex flex-col transition-all duration-300 ease-in-out"
+      :class="[ expandedSection === 'activity' ? 'flex-1 min-h-0' : 'flex-none' ]"
+    >
+      <ActivityFeed 
+        :collapsed="expandedSection !== 'activity'"
+        @toggle="toggleSection('activity')"
+        class="h-full"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, computed } from 'vue';
+import { useAgentTodoStore } from '~/stores/agentTodoStore';
+import { useActiveContextStore } from '~/stores/activeContextStore';
 import type { ToDo } from '~/types/todo';
 import TodoListPanel from '~/components/workspace/agent/TodoListPanel.vue';
 import ActivityFeed from '~/components/progress/ActivityFeed.vue';
 
-defineProps<{
-  todos: ToDo[];
-}>();
+const todoStore = useAgentTodoStore();
+const activeContextStore = useActiveContextStore();
+
+const currentAgentId = computed(() => activeContextStore.activeAgentContext?.state.agentId ?? '');
+
+const todos = computed(() => {
+  if (!currentAgentId.value) return [];
+  return todoStore.getTodos(currentAgentId.value);
+});
+
+const expandedSection = ref<'todo' | 'activity'>('activity');
+
+const toggleSection = (section: 'todo' | 'activity') => {
+  // If clicking the already expanded section, we could toggle it closed? 
+  // But req implies an accordion where one is always open.
+  // So we only switch if it's different.
+  if (expandedSection.value !== section) {
+    expandedSection.value = section;
+  }
+};
 </script>
 
 <style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
-}
+/* No specific scrollbar styles needed here as they are inside the panels */
 </style>

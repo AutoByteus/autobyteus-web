@@ -3,6 +3,7 @@
     :invocation-id="segment.invocationId"
     :tool-name="segment.toolName || 'write_file'"
     :status="segment.status"
+    :args="{ path: segment.path }"
     :error-message="segment.error ?? undefined"
   />
 </template>

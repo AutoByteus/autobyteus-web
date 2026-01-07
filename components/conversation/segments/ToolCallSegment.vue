@@ -3,6 +3,7 @@
     :invocation-id="segment.invocationId"
     :tool-name="segment.toolName || 'Parsing Tool...'"
     :status="segment.status"
+    :args="segment.arguments"
     :error-message="segment.error ?? undefined"
   />
 </template>

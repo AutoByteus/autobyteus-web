@@ -146,11 +146,38 @@ const initMonaco = async () => {
 watch(() => props.modelValue, (newValue) => {
   if (!editor) return;
   const safeValue = getSafeValue(newValue);
-  if (safeValue === editor.getValue()) return;
+  const currentValue = editor.getValue();
+  
+  if (safeValue === currentValue) return;
 
   const model = editor.getModel();
   if (!model) return;
 
+  // Optimization: If new value is an append of the current value, only append the delta.
+  // This prevents full re-tokenization and flashing for streaming updates.
+  if (safeValue.startsWith(currentValue)) {
+    const delta = safeValue.slice(currentValue.length);
+    const lineCount = model.getLineCount();
+    const lastLineLength = model.getLineMaxColumn(lineCount);
+    
+    // Create range at the very end of the file
+    const endRange = new monaco.Range(
+      lineCount,
+      lastLineLength,
+      lineCount,
+      lastLineLength
+    );
+
+    editor.executeEdits('external-update', [{
+      range: endRange,
+      text: delta,
+      forceMoveMarkers: true
+    }]);
+    
+    return;
+  }
+
+  // Fallback: Full replacement for non-append updates
   const viewState = editor.saveViewState();
   const fullRange = model.getFullModelRange();
 

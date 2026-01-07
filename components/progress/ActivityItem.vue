@@ -16,7 +16,7 @@
         <!-- Title & ID -->
         <div class="flex items-center gap-2">
           <span class="font-bold text-gray-800 text-sm">{{ activity.toolName }}</span>
-          <span class="font-mono text-xs text-gray-400">#{{ shortId }}</span>
+          <span class="font-mono text-xs text-gray-600">#{{ shortId }}</span>
         </div>
       </div>
 
@@ -43,12 +43,12 @@
           >
             <Icon 
               :icon="sectionStates.args ? 'heroicons:chevron-down' : 'heroicons:chevron-right'" 
-              class="w-3.5 h-3.5 text-gray-400"
+              class="w-3.5 h-3.5 text-gray-600"
             />
-            <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Arguments</span>
+            <span class="text-xs font-semibold text-gray-700">Arguments</span>
           </div>
           <div v-show="sectionStates.args" class="pl-5">
-             <div class="bg-gray-50 border border-gray-100 rounded p-2.5 font-mono text-xs text-gray-700 whitespace-pre-wrap overflow-x-auto">
+             <div class="bg-gray-50 border border-gray-100 rounded p-2.5 font-mono text-xs text-gray-900 whitespace-pre-wrap overflow-x-auto">
                {{ formatJson(activity.arguments) }}
              </div>
           </div>
@@ -62,12 +62,12 @@
           >
             <Icon 
               :icon="sectionStates.logs ? 'heroicons:chevron-down' : 'heroicons:chevron-right'" 
-              class="w-3.5 h-3.5 text-gray-400"
+              class="w-3.5 h-3.5 text-gray-600"
             />
-            <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Logs ({{ activity.logs.length }})</span>
+            <span class="text-xs font-semibold text-gray-700">Logs ({{ activity.logs.length }})</span>
           </div>
           <div v-show="sectionStates.logs" class="pl-5">
-             <div class="bg-gray-50 border border-gray-100 rounded p-2.5 font-mono text-xs text-gray-700 space-y-1">
+             <div class="bg-gray-50 border border-gray-100 rounded p-2.5 font-mono text-xs text-gray-900 space-y-1">
                <div v-for="(log, idx) in activity.logs" :key="idx" class="whitespace-pre-wrap break-all">
                  {{ log }}
                </div>
@@ -83,9 +83,9 @@
           >
             <Icon 
               :icon="sectionStates.result ? 'heroicons:chevron-down' : 'heroicons:chevron-right'" 
-              class="w-3.5 h-3.5 text-gray-400"
+              class="w-3.5 h-3.5 text-gray-600"
             />
-            <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Result</span>
+            <span class="text-xs font-semibold text-gray-700">Result</span>
           </div>
           <div v-show="sectionStates.result" class="pl-5">
              <div class="bg-white border border-gray-200 rounded p-3 font-mono text-xs text-gray-800 whitespace-pre-wrap shadow-sm overflow-x-auto">
@@ -104,7 +104,7 @@
               :icon="sectionStates.error ? 'heroicons:chevron-down' : 'heroicons:chevron-right'" 
               class="w-3.5 h-3.5 text-red-500"
             />
-            <span class="text-xs font-semibold text-red-600 uppercase tracking-wide">Error</span>
+            <span class="text-xs font-semibold text-red-600">Error</span>
           </div>
           <div v-show="sectionStates.error" class="pl-5">
              <div class="bg-red-50 border border-red-200 rounded p-2.5 font-mono text-xs text-red-700 whitespace-pre-wrap">
@@ -131,9 +131,9 @@ const props = defineProps<{
 const isExpanded = ref(true); 
 
 const sectionStates = reactive({
-  args: true,
-  logs: true,
-  result: true,
+  args: false,
+  logs: false,
+  result: false,
   error: true
 });
 
@@ -189,11 +189,39 @@ const iconColorClass = computed(() => {
 
 const containerClasses = computed(() => {
   // Highlight effect: strong outer glow + inner glow for maximum visibility (like neon effect)
-  const baseClasses = props.isHighlighted 
-    ? 'ring-2 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6),0_0_40px_rgba(34,197,94,0.4),inset_0_0_20px_rgba(34,197,94,0.3)]' 
-    : '';
+  // Added: stronger ring (ring-4), increased shadow opacity, background tint, and pulse animation
   
-  // Border colors based on status
+  if (props.isHighlighted) {
+      let glowClass = '';
+      // Define colors for each status
+      // Success: Green (34,197,94)
+      // Error: Red (239,68,68)
+      // Executing: Blue (59,130,246)
+      // Review: Amber (245,158,11)
+      // Denied/Default: Gray (107,114,128)
+      
+      switch (props.activity.status) {
+        case 'success':
+            glowClass = 'ring-2 ring-green-500 ring-inset shadow-[inset_0_0_20px_rgba(34,197,94,0.6),inset_0_0_40px_rgba(34,197,94,0.4),inset_0_0_80px_rgba(34,197,94,0.2)] bg-green-50/50';
+            break;
+        case 'error':
+            glowClass = 'ring-2 ring-red-500 ring-inset shadow-[inset_0_0_20px_rgba(239,68,68,0.6),inset_0_0_40px_rgba(239,68,68,0.4),inset_0_0_80px_rgba(239,68,68,0.2)] bg-red-50/50';
+            break;
+        case 'awaiting-approval':
+            glowClass = 'ring-2 ring-amber-500 ring-inset shadow-[inset_0_0_20px_rgba(245,158,11,0.6),inset_0_0_40px_rgba(245,158,11,0.4),inset_0_0_80px_rgba(245,158,11,0.2)] bg-amber-50/50';
+            break;
+        case 'executing':
+        case 'parsing':
+            glowClass = 'ring-2 ring-blue-500 ring-inset shadow-[inset_0_0_20px_rgba(59,130,246,0.6),inset_0_0_40px_rgba(59,130,246,0.4),inset_0_0_80px_rgba(59,130,246,0.2)] bg-blue-50/50';
+            break;
+        default:
+             glowClass = 'ring-2 ring-gray-400 ring-inset shadow-[inset_0_0_20px_rgba(156,163,175,0.6),inset_0_0_40px_rgba(156,163,175,0.4),inset_0_0_80px_rgba(156,163,175,0.2)] bg-gray-50';
+      }
+      
+      return `${glowClass} scale-[1.00] z-10 border-transparent`; // glow replaces border
+  }
+
+  // Non-highlighted state
   let borderClass = 'border-gray-200';
   switch (props.activity.status) {
     case 'success': borderClass = 'border-green-200 hover:border-green-300'; break;
@@ -203,8 +231,8 @@ const containerClasses = computed(() => {
     case 'awaiting-approval': borderClass = 'border-amber-200 hover:border-amber-300'; break;
     case 'denied': borderClass = 'border-gray-200 opacity-75'; break;
   }
-  
-  return `${baseClasses} ${borderClass}`;
+
+  return `hover:shadow-md ${borderClass}`;
 });
 
 const statusLabel = computed(() => {
