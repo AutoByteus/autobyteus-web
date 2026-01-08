@@ -8,13 +8,13 @@
 
     <!-- Grouped Lists -->
     <div v-else class="flex-1 overflow-y-auto py-4">
-      <!-- Media Section -->
-      <div v-if="mediaArtifacts.length > 0" class="mb-6">
+      <!-- Asset Section -->
+      <div v-if="assetArtifacts.length > 0" class="mb-6">
         <div class="px-4 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-            Media
+            Assets
         </div>
         <ArtifactItem 
-            v-for="artifact in mediaArtifacts" 
+            v-for="artifact in assetArtifacts" 
             :key="artifact.id" 
             :artifact="artifact"
             :is-selected="artifact.id === selectedArtifactId"
@@ -24,7 +24,7 @@
 
       <!-- Files Section -->
       <div v-if="fileArtifacts.length > 0">
-         <div class="px-4 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest" :class="{ 'mt-2': mediaArtifacts.length > 0 }">
+         <div class="px-4 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest" :class="{ 'mt-2': assetArtifacts.length > 0 }">
             Files
         </div>
         <ArtifactItem 
@@ -61,20 +61,22 @@ const isEmpty = computed(() => props.artifacts.length === 0);
 // Let's reimplement simplest extension check here for grouping to ensure instant rendering.
 // The actual Viewer will use the robust check.
 
-const isMedia = (path: string) => {
+const isAsset = (path: string) => {
     const lower = path.toLowerCase();
-    const mediaExts = [
+    const assetExts = [
         // Images
         '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg',
         // Audio
         '.mp3', '.wav', '.m4a', '.flac', '.ogg',
         // Video
-        '.mp4', '.mov', '.avi', '.mkv', '.webm'
+        '.mp4', '.mov', '.avi', '.mkv', '.webm',
+        // Documents / Data
+        '.pdf', '.csv', '.xlsx', '.xls', '.xlsm'
     ];
-    return mediaExts.some(ext => lower.endsWith(ext));
+    return assetExts.some(ext => lower.endsWith(ext));
 };
 
-const mediaArtifacts = computed(() => props.artifacts.filter(a => isMedia(a.path)));
-const fileArtifacts = computed(() => props.artifacts.filter(a => !isMedia(a.path)));
+const assetArtifacts = computed(() => props.artifacts.filter(a => isAsset(a.path)));
+const fileArtifacts = computed(() => props.artifacts.filter(a => !isAsset(a.path)));
 
 </script>

@@ -85,4 +85,47 @@ describe('AgentArtifactsStore', () => {
     expect(all[0].content).toBe('version 2');
     expect(all[0].status).toBe('pending_approval');
   });
+
+  it('should create a media artifact directly with persisted status and url', () => {
+    const store = useAgentArtifactsStore();
+    const agentId = 'agent-1';
+    const path = 'images/output.png';
+    const url = 'http://localhost:8000/rest/files/images/output.png';
+    
+    store.createMediaArtifact({
+      id: 'media-1',
+      agentId,
+      path,
+      type: 'image',
+      url
+    });
+    
+    const all = store.getArtifactsForAgent(agentId);
+    expect(all).toHaveLength(1);
+    expect(all[0].path).toBe(path);
+    expect(all[0].type).toBe('image');
+    expect(all[0].status).toBe('persisted');
+    expect(all[0].url).toBe(url);
+  });
+
+  it('should create an audio artifact directly', () => {
+    const store = useAgentArtifactsStore();
+    const agentId = 'agent-1';
+    const path = 'audio/speech.mp3';
+    const url = 'http://localhost:8000/rest/files/audio/speech.mp3';
+    
+    store.createMediaArtifact({
+      id: 'media-2',
+      agentId,
+      path,
+      type: 'audio',
+      url
+    });
+    
+    const all = store.getArtifactsForAgent(agentId);
+    expect(all).toHaveLength(1);
+    expect(all[0].type).toBe('audio');
+    expect(all[0].status).toBe('persisted');
+    expect(all[0].url).toBe(url);
+  });
 });

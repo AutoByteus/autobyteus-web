@@ -51,7 +51,8 @@ import MonacoEditor from '~/components/fileExplorer/MonacoEditor.vue';
 import ImageViewer from '~/components/fileExplorer/viewers/ImageViewer.vue';
 import AudioPlayer from '~/components/fileExplorer/viewers/AudioPlayer.vue';
 import VideoPlayer from '~/components/fileExplorer/viewers/VideoPlayer.vue';
-// We could add MarkdownPreviewer etc if we want 'preview' mode, but for artifacts (often code), Editor is best default.
+import PdfViewer from '~/components/fileExplorer/viewers/PdfViewer.vue';
+import ExcelViewer from '~/components/fileExplorer/viewers/ExcelViewer.vue';
 
 const props = defineProps<{
   artifact: AgentArtifact | null;
@@ -78,6 +79,8 @@ const activeComponent = computed(() => {
         case 'Image': return ImageViewer;
         case 'Audio': return AudioPlayer;
         case 'Video': return VideoPlayer;
+        case 'PDF': return PdfViewer;
+        case 'Excel': return ExcelViewer; 
         default: return MonacoEditor; // Fallback to text for unknown
     }
 });
@@ -90,15 +93,13 @@ const componentProps = computed(() => {
             modelValue: props.artifact.content || '',
             language: getLanguage(props.artifact.path),
             readOnly: true, // Artifacts are generally read-only in this view
-             // We can make it cleaner without minimap if we want, but default is fine
         };
     }
     
-    // Media props
+    // Media, PDF, Excel props
+    // Most viewers just take 'url'
     return {
-        url: props.artifact.url || '', // Assuming artifact has URL or we need to construct it? 
-        // Note: AgentArtifact interface has optional 'url'. If it's a local file verified, we might need a way to serve it.
-        // For streaming text, content is there. For generated images, 'url' should be populated by the backend/store.
+        url: props.artifact.url || '', 
     };
 });
 

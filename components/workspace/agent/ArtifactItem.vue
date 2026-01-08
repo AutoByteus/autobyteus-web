@@ -31,6 +31,7 @@
             <Icon v-else-if="isExcel" icon="vscode-icons:file-type-excel" class="w-5 h-5" />
             <Icon v-else-if="isText" icon="vscode-icons:file-type-text" class="w-5 h-5" />
             <Icon v-else-if="isImage" icon="vscode-icons:file-type-image" class="w-5 h-5" />
+            <Icon v-else-if="isAudio" icon="vscode-icons:file-type-audio" class="w-5 h-5" />
             <Icon v-else-if="isVideo" icon="vscode-icons:file-type-video" class="w-5 h-5" />
             <Icon v-else icon="vscode-icons:default-file" class="w-5 h-5" />
         </template>
@@ -86,6 +87,7 @@ const isPdf = computed(() => ['.pdf'].includes(ext.value));
 const isExcel = computed(() => ['.xlsx', '.xls', '.csv'].includes(ext.value));
 const isText = computed(() => ['.txt', '.log'].includes(ext.value));
 const isImage = computed(() => ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'].includes(ext.value));
+const isAudio = computed(() => ['.mp3', '.wav', '.ogg', '.flac', '.m4a'].includes(ext.value));
 const isVideo = computed(() => ['.mp4', '.mov', '.avi', '.mkv', '.webm'].includes(ext.value));
 
 </script>

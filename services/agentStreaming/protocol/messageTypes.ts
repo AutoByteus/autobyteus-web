@@ -177,6 +177,7 @@ export interface ArtifactPersistedPayload {
   path: string;
   agent_id: string;
   type: string;
+  url?: string;  // URL for media artifacts (image, audio)
 }
 
 export interface ErrorPayload {

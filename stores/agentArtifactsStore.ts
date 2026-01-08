@@ -7,7 +7,7 @@ export interface AgentArtifact {
   id: string; // Unique ID (UUID or Path for streaming)
   agentId: string;
   path: string; // Relative path (e.g., "src/hello.py")
-  type: 'file' | 'image' | 'video' | 'pdf' | 'other';
+  type: 'file' | 'image' | 'audio' | 'video' | 'pdf' | 'csv' | 'excel' | 'other';
   status: ArtifactStatus;
   content?: string; // Content buffer for text files
   url?: string; // URL for media files
@@ -112,6 +112,23 @@ export const useAgentArtifactsStore = defineStore('agentArtifacts', {
         if (artifact) {
             artifact.status = 'persisted';
         }
+    },
+
+    /**
+     * Create a media artifact directly (for image/audio files that don't stream).
+     * These are created as 'persisted' immediately since the file already exists.
+     */
+    createMediaArtifact(artifact: Omit<AgentArtifact, 'status' | 'createdAt'> & { timestamp?: string }) {
+      const newArtifact: AgentArtifact = {
+        ...artifact,
+        createdAt: artifact.timestamp || new Date().toISOString(),
+        status: 'persisted',
+      };
+
+      if (!this.artifactsByAgent.has(artifact.agentId)) {
+        this.artifactsByAgent.set(artifact.agentId, []);
+      }
+      this.artifactsByAgent.get(artifact.agentId)?.push(newArtifact);
     },
     
     /**
