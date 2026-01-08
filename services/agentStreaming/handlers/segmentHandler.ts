@@ -7,7 +7,7 @@
 
 import type { AgentContext } from '~/types/agent/AgentContext';
 import type { AIMessage } from '~/types/conversation';
-import type { AIResponseSegment, ToolCallSegment, WriteFileSegment, TerminalCommandSegment, ThinkSegment, AIResponseTextSegment, ToolInvocationLifecycle } from '~/types/segments';
+import type { AIResponseSegment, ToolCallSegment, WriteFileSegment, TerminalCommandSegment, PatchFileSegment, ThinkSegment, AIResponseTextSegment, ToolInvocationLifecycle } from '~/types/segments';
 import type { SegmentStartPayload, SegmentContentPayload, SegmentEndPayload } from '../protocol/messageTypes';
 import { createSegmentFromPayload } from '../protocol/segmentTypes';
 
@@ -26,6 +26,9 @@ function extractContextText(payload: SegmentStartPayload): string {
   }
   if (payload.segment_type === 'tool_call') {
     return payload.metadata?.tool_name || 'tool';
+  }
+  if (payload.segment_type === 'patch_file') {
+    return payload.metadata?.path || 'patch file';
   }
   return '';
 }
@@ -54,13 +57,13 @@ export function handleSegmentStart(
 
   // --- Sidecar Activity Store ---
   if (
-    ['tool_call', 'write_file', 'run_bash'].includes(payload.segment_type)
+    ['tool_call', 'write_file', 'run_bash', 'patch_file'].includes(payload.segment_type)
   ) {
     const activityStore = useAgentActivityStore();
     const contextText = extractContextText(payload);
     
     // Map backend type to frontend store type
-    let storeType: 'tool_call' | 'write_file' | 'terminal_command' = 'tool_call';
+    let storeType: 'tool_call' | 'write_file' | 'terminal_command' | 'patch_file' = 'tool_call';
     let toolName: string = payload.segment_type; // Default generic name
 
     if (payload.segment_type === 'write_file') {
@@ -69,6 +72,9 @@ export function handleSegmentStart(
     } else if (payload.segment_type === 'run_bash') {
       storeType = 'terminal_command';
       // toolName remains 'run_bash' (default from payload.segment_type)
+    } else if (payload.segment_type === 'patch_file') {
+      storeType = 'patch_file';
+      // toolName remains 'patch_file'
     } else if (payload.segment_type === 'tool_call') {
       // For generic tool calls, we STRICTLY require the tool name from metadata.
       // If it's missing, it's a backend bug.
@@ -80,15 +86,22 @@ export function handleSegmentStart(
       }
     }
 
+    const args: Record<string, any> = {};
+    if (payload.segment_type === 'write_file') {
+      args.path = payload.metadata?.path;
+    } else if (payload.segment_type === 'patch_file') {
+      args.path = payload.metadata?.path;
+    } else if (payload.segment_type === 'run_bash') {
+      args.command = '';
+    }
+
     activityStore.addActivity(context.state.agentId, {
       invocationId: payload.id,
       toolName: toolName, 
       type: storeType,
       status: 'parsing',
       contextText,
-      arguments: payload.segment_type === 'write_file' 
-        ? { path: payload.metadata?.path } 
-        : (payload.segment_type === 'run_bash' ? { command: '' } : {}),
+      arguments: args,
       logs: [],
       result: null,
       error: null,
@@ -141,7 +154,7 @@ export function handleSegmentEnd(
   }
 
   // --- Sidecar Activity Store ---
-  if (['tool_call', 'write_file', 'terminal_command'].includes(segment.type)) {
+  if (['tool_call', 'write_file', 'terminal_command', 'patch_file'].includes(segment.type)) {
     const activityStore = useAgentActivityStore();
     // Update status to 'parsed' (handlers will move it to executing/awaiting later)
     activityStore.updateActivityStatus(context.state.agentId, payload.id, 'parsed');
@@ -161,6 +174,13 @@ export function handleSegmentEnd(
       const tcSegment = segment as TerminalCommandSegment;
       activityStore.updateActivityArguments(context.state.agentId, payload.id, { 
         command: tcSegment.command 
+      });
+    }
+    if (segment.type === 'patch_file') {
+      const pfSegment = segment as PatchFileSegment;
+      activityStore.updateActivityArguments(context.state.agentId, payload.id, {
+        path: pfSegment.path,
+        patch: pfSegment.originalContent
       });
     }
   }
@@ -246,6 +266,10 @@ function appendContentToSegment(segment: AIResponseSegment, delta: string): void
       (segment as TerminalCommandSegment).command += delta;
       break;
 
+    case 'patch_file':
+      (segment as PatchFileSegment).originalContent += delta;
+      break;
+
     default:
       console.warn(`Unknown segment type for content append: ${segment.type}`);
   }
@@ -258,7 +282,7 @@ function finalizeSegment(
   segment: AIResponseSegment,
   metadata?: Record<string, any>
 ): void {
-  if (segment.type === 'tool_call' || segment.type === 'write_file' || segment.type === 'terminal_command') {
+  if (segment.type === 'tool_call' || segment.type === 'write_file' || segment.type === 'terminal_command' || segment.type === 'patch_file') {
     const toolSegment = segment as ToolInvocationLifecycle;
     if (metadata?.tool_name) {
       toolSegment.toolName = metadata.tool_name;

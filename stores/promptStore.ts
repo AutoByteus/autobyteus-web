@@ -18,7 +18,6 @@ interface Prompt {
   updatedAt: string;
   parentPromptId?: string | null;
   isActive: boolean;
-  isForAgentTeam: boolean; // Note: schema says isForAgentTeam, not isForWorkflow
 }
 
 interface SyncResult {
@@ -137,12 +136,11 @@ export const usePromptStore = defineStore('prompt', () => {
     promptContent: string,
     description?: string,
     suitableForModels?: string,
-    isForAgentTeam?: boolean,
   ) {
     try {
       const { data, errors } = await client.mutate({
         mutation: CREATE_PROMPT,
-        variables: { input: { name, category, promptContent, description, suitableForModels, isForAgentTeam } },
+        variables: { input: { name, category, promptContent, description, suitableForModels } },
         refetchQueries: [
           { query: GET_PROMPTS },
           { query: GetAgentCustomizationOptions }

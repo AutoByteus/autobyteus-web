@@ -17,6 +17,11 @@
           :segment="segment"
           :conversation-id="agentId"
         />
+        <PatchFileCommandSegment
+          v-else-if="segment.type === 'patch_file'"
+          :segment="segment"
+          :conversation-id="agentId"
+        />
         <TerminalCommandSegment
           v-else-if="segment.type === 'terminal_command'"
           :segment="segment"
@@ -63,6 +68,7 @@ import SystemTaskNotificationSegment from '~/components/conversation/segments/Sy
 import InterAgentMessageSegment from '~/components/conversation/segments/InterAgentMessageSegment.vue';
 import MediaSegment from '~/components/conversation/segments/MediaSegment.vue';
 import ErrorSegment from '~/components/conversation/segments/ErrorSegment.vue';
+import PatchFileCommandSegment from '~/components/conversation/segments/PatchFileCommandSegment.vue';
 import CopyButton from '~/components/common/CopyButton.vue';
 
 const props = defineProps<{

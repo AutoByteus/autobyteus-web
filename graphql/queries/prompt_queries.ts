@@ -15,7 +15,6 @@ export const GET_PROMPTS = gql`
       updatedAt
       parentPromptId
       isActive
-      isForAgentTeam
     }
   }
 `;
@@ -35,7 +34,6 @@ export const GET_PROMPT_BY_ID = gql`
       updatedAt
       parentPromptId
       isActive
-      isForAgentTeam
     }
   }
 `;

@@ -199,7 +199,6 @@ export type CreateAgentTeamInstanceResult = {
 export type CreatePromptInput = {
   category: Scalars['String']['input'];
   description?: InputMaybe<Scalars['String']['input']>;
-  isForAgentTeam?: InputMaybe<Scalars['Boolean']['input']>;
   name: Scalars['String']['input'];
   promptContent: Scalars['String']['input'];
   suitableForModels?: InputMaybe<Scalars['String']['input']>;
@@ -599,7 +598,6 @@ export type Prompt = {
   description?: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];
   isActive: Scalars['Boolean']['output'];
-  isForAgentTeam: Scalars['Boolean']['output'];
   name: Scalars['String']['output'];
   parentPromptId?: Maybe<Scalars['String']['output']>;
   promptContent: Scalars['String']['output'];
@@ -1250,21 +1248,21 @@ export type CreatePromptMutationVariables = Exact<{
 }>;
 
 
-export type CreatePromptMutation = { __typename?: 'Mutation', createPrompt: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } };
+export type CreatePromptMutation = { __typename?: 'Mutation', createPrompt: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null, isActive: boolean } };
 
 export type UpdatePromptMutationVariables = Exact<{
   input: UpdatePromptInput;
 }>;
 
 
-export type UpdatePromptMutation = { __typename?: 'Mutation', updatePrompt: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } };
+export type UpdatePromptMutation = { __typename?: 'Mutation', updatePrompt: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean } };
 
 export type AddNewPromptRevisionMutationVariables = Exact<{
   input: AddNewPromptRevisionInput;
 }>;
 
 
-export type AddNewPromptRevisionMutation = { __typename?: 'Mutation', addNewPromptRevision: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } };
+export type AddNewPromptRevisionMutation = { __typename?: 'Mutation', addNewPromptRevision: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null, isActive: boolean } };
 
 export type MarkActivePromptMutationVariables = Exact<{
   input: MarkActivePromptInput;
@@ -1322,7 +1320,7 @@ export type GetAgentCustomizationOptionsQuery = { __typename?: 'Query', availabl
 export type GetAgentDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean }> }> };
+export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean }> }> };
 
 export type GetAgentInstancesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1412,14 +1410,14 @@ export type GetPromptsQueryVariables = Exact<{
 }>;
 
 
-export type GetPromptsQuery = { __typename?: 'Query', prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean }> };
+export type GetPromptsQuery = { __typename?: 'Query', prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean }> };
 
 export type GetPromptByIdQueryVariables = Exact<{
   id: Scalars['String']['input'];
 }>;
 
 
-export type GetPromptByIdQuery = { __typename?: 'Query', promptDetails?: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean, isForAgentTeam: boolean } | null };
+export type GetPromptByIdQuery = { __typename?: 'Query', promptDetails?: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean } | null };
 
 export type GetPromptDetailsByNameAndCategoryQueryVariables = Exact<{
   category: Scalars['String']['input'];
@@ -2379,7 +2377,6 @@ export const CreatePromptDocument = gql`
     createdAt
     parentPromptId
     isActive
-    isForAgentTeam
   }
 }
     `;
@@ -2420,7 +2417,6 @@ export const UpdatePromptDocument = gql`
     updatedAt
     parentPromptId
     isActive
-    isForAgentTeam
   }
 }
     `;
@@ -2460,7 +2456,6 @@ export const AddNewPromptRevisionDocument = gql`
     createdAt
     parentPromptId
     isActive
-    isForAgentTeam
   }
 }
     `;
@@ -2812,7 +2807,6 @@ export const GetAgentDefinitionsDocument = gql`
       updatedAt
       parentPromptId
       isActive
-      isForAgentTeam
     }
   }
 }
@@ -3349,7 +3343,6 @@ export const GetPromptsDocument = gql`
     updatedAt
     parentPromptId
     isActive
-    isForAgentTeam
   }
 }
     `;
@@ -3391,7 +3384,6 @@ export const GetPromptByIdDocument = gql`
     updatedAt
     parentPromptId
     isActive
-    isForAgentTeam
   }
 }
     `;

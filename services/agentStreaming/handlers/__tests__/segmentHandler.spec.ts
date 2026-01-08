@@ -100,5 +100,26 @@ describe('segmentHandler', () => {
         })
       );
     });
+
+    it('should correctly handle patch_file segments', () => {
+      const payload: SegmentStartPayload = {
+        id: 'test-id-pf',
+        segment_type: 'patch_file',
+        metadata: { path: '/tmp/bar.txt' },
+      };
+
+      handleSegmentStart(payload, mockContext);
+
+      expect(console.error).not.toHaveBeenCalled();
+
+      expect(mockActivityStore.addActivity).toHaveBeenCalledWith(
+        'test-agent-id',
+        expect.objectContaining({
+          toolName: 'patch_file',
+          type: 'patch_file',
+          arguments: { path: '/tmp/bar.txt' },
+        })
+      );
+    });
   });
 });

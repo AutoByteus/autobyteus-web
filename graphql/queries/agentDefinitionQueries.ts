@@ -32,7 +32,6 @@ export const GetAgentDefinitions = gql`
         updatedAt
         parentPromptId
         isActive
-        isForAgentTeam
       }
     }
   }

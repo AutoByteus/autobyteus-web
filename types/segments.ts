@@ -61,6 +61,13 @@ export interface TerminalCommandSegment extends ToolInvocationLifecycle {
   description: string;
 }
 
+export interface PatchFileSegment extends ToolInvocationLifecycle {
+  type: 'patch_file';
+  path: string;
+  originalContent: string; // The patch content
+  language: string;
+}
+
 export interface SystemTaskNotificationSegment {
   type: 'system_task_notification';
   senderId: string;
@@ -93,7 +100,9 @@ export type AIResponseSegment =
   | WriteFileSegment 
   | ThinkSegment
   | ToolCallSegment
+  | ToolCallSegment
   | TerminalCommandSegment
+  | PatchFileSegment
   | SystemTaskNotificationSegment
   | InterAgentMessageSegment
   | MediaSegment

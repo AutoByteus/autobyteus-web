@@ -14,7 +14,6 @@ export const CREATE_PROMPT = gql`
       createdAt
       parentPromptId
       isActive
-      isForAgentTeam
     }
   }
 `;
@@ -34,7 +33,6 @@ export const UPDATE_PROMPT = gql`
       updatedAt
       parentPromptId
       isActive
-      isForAgentTeam
     }
   }
 `;
@@ -53,7 +51,6 @@ export const ADD_NEW_PROMPT_REVISION = gql`
       createdAt
       parentPromptId
       isActive
-      isForAgentTeam
     }
   }
 `;
