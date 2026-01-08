@@ -125,26 +125,60 @@ const hasArgs = computed(() => {
   return Object.keys(props.args).length > 0;
 });
 
-function prettyPrintArgs(value: any): string {
-  if (typeof value === 'string') {
+const prettyArgs = computed(() => {
+  const val = props.args;
+  if (val === undefined || val === null) return '';
+  
+  // If it's a string, try to parse it first
+  let obj = val;
+  if (typeof val === 'string') {
     try {
-      const parsed = JSON.parse(value);
-      return JSON.stringify(parsed, null, 2);
+      obj = JSON.parse(val);
     } catch {
-      return value;
+      return val; // Return raw string if not JSON
     }
   }
-  if (value !== undefined) {
-    try {
-      return JSON.stringify(value, null, 2);
-    } catch {
-      return String(value);
-    }
-  }
-  return '';
-}
 
-const prettyArgs = computed(() => prettyPrintArgs(props.args));
+  // Helper to format values specifically for display
+  const formatValue = (v: any, indentLevel: number): string => {
+    const indent = '  '.repeat(indentLevel);
+    
+    if (v === null) return 'null';
+    if (v === undefined) return 'undefined';
+    
+    if (typeof v === 'string') {
+      // Check if string has newlines - if so, format as block
+      if (v.includes('\n')) {
+        // Indent each line of the string content
+        const indentedContent = v.split('\n').join('\n' + indent + '  ');
+        return `"${indentedContent}"`;
+      }
+      return JSON.stringify(v);
+    }
+    
+    if (Array.isArray(v)) {
+      if (v.length === 0) return '[]';
+      const items = v.map(item => formatValue(item, indentLevel + 1));
+      return `[\n${indent}  ${items.join(',\n' + indent + '  ')}\n${indent}]`;
+    }
+    
+    if (typeof v === 'object') {
+      const keys = Object.keys(v);
+      if (keys.length === 0) return '{}';
+      
+      const props = keys.map(key => {
+        const value = formatValue(v[key], indentLevel + 1);
+        return `${indent}  "${key}": ${value}`;
+      });
+      
+      return `{\n${props.join(',\n')}\n${indent}}`;
+    }
+    
+    return JSON.stringify(v);
+  };
+
+  return formatValue(obj, 0);
+});
 
 const approve = async () => {
   if (isProcessing.value) return;
