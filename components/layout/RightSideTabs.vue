@@ -74,6 +74,7 @@ const activityStore = useAgentActivityStore();
 const workspaceStore = useWorkspaceStore();
 
 const { activeTab, visibleTabs, setActiveTab } = useRightSideTabs();
+const { toggleRightPanel } = useRightPanel();
 
 const currentAgentId = computed(() => activeContextStore.activeAgentContext?.state.agentId ?? '');
 
