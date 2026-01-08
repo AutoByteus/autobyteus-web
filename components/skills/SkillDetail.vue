@@ -32,7 +32,7 @@
 
             <!-- Right: Editor/Viewer -->
             <div class="editor-pane">
-                <FileContentViewer :workspaceId="workspaceId" />
+                <FileExplorerTabs :workspaceId="workspaceId" />
             </div>
             </div>
         </template>
@@ -46,7 +46,7 @@ import { useSkillStore } from '~/stores/skillStore'
 import { Icon } from '@iconify/vue'
 import SkillWorkspaceLoader from './SkillWorkspaceLoader.vue'
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
-import FileContentViewer from '~/components/fileExplorer/FileContentViewer.vue'
+import FileExplorerTabs from '~/components/fileExplorer/FileExplorerTabs.vue'
 import type { Skill } from '~/types/skill'
 
 const props = defineProps<{

@@ -19,7 +19,7 @@
 
     <!-- File Content Viewer -->
     <div class="flex-grow min-w-0 h-full overflow-hidden bg-white">
-      <FileContentViewer />
+      <FileExplorerTabs />
     </div>
   </div>
 </template>
@@ -27,7 +27,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue';
-import FileContentViewer from '~/components/fileExplorer/FileContentViewer.vue';
+import FileExplorerTabs from '~/components/fileExplorer/FileExplorerTabs.vue';
 
 const treeWidth = ref(250); // Default width
 const minWidth = 150;

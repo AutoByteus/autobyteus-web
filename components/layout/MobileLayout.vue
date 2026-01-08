@@ -24,7 +24,7 @@
 
       <!-- Content Viewer -->
       <div v-show="activeMobilePanel === 'content'" class="h-full p-0 overflow-auto">
-        <FileContentViewer :expandedMode="true" />
+        <FileExplorerTabs :expandedMode="true" />
       </div>
 
       <!-- Launch Profile Panel -->
@@ -74,7 +74,7 @@
 import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue';
-import FileContentViewer from '~/components/fileExplorer/FileContentViewer.vue';
+import FileExplorerTabs from '~/components/fileExplorer/FileExplorerTabs.vue';
 import LaunchProfilePanel from '~/components/launchProfiles/LaunchProfilePanel.vue';
 import AgentWorkspaceView from '~/components/workspace/agent/AgentWorkspaceView.vue';
 import TeamWorkspaceView from '~/components/workspace/team/TeamWorkspaceView.vue'; // Import Team View

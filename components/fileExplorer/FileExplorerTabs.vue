@@ -26,10 +26,14 @@
             <strong class="font-bold">Error!</strong>
             <span class="block sm:inline">{{ activeFileData.error }}</span>
           </div>
-          <div v-else-if="activeFileData && activeViewerComponent" class="flex-1 bg-gray-50 rounded-lg overflow-hidden relative min-h-0">
-            <component
-              :is="activeViewerComponent"
-              v-bind="viewerProps"
+          <div v-else-if="activeFileData" class="flex-1 bg-gray-50 rounded-lg overflow-hidden relative min-h-0">
+            <FileViewer
+              v-if="activeFileData"
+              :file="activeFileData"
+              :mode="activeFileMode"
+              :loading="activeFileData.isLoading"
+              :error="activeFileData.error"
+              :read-only="false"
               @update:model-value="fileContent = $event"
               @save="handleSave"
               class="h-full w-full flex-1 min-h-0 overflow-auto"
@@ -167,10 +171,14 @@
           <strong class="font-bold">Error!</strong>
           <span class="block sm:inline">{{ activeFileData.error }}</span>
         </div>
-        <div v-else-if="activeFileData && activeViewerComponent" class="flex-1 bg-gray-50 rounded-lg overflow-hidden relative min-h-0">
-          <component
-            :is="activeViewerComponent"
-            v-bind="viewerProps"
+        <div v-else-if="activeFileData" class="flex-1 bg-gray-50 rounded-lg overflow-hidden relative min-h-0">
+          <FileViewer
+            v-if="activeFileData"
+            :file="activeFileData"
+            :mode="activeFileMode"
+            :loading="activeFileData.isLoading"
+            :error="activeFileData.error"
+            :read-only="false"
             @update:model-value="fileContent = $event"
             @save="handleSave"
             class="h-full w-full flex-1 min-h-0 overflow-auto"
@@ -206,14 +214,7 @@ import { getLanguage } from '~/utils/highlighting/languageDetector'
 import { Icon } from '@iconify/vue'
 
 // Viewer components
-import MonacoEditor from '~/components/fileExplorer/MonacoEditor.vue'
-import ImageViewer from '~/components/fileExplorer/viewers/ImageViewer.vue'
-import AudioPlayer from '~/components/fileExplorer/viewers/AudioPlayer.vue'
-import VideoPlayer from '~/components/fileExplorer/viewers/VideoPlayer.vue'
-import MarkdownPreviewer from '~/components/fileExplorer/viewers/MarkdownPreviewer.vue'
-import HtmlPreviewer from '~/components/fileExplorer/viewers/HtmlPreviewer.vue'
-import ExcelViewer from '~/components/fileExplorer/viewers/ExcelViewer.vue'
-import PdfViewer from '~/components/fileExplorer/viewers/PdfViewer.vue'
+import FileViewer from '~/components/fileExplorer/FileViewer.vue'
 
 const fileExplorerStore = useFileExplorerStore()
 const workspaceStore = useWorkspaceStore()
@@ -317,54 +318,7 @@ const isEditorFocused = () => {
          activeEl.closest('.monaco-editor') !== null
 }
 
-const activeViewerComponent = computed(() => {
-  const file = activeFileData.value
-  if (!file) return null
 
-  const lowerPath = (file.path || '').toLowerCase()
-
-  if (file.type === 'Text') {
-    if (activeFileMode.value === 'preview') {
-      if (lowerPath.endsWith('.md') || lowerPath.endsWith('.markdown')) return MarkdownPreviewer
-      if (lowerPath.endsWith('.html') || lowerPath.endsWith('.htm')) return HtmlPreviewer
-      return MarkdownPreviewer
-    }
-    return MonacoEditor
-  }
-
-  switch (file.type) {
-    case 'Image': return ImageViewer
-    case 'Audio': return AudioPlayer
-    case 'Video': return VideoPlayer
-    case 'Excel': return ExcelViewer
-    case 'PDF': return PdfViewer
-    default: return null
-  }
-});
-
-const viewerProps = computed(() => {
-  const file = activeFileData.value
-  if (!file) return {}
-
-  if (file.type === 'Text') {
-    if (activeFileMode.value === 'preview') {
-      return {
-        content: file.content ?? fileContent.value ?? '',
-        path: file.path,
-      }
-    }
-    return {
-      modelValue: fileContent.value,
-      language: getFileLanguage(file.path),
-    }
-  }
-
-  if (['Image', 'Audio', 'Video', 'Excel', 'PDF'].includes(file.type)) {
-    return { url: file.url ?? null }
-  }
-
-  return {}
-});
 
 watch(activeFileData, (newVal) => {
   if (newVal?.type === 'Text') {

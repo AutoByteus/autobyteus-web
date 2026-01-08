@@ -25,16 +25,20 @@
             Loading content...
         </div>
         
-        <component
-            v-else-if="activeComponent"
-            :is="activeComponent"
-            v-bind="componentProps"
+        <FileViewer
+            v-else
+            :file="{
+                path: artifact.path,
+                type: fileType,
+                content: artifact.content ?? null,
+                url: artifact.url ?? null
+            }"
+            :mode="'edit'" 
+            :read-only="true"
             class="h-full w-full"
         />
         
-        <div v-else class="flex-1 flex items-center justify-center text-gray-400">
-            Preview not available for this file type.
-        </div>
+
     </div>
   </div>
 </template>
@@ -47,12 +51,7 @@ import { determineFileType } from '~/utils/fileExplorer/fileUtils';
 import { getLanguage } from '~/utils/highlighting/languageDetector';
 
 // Import Viewers
-import MonacoEditor from '~/components/fileExplorer/MonacoEditor.vue';
-import ImageViewer from '~/components/fileExplorer/viewers/ImageViewer.vue';
-import AudioPlayer from '~/components/fileExplorer/viewers/AudioPlayer.vue';
-import VideoPlayer from '~/components/fileExplorer/viewers/VideoPlayer.vue';
-import PdfViewer from '~/components/fileExplorer/viewers/PdfViewer.vue';
-import ExcelViewer from '~/components/fileExplorer/viewers/ExcelViewer.vue';
+import FileViewer from '~/components/fileExplorer/FileViewer.vue';
 
 const props = defineProps<{
   artifact: AgentArtifact | null;
@@ -73,34 +72,8 @@ const updateFileType = async () => {
 
 watch(() => props.artifact, updateFileType, { immediate: true });
 
-const activeComponent = computed(() => {
-    switch (fileType.value) {
-        case 'Text': return MonacoEditor;
-        case 'Image': return ImageViewer;
-        case 'Audio': return AudioPlayer;
-        case 'Video': return VideoPlayer;
-        case 'PDF': return PdfViewer;
-        case 'Excel': return ExcelViewer; 
-        default: return MonacoEditor; // Fallback to text for unknown
-    }
-});
 
-const componentProps = computed(() => {
-    if (!props.artifact) return {};
-    
-    if (fileType.value === 'Text') {
-        return {
-            modelValue: props.artifact.content || '',
-            language: getLanguage(props.artifact.path),
-            readOnly: true, // Artifacts are generally read-only in this view
-        };
-    }
-    
-    // Media, PDF, Excel props
-    // Most viewers just take 'url'
-    return {
-        url: props.artifact.url || '', 
-    };
-});
+
+
 
 </script>
