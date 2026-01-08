@@ -45,6 +45,7 @@ import * as XLSX from 'xlsx';
 
 const props = defineProps<{
   url: string | null;
+  content?: string | null;
 }>();
 
 const isLoading = ref(false);
@@ -67,28 +68,41 @@ const sheetHtml = computed(() => {
 });
 
 const loadExcel = async () => {
-  if (!props.url) {
-    error.value = 'No file URL provided.';
-    return;
-  }
-
   isLoading.value = true;
   error.value = null;
 
   try {
-    const response = await fetch(props.url);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
-    }
+    // 1. Try URL first
+    if (props.url) {
+      const response = await fetch(props.url);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+      }
 
-    const arrayBuffer = await response.arrayBuffer();
-    const data = new Uint8Array(arrayBuffer);
+      const arrayBuffer = await response.arrayBuffer();
+      const data = new Uint8Array(arrayBuffer);
+      
+      workbook.value = XLSX.read(data, { type: 'array' });
+    } 
+    // 2. Fallback to raw content (for streaming CSVs/files)
+    else if (props.content) {
+      // XLSX.read can handle string content for CSVs/Text based formats
+      workbook.value = XLSX.read(props.content, { type: 'string' });
+    }
+    // 3. No source available
+    else {
+      // Just clear state, don't error immediately if it's just initializing
+      workbook.value = null;
+      return;
+    }
     
-    workbook.value = XLSX.read(data, { type: 'array' });
-    
-    if (workbook.value.SheetNames.length > 0) {
-      activeSheet.value = workbook.value.SheetNames[0];
+    // Set active sheet if workbook loaded successfully
+    if (workbook.value && workbook.value.SheetNames.length > 0) {
+      // Preserve active sheet if it still exists, otherwise pick first
+      if (!activeSheet.value || !workbook.value.SheetNames.includes(activeSheet.value)) {
+        activeSheet.value = workbook.value.SheetNames[0];
+      }
     }
   } catch (e) {
     console.error('[ExcelViewer] Error loading Excel file:', e);
@@ -99,14 +113,13 @@ const loadExcel = async () => {
   }
 };
 
-watch(() => props.url, (newUrl) => {
-  if (newUrl) {
-    loadExcel();
-  }
+// Watch for changes in either URL or Content
+watch([() => props.url, () => props.content], () => {
+  loadExcel();
 }, { immediate: true });
 
 onMounted(() => {
-  if (props.url && !workbook.value && !isLoading.value) {
+  if (!workbook.value && !isLoading.value) {
     loadExcel();
   }
 });

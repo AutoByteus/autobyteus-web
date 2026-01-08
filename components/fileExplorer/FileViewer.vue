@@ -102,6 +102,7 @@ const componentProps = computed(() => {
   // Media types
   return {
     url: props.file.url || null,
+    content: props.file.content || null,
   };
 });
 </script>

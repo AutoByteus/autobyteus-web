@@ -147,6 +147,65 @@ The `WriteFileCommandSegment` component includes a button to open the Artifacts 
 
 ---
 
+## End-to-End Data Flow
+
+This section details the complete lifecycle of artifact data, from the initial byte streamed by the backend to the final pixel rendered in the user interface.
+
+```mermaid
+graph TD
+    subgraph "Backend"
+        Agent[Agent Tool] -->|Stream Content| WS[WebSocket Server]
+    end
+
+    subgraph "Frontend Service Layer"
+        WS -->|SEGMENT_CONTENT| Service[AgentStreamingService]
+        Service -->|Dispatch| Handler[segmentHandler.ts]
+    end
+
+    subgraph "State Management"
+        Handler -->|appendArtifactContent| Store[AgentArtifactsStore]
+        Store -->|Reactive State Update| StoreState[activeStreamingArtifact]
+    end
+
+    subgraph "UI Rendering"
+        StoreState -->|Watch| Tab[ArtifactsTab.vue]
+        Tab -->|Prop: artifact| Content[ArtifactContentViewer.vue]
+        Content -->|Prop: content| Viewer[FileViewer.vue]
+
+        Viewer -->|Prop: content| Excel[ExcelViewer.vue]
+        Viewer -->|Prop: content| Monaco[MonacoEditor.vue]
+    end
+```
+
+### Complete Data Pipeline
+
+1.  **Transmission (Backend → Frontend)**:
+
+    - The backend `write_file` tool generates content chunks.
+    - These are sent via WebSocket as `SEGMENT_CONTENT` events.
+
+2.  **Ingestion (Service Layer)**:
+
+    - `AgentStreamingService` receives the raw event.
+    - `segmentHandler` identifies the segment ID and dispatches `store.appendArtifactContent(agentId, delta)`.
+
+3.  **Accumulation (Store)**:
+
+    - `AgentArtifactsStore` finds the active artifact in memory.
+    - It appends the string delta to `artifact.content`. This string grows in real-time.
+
+4.  **Propagation (UI Hierarchy)**:
+
+    - **`ArtifactsTab.vue`**: Reactively detects changes to the active artifact and passes the updated object down.
+    - **`ArtifactContentViewer.vue`**: Receives the artifact. Even though the file isn't saved yet (no `url`), the `content` property is populated.
+    - **`FileViewer.vue`**: Routes the data based on file type.
+
+5.  **Visualization (Component)**:
+    - **CSV/Excel**: `ExcelViewer` receives the raw CSV string via the `content` prop. It parses this string on-the-fly (using `XLSX.read`), updating the table row-by-row as more data arrives.
+    - **Code/Text**: `MonacoEditor` receives the string and updates the editor buffer.
+
+---
+
 ## Testing
 
 Unit tests are colocated with the store:
