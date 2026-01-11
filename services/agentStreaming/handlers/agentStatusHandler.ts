@@ -6,14 +6,15 @@
  */
 
 import type { AgentContext } from '~/types/agent/AgentContext';
-import type { ErrorSegment } from '~/types/segments';
+import type { ErrorSegment, ToolInvocationLifecycle } from '~/types/segments';
 import type { 
   AgentStatusPayload, 
   ErrorPayload,
   AssistantCompletePayload,
 } from '../protocol/messageTypes';
-import { findOrCreateAIMessage } from './segmentHandler';
+import { findOrCreateAIMessage, findSegmentById } from './segmentHandler';
 import { AgentStatus } from '~/types/agent/AgentStatus';
+import { useAgentActivityStore } from '~/stores/agentActivityStore';
 
 
 /**
@@ -68,15 +69,89 @@ export function handleError(
   payload: ErrorPayload,
   context: AgentContext
 ): void {
+  const toolErrorInfo = parseToolExecutionError(payload.message);
+  if (toolErrorInfo && applyToolError(toolErrorInfo, context)) {
+    markConversationComplete(context);
+    return;
+  }
+
   const aiMessage = findOrCreateAIMessage(context);
-  
+
   const errorSegment: ErrorSegment = {
     type: 'error',
     source: payload.code,
     message: payload.message,
   };
-  
+
   aiMessage.segments.push(errorSegment);
   aiMessage.isComplete = true;
+  context.isSending = false;
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+interface ToolErrorInfo {
+  invocationId: string;
+  toolName?: string;
+  message: string;
+}
+
+function parseToolExecutionError(message: string): ToolErrorInfo | null {
+  // Backend tool execution errors are typically formatted as:
+  // "Error executing tool 'tool_name' (ID: invocation_id): <details>"
+  const match = message.match(
+    /^Error executing tool ['"](.+?)['"] \(ID: ([^)]+)\):\s*([\s\S]*)$/
+  );
+  if (!match) return null;
+
+  return {
+    toolName: match[1],
+    invocationId: match[2],
+    message,
+  };
+}
+
+function applyToolError(info: ToolErrorInfo, context: AgentContext): boolean {
+  const segment = findSegmentById(context, info.invocationId);
+  if (
+    !segment ||
+    !['tool_call', 'write_file', 'terminal_command', 'patch_file'].includes(segment.type)
+  ) {
+    return false;
+  }
+
+  const toolSegment = segment as ToolInvocationLifecycle;
+  toolSegment.status = 'error';
+  toolSegment.error = info.message;
+  toolSegment.result = null;
+  if (Array.isArray(toolSegment.logs) && !toolSegment.logs.includes(info.message)) {
+    toolSegment.logs.push(info.message);
+  }
+  if (!toolSegment.toolName && info.toolName) {
+    toolSegment.toolName = info.toolName;
+  }
+
+  const activityStore = useAgentActivityStore();
+  const agentId = context.state.agentId;
+  activityStore.updateActivityStatus(agentId, info.invocationId, 'error');
+  activityStore.setActivityResult(agentId, info.invocationId, null, info.message);
+
+  const activity = activityStore
+    .getActivities(agentId)
+    .find((item) => item.invocationId === info.invocationId);
+  if (activity && !activity.logs.includes(info.message)) {
+    activityStore.addActivityLog(agentId, info.invocationId, info.message);
+  }
+
+  return true;
+}
+
+function markConversationComplete(context: AgentContext): void {
+  const lastMessage = context.conversation.messages[context.conversation.messages.length - 1];
+  if (lastMessage?.type === 'ai') {
+    lastMessage.isComplete = true;
+  }
   context.isSending = false;
 }

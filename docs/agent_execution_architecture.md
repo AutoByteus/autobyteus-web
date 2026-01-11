@@ -118,6 +118,25 @@ A key architectural pattern is the **Sidecar Store Pattern** for runtime data. I
 3.  **Todos (`AgentTodoStore`)**:
     - Maintains the agent's Todo list separately from the chat history.
 
+---
+
+## Error Event Nuance (Tool vs System)
+
+The backend currently emits two kinds of error-shaped signals:
+
+- `TOOL_LOG` entries that include tool execution failures.
+- A generic `ERROR` event for unrecoverable errors.
+
+Because tool failures arrive via `TOOL_LOG`, they are already surfaced in:
+- The tool call segment (red status + error details).
+- The Activity panel (logs + error state).
+
+To avoid duplicate error rendering in the main chat, the frontend suppresses the chat `ErrorSegment` only when the `ERROR` message matches a tool execution failure (e.g. "Error executing tool 'X' (ID: ...)"). Non-tool/system errors still render as chat error segments so the user can see that the run failed.
+
+### Backend improvement suggestion
+
+A cleaner protocol would make tool errors explicit (e.g., include `invocation_id` or a `source: "tool"` field on `ERROR`, or emit a dedicated `TOOL_ERROR` event). That would let the frontend route errors without string parsing and avoid any ambiguity between tool failures and system/agent failures.
+
 ## Related Documentation
 
 - **[Agent Management](./agent_management.md)**: Defines the agents whose execution is described here.

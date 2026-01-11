@@ -3,22 +3,41 @@ import { handleAgentStatus, handleAssistantComplete, handleError } from '../agen
 import { AgentStatus } from '~/types/agent/AgentStatus';
 import type { AgentStatusPayload, AssistantCompletePayload, ErrorPayload } from '../../protocol/messageTypes';
 
-// Mock findOrCreateAIMessage since it's used in handleError
-vi.mock('../segmentHandler', () => ({
-  findOrCreateAIMessage: vi.fn((context) => {
+const mockActivityStore = {
+  updateActivityStatus: vi.fn(),
+  setActivityResult: vi.fn(),
+  addActivityLog: vi.fn(),
+  getActivities: vi.fn(() => []),
+};
+
+vi.mock('~/stores/agentActivityStore', () => ({
+  useAgentActivityStore: () => mockActivityStore,
+}));
+
+const mockFindOrCreateAIMessage = vi.fn((context) => {
     // Return the last message if it's AI, or a mock one
     const last = context.conversation.messages[context.conversation.messages.length - 1];
     if (last && last.type === 'ai') return last;
     const newMsg = { type: 'ai', segments: [], isComplete: false };
     context.conversation.messages.push(newMsg);
     return newMsg;
-  })
+});
+
+const mockFindSegmentById = vi.fn((context, id: string) => {
+  return context.__segmentsById?.[id] ?? null;
+});
+
+// Mock segment handler helpers used in handleError
+vi.mock('../segmentHandler', () => ({
+  findOrCreateAIMessage: mockFindOrCreateAIMessage,
+  findSegmentById: mockFindSegmentById,
 }));
 
 describe('agentStatusHandler', () => {
   let mockContext: any;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockContext = {
       state: { 
         currentStatus: AgentStatus.Uninitialized 
@@ -80,6 +99,36 @@ describe('agentStatusHandler', () => {
         message: 'Something went wrong'
       });
       expect(mockContext.isSending).toBe(false);
+    });
+
+    it('suppresses error segment for tool execution errors and updates tool segment', () => {
+      const toolSegment = {
+        type: 'tool_call',
+        invocationId: 'inv-123',
+        toolName: 'read_file',
+        arguments: {},
+        status: 'executing',
+        logs: [],
+        result: null,
+        error: null,
+      };
+
+      const aiMsg = { type: 'ai', isComplete: false, segments: [toolSegment] };
+      mockContext.conversation.messages.push(aiMsg);
+      mockContext.__segmentsById = { 'inv-123': toolSegment };
+
+      const payload: ErrorPayload = {
+        code: 'TOOL_ERROR',
+        message: "Error executing tool 'read_file' (ID: inv-123): failed to read file",
+      };
+
+      handleError(payload, mockContext);
+
+      expect(aiMsg.segments).toHaveLength(1);
+      expect(toolSegment.status).toBe('error');
+      expect(toolSegment.error).toBe(payload.message);
+      expect(mockContext.isSending).toBe(false);
+      expect(aiMsg.isComplete).toBe(true);
     });
   });
 });
