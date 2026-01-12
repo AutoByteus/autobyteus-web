@@ -11,3 +11,9 @@ export const RELOAD_LLM_MODELS = gql`
     reloadLlmModels
   }
 `;
+
+export const RELOAD_LLM_PROVIDER_MODELS = gql`
+  mutation ReloadLLMProviderModels($provider: String!) {
+    reloadLlmProviderModels(provider: $provider)
+  }
+`;

@@ -122,6 +122,18 @@
                     {{ isProviderConfigured(selectedModelProvider) ? 'Configured' : 'Not Configured' }}
                   </span>
                 </div>
+                <button
+                  @click="reloadSelectedProviderModels"
+                  :disabled="!selectedModelProvider || isLoadingModels || isReloadingModels || isReloadingProviderModels"
+                  class="inline-flex items-center px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-lg shadow-sm hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  title="Reload models for selected provider"
+                >
+                  <span
+                    class="i-heroicons-arrow-path-20-solid w-4 h-4 mr-2 text-blue-600"
+                    :class="{ 'animate-spin': isReloadingModels || isReloadingSelectedProvider }"
+                  ></span>
+                  Reload Models
+                </button>
               </div>
 
               <!-- API Key Configuration Section -->
@@ -158,7 +170,16 @@
               </div>
 
               <!-- Panel Content: Models by Type -->
-              <div class="px-5 py-4 bg-gray-50/30 flex-1 overflow-y-auto">
+              <div class="px-5 py-4 bg-gray-50/30 flex-1 overflow-y-auto relative">
+                <div
+                  v-if="isReloadingSelectedProvider"
+                  class="absolute inset-0 bg-white flex items-center justify-center z-10"
+                >
+                  <div class="flex items-center gap-2 text-sm text-gray-600">
+                    <span class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></span>
+                    Reloading models...
+                  </div>
+                </div>
                 
                 <div v-if="selectedProviderLlmModels.length > 0 || selectedProviderAudioModels.length > 0 || selectedProviderImageModels.length > 0" class="mb-2"></div>
 
@@ -257,6 +278,8 @@ const store = useLLMProviderConfigStore();
 const {
   isLoadingModels,
   isReloadingModels,
+  isReloadingProviderModels,
+  reloadingProvider,
   providers,
   providersWithModels,
   audioProvidersWithModels,
@@ -396,6 +419,14 @@ const selectedProviderImageModels = computed(() => {
   return providerGroup?.models || [];
 });
 
+const isReloadingSelectedProvider = computed(() => {
+  if (!selectedModelProvider.value) return false;
+  return (
+    isReloadingProviderModels.value &&
+    reloadingProvider.value === selectedModelProvider.value
+  );
+});
+
 // Select a provider to view its models
 const selectProviderForModels = (providerName: string) => {
   selectedModelProvider.value = providerName;
@@ -426,6 +457,24 @@ const refreshModels = async () => {
   } catch (error) {
     console.error("Failed to reload models:", error);
     showNotification("Failed to reload models", "error");
+  }
+};
+
+const reloadSelectedProviderModels = async () => {
+  if (!selectedModelProvider.value) return;
+
+  try {
+    await store.reloadModelsForProvider(selectedModelProvider.value);
+    showNotification(
+      `Models reloaded for ${selectedModelProvider.value}`,
+      "success"
+    );
+  } catch (error) {
+    console.error("Failed to reload provider models:", error);
+    showNotification(
+      `Failed to reload models for ${selectedModelProvider.value}`,
+      "error"
+    );
   }
 };
 

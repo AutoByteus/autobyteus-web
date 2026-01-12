@@ -6,7 +6,8 @@ import {
 } from '~/graphql/queries/llm_provider_queries'
 import { 
   SET_LLM_PROVIDER_API_KEY,
-  RELOAD_LLM_MODELS
+  RELOAD_LLM_MODELS,
+  RELOAD_LLM_PROVIDER_MODELS
 } from '~/graphql/mutations/llm_provider_mutations'
 import type { LLMProvider } from '~/types/llm'
 import { LLMProvider as LLMProviderEnum } from '~/types/llm'
@@ -38,6 +39,8 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
     providerConfigs: {} as Record<string, LLMProviderConfig>,
     isLoadingModels: false,
     isReloadingModels: false,
+    isReloadingProviderModels: false,
+    reloadingProvider: null as string | null,
     hasFetchedProviders: false,
   }),
   getters: {
@@ -139,8 +142,11 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
       }
     },
 
-    async reloadProvidersWithModels() {
-      this.isReloadingModels = true;
+    async reloadProvidersWithModels(options: { showLoading?: boolean } = {}) {
+      const { showLoading = true } = options;
+      if (showLoading) {
+        this.isReloadingModels = true;
+      }
       const { client } = useApolloClient();
 
       try {
@@ -161,7 +167,9 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
         this.imageProvidersWithModels = [];
         throw error;
       } finally {
-        this.isReloadingModels = false;
+        if (showLoading) {
+          this.isReloadingModels = false;
+        }
       }
     },
 
@@ -192,6 +200,42 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
         throw error;
       } finally {
         this.isReloadingModels = false;
+      }
+    },
+
+    async reloadModelsForProvider(provider: string) {
+      if (!provider) {
+        throw new Error('Provider is required to reload models.');
+      }
+
+      this.isReloadingProviderModels = true;
+      this.reloadingProvider = provider;
+
+      try {
+        const { client } = useApolloClient();
+        const { data, errors } = await client.mutate({
+          mutation: RELOAD_LLM_PROVIDER_MODELS,
+          variables: { provider },
+        });
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+
+        const responseMessage = data?.reloadLlmProviderModels;
+
+        if (responseMessage && responseMessage.includes("successfully")) {
+          await this.reloadProvidersWithModels({ showLoading: false });
+          return true;
+        }
+
+        throw new Error(responseMessage || 'Failed to reload provider models');
+      } catch (error) {
+        console.error(`Failed to reload models for provider ${provider}:`, error);
+        throw error;
+      } finally {
+        this.isReloadingProviderModels = false;
+        this.reloadingProvider = null;
       }
     },
 

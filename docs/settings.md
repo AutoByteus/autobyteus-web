@@ -23,6 +23,7 @@ This section allows users to manage connections to various LLM (Large Language M
 - **Key Management:** Securely enter and update API keys for providers like OpenAI, Anthropic, Gemini, etc.
 - **Model Discovery:** Automatically lists available models (LLM, Audio, Image) for each configured provider.
 - **Reload Models:** Triggers a backend refresh to discover new models or apply API key changes.
+- **Reload Provider Models:** Triggers a targeted refresh for the selected provider to re-discover its models.
 
 ### 2. Token Usage Statistics
 
