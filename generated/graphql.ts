@@ -20,6 +20,11 @@ export type Scalars = {
   JSON: { input: any; output: any; }
 };
 
+export type ActivateSkillVersionInput = {
+  skillName: Scalars['String']['input'];
+  version: Scalars['String']['input'];
+};
+
 export type AddNewPromptRevisionInput = {
   id: Scalars['String']['input'];
   newPromptContent: Scalars['String']['input'];
@@ -326,6 +331,7 @@ export type ModelDetail = {
 
 export type Mutation = {
   __typename?: 'Mutation';
+  activateSkillVersion: SkillVersion;
   addNewPromptRevision: Prompt;
   addSkillSource: Array<SkillSource>;
   approveToolInvocation: ApproveToolInvocationResult;
@@ -351,6 +357,7 @@ export type Mutation = {
   markActivePrompt: Prompt;
   moveFileOrFolder: Scalars['String']['output'];
   reloadLlmModels: Scalars['String']['output'];
+  reloadLlmProviderModels: Scalars['String']['output'];
   reloadToolSchema: ReloadToolSchemaResult;
   removeSkillSource: Array<SkillSource>;
   renameFileOrFolder: Scalars['String']['output'];
@@ -368,6 +375,11 @@ export type Mutation = {
   updateSkill: Skill;
   uploadSkillFile: Scalars['Boolean']['output'];
   writeFileContent: Scalars['String']['output'];
+};
+
+
+export type MutationActivateSkillVersionArgs = {
+  input: ActivateSkillVersionInput;
 };
 
 
@@ -494,6 +506,11 @@ export type MutationMoveFileOrFolderArgs = {
   destinationPath: Scalars['String']['input'];
   sourcePath: Scalars['String']['input'];
   workspaceId: Scalars['String']['input'];
+};
+
+
+export type MutationReloadLlmProviderModelsArgs = {
+  provider: Scalars['String']['input'];
 };
 
 
@@ -670,6 +687,8 @@ export type Query = {
   skillFileContent?: Maybe<Scalars['String']['output']>;
   skillFileTree?: Maybe<Scalars['String']['output']>;
   skillSources: Array<SkillSource>;
+  skillVersionDiff?: Maybe<SkillDiff>;
+  skillVersions: Array<SkillVersion>;
   skills: Array<Skill>;
   tools: Array<ToolDefinitionDetail>;
   toolsGroupedByCategory: Array<ToolCategoryGroup>;
@@ -780,6 +799,18 @@ export type QuerySkillFileTreeArgs = {
 };
 
 
+export type QuerySkillVersionDiffArgs = {
+  fromVersion: Scalars['String']['input'];
+  skillName: Scalars['String']['input'];
+  toVersion: Scalars['String']['input'];
+};
+
+
+export type QuerySkillVersionsArgs = {
+  skillName: Scalars['String']['input'];
+};
+
+
 export type QueryToolsArgs = {
   origin?: InputMaybe<ToolOriginEnum>;
   sourceServerId?: InputMaybe<Scalars['String']['input']>;
@@ -852,15 +883,24 @@ export type ServerSetting = {
 
 export type Skill = {
   __typename?: 'Skill';
+  activeVersion?: Maybe<Scalars['String']['output']>;
   content: Scalars['String']['output'];
   createdAt?: Maybe<Scalars['String']['output']>;
   description: Scalars['String']['output'];
   fileCount: Scalars['Int']['output'];
   isDisabled: Scalars['Boolean']['output'];
   isReadonly: Scalars['Boolean']['output'];
+  isVersioned: Scalars['Boolean']['output'];
   name: Scalars['String']['output'];
   rootPath: Scalars['String']['output'];
   updatedAt?: Maybe<Scalars['String']['output']>;
+};
+
+export type SkillDiff = {
+  __typename?: 'SkillDiff';
+  diffContent: Scalars['String']['output'];
+  fromVersion: Scalars['String']['output'];
+  toVersion: Scalars['String']['output'];
 };
 
 export type SkillSource = {
@@ -868,6 +908,15 @@ export type SkillSource = {
   isDefault: Scalars['Boolean']['output'];
   path: Scalars['String']['output'];
   skillCount: Scalars['Int']['output'];
+};
+
+export type SkillVersion = {
+  __typename?: 'SkillVersion';
+  commitHash: Scalars['String']['output'];
+  createdAt: Scalars['String']['output'];
+  isActive: Scalars['Boolean']['output'];
+  message: Scalars['String']['output'];
+  tag: Scalars['String']['output'];
 };
 
 export type StdioMcpServerConfig = McpServerConfig & {
@@ -1214,6 +1263,13 @@ export type ReloadLlmModelsMutationVariables = Exact<{ [key: string]: never; }>;
 
 
 export type ReloadLlmModelsMutation = { __typename?: 'Mutation', reloadLlmModels: string };
+
+export type ReloadLlmProviderModelsMutationVariables = Exact<{
+  provider: Scalars['String']['input'];
+}>;
+
+
+export type ReloadLlmProviderModelsMutation = { __typename?: 'Mutation', reloadLlmProviderModels: string };
 
 export type ConfigureMcpServerMutationVariables = Exact<{
   input: McpServerInput;
@@ -2199,6 +2255,33 @@ export function useReloadLlmModelsMutation(options: VueApolloComposable.UseMutat
   return VueApolloComposable.useMutation<ReloadLlmModelsMutation, ReloadLlmModelsMutationVariables>(ReloadLlmModelsDocument, options);
 }
 export type ReloadLlmModelsMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<ReloadLlmModelsMutation, ReloadLlmModelsMutationVariables>;
+export const ReloadLlmProviderModelsDocument = gql`
+    mutation ReloadLLMProviderModels($provider: String!) {
+  reloadLlmProviderModels(provider: $provider)
+}
+    `;
+
+/**
+ * __useReloadLlmProviderModelsMutation__
+ *
+ * To run a mutation, you first call `useReloadLlmProviderModelsMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useReloadLlmProviderModelsMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useReloadLlmProviderModelsMutation({
+ *   variables: {
+ *     provider: // value for 'provider'
+ *   },
+ * });
+ */
+export function useReloadLlmProviderModelsMutation(options: VueApolloComposable.UseMutationOptions<ReloadLlmProviderModelsMutation, ReloadLlmProviderModelsMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<ReloadLlmProviderModelsMutation, ReloadLlmProviderModelsMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<ReloadLlmProviderModelsMutation, ReloadLlmProviderModelsMutationVariables>(ReloadLlmProviderModelsDocument, options);
+}
+export type ReloadLlmProviderModelsMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<ReloadLlmProviderModelsMutation, ReloadLlmProviderModelsMutationVariables>;
 export const ConfigureMcpServerDocument = gql`
     mutation ConfigureMcpServer($input: McpServerInput!) {
   configureMcpServer(input: $input) {
