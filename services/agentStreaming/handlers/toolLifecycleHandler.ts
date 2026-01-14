@@ -6,7 +6,7 @@
  */
 
 import type { AgentContext } from '~/types/agent/AgentContext';
-import type { ToolCallSegment, WriteFileSegment, TerminalCommandSegment } from '~/types/segments';
+import type { ToolCallSegment, WriteFileSegment, TerminalCommandSegment, PatchFileSegment } from '~/types/segments';
 import type { 
   ToolApprovalRequestedPayload, 
   ToolAutoExecutingPayload, 
@@ -136,14 +136,15 @@ export function handleToolLog(
 function findToolLifecycleSegment(
   context: AgentContext,
   invocationId: string
-): ToolCallSegment | WriteFileSegment | TerminalCommandSegment | null {
+): ToolCallSegment | WriteFileSegment | TerminalCommandSegment | PatchFileSegment | null {
   const segment = findSegmentById(context, invocationId);
   if (
     segment?.type === 'tool_call' ||
     segment?.type === 'write_file' ||
-    segment?.type === 'terminal_command'
+    segment?.type === 'terminal_command' ||
+    segment?.type === 'patch_file'
   ) {
-    return segment as ToolCallSegment | WriteFileSegment | TerminalCommandSegment;
+    return segment as ToolCallSegment | WriteFileSegment | TerminalCommandSegment | PatchFileSegment;
   }
   return null;
 }
@@ -200,7 +201,7 @@ function parseErrorFromLog(logEntry: string): string | null {
 }
 
 function hydrateSegmentContentFromArguments(
-  segment: ToolCallSegment | WriteFileSegment | TerminalCommandSegment,
+  segment: ToolCallSegment | WriteFileSegment | TerminalCommandSegment | PatchFileSegment,
   argumentsPayload: Record<string, any>
 ): void {
   if (segment.type === 'terminal_command' && !segment.command && argumentsPayload?.command) {
@@ -210,6 +211,12 @@ function hydrateSegmentContentFromArguments(
     segment.originalContent = String(argumentsPayload.content);
   }
   if (segment.type === 'write_file' && !segment.path && argumentsPayload?.path) {
+    segment.path = String(argumentsPayload.path);
+  }
+  if (segment.type === 'patch_file' && !segment.originalContent && argumentsPayload?.patch) {
+    segment.originalContent = String(argumentsPayload.patch);
+  }
+  if (segment.type === 'patch_file' && !segment.path && argumentsPayload?.path) {
     segment.path = String(argumentsPayload.path);
   }
 }
