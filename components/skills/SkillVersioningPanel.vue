@@ -1,73 +1,115 @@
 <template>
-  <div class="versioning-panel">
-    <div class="panel-header">
-      <div>
-        <h3 class="panel-title">Versioning</h3>
-        <p class="panel-subtitle">Manage skill versions and compare changes.</p>
+  <div class="versioning-panel" :class="{ 'versioning-panel--compact': mode === 'compact' }">
+    <!-- Compact Mode -->
+    <div v-if="mode === 'compact'" class="compact-container">
+      <div v-if="!skill.isVersioned" class="compact-actions">
+        <span class="status-badge status-badge--inactive">Not versioned</span>
+        <button class="btn-primary btn-sm" :disabled="skill.isReadonly || actionLoading" @click="$emit('enable-versioning')">
+          Enable Versioning
+        </button>
       </div>
-      <div v-if="skill.isVersioned" class="active-badge">
-        Active: {{ skill.activeVersion || 'Unknown' }}
-      </div>
-    </div>
-
-    <div v-if="!skill.isVersioned" class="panel-body">
-      <div class="status-row">
-        <span class="status-dot status-dot--inactive"></span>
-        <span class="status-text">Not versioned</span>
-      </div>
-      <button class="btn-primary" :disabled="skill.isReadonly || actionLoading" @click="$emit('enable-versioning')">
-        Enable Versioning
-      </button>
-      <p v-if="skill.isReadonly" class="hint-text">This skill is read-only.</p>
-      <p v-if="actionError" class="error-text">{{ actionError }}</p>
-    </div>
-
-    <div v-else class="panel-body">
-      <div class="status-row">
-        <span class="status-dot status-dot--active"></span>
-        <span class="status-text">Versioned</span>
-      </div>
-
-      <div class="controls-row">
-        <label class="control-label">Activate version</label>
-        <div class="control-group">
+      
+      <div v-else class="compact-actions">
+         <span class="status-badge status-badge--active" :title="'Active: ' + (skill.activeVersion || 'Unknown')">
+          {{ skill.activeVersion || 'Unknown' }}
+        </span>
+        
+        <div class="compact-controls">
           <select
             v-model="selectedVersion"
-            class="version-select"
+            class="version-select-sm"
             :disabled="versionsLoading || versions.length === 0"
           >
-            <option v-if="versions.length === 0" disabled value="">
-              No versions available
-            </option>
-            <option
-              v-for="version in versions"
-              :key="version.tag"
-              :value="version.tag"
-            >
+            <option v-if="versions.length === 0" disabled value="">No versions</option>
+            <option v-for="version in versions" :key="version.tag" :value="version.tag">
               {{ version.tag }}
             </option>
           </select>
           <button
-            class="btn-secondary"
+            class="btn-secondary btn-sm"
             :disabled="!canActivate || actionLoading || skill.isReadonly"
             @click="activateSelected"
           >
             Activate
           </button>
+           <button class="btn-outline btn-sm" :disabled="versions.length < 2" @click="$emit('compare-versions')">
+            History
+          </button>
         </div>
-        <p v-if="versionsLoading" class="hint-text">Loading versions…</p>
-        <p v-else-if="versionsError" class="error-text">{{ versionsError }}</p>
-        <p v-else-if="skill.isReadonly" class="hint-text">This skill is read-only.</p>
+      </div>
+    </div>
+
+    <!-- Default Mode -->
+    <template v-else>
+      <div class="panel-header">
+        <div>
+          <h3 class="panel-title">Versioning</h3>
+          <p class="panel-subtitle">Manage skill versions and compare changes.</p>
+        </div>
+        <div v-if="skill.isVersioned" class="active-badge">
+          Active: {{ skill.activeVersion || 'Unknown' }}
+        </div>
+      </div>
+
+      <div v-if="!skill.isVersioned" class="panel-body">
+        <div class="status-row">
+          <span class="status-dot status-dot--inactive"></span>
+          <span class="status-text">Not versioned</span>
+        </div>
+        <button class="btn-primary" :disabled="skill.isReadonly || actionLoading" @click="$emit('enable-versioning')">
+          Enable Versioning
+        </button>
+        <p v-if="skill.isReadonly" class="hint-text">This skill is read-only.</p>
         <p v-if="actionError" class="error-text">{{ actionError }}</p>
       </div>
 
-      <div class="actions-row">
-        <button class="btn-outline" :disabled="versions.length < 2" @click="$emit('compare-versions')">
-          Compare Versions
-        </button>
-        <span v-if="versions.length < 2" class="hint-text">Need at least two versions to compare.</span>
+      <div v-else class="panel-body">
+        <div class="status-row">
+          <span class="status-dot status-dot--active"></span>
+          <span class="status-text">Versioned</span>
+        </div>
+
+        <div class="controls-row">
+          <label class="control-label">Activate version</label>
+          <div class="control-group">
+            <select
+              v-model="selectedVersion"
+              class="version-select"
+              :disabled="versionsLoading || versions.length === 0"
+            >
+              <option v-if="versions.length === 0" disabled value="">
+                No versions available
+              </option>
+              <option
+                v-for="version in versions"
+                :key="version.tag"
+                :value="version.tag"
+              >
+                {{ version.tag }}
+              </option>
+            </select>
+            <button
+              class="btn-secondary"
+              :disabled="!canActivate || actionLoading || skill.isReadonly"
+              @click="activateSelected"
+            >
+              Activate
+            </button>
+          </div>
+          <p v-if="versionsLoading" class="hint-text">Loading versions…</p>
+          <p v-else-if="versionsError" class="error-text">{{ versionsError }}</p>
+          <p v-else-if="skill.isReadonly" class="hint-text">This skill is read-only.</p>
+          <p v-if="actionError" class="error-text">{{ actionError }}</p>
+        </div>
+
+        <div class="actions-row">
+          <button class="btn-outline" :disabled="versions.length < 2" @click="$emit('compare-versions')">
+            Compare Versions
+          </button>
+          <span v-if="versions.length < 2" class="hint-text">Need at least two versions to compare.</span>
+        </div>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -75,14 +117,17 @@
 import { computed, ref, watch } from 'vue'
 import type { Skill, SkillVersion } from '~/types/skill'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   skill: Skill
   versions: SkillVersion[]
   versionsLoading: boolean
   versionsError: string
   actionError: string
   actionLoading: boolean
-}>()
+  mode?: 'default' | 'compact'
+}>(), {
+  mode: 'default'
+})
 
 const emit = defineEmits<{
   'enable-versioning': []
@@ -285,5 +330,64 @@ watch(
 .error-text {
   font-size: 0.8125rem;
   color: #dc2626;
+}
+
+/* Compact Mode Styles */
+.versioning-panel--compact {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.compact-container {
+  display: flex;
+  align-items: center;
+}
+
+.compact-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.compact-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.status-badge--inactive {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.status-badge--active {
+  background: #e5e7eb; /* Subtle gray background */
+  color: #374151;
+}
+
+.version-select-sm {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  background: white;
+  min-width: 80px;
+}
+
+.btn-sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  border-radius: 6px;
 }
 </style>

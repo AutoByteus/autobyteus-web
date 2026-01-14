@@ -4,34 +4,40 @@
     <p>Loading...</p>
   </div>
   <div v-else class="skill-detail">
-    <!-- Header -->
-    <div class="top-bar">
-      <div class="breadcrumbs">
+    <!-- Compact Header -->
+    <header class="compact-header">
+      <div class="header-top-row">
         <button class="btn-back" @click="$emit('back')">
           <Icon icon="heroicons:arrow-left" class="back-icon" />
-          Back to Skills
         </button>
       </div>
-      <div class="header-main">
-        <div class="title-row">
+      
+      <div class="header-main-row">
+        <div class="title-group">
           <h2 class="skill-title">{{ skill.name }}</h2>
           <span v-if="skill.isDisabled" class="badge-disabled">Disabled</span>
         </div>
-        <p class="description">{{ skill.description }}</p>
+        
+        <!-- Versioning Controls (Placeholder for integrated panel) -->
+        <div class="header-actions">
+           <SkillVersioningPanel
+            v-if="skill"
+            mode="compact"
+            :skill="skill"
+            :versions="versions"
+            :versions-loading="versionsLoading"
+            :versions-error="versionsError"
+            :action-error="actionError"
+            :action-loading="actionLoading"
+            @enable-versioning="handleEnableVersioning"
+            @activate-version="handleActivateVersion"
+            @compare-versions="showCompareModal = true"
+          />
+        </div>
       </div>
-    </div>
 
-    <SkillVersioningPanel
-      :skill="skill"
-      :versions="versions"
-      :versions-loading="versionsLoading"
-      :versions-error="versionsError"
-      :action-error="actionError"
-      :action-loading="actionLoading"
-      @enable-versioning="handleEnableVersioning"
-      @activate-version="handleActivateVersion"
-      @compare-versions="showCompareModal = true"
-    />
+      <p class="description">{{ skill.description }}</p>
+    </header>
 
     <!-- Main Workspace -->
     <SkillWorkspaceLoader :key="workspaceKey" :skillId="skill.name">
@@ -199,52 +205,66 @@ async function handleActivateVersion(version: string) {
   margin-bottom: 1rem;
 }
 
-/* Header */
-.top-bar {
-  padding: 1.5rem 2rem;
+/* Compact Header */
+.compact-header {
+  padding: 1.25rem 2rem;
   border-bottom: 1px solid #e5e7eb;
   background: white;
   flex-shrink: 0;
 }
 
-.breadcrumbs {
-  margin-bottom: 1rem;
+.header-top-row {
+  margin-bottom: 0.5rem;
 }
 
 .btn-back {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
   background: none;
   border: none;
   color: #6b7280;
   cursor: pointer;
-  padding: 0;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: color 0.2s;
+  padding: 0.25rem;
+  margin-left: -0.25rem; /* Optical alignment */
+  border-radius: 4px;
+  transition: all 0.2s;
 }
 
 .btn-back:hover {
   color: #111827;
+  background: #f3f4f6;
 }
 
-.header-main {
-  max-width: 800px;
+.back-icon {
+  font-size: 1.25rem;
 }
 
-.title-row {
+.header-main-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  gap: 2rem;
+}
+
+.title-group {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 0.5rem;
 }
 
 .skill-title {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 2rem; /* Large and bold */
+  font-weight: 700;
   color: #111827;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+
+.header-actions {
+  flex-shrink: 0;
 }
 
 .badge-disabled {
@@ -259,7 +279,9 @@ async function handleActivateVersion(version: string) {
 .description {
   margin: 0;
   color: #6b7280;
+  font-size: 1rem;
   line-height: 1.5;
+  max-width: 800px;
 }
 
 /* Workspace */
@@ -267,14 +289,14 @@ async function handleActivateVersion(version: string) {
   flex: 1;
   display: flex;
   overflow: hidden;
-  min-height: 0; /* Important for nested flex scroll */
-  height: 100%; /* Ensure it fills parent */
+  min-height: 0;
+  height: 100%;
 }
 
 /* Sidebar */
 .sidebar {
-  width: 260px;
-  background: white;
+  width: 280px; /* Slightly wider */
+  background: #f9fafb; /* Light gray background */
   border-right: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
