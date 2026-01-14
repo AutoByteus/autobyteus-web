@@ -13,6 +13,8 @@ export const GET_SKILLS = gql`
       fileCount
       isReadonly
       isDisabled
+      isVersioned
+      activeVersion
     }
   }
 `
@@ -27,6 +29,8 @@ export const GET_SKILL = gql`
       fileCount
       isReadonly
       isDisabled
+      isVersioned
+      activeVersion
     }
   }
 `
@@ -51,6 +55,8 @@ export const CREATE_SKILL = gql`
       content
       rootPath
       fileCount
+      isVersioned
+      activeVersion
     }
   }
 `
@@ -63,6 +69,8 @@ export const UPDATE_SKILL = gql`
       content
       rootPath
       fileCount
+      isVersioned
+      activeVersion
     }
   }
 `
@@ -93,6 +101,8 @@ export const DISABLE_SKILL = gql`
     disableSkill(name: $name) {
       name
       isDisabled
+      isVersioned
+      activeVersion
     }
   }
 `
@@ -102,6 +112,62 @@ export const ENABLE_SKILL = gql`
     enableSkill(name: $name) {
       name
       isDisabled
+      isVersioned
+      activeVersion
+    }
+  }
+`
+
+export const GET_SKILL_VERSIONS = gql`
+  query GetSkillVersions($skillName: String!) {
+    skillVersions(skillName: $skillName) {
+      tag
+      commitHash
+      message
+      createdAt
+      isActive
+    }
+  }
+`
+
+export const GET_SKILL_VERSION_DIFF = gql`
+  query GetSkillVersionDiff(
+    $skillName: String!
+    $fromVersion: String!
+    $toVersion: String!
+  ) {
+    skillVersionDiff(
+      skillName: $skillName
+      fromVersion: $fromVersion
+      toVersion: $toVersion
+    ) {
+      fromVersion
+      toVersion
+      diffContent
+    }
+  }
+`
+
+export const ENABLE_SKILL_VERSIONING = gql`
+  mutation EnableSkillVersioning($input: EnableSkillVersioningInput!) {
+    enableSkillVersioning(input: $input) {
+      tag
+      commitHash
+      message
+      createdAt
+      isActive
+    }
+  }
+`
+
+export const ACTIVATE_SKILL_VERSION = gql`
+  mutation ActivateSkillVersion($input: ActivateSkillVersionInput!) {
+    activateSkillVersion(input: $input) {
+      tag
+      commitHash
+      message
+      createdAt
+      isActive
     }
   }
 `

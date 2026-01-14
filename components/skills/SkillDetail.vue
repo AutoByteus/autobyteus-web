@@ -21,8 +21,20 @@
       </div>
     </div>
 
+    <SkillVersioningPanel
+      :skill="skill"
+      :versions="versions"
+      :versions-loading="versionsLoading"
+      :versions-error="versionsError"
+      :action-error="actionError"
+      :action-loading="actionLoading"
+      @enable-versioning="handleEnableVersioning"
+      @activate-version="handleActivateVersion"
+      @compare-versions="showCompareModal = true"
+    />
+
     <!-- Main Workspace -->
-    <SkillWorkspaceLoader :skillId="skill.name">
+    <SkillWorkspaceLoader :key="workspaceKey" :skillId="skill.name">
         <template #default="{ workspaceId }">
             <div class="workspace">
             <!-- Left: File Sidebar -->
@@ -37,6 +49,13 @@
             </div>
         </template>
     </SkillWorkspaceLoader>
+
+    <SkillVersionCompareModal
+      v-if="showCompareModal"
+      :skill-name="skill.name"
+      :versions="versions"
+      @close="showCompareModal = false"
+    />
   </div>
 </template>
 
@@ -47,7 +66,10 @@ import { Icon } from '@iconify/vue'
 import SkillWorkspaceLoader from './SkillWorkspaceLoader.vue'
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue'
 import FileExplorerTabs from '~/components/fileExplorer/FileExplorerTabs.vue'
-import type { Skill } from '~/types/skill'
+import SkillVersioningPanel from './SkillVersioningPanel.vue'
+import SkillVersionCompareModal from './SkillVersionCompareModal.vue'
+import type { Skill, SkillVersion } from '~/types/skill'
+import { useToasts } from '~/composables/useToasts'
 
 const props = defineProps<{
   skillName: string
@@ -58,7 +80,15 @@ const emit = defineEmits<{
 }>()
 
 const skillStore = useSkillStore()
+const { addToast } = useToasts()
 const skill = ref<Skill | null>(null)
+const versions = ref<SkillVersion[]>([])
+const versionsLoading = ref(false)
+const versionsError = ref('')
+const actionError = ref('')
+const actionLoading = ref(false)
+const showCompareModal = ref(false)
+const workspaceKey = ref(0)
 
 // Lifecycle and Methods
 onMounted(async () => {
@@ -71,7 +101,73 @@ watch(() => props.skillName, async () => {
 
 async function loadSkillDetails() {
   skill.value = await skillStore.fetchSkill(props.skillName)
-  // No need to fetch manual file tree anymore!
+  showCompareModal.value = false
+  actionError.value = ''
+  actionLoading.value = false
+  await loadVersions()
+}
+
+async function loadVersions() {
+  versions.value = []
+  versionsError.value = ''
+
+  if (!skill.value?.isVersioned) {
+    return
+  }
+
+  versionsLoading.value = true
+  try {
+    versions.value = await skillStore.fetchSkillVersions(skill.value.name)
+  } catch (e: any) {
+    versionsError.value = e?.message || 'Failed to load versions.'
+  } finally {
+    versionsLoading.value = false
+  }
+}
+
+async function handleEnableVersioning() {
+  if (!skill.value) return
+  actionError.value = ''
+  if (skill.value.isReadonly) {
+    actionError.value = 'This skill is read-only.'
+    addToast(actionError.value, 'error')
+    return
+  }
+
+  actionLoading.value = true
+  try {
+    await skillStore.enableSkillVersioning(skill.value.name)
+    await loadSkillDetails()
+    addToast('Skill versioning enabled.', 'success')
+  } catch (e: any) {
+    actionError.value = e?.message || 'Failed to enable skill versioning.'
+    addToast(actionError.value, 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function handleActivateVersion(version: string) {
+  if (!skill.value) return
+  actionError.value = ''
+  if (skill.value.isReadonly) {
+    actionError.value = 'This skill is read-only.'
+    addToast(actionError.value, 'error')
+    return
+  }
+
+  actionLoading.value = true
+  try {
+    await skillStore.activateSkillVersion(skill.value.name, version)
+    await loadSkillDetails()
+    workspaceKey.value += 1
+    addToast(`Activated version ${version}.`, 'success')
+  } catch (e: any) {
+    actionError.value = e?.message || 'Failed to activate skill version.'
+    addToast(actionError.value, 'error')
+  } finally {
+    actionLoading.value = false
+  }
 }
 </script>
 

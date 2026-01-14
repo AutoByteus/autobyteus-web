@@ -22,7 +22,9 @@ autobyteus-web/
 │   ├── SkillsList.vue                  # Skills listing with cards
 │   ├── SkillCard.vue                   # Individual skill card
 │   ├── SkillDetail.vue                 # Skill explorer & file viewer
-│   └── SkillWorkspaceLoader.vue        # [NEW] Transient workspace lifecycle manager
+│   ├── SkillWorkspaceLoader.vue        # [NEW] Transient workspace lifecycle manager
+│   ├── SkillVersioningPanel.vue        # Versioning actions & status
+│   └── SkillVersionCompareModal.vue    # Per-file version diff viewer
 ├── stores/
 │   ├── skillStore.ts                   # Skills CRUD operations
 │   └── workspace.ts                    # Workspace registration (incl. skill workspaces)
@@ -123,6 +125,8 @@ interface Skill {
   fileCount: number;
   createdAt: string;
   updatedAt: string;
+  isVersioned: boolean;
+  activeVersion?: string | null;
 }
 ```
 
@@ -138,6 +142,10 @@ Manages skill metadata (NOT file operations - those are delegated to the FileExp
 | `fetchSkill(name)`     | Load a specific skill by name.           |
 | `createSkill(payload)` | Create a new skill directory + SKILL.md. |
 | `deleteSkill(name)`    | Delete the entire skill directory.       |
+| `fetchSkillVersions(name)` | Load skill versions for versioned skills. |
+| `fetchSkillVersionDiff(name, from, to)` | Fetch unified diff between two versions. |
+| `enableSkillVersioning(name)` | Initialize git versioning for a skill. |
+| `activateSkillVersion(name, version)` | Activate a specific skill version. |
 
 > **Note:** File operations (view, edit, save) are now handled by the generic `FileExplorerStore` via the skill's transient workspace.
 
@@ -159,6 +167,16 @@ It calls `skillStore.fetchAllSkills()` to populate the available skills.
 - **Data Field**: `skillNames` (List of strings)
 
 When an agent is created, the selected `skillNames` are sent to the backend `AgentDefinition`.
+
+## Skill Versioning (Frontend)
+
+The Skill Detail view exposes versioning controls when the backend reports `isVersioned`:
+
+- **Enable Versioning**: Creates the initial tag (e.g., `0.1.0`) for existing skills.
+- **Activate Version**: Switches the checked-out version.
+- **Compare Versions**: Opens a modal with a per-file diff viewer (no summary counts).
+
+The compare modal uses `skillVersionDiff` to fetch a unified diff, parses it into file sections, and renders a focused diff view for the selected file.
 
 ## Related Documentation
 

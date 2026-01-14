@@ -13,12 +13,18 @@ import {
   DELETE_SKILL_FILE,
   DISABLE_SKILL,
   ENABLE_SKILL,
+  GET_SKILL_VERSIONS,
+  GET_SKILL_VERSION_DIFF,
+  ENABLE_SKILL_VERSIONING,
+  ACTIVATE_SKILL_VERSION,
 } from '~/graphql/skills'
 import type {
   Skill,
   CreateSkillInput,
   UpdateSkillInput,
   DeleteSkillResult,
+  SkillVersion,
+  SkillDiff,
 } from '~/types/skill'
 
 export const useSkillStore = defineStore('skill', () => {
@@ -30,6 +36,18 @@ export const useSkillStore = defineStore('skill', () => {
   const currentSkillTree = ref<string | null>(null)
   const loading = ref(false)
   const error = ref('')
+
+  function updateSkillVersionMetadata(skillName: string, updates: Partial<Skill>) {
+    const index = skills.value.findIndex((s) => s.name === skillName)
+    if (index !== -1) {
+      const newSkills = [...skills.value]
+      newSkills[index] = { ...newSkills[index], ...updates }
+      skills.value = newSkills
+    }
+    if (currentSkill.value?.name === skillName) {
+      currentSkill.value = { ...currentSkill.value, ...updates }
+    }
+  }
 
   // Actions
   async function fetchAllSkills(): Promise<void> {
@@ -344,6 +362,119 @@ export const useSkillStore = defineStore('skill', () => {
     }
   }
 
+  async function fetchSkillVersions(skillName: string): Promise<SkillVersion[]> {
+    error.value = ''
+
+    try {
+      const { data, errors } = await client.query({
+        query: GET_SKILL_VERSIONS,
+        variables: { skillName },
+        fetchPolicy: 'network-only',
+      })
+
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map((e) => e.message).join(', '))
+      }
+
+      return data?.skillVersions ?? []
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    }
+  }
+
+  async function fetchSkillVersionDiff(
+    skillName: string,
+    fromVersion: string,
+    toVersion: string
+  ): Promise<SkillDiff | null> {
+    error.value = ''
+
+    try {
+      const { data, errors } = await client.query({
+        query: GET_SKILL_VERSION_DIFF,
+        variables: { skillName, fromVersion, toVersion },
+        fetchPolicy: 'network-only',
+      })
+
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map((e) => e.message).join(', '))
+      }
+
+      return data?.skillVersionDiff ?? null
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    }
+  }
+
+  async function enableSkillVersioning(skillName: string): Promise<SkillVersion> {
+    loading.value = true
+    error.value = ''
+
+    try {
+      const { data, errors } = await client.mutate({
+        mutation: ENABLE_SKILL_VERSIONING,
+        variables: { input: { skillName } },
+      })
+
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map((e) => e.message).join(', '))
+      }
+
+      if (data?.enableSkillVersioning) {
+        const version = data.enableSkillVersioning
+        updateSkillVersionMetadata(skillName, {
+          isVersioned: true,
+          activeVersion: version.tag,
+        })
+        return version
+      }
+
+      throw new Error('Failed to enable skill versioning: No data returned')
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function activateSkillVersion(
+    skillName: string,
+    version: string
+  ): Promise<SkillVersion> {
+    loading.value = true
+    error.value = ''
+
+    try {
+      const { data, errors } = await client.mutate({
+        mutation: ACTIVATE_SKILL_VERSION,
+        variables: { input: { skillName, version } },
+      })
+
+      if (errors && errors.length > 0) {
+        throw new Error(errors.map((e) => e.message).join(', '))
+      }
+
+      if (data?.activateSkillVersion) {
+        const activatedVersion = data.activateSkillVersion
+        updateSkillVersionMetadata(skillName, {
+          isVersioned: true,
+          activeVersion: activatedVersion.tag,
+        })
+        return activatedVersion
+      }
+
+      throw new Error('Failed to activate skill version: No data returned')
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
   function setCurrentSkill(skill: Skill | null) {
     currentSkill.value = skill
   }
@@ -378,6 +509,10 @@ export const useSkillStore = defineStore('skill', () => {
     deleteFile,
     disableSkill,
     enableSkill,
+    fetchSkillVersions,
+    fetchSkillVersionDiff,
+    enableSkillVersioning,
+    activateSkillVersion,
     setCurrentSkill,
     clearError,
     // Getters

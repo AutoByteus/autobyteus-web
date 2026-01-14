@@ -10,6 +10,8 @@ export interface Skill {
   fileCount: number
   isReadonly: boolean
   isDisabled: boolean
+  isVersioned: boolean
+  activeVersion?: string | null
   createdAt?: string
   updatedAt?: string
 }
@@ -29,4 +31,18 @@ export interface UpdateSkillInput {
 export interface DeleteSkillResult {
   success: boolean
   message: string
+}
+
+export interface SkillVersion {
+  tag: string
+  commitHash: string
+  message: string
+  createdAt: string
+  isActive: boolean
+}
+
+export interface SkillDiff {
+  fromVersion: string
+  toVersion: string
+  diffContent: string
 }
