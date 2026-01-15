@@ -108,14 +108,6 @@
       </div>
     </div>
 
-    <!-- Workspace Configuration Modal -->
-    <WorkspaceConfigModal
-      v-if="selectedAgent"
-      :agent-definition-id="selectedAgent.id"
-      :agent-name="selectedAgent.name"
-      @close="selectedAgent = null"
-      @success="onWorkspaceCreated"
-    />
   </div>
 </template>
 
@@ -124,18 +116,18 @@ import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useAgentDefinitionStore, type AgentDefinition } from '~/stores/agentDefinitionStore';
 import AgentCard from '~/components/agents/AgentCard.vue';
-import WorkspaceConfigModal from '~/components/workspace/config/WorkspaceConfigModal.vue';
+import { useRunActions } from '~/composables/useRunActions';
 
 const emit = defineEmits(['navigate']);
 
 const agentDefinitionStore = useAgentDefinitionStore();
+const { prepareAgentRun } = useRunActions();
 const { deleteResult } = storeToRefs(agentDefinitionStore);
 
 const agentDefinitions = computed(() => agentDefinitionStore.agentDefinitions);
 const loading = computed(() => agentDefinitionStore.loading);
 const error = computed(() => agentDefinitionStore.error);
 
-const selectedAgent = ref<AgentDefinition | null>(null);
 const searchQuery = ref('');
 const reloading = ref(false);
 
@@ -190,12 +182,8 @@ const viewDetails = (agentId: string) => {
 };
 
 const runAgent = (agentDef: AgentDefinition) => {
-  selectedAgent.value = agentDef;
-};
-
-const onWorkspaceCreated = () => {
-  selectedAgent.value = null; // Close the modal
-  navigateTo('/workspace'); // Navigate to the workspace view
+  prepareAgentRun(agentDef);
+  navigateTo('/workspace');
 };
 
 onBeforeUnmount(() => {

@@ -32,7 +32,7 @@ export const useAgentRunStore = defineStore('agentRun', {
      */
     async sendUserInputAndSubscribe(): Promise<void> {
       const agentContextsStore = useAgentContextsStore();
-      const currentAgent = agentContextsStore.selectedAgent;
+      const currentAgent = agentContextsStore.activeInstance;
 
       if (!currentAgent) {
         throw new Error('No active agent selected.');
@@ -93,10 +93,12 @@ export const useAgentRunStore = defineStore('agentRun', {
         let finalAgentId = agentId;
         if (isNewAgent) {
           finalAgentId = permanentAgentId;
-          agentContextsStore.promoteTemporaryAgentId(agentId, permanentAgentId);
+          agentContextsStore.promoteTemporaryId(agentId, permanentAgentId);
         }
+
+        agentContextsStore.lockConfig(finalAgentId);
         
-        const finalAgent = agentContextsStore.getAgentContextById(finalAgentId)!;
+        const finalAgent = agentContextsStore.getInstance(finalAgentId)!;
         finalAgent.requirement = '';
         finalAgent.contextFilePaths = [];
 
@@ -121,7 +123,7 @@ export const useAgentRunStore = defineStore('agentRun', {
      */
     connectToAgentStream(agentId: string) {
       const agentContextsStore = useAgentContextsStore();
-      const agent = agentContextsStore.getAgentContextById(agentId);
+      const agent = agentContextsStore.getInstance(agentId);
       
       if (!agent) return;
 
@@ -149,7 +151,7 @@ export const useAgentRunStore = defineStore('agentRun', {
     async postToolExecutionApproval(agentId: string, invocationId: string, isApproved: boolean, _reason: string | null = null) {
       const service = streamingServices.get(agentId);
       const agentContextsStore = useAgentContextsStore();
-      const agent = agentContextsStore.getAgentContextById(agentId);
+      const agent = agentContextsStore.getInstance(agentId);
       
       if (service) {
         if (isApproved) {
@@ -179,7 +181,7 @@ export const useAgentRunStore = defineStore('agentRun', {
      */
     async closeAgent(agentIdToClose: string, options: { terminate: boolean }) {
       const agentContextsStore = useAgentContextsStore();
-      const agentToClose = agentContextsStore.getAgentContextById(agentIdToClose);
+      const agentToClose = agentContextsStore.getInstance(agentIdToClose);
 
       if (!agentToClose) return;
 
@@ -190,7 +192,7 @@ export const useAgentRunStore = defineStore('agentRun', {
       }
 
       streamingServices.delete(agentIdToClose);
-      agentContextsStore.removeAgentContext(agentIdToClose);
+      agentContextsStore.removeInstance(agentIdToClose);
       
       if (options.terminate && !agentIdToClose.startsWith('temp-')) {
         try {
@@ -205,27 +207,5 @@ export const useAgentRunStore = defineStore('agentRun', {
       }
     },
 
-    /**
-     * @action ensureAgentForLaunchProfile
-     * @description Ensures that there is at least one agent context for a given launch profile.
-     */
-    ensureAgentForLaunchProfile(_profileId: string, attachToAgentId?: string): void {
-      const agentContextsStore = useAgentContextsStore();
-      const profileState = agentContextsStore._getOrCreateCurrentProfileState();
-
-      if (profileState.activeAgents.size === 0) {
-        if (attachToAgentId) {
-          agentContextsStore.createContextForExistingAgent(attachToAgentId);
-          this.connectToAgentStream(attachToAgentId);
-        } else {
-          agentContextsStore.createNewAgentContext();
-        }
-      } else {
-         const latestAgent = Array.from(profileState.activeAgents.values()).sort((a, b) => 
-            new Date(b.state.conversation.updatedAt).getTime() - new Date(a.state.conversation.updatedAt).getTime()
-         )[0];
-         agentContextsStore.setSelectedAgentId(latestAgent.state.agentId);
-      }
-    },
   },
 });

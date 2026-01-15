@@ -1,6 +1,6 @@
 
 import { ref, computed } from 'vue';
-import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
+import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 
 export type TabName = 'files' | 'teamMembers' | 'terminal' | 'vnc' | 'progress' | 'artifacts';
 
@@ -8,7 +8,7 @@ export type TabName = 'files' | 'teamMembers' | 'terminal' | 'vnc' | 'progress' 
 const activeTab = ref<TabName>('terminal');
 
 export function useRightSideTabs() {
-  const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
+  const selectionStore = useAgentSelectionStore();
 
   const allTabs = [
     { name: 'files' as TabName, label: 'Files', requires: 'any' },
@@ -22,7 +22,7 @@ export function useRightSideTabs() {
   const visibleTabs = computed(() => {
     return allTabs.filter(tab => {
       if (tab.requires === 'any') return true;
-      return tab.requires === selectedLaunchProfileStore.selectedProfileType;
+      return tab.requires === selectionStore.selectedType;
     });
   });
 

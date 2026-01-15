@@ -1,52 +1,17 @@
 <template>
-  <div class="p-4 bg-gray-100 h-full">
-    <!-- New Unified Container with border and rounding -->
-    <div class="flex flex-col h-full bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-      <!-- Team Members Panel Section -->
-      <div 
-        class="flex-shrink-0"
-        :style="{ height: teamPanelHeight + 'px' }"
-        :class="{ 'transition-all duration-300': !isDragging }"
-      >
-        <TeamMembersPanel />
-      </div>
-      
-      <!-- Thicker, Integrated Separator with darker color -->
-      <div 
-        class="flex-shrink-0 cursor-row-resize h-3 flex items-center justify-center relative group border-y border-gray-200 bg-gray-100"
-        @mousedown="initDrag"
-        title="Drag to resize"
-      >
-        <button 
-          @click.stop="toggleMaximize" 
-          @mousedown.stop 
-          :title="isMaximized ? 'Restore Panel' : 'Maximize Task Plan'"
-          class="p-1 bg-white rounded-full text-gray-600 hover:text-gray-900 shadow-md hover:shadow-lg transition-all duration-200"
-        >
-          <svg 
-            class="w-3 h-3 transition-transform duration-300" 
-            :class="{ 'rotate-180': isMaximized }"
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path 
-              stroke-linecap="round" 
-              stroke-linejoin="round" 
-              stroke-width="3" 
-              d="M19 9l-7 7-7-7" 
-            />
-          </svg>
-        </button>
-      </div>
+  <div class="h-full flex flex-col bg-white overflow-hidden">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0">
+      <h3 class="text-sm font-semibold text-gray-900">Task Plan</h3>
+      <span v-if="teamName" class="text-xs text-gray-500">{{ teamName }}</span>
+    </div>
 
-      <!-- Task Plan Display Section -->
-      <div class="flex-grow overflow-hidden min-h-0">
-        <TaskPlanDisplay 
-          :tasks="activeTeamContext?.taskPlan" 
-          :statuses="activeTeamContext?.taskStatuses" 
-        />
-      </div>
+    <!-- Task Plan Display -->
+    <div class="flex-grow overflow-auto min-h-0">
+      <TaskPlanDisplay 
+        :tasks="activeTeamContext?.taskPlan ?? null" 
+        :statuses="activeTeamContext?.taskStatuses ?? null" 
+      />
     </div>
   </div>
 </template>
@@ -54,22 +19,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
-import TeamMembersPanel from '~/components/workspace/team/TeamMembersPanel.vue';
 import TaskPlanDisplay from '~/components/workspace/team/TaskPlanDisplay.vue';
-import { useVerticalResize } from '~/composables/useVerticalResize';
 
 const teamContextsStore = useAgentTeamContextsStore();
 const activeTeamContext = computed(() => teamContextsStore.activeTeamContext);
-
-const { 
-  panelHeight: teamPanelHeight, 
-  initDrag,
-  isMaximized,
-  toggleMaximize,
-  isDragging, // Make sure we get the dragging state
-} = useVerticalResize({ 
-  initialHeight: 320, 
-  minHeight: 100, 
-  maxHeight: 600 
-});
+const teamName = computed(() => activeTeamContext.value?.config.teamDefinitionName);
 </script>

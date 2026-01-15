@@ -24,7 +24,7 @@
               <p class="text-md text-gray-500 mt-1">{{ teamDef.role || 'No role specified' }}</p>
             </div>
             <div class="flex space-x-2">
-              <button @click="openLaunchModal" class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition-colors flex items-center">
+              <button @click="runTeam" class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition-colors flex items-center">
                 Run Team
               </button>
               <button @click="$emit('navigate', { view: 'team-edit', id: teamDef.id })" class="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-md hover:bg-gray-200 transition-colors flex items-center">
@@ -92,15 +92,6 @@
       @cancel="onDeleteCanceled"
     />
 
-    <!-- Team Launch Modal -->
-    <TeamLaunchConfigModal
-      v-if="isLaunchModalOpen && teamDef"
-      :show="isLaunchModalOpen"
-      :team-definition="teamDef"
-      @close="isLaunchModalOpen = false"
-      @success="onLaunchSuccess"
-    />
-
     <!-- Notification -->
     <div v-if="notification"
         :class="[
@@ -117,7 +108,8 @@ import { ref, computed, onMounted, toRefs } from 'vue';
 import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
 import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
 import AgentDeleteConfirmDialog from '~/components/agents/AgentDeleteConfirmDialog.vue';
-import TeamLaunchConfigModal from '~/components/agentTeams/TeamLaunchConfigModal.vue';
+import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
+import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 
 const props = defineProps<{ teamId: string }>();
 const { teamId } = toRefs(props);
@@ -126,6 +118,8 @@ const emit = defineEmits(['navigate']);
 
 const store = useAgentTeamDefinitionStore();
 const agentDefStore = useAgentDefinitionStore();
+const runConfigStore = useTeamRunConfigStore();
+const selectionStore = useAgentSelectionStore();
 const router = useRouter();
 
 const teamDef = computed(() => store.getAgentTeamDefinitionById(teamId.value));
@@ -134,7 +128,6 @@ const loading = ref(false);
 const notification = ref<{ type: 'success' | 'error'; message: string } | null>(null);
 const showDeleteConfirm = ref(false);
 const teamIdToDelete = ref<string | null>(null);
-const isLaunchModalOpen = ref(false);
 
 onMounted(async () => {
   loading.value = true;
@@ -153,13 +146,10 @@ const getBlueprintName = (type: 'AGENT' | 'AGENT_TEAM', id: string): string => {
   }
 };
 
-const openLaunchModal = () => {
-  isLaunchModalOpen.value = true;
-};
-
-const onLaunchSuccess = () => {
-  isLaunchModalOpen.value = false;
-  // Navigate to the main workspace view. The correct profile will be active.
+const runTeam = () => {
+  if (!teamDef.value) return;
+  runConfigStore.setTemplate(teamDef.value);
+  selectionStore.clearSelection();
   router.push('/workspace');
 };
 

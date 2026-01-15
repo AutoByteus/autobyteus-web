@@ -45,13 +45,12 @@ const todos = computed(() => {
   return todoStore.getTodos(currentAgentId.value);
 });
 
-const expandedSection = ref<'todo' | 'activity'>('activity');
+const expandedSection = ref<'todo' | 'activity' | null>('activity');
 
 const toggleSection = (section: 'todo' | 'activity') => {
-  // If clicking the already expanded section, we could toggle it closed? 
-  // But req implies an accordion where one is always open.
-  // So we only switch if it's different.
-  if (expandedSection.value !== section) {
+  if (expandedSection.value === section) {
+    expandedSection.value = null;
+  } else {
     expandedSection.value = section;
   }
 };

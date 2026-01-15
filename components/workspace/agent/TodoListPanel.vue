@@ -17,7 +17,7 @@
           stroke-linecap="round" 
           stroke-linejoin="round"
           class="text-gray-500 transition-transform duration-300 transform"
-          :class="collapsed ? '' : 'rotate-180'"
+          :class="collapsed ? '-rotate-90' : ''"
         >
           <polyline points="6 9 12 15 18 9"></polyline>
         </svg>

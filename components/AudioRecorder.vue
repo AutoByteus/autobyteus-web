@@ -102,17 +102,22 @@
 </template>
 
 <script setup lang="ts">
-import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
+import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
+import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useAudioStore } from '~/stores/audioStore';
-import { ref, watch, onUnmounted, computed } from 'vue';
+import { ref, onUnmounted, computed } from 'vue';
 
 const props = defineProps<{  disabled?: boolean
 }>();
 
-const agentLaunchProfileStore = useAgentLaunchProfileStore();
+const selectionStore = useAgentSelectionStore();
+const agentContextsStore = useAgentContextsStore();
 const audioStore = useAudioStore();
 
-const errorMessage = ref<string | null>(null);
+const lastRecordingTarget = ref<{ workspaceId: string | null; agentDefinitionId: string | null }>({
+  workspaceId: null,
+  agentDefinitionId: null,
+});
 
 const buttonText = computed(() => {
   if (audioStore.isStopping) return 'Stopping...';
@@ -120,36 +125,31 @@ const buttonText = computed(() => {
 });
 
 const handleRecordingToggle = async () => {
-  const workspaceId = agentLaunchProfileStore.activeLaunchProfile?.workspaceId;
-  const agentDefinitionId = agentLaunchProfileStore.activeLaunchProfile?.agentDefinition.id;
+  const activeAgent = selectionStore.selectedType === 'agent' ? agentContextsStore.activeInstance : null;
+  const workspaceId = activeAgent?.config.workspaceId;
+  const agentDefinitionId = activeAgent?.config.agentDefinitionId;
 
   if (!workspaceId || !agentDefinitionId) {
-    alert('An active workspace and launch profile are required to start recording.');
+    alert('Select an active agent with a workspace to start recording.');
     return;
   }
 
   try {
     if (!audioStore.isRecording) {
+      lastRecordingTarget.value = { workspaceId, agentDefinitionId };
       await audioStore.startRecording(workspaceId, agentDefinitionId);
     } else {
       await audioStore.stopRecording(workspaceId, agentDefinitionId);
     }
   } catch (error: any) {
     console.error('Recording error:', error);
-    errorMessage.value = error.message || 'An unexpected error occurred during recording.';
   }
 };
 
-watch(
-  () => audioStore.combinedError,
-  (newError) => {
-    errorMessage.value = newError;
-  }
-);
-
 onUnmounted(async () => {
-  const workspaceId = agentLaunchProfileStore.activeLaunchProfile?.workspaceId;
-  const agentDefinitionId = agentLaunchProfileStore.activeLaunchProfile?.agentDefinition.id;
+  const activeAgent = selectionStore.selectedType === 'agent' ? agentContextsStore.activeInstance : null;
+  const workspaceId = lastRecordingTarget.value.workspaceId || activeAgent?.config.workspaceId || null;
+  const agentDefinitionId = lastRecordingTarget.value.agentDefinitionId || activeAgent?.config.agentDefinitionId || null;
   await audioStore.cleanup(workspaceId, agentDefinitionId);
 });
 </script>

@@ -48,13 +48,6 @@
         />
       </div>
 
-      <TeamLaunchConfigModal 
-        v-if="teamToLaunch"
-        :show="isLaunchModalOpen"
-        :team-definition="teamToLaunch"
-        @close="isLaunchModalOpen = false"
-        @success="onLaunchSuccess"
-      />
     </div>
   </div>
 </template>
@@ -63,19 +56,18 @@
 import { computed, onMounted, ref } from 'vue';
 import { useAgentTeamDefinitionStore, type AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
 import AgentTeamCard from '~/components/agentTeams/AgentTeamCard.vue';
-import TeamLaunchConfigModal from '~/components/agentTeams/TeamLaunchConfigModal.vue';
+import { useRunActions } from '~/composables/useRunActions';
 
 const emit = defineEmits(['navigate']);
 
 const store = useAgentTeamDefinitionStore();
+const { prepareTeamRun } = useRunActions();
 const router = useRouter();
 
 const agentTeamDefinitions = computed(() => store.agentTeamDefinitions);
 const loading = computed(() => store.loading);
 const error = computed(() => store.error);
 
-const isLaunchModalOpen = ref(false);
-const teamToLaunch = ref<AgentTeamDefinition | null>(null);
 const reloading = ref(false);
 
 onMounted(() => {
@@ -100,13 +92,7 @@ const viewDetails = (teamId: string) => {
 };
 
 const handleRunTeam = (teamDef: AgentTeamDefinition) => {
-  teamToLaunch.value = teamDef;
-  isLaunchModalOpen.value = true;
-};
-
-const onLaunchSuccess = () => {
-  // Do not explicitly close the modal here to avoid a flash of the underlying list
-  // before the router navigation completes (which will destroy this component and the modal).
+  prepareTeamRun(teamDef);
   router.push('/workspace');
 };
 </script>

@@ -53,11 +53,12 @@ describe('agentRunStore', () => {
 
         mockAgentContext = {
             config: {
-                launchProfileId: 'profile-1',
+                agentDefinitionId: 'def-1',
+                agentDefinitionName: 'Test Agent',
                 workspaceId: 'ws-1',
                 llmModelIdentifier: 'gpt-4',
                 autoExecuteTools: false,
-
+                isLocked: false,
             },
             state: {
                 agentId: 'temp-1',
@@ -74,13 +75,14 @@ describe('agentRunStore', () => {
         };
 
         mockContextsStore = {
-            selectedAgent: mockAgentContext, // Initial state
-            promoteTemporaryAgentId: vi.fn(),
-            getAgentContextById: vi.fn((id: string) => {
+            activeInstance: mockAgentContext, // Initial state
+            promoteTemporaryId: vi.fn(),
+            lockConfig: vi.fn(),
+            getInstance: vi.fn((id: string) => {
                 if (id === 'perm-agent-id') return mockAgentContext; // mocking return after promotion
                 return mockAgentContext; 
             }),
-            removeAgentContext: vi.fn(),
+            removeInstance: vi.fn(),
         };
 
         // @ts-ignore
@@ -99,19 +101,22 @@ describe('agentRunStore', () => {
         // 2. Should call mutation (implicit via successful execution)
         
         // 3. Should promote temp ID
-        expect(mockContextsStore.promoteTemporaryAgentId).toHaveBeenCalledWith('temp-1', 'perm-agent-id');
+        expect(mockContextsStore.promoteTemporaryId).toHaveBeenCalledWith('temp-1', 'perm-agent-id');
+
+        // 4. Should lock config after first message
+        expect(mockContextsStore.lockConfig).toHaveBeenCalledWith('perm-agent-id');
         
-        // 4. Should clear requirement
+        // 5. Should clear requirement
         expect(mockAgentContext.requirement).toBe('');
         
-        // 5. Should connect stream
+        // 6. Should connect stream
         // (AgentStreamingService constructor logic is hidden in mock, but we verify method call or side effect)
         expect(AgentStreamingService).toHaveBeenCalled(); 
     });
 
     it('sendUserInputAndSubscribe should throw if no agent selected', async () => {
         // @ts-ignore
-        useAgentContextsStore.mockReturnValue({ selectedAgent: null });
+        useAgentContextsStore.mockReturnValue({ activeInstance: null });
         const store = useAgentRunStore();
         
         await expect(store.sendUserInputAndSubscribe()).rejects.toThrowError("No active agent selected");
@@ -124,12 +129,12 @@ describe('agentRunStore', () => {
         mockAgentContext.isSubscribed = true;
         
         // @ts-ignore
-        mockContextsStore.getAgentContextById = vi.fn(() => mockAgentContext);
+        mockContextsStore.getInstance = vi.fn(() => mockAgentContext);
         
         await store.closeAgent('agent-1', { terminate: false });
         
         expect(unsubscribeMock).toHaveBeenCalled();
         expect(mockAgentContext.isSubscribed).toBe(false);
-        expect(mockContextsStore.removeAgentContext).toHaveBeenCalledWith('agent-1');
+        expect(mockContextsStore.removeInstance).toHaveBeenCalledWith('agent-1');
     });
 });

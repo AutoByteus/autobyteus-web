@@ -193,7 +193,12 @@ export class TeamStreamingService {
 
     if (agentName) {
       const directMatch = this.teamContext.members.get(agentName);
-      if (directMatch) return directMatch;
+      if (directMatch) {
+        if (agentId && directMatch.state.agentId !== agentId) {
+          directMatch.state.agentId = agentId;
+        }
+        return directMatch;
+      }
     }
 
     if (agentId) {

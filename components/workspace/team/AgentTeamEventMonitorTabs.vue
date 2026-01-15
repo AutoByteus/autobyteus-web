@@ -49,17 +49,19 @@
 import { computed, ref } from 'vue';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
+import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import AgentDeleteConfirmDialog from '~/components/agents/AgentDeleteConfirmDialog.vue';
 
 const teamContextsStore = useAgentTeamContextsStore();
 const teamRunStore = useAgentTeamRunStore();
+const selectionStore = useAgentSelectionStore();
 
 const showTerminateConfirm = ref(false);
 const teamIdToTerminate = ref('');
 
 const allTeamInstances = computed(() => teamContextsStore.allTeamInstances);
-const currentSelectedTeamId = computed(() => teamContextsStore.selectedTeamId);
+const currentSelectedTeamId = computed(() => selectionStore.selectedType === 'team' ? selectionStore.selectedInstanceId : null);
 
 const itemToDeleteName = computed(() => {
   if (!teamIdToTerminate.value) return '';
@@ -68,16 +70,18 @@ const itemToDeleteName = computed(() => {
 });
 
 const getTabLabel = (team: AgentTeamContext) => {
+  const name = team.config.teamDefinitionName || 'Team';
   if (team.teamId.startsWith('temp-')) {
-    return `New - ${team.launchProfile.name.replace(' Launch ', ' ')}`;
+    return `New - ${name}`;
   }
   const idSuffix = team.teamId.slice(-6).toUpperCase();
-  return `Instance ${idSuffix}`;
+  return `${name} - ${idSuffix}`;
 };
 
 const getTabTitle = (team: AgentTeamContext) => {
+  const name = team.config.teamDefinitionName || 'Team';
   if (team.teamId.startsWith('temp-')) {
-    return `New unsaved instance for profile: "${team.launchProfile.name}"`;
+    return `New unsaved instance for team: "${name}"`;
   }
   return `Team Instance ID: ${team.teamId}`;
 };
@@ -111,7 +115,7 @@ const onTerminateCanceled = () => {
 };
 
 const handleSelectTeam = (teamId: string) => {
-  teamContextsStore.setSelectedTeamId(teamId);
+  selectionStore.selectInstance(teamId, 'team');
 };
 </script>
 

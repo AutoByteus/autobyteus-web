@@ -10,16 +10,12 @@ import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { useServerSettingsStore } from '~/stores/serverSettings';
 import { useWorkspaceStore } from '~/stores/workspace';
-import { LAUNCH_PROFILE_STORAGE_KEY, useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
-import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
 import DesktopLayout from '~/components/layout/DesktopLayout.vue';
 import MobileLayout from '~/components/layout/MobileLayout.vue';
 
 const fileExplorerStore = useFileExplorerStore();
 const serverSettingsStore = useServerSettingsStore();
 const workspaceStore = useWorkspaceStore();
-const agentLaunchProfileStore = useAgentLaunchProfileStore();
-const teamLaunchProfileStore = useAgentTeamLaunchProfileStore();
 const isDesktop = ref(true);
 let mediaQuery: MediaQueryList | null = null;
 
@@ -51,18 +47,7 @@ onMounted(() => {
     console.error('Workspace.vue: Failed to fetch server settings on mount:', error);
   });
   
-  // Load agent profiles and partition them
-  try {
-    const storedAgentProfiles = localStorage.getItem(LAUNCH_PROFILE_STORAGE_KEY);
-    const allAgentProfiles = storedAgentProfiles ? JSON.parse(storedAgentProfiles) : {};
-    agentLaunchProfileStore.partitionLaunchProfiles(allAgentProfiles, workspaceStore.allWorkspaceIds);
-  } catch (e) {
-    console.error("Failed to load and partition agent profiles:", e);
-    agentLaunchProfileStore.partitionLaunchProfiles({}, []);
-  }
-
-  // Load team profiles using the corrected function name
-  teamLaunchProfileStore.loadLaunchProfiles();
+  // No launch profiles in the new UX.
 });
 
 onBeforeUnmount(() => {

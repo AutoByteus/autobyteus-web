@@ -48,8 +48,8 @@ The Pinia stores act as the primary interface for the UI components to interact 
 
 - **Role**: Manages multi-agent team sessions.
 - **Key Actions**:
-  - `createAndLaunchTeam()`: Orchestrates the creation of a new team launch profile and starts the session.
-  - `launchExistingTeam()`: Resumes or starts a session from a saved profile.
+  - `createAndLaunchTeam()`: Orchestrates the creation of a new team run configuration and starts the session.
+  - `launchExistingTeam()`: Resumes or starts a session from an existing team instance.
   - `connectToTeamStream(teamId)`: Listens for team-level events (e.g., task updates, status changes) via WebSocket.
   - `sendMessageToFocusedMember()`: Routes user input to a specific agent within the team context.
 
@@ -128,6 +128,7 @@ The backend currently emits two kinds of error-shaped signals:
 - A generic `ERROR` event for unrecoverable errors.
 
 Because tool failures arrive via `TOOL_LOG`, they are already surfaced in:
+
 - The tool call segment (red status + error details).
 - The Activity panel (logs + error state).
 

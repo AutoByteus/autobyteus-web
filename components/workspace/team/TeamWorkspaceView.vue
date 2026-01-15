@@ -4,8 +4,8 @@
     <div class="flex items-center justify-between px-4 py-2 border-b border-gray-200 flex-shrink-0">
       <div class="flex items-center space-x-3 min-w-0">
         <span class="text-xl">👥</span>
-        <h4 v-if="activeLaunchProfile" class="text-base font-medium text-gray-800 truncate" :title="activeLaunchProfile.name">
-          {{ activeLaunchProfile.name }}
+        <h4 v-if="activeTeamContext" class="text-base font-medium text-gray-800 truncate" :title="activeTeamContext.config.teamDefinitionName">
+          {{ activeTeamContext.config.teamDefinitionName }}
         </h4>
         <TeamStatusDisplay v-if="activeTeamContext" :status="activeTeamContext.currentStatus" />
       </div>
@@ -41,9 +41,9 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useAgentTeamLaunchProfileStore } from '~/stores/agentTeamLaunchProfileStore';
-import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
+import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
+import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 import TeamStatusDisplay from '~/components/workspace/team/TeamStatusDisplay.vue';
 import AgentTeamEventMonitorTabs from '~/components/workspace/team/AgentTeamEventMonitorTabs.vue';
 import AgentTeamEventMonitor from '~/components/workspace/team/AgentTeamEventMonitor.vue';
@@ -51,20 +51,24 @@ import WorkspaceHeaderActions from '~/components/workspace/common/WorkspaceHeade
 import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
 
-const teamLaunchProfileStore = useAgentTeamLaunchProfileStore();
-const teamRunStore = useAgentTeamRunStore();
 const teamContextsStore = useAgentTeamContextsStore();
+const teamRunConfigStore = useTeamRunConfigStore();
+const selectionStore = useAgentSelectionStore();
 const conversationHistoryStore = useConversationHistoryStore();
 
 const isHistoryPanelOpen = ref(false);
 
-const activeLaunchProfile = computed(() => teamLaunchProfileStore.activeLaunchProfile);
 const activeTeamContext = computed(() => teamContextsStore.activeTeamContext);
 const focusedMember = computed(() => teamContextsStore.focusedMemberContext);
 
 const createNewTeamInstance = () => {
-  // Call the simple, stateless action to create a new instance based on the active environment
-  teamRunStore.createNewTeamInstance();
+  if (activeTeamContext.value) {
+    const template = JSON.parse(JSON.stringify(activeTeamContext.value.config));
+    template.isLocked = false;
+    teamRunConfigStore.setConfig(template);
+    selectionStore.clearSelection();
+    teamContextsStore.createInstanceFromTemplate();
+  }
 };
 
 const openHistoryPanel = () => {

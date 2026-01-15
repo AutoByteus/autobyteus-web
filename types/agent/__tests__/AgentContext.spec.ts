@@ -7,11 +7,12 @@ import type { Conversation, AIMessage } from '~/types/conversation';
 describe('AgentContext', () => {
     it('should initialize correctly', () => {
         const mockConfig: AgentRunConfig = {
-            launchProfileId: 'profile-1',
+            agentDefinitionId: 'def-1',
+            agentDefinitionName: 'TestAgent',
             workspaceId: 'ws-1',
             llmModelIdentifier: 'gpt-4',
             autoExecuteTools: true,
-
+            isLocked: false,
         };
 
         const mockConversation: Conversation = {
@@ -36,11 +37,12 @@ describe('AgentContext', () => {
 
     it('should provide access to conversation via getter', () => {
         const mockConfig: AgentRunConfig = {
-            launchProfileId: 'profile-1',
+            agentDefinitionId: 'def-1',
+            agentDefinitionName: 'TestAgent',
             workspaceId: 'ws-1',
             llmModelIdentifier: 'gpt-4',
             autoExecuteTools: true,
-
+            isLocked: false,
         };
         const mockConversation: Conversation = {
             id: 'conv-1',

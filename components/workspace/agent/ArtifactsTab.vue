@@ -32,14 +32,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useAgentArtifactsStore, type AgentArtifact } from '~/stores/agentArtifactsStore';
-import { useAgentContextsStore } from '~/stores/agentContextsStore';
+import { useActiveContextStore } from '~/stores/activeContextStore';
 import ArtifactList from './ArtifactList.vue';
 import ArtifactContentViewer from './ArtifactContentViewer.vue';
 
 const artifactsStore = useAgentArtifactsStore();
-const agentContextsStore = useAgentContextsStore();
+const activeContextStore = useActiveContextStore();
 
-const currentAgentId = computed(() => agentContextsStore.selectedAgentId || "");
+const currentAgentId = computed(() => activeContextStore.activeAgentContext?.state.agentId || '');
 // Use store getter to get artifacts
 const artifacts = computed(() => artifactsStore.getArtifactsForAgent(currentAgentId.value));
 const activeStream = computed(() => artifactsStore.getActiveStreamingArtifact(currentAgentId.value));

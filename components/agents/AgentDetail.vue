@@ -104,15 +104,6 @@
       </div>
     </div>
     
-    <!-- Workspace Configuration Modal -->
-    <WorkspaceConfigModal
-      v-if="selectedAgent"
-      :agent-definition-id="selectedAgent.id"
-      :agent-name="selectedAgent.name"
-      @close="selectedAgent = null"
-      @success="onWorkspaceCreated"
-    />
-
     <!-- Agent Delete Confirmation Dialog -->
     <AgentDeleteConfirmDialog
       :show="showDeleteConfirm"
@@ -130,8 +121,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, toRefs } from 'vue';
 import { useAgentDefinitionStore, type AgentDefinition } from '~/stores/agentDefinitionStore';
-import WorkspaceConfigModal from '~/components/workspace/config/WorkspaceConfigModal.vue';
 import AgentDeleteConfirmDialog from '~/components/agents/AgentDeleteConfirmDialog.vue';
+import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
+import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 
 const props = defineProps<{ agentId: string }>();
 const { agentId } = toRefs(props);
@@ -139,10 +131,11 @@ const { agentId } = toRefs(props);
 const emit = defineEmits(['navigate']);
 
 const agentDefinitionStore = useAgentDefinitionStore();
+const runConfigStore = useAgentRunConfigStore();
+const selectionStore = useAgentSelectionStore();
 const agentDef = computed(() => agentDefinitionStore.getAgentDefinitionById(agentId.value));
 const loading = ref(false);
 
-const selectedAgent = ref<AgentDefinition | null>(null);
 const showDeleteConfirm = ref(false);
 const agentIdToDelete = ref<string | null>(null);
 const isDeleting = ref(false);
@@ -171,11 +164,8 @@ onMounted(async () => {
 });
 
 const selectAgentToRun = (agentDef: AgentDefinition) => {
-  selectedAgent.value = agentDef;
-};
-
-const onWorkspaceCreated = () => {
-  selectedAgent.value = null;
+  runConfigStore.setTemplate(agentDef);
+  selectionStore.clearSelection();
   navigateTo('/workspace');
 };
 

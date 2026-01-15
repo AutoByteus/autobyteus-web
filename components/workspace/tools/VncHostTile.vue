@@ -201,7 +201,7 @@ watch(isConnected, (connected) => {
   display: flex;
   flex-direction: column;
   min-height: 220px;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid #e5e7eb;
 }
 

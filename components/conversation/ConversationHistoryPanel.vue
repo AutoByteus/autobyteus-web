@@ -82,10 +82,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useConversationHistoryStore } from '~/stores/conversationHistory';
-import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import ConversationList from '~/components/conversation/ConversationList.vue';
-import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
-import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -96,9 +93,6 @@ const emit = defineEmits<{
 }>();
 
 const conversationHistoryStore = useConversationHistoryStore();
-const agentContextsStore = useAgentContextsStore();
-const agentLaunchProfileStore = useAgentLaunchProfileStore();
-const agentDefinitionStore = useAgentDefinitionStore();
 
 const localSearchQuery = ref('');
 

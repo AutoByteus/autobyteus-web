@@ -52,26 +52,25 @@
 import { computed } from 'vue';
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useAgentRunStore } from '~/stores/agentRunStore';
-import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
+import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 import AgentEventMonitor from './AgentEventMonitor.vue';
 import type { AgentContext } from '~/types/agent/AgentContext';
 
 const agentContextsStore = useAgentContextsStore();
 const agentRunStore = useAgentRunStore();
-const launchProfileStore = useAgentLaunchProfileStore();
+const selectionStore = useAgentSelectionStore();
 
-const allOpenAgents = computed(() => agentContextsStore.allOpenAgents);
-const currentSelectedAgentId = computed(() => agentContextsStore.selectedAgentId);
-const currentSelectedAgent = computed(() => agentContextsStore.selectedAgent);
-const activeLaunchProfile = computed(() => launchProfileStore.activeLaunchProfile);
+const allOpenAgents = computed(() => agentContextsStore.allInstances);
+const currentSelectedAgentId = computed(() => selectionStore.selectedType === 'agent' ? selectionStore.selectedInstanceId : null);
+const currentSelectedAgent = computed(() => agentContextsStore.activeInstance);
 
 const getAgentLabel = (agent: AgentContext) => {
-  if (!activeLaunchProfile.value) return '...';
+  const name = agent.config.agentDefinitionName || 'Agent';
   if (agent.state.agentId.startsWith('temp-')) {
-    return `New - ${activeLaunchProfile.value.name}`;
+    return `New - ${name}`;
   }
   const idSuffix = agent.state.agentId.slice(-4).toUpperCase();
-  return `${activeLaunchProfile.value.name} - ${idSuffix}`;
+  return `${name} - ${idSuffix}`;
 };
 
 const handleCloseAgent = async (agentId: string) => {
@@ -83,7 +82,7 @@ const handleCloseAgent = async (agentId: string) => {
 };
 
 const handleSelectAgent = (agentId: string) => {
-  agentContextsStore.setSelectedAgentId(agentId);
+  selectionStore.selectInstance(agentId, 'agent');
 };
 </script>
 

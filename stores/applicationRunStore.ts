@@ -5,7 +5,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { useApplicationContextStore } from './applicationContextStore';
 import { SendMessageToTeam, TerminateAgentTeamInstance } from '~/graphql/mutations/agentTeamInstanceMutations';
 import type { ApplicationLaunchConfig, ApplicationRunContext } from '~/types/application/ApplicationRun';
-import type { AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import { AgentContext } from '~/types/agent/AgentContext';
 import { AgentRunState } from '~/types/agent/AgentRunState';
@@ -16,12 +15,12 @@ import type {
   SendMessageToTeamMutation,
   SendMessageToTeamMutationVariables,
   ContextFileType,
-  TaskNotificationModeEnum,
 } from '~/generated/graphql';
 import { AgentTeamStatus } from '~/types/agent/AgentTeamStatus';
 import { useApplicationLaunchProfileStore } from './applicationLaunchProfileStore';
 import type { ApplicationLaunchProfile } from '~/types/application/ApplicationLaunchProfile';
 import { TeamStreamingService } from '~/services/agentStreaming';
+import type { TeamRunConfig, MemberConfigOverride } from '~/types/agent/TeamRunConfig';
 
 
 function _resolveAgentLlmConfig(profile: ApplicationLaunchProfile): Record<string, string> {
@@ -94,19 +93,24 @@ export const useApplicationRunStore = defineStore('applicationRun', {
         const instanceId = uuidv4();
         const tempTeamId = `temp-app-team-${Date.now()}`;
 
-        const teamLaunchProfile = {
-          id: profile.id,
-          name: profile.name,
-          createdAt: profile.createdAt,
-          teamDefinition: profile.teamDefinition,
-          globalConfig: {
-            workspaceConfig: { mode: 'none' as const },
-            llmModelIdentifier: profile.globalLlmModelIdentifier,
-            autoExecuteTools: true,
-            useXmlToolFormat: true,
-            taskNotificationMode: 'SYSTEM_EVENT_DRIVEN' as const,
-          },
-          memberOverrides: [], // Application profiles don't have these complex overrides yet
+        const memberOverrides: Record<string, MemberConfigOverride> = {};
+        for (const [memberName, modelId] of Object.entries(profile.memberLlmConfigOverrides)) {
+          const node = profile.teamDefinition.nodes.find(n => n.memberName === memberName);
+          if (!node || node.referenceType !== 'AGENT') continue;
+          memberOverrides[memberName] = {
+            agentDefinitionId: node.referenceId,
+            llmModelIdentifier: modelId,
+          };
+        }
+
+        const teamRunConfig: TeamRunConfig = {
+          teamDefinitionId: profile.teamDefinition.id,
+          teamDefinitionName: profile.teamDefinition.name,
+          workspaceId: null,
+          llmModelIdentifier: profile.globalLlmModelIdentifier,
+          autoExecuteTools: true,
+          memberOverrides,
+          isLocked: false,
         };
 
         const resolvedLlmConfig = _resolveAgentLlmConfig(profile);
@@ -122,19 +126,19 @@ export const useApplicationRunStore = defineStore('applicationRun', {
           };
           const agentState = new AgentRunState(memberName, conversation);
           const agentConfig: AgentRunConfig = {
-            launchProfileId: profile.id,
+            agentDefinitionId: agentNode.referenceId,
+            agentDefinitionName: memberName,
             workspaceId: null,
             llmModelIdentifier: resolvedLlmConfig[memberName],
             autoExecuteTools: true,
-
-            useXmlToolFormat: teamLaunchProfile.globalConfig.useXmlToolFormat,
+            isLocked: true,
           };
           members.set(memberName, new AgentContext(agentConfig, agentState));
         }
         
         const teamContext: AgentTeamContext = {
           teamId: tempTeamId,
-          launchProfile: teamLaunchProfile,
+          config: teamRunConfig,
           members: members,
           focusedMemberName: profile.teamDefinition.coordinatorMemberName,
           currentStatus: AgentTeamStatus.Uninitialized,
@@ -175,6 +179,7 @@ export const useApplicationRunStore = defineStore('applicationRun', {
         timestamp: new Date(),
         contextFilePaths: contextPaths.map(p => ({path: p.path, type: p.type as any}))
       });
+      focusedMember.state.conversation.updatedAt = new Date().toISOString();
 
       const isTemporary = teamContext.teamId.startsWith('temp-');
 
@@ -192,11 +197,9 @@ export const useApplicationRunStore = defineStore('applicationRun', {
           input: {
             userInput: { content: text, contextFiles: contextPaths.map(cf => ({ path: cf.path, type: cf.type.toUpperCase() as ContextFileType })) },
             teamId: isTemporary ? null : teamContext.teamId,
-            targetNodeName: focusedMember.state.agentId,
-            teamDefinitionId: isTemporary ? teamContext.launchProfile.teamDefinition.id : undefined,
+            targetNodeName: teamContext.focusedMemberName,
+            teamDefinitionId: isTemporary ? profile.teamDefinition.id : undefined,
             memberConfigs: memberConfigsForApi,
-            taskNotificationMode: isTemporary ? teamContext.launchProfile.globalConfig.taskNotificationMode as TaskNotificationModeEnum : undefined,
-            useXmlToolFormat: isTemporary ? teamContext.launchProfile.globalConfig.useXmlToolFormat : undefined,
           }
         };
 

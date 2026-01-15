@@ -1,10 +1,9 @@
 <template>
-  <div class="p-4 bg-white h-full flex flex-col">
-    <h3 class="text-base font-semibold text-gray-900 mb-3 flex-shrink-0">Task Plan</h3>
-    <div v-if="!tasks || tasks.length === 0" class="text-center text-sm text-gray-500 py-8 px-4 bg-gray-100 rounded-lg">
+  <div class="h-full flex flex-col">
+    <div v-if="!tasks || tasks.length === 0" class="text-center text-sm text-gray-500 py-8 px-4 bg-gray-100 rounded-lg m-4">
       No task plan has been published yet.
     </div>
-    <div v-else class="overflow-auto flex-grow min-h-0">
+    <div v-else class="overflow-auto flex-grow min-h-0 px-4 py-2">
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-end border-b border-gray-200 bg-white px-1">
+  <div class="flex items-end border-b border-gray-200 bg-white px-1 overflow-x-auto no-scrollbar">
     <Tab 
       v-for="tab in tabs" 
       :key="tab.name" 
@@ -31,3 +31,16 @@ const selectTab = (tabName: string) => {
   emit('select', tabName);
 };
 </script>
+
+<style scoped>
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+</style>

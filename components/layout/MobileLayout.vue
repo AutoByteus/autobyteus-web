@@ -18,7 +18,7 @@
     <!-- Mobile Panels -->
     <div class="flex-1 bg-white shadow overflow-hidden relative mt-2"> 
       <!-- File Explorer -->
-      <div v-if="activeLaunchProfileHasWorkspace" v-show="activeMobilePanel === 'explorer'" class="h-full p-0 overflow-auto">
+      <div v-if="hasActiveWorkspace" v-show="activeMobilePanel === 'explorer'" class="h-full p-0 overflow-auto">
         <FileExplorer />
       </div>
 
@@ -27,17 +27,22 @@
         <FileExplorerTabs :expandedMode="true" />
       </div>
 
-      <!-- Launch Profile Panel -->
-      <div v-show="activeMobilePanel === 'profiles'" class="h-full p-0 overflow-auto">
-        <LaunchProfilePanel />
+      <!-- Running Panel -->
+      <div v-show="activeMobilePanel === 'running'" class="h-full p-0 overflow-auto flex flex-col">
+        <div class="flex-1 overflow-auto">
+          <RunningAgentsPanel />
+        </div>
+        <div class="flex-1 overflow-auto border-t border-gray-200">
+          <RunConfigPanel />
+        </div>
       </div>
 
       <!-- Main Interaction View (Agent or Team) -->
       <div v-show="activeMobilePanel === 'main'" class="h-full p-0 overflow-auto">
-        <AgentWorkspaceView v-if="selectedLaunchProfileStore.selectedProfileType === 'agent'" />
-        <TeamWorkspaceView v-else-if="selectedLaunchProfileStore.selectedProfileType === 'team'" />
+        <AgentWorkspaceView v-if="selectionStore.selectedType === 'agent'" />
+        <TeamWorkspaceView v-else-if="selectionStore.selectedType === 'team'" />
         <div v-else class="flex items-center justify-center h-full text-gray-500">
-          <p>Select a profile to begin.</p>
+          <p>Select or run an agent/team to begin.</p>
         </div>
       </div>
 
@@ -60,11 +65,11 @@
 
       <!-- Agent profile button -->
       <button
-        v-if="activeMobilePanel === 'main' && !selectedLaunchProfileStore.selectedProfileId"
-        @click="activeMobilePanel = 'profiles'"
+        v-if="activeMobilePanel === 'main' && !selectionStore.selectedInstanceId"
+        @click="activeMobilePanel = 'running'"
         class="px-4 py-2 bg-blue-500 text-white rounded shadow-lg z-20 text-sm"
       >
-        Select Profile
+        Open Running
       </button>
     </div>
   </div>
@@ -75,35 +80,36 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue';
 import FileExplorerTabs from '~/components/fileExplorer/FileExplorerTabs.vue';
-import LaunchProfilePanel from '~/components/launchProfiles/LaunchProfilePanel.vue';
+import RunningAgentsPanel from '~/components/workspace/running/RunningAgentsPanel.vue';
+import RunConfigPanel from '~/components/workspace/config/RunConfigPanel.vue';
 import AgentWorkspaceView from '~/components/workspace/agent/AgentWorkspaceView.vue';
 import TeamWorkspaceView from '~/components/workspace/team/TeamWorkspaceView.vue'; // Import Team View
 import RightSideTabs from './RightSideTabs.vue';
 import { useMobilePanels } from '~/composables/useMobilePanels';
-import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
+import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 import { useWorkspaceStore } from '~/stores/workspace';
 
 const props = defineProps<{  
   showFileContent: boolean
 }>();
 
-const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
+const selectionStore = useAgentSelectionStore();
 const workspaceStore = useWorkspaceStore();
 const { activeMobilePanel } = useMobilePanels();
 
-const activeLaunchProfileHasWorkspace = computed(() => !!workspaceStore.activeWorkspace);
+const hasActiveWorkspace = computed(() => !!workspaceStore.activeWorkspace);
 
 const availableTabs = computed(() => {
-  const mainTabLabel = selectedLaunchProfileStore.selectedProfileType === 'team' ? 'Team' : 'Agent';
+  const mainTabLabel = selectionStore.selectedType === 'team' ? 'Team' : 'Agent';
 
   const tabs = [
-    ...(activeLaunchProfileHasWorkspace.value ? [{ id: 'explorer', label: 'Files' }] : []),
-    { id: 'profiles', label: 'Profiles' },
+    ...(hasActiveWorkspace.value ? [{ id: 'explorer', label: 'Files' }] : []),
+    { id: 'running', label: 'Running' },
     { id: 'main', label: mainTabLabel },
     { id: 'tools', label: 'Tools' }
   ];
   
-  if (props.showFileContent && activeLaunchProfileHasWorkspace.value) {
+  if (props.showFileContent && hasActiveWorkspace.value) {
     const explorerIndex = tabs.findIndex(t => t.id === 'explorer');
     if (explorerIndex !== -1) {
       tabs.splice(explorerIndex + 1, 0, { id: 'content', label: 'Content' });
@@ -114,8 +120,8 @@ const availableTabs = computed(() => {
 });
 
 const handleTabClick = (tabId: string) => {
-  if (tabId === 'main' && !selectedLaunchProfileStore.selectedProfileId) {
-    activeMobilePanel.value = 'profiles';
+  if (tabId === 'main' && !selectionStore.selectedInstanceId) {
+    activeMobilePanel.value = 'running';
   } else {
     activeMobilePanel.value = tabId;
   }

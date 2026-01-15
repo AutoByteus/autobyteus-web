@@ -10,8 +10,8 @@ The Agent Teams module enables users to:
 - Define dependencies between team members (execution order)
 - Designate a coordinator member for team orchestration
 - Support nested teams (teams containing other teams)
-- Configure global settings and per-member overrides
-- Launch teams with workspace configuration options
+- Configure global settings and per-member overrides via run configurations
+- Launch teams with real-time streaming responses
 - Monitor individual agent activities within a team
 
 ## Module Structure
@@ -19,7 +19,8 @@ The Agent Teams module enables users to:
 ```
 autobyteus-web/
 ├── pages/
-│   └── agents.vue                      # Shared page (team-list, team-detail, etc.)
+│   ├── agents.vue                      # Agent/Team definitions page
+│   └── workspace.vue                   # Main workspace with running teams
 ├── components/agentTeams/
 │   ├── AgentTeamList.vue               # Team definitions listing
 │   ├── AgentTeamCard.vue               # Individual team card
@@ -27,19 +28,29 @@ autobyteus-web/
 │   ├── AgentTeamEdit.vue               # Edit team wrapper
 │   ├── AgentTeamDetail.vue             # Team view with details
 │   ├── AgentTeamDefinitionForm.vue     # Shared form for create/edit
-│   ├── TeamLaunchConfigModal.vue       # Launch configuration wizard
-│   ├── SearchableGroupedSelect.vue     # Agent/team selector
-│   └── InlineSearchableGroupedList.vue # Inline member list
-├── components/workspace/team/
-│   ├── AgentTeamEventMonitor.vue       # Team execution monitor
-│   └── AgentTeamEventMonitorTabs.vue   # Tabbed member views
+│   └── SearchableGroupedSelect.vue     # Agent/team selector
+├── components/workspace/
+│   ├── running/
+│   │   ├── RunningAgentsPanel.vue      # Panel showing all running instances
+│   │   ├── RunningTeamGroup.vue        # Group of team instances
+│   │   ├── RunningTeamRow.vue          # Team instance with expandable members
+│   │   ├── TeamMemberRow.vue           # Individual team member row
+│   │   └── AgentPickerDropdown.vue     # Dropdown to start new agent/team
+│   ├── config/
+│   │   ├── RunConfigPanel.vue          # Configuration panel
+│   │   └── TeamRunConfigForm.vue       # Team configuration form
+│   └── team/
+│       ├── AgentTeamEventMonitor.vue   # Team execution monitor
+│       └── AgentTeamEventMonitorTabs.vue # Tabbed member views
+├── composables/
+│   └── useRunActions.ts                # Centralized run preparation logic
 ├── stores/
 │   ├── agentTeamDefinitionStore.ts     # Team definition CRUD
-│   ├── agentTeamLaunchProfileStore.ts  # Team launch profile management
+│   ├── teamRunConfigStore.ts           # Team run configuration (ephemeral)
 │   ├── agentTeamRunStore.ts            # Team execution & streaming
-│   └── agentTeamContextsStore.ts       # Running team state
-├── types/
-│   └── TeamLaunchProfile.ts            # Launch profile types
+│   └── agentTeamContextsStore.ts       # Running team instances state
+├── types/agent/
+│   └── TeamRunConfig.ts                # Run configuration type
 └── graphql/
     ├── queries/agentTeamDefinitionQueries.ts
     ├── mutations/agentTeamDefinitionMutations.ts
@@ -50,22 +61,23 @@ autobyteus-web/
 
 ```mermaid
 flowchart TD
-    subgraph "Page Layer"
+    subgraph "Pages"
         AgentsPage[agents.vue]
+        WorkspacePage[workspace.vue]
     end
 
-    subgraph "Team Components"
-        TeamList[AgentTeamList]
-        TeamDetail[AgentTeamDetail]
-        TeamCreate[AgentTeamCreate]
-        LaunchModal[TeamLaunchConfigModal]
+    subgraph "Components"
+        RunningPanel[RunningAgentsPanel]
+        ConfigPanel[RunConfigPanel]
+        TeamForm[TeamRunConfigForm]
     end
 
     subgraph "Stores"
         DefStore[agentTeamDefinitionStore]
-        ProfileStore[agentTeamLaunchProfileStore]
+        RunConfigStore[teamRunConfigStore]
+        ContextsStore[agentTeamContextsStore]
+        SelectionStore[agentSelectionStore]
         RunStore[agentTeamRunStore]
-        ContextStore[agentTeamContextsStore]
     end
 
     subgraph "Backend"
@@ -73,18 +85,20 @@ flowchart TD
         WS[WebSocket Streaming]
     end
 
-    AgentsPage --> TeamList
-    AgentsPage --> TeamDetail
-    AgentsPage --> TeamCreate
+    AgentsPage --> DefStore
+    AgentsPage -- "Run Team" --> RunConfigStore
+    WorkspacePage --> RunningPanel
+    WorkspacePage --> ConfigPanel
 
-    TeamDetail --> LaunchModal
-    LaunchModal --> ProfileStore
-    ProfileStore --> RunStore
-    RunStore --> ContextStore
+    RunningPanel --> ContextsStore
+    ConfigPanel --> RunConfigStore
+    ConfigPanel --> TeamForm
+
+    RunConfigStore --> ContextsStore
+    ContextsStore --> RunStore
     RunStore --> WS
-
-    DefStore --> GraphQL
     RunStore --> GraphQL
+    DefStore --> GraphQL
 ```
 
 ## Key Concepts
@@ -141,52 +155,42 @@ interface AgentTeamDefinition {
 }
 ```
 
-### TeamLaunchProfile
+### TeamRunConfig
+
+Ephemeral configuration for running a team instance:
 
 ```typescript
-interface TeamLaunchProfile {
-  id: string;
-  name: string;
-  createdAt: string;
-  teamDefinition: AgentTeamDefinition; // Snapshot copy
+interface TeamRunConfig {
+  teamDefinitionId: string;
+  teamDefinitionName: string;
 
-  globalConfig: {
-    llmModelIdentifier: string;
-    workspaceConfig: WorkspaceLaunchConfig;
-    autoExecuteTools: boolean;
+  // Global settings (applied to all members)
+  workspaceId: string | null;
+  llmModelIdentifier: string;
+  autoExecuteTools: boolean;
 
-    taskNotificationMode: "AGENT_MANUAL_NOTIFICATION" | "SYSTEM_EVENT_DRIVEN";
-    useXmlToolFormat: boolean;
-  };
+  // Per-member overrides
+  memberOverrides: Record<string, MemberConfigOverride>;
 
-  memberOverrides: TeamMemberConfigOverride[];
+  isLocked: boolean; // True once execution starts
 }
-```
 
-### WorkspaceLaunchConfig
-
-Defines how workspace is configured for team launch:
-
-```typescript
-interface WorkspaceLaunchConfig {
-  mode: "new" | "existing" | "none";
-  existingWorkspaceId?: string;
-  newWorkspaceConfig?: {
-    root_path: string;
-  };
-}
-```
-
-### TeamMemberConfigOverride
-
-Per-member configuration overrides:
-
-```typescript
-interface TeamMemberConfigOverride {
-  memberName: string;
+interface MemberConfigOverride {
+  agentDefinitionId: string;
   llmModelIdentifier?: string;
-  workspaceConfig?: WorkspaceLaunchConfig;
   autoExecuteTools?: boolean;
+}
+```
+
+### AgentTeamContext
+
+Runtime state for a running team instance:
+
+```typescript
+interface AgentTeamContext {
+  config: TeamRunConfig;
+  memberContexts: Map<string, MemberAgentContext>;
+  status: "configuring" | "running" | "completed" | "error";
 }
 ```
 
@@ -196,8 +200,6 @@ interface TeamMemberConfigOverride {
 
 Manages team definition CRUD:
 
-**Actions:**
-
 | Action                             | Description                        |
 | ---------------------------------- | ---------------------------------- |
 | `fetchAllAgentTeamDefinitions()`   | Load all definitions (cache-first) |
@@ -206,114 +208,43 @@ Manages team definition CRUD:
 | `updateAgentTeamDefinition(input)` | Update existing team               |
 | `deleteAgentTeamDefinition(id)`    | Delete team definition             |
 
-### agentTeamLaunchProfileStore.ts
+### teamRunConfigStore.ts
 
-Manages team launch profiles with localStorage:
+Manages the **ephemeral template** for configuring a new team run:
 
-**State:**
+| Action                         | Description                            |
+| ------------------------------ | -------------------------------------- |
+| `setTemplate(teamDef)`         | Initialize config from team definition |
+| `updateConfig(updates)`        | Update config fields                   |
+| `setWorkspaceLoaded(id, path)` | Set loaded workspace ID and path       |
+| `clearConfig()`                | Clear the configuration buffer         |
 
-```typescript
-interface AgentTeamLaunchProfileState {
-  profiles: Record<string, TeamLaunchProfile>;
-}
-```
+| Getter         | Description                           |
+| -------------- | ------------------------------------- |
+| `hasConfig`    | Whether a config template is active   |
+| `isConfigured` | Whether LLM model is selected (ready) |
 
-**Actions:**
+### agentTeamContextsStore.ts
 
-| Action                                 | Description                     |
-| -------------------------------------- | ------------------------------- |
-| `loadLaunchProfiles()`                 | Load profiles from localStorage |
-| `createLaunchProfile(teamDef, config)` | Create new launch profile       |
-| `deleteLaunchProfile(id)`              | Remove profile                  |
-| `setActiveLaunchProfile(id)`           | Select profile for execution    |
+Manages **running team instances**:
 
-**Getters:**
-
-| Getter                   | Description                        |
-| ------------------------ | ---------------------------------- |
-| `activeLaunchProfiles`   | Profiles with running instances    |
-| `inactiveLaunchProfiles` | Profiles without running instances |
+| Action                           | Description                               |
+| -------------------------------- | ----------------------------------------- |
+| `createInstanceFromTemplate()`   | Create instance from `teamRunConfigStore` |
+| `removeTeam(id)`                 | Remove team instance                      |
+| `lockConfig(id)`                 | Lock config after first message           |
+| `promoteTemporaryId(temp, perm)` | Replace temp ID with server ID            |
 
 ### agentTeamRunStore.ts
 
 Handles team execution and real-time communication:
 
-**Actions:**
-
-| Action                            | Description                                 |
-| --------------------------------- | ------------------------------------------- |
-| `createAndLaunchTeam(config)`     | Create profile and launch (creation flow)   |
-| `launchExistingTeam(profileId)`   | Launch existing profile (reactivation flow) |
-| `createNewTeamInstance()`         | Create new instance for active profile      |
-| `connectToTeamStream(teamId)`     | Connect to team WebSocket events            |
-| `terminateTeamInstance(teamId)`   | Stop running team instance                  |
-| `sendMessageToFocusedMember(...)` | Send message to specific member             |
-
-## GraphQL API
-
-### Team Definition Queries
-
-```graphql
-query GetAgentTeamDefinitions {
-  agentTeamDefinitions {
-    id
-    name
-    description
-    role
-    coordinatorMemberName
-    nodes {
-      memberName
-      referenceId
-      referenceType
-      dependencies
-    }
-  }
-}
-```
-
-### Team Definition Mutations
-
-```graphql
-mutation CreateAgentTeamDefinition($input: CreateAgentTeamDefinitionInput!) {
-  createAgentTeamDefinition(input: $input) {
-    id
-    name
-  }
-}
-
-mutation UpdateAgentTeamDefinition($input: UpdateAgentTeamDefinitionInput!) {
-  updateAgentTeamDefinition(input: $input) {
-    id
-    name
-  }
-}
-
-mutation DeleteAgentTeamDefinition($id: String!) {
-  deleteAgentTeamDefinition(id: $id) {
-    success
-    message
-  }
-}
-```
-
-### Team Instance Mutations
-
-```graphql
-mutation SendMessageToTeam($input: SendMessageToTeamInput!) {
-  sendMessageToTeam(input: $input) {
-    success
-    message
-    teamId
-  }
-}
-
-mutation TerminateAgentTeamInstance($id: String!) {
-  terminateAgentTeamInstance(id: $id) {
-    success
-    message
-  }
-}
-```
+| Action                            | Description                         |
+| --------------------------------- | ----------------------------------- |
+| `sendMessageToTeam(...)`          | Send user input to team coordinator |
+| `connectToTeamStream(teamId)`     | Connect to team WebSocket events    |
+| `terminateTeamInstance(teamId)`   | Stop running team instance          |
+| `sendMessageToFocusedMember(...)` | Send message to specific member     |
 
 ## User Flows
 
@@ -340,93 +271,124 @@ sequenceDiagram
     TeamCreate->>User: Navigate to team list
 ```
 
-### Launch Agent Team
+### Run Team from Team List
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant TeamDetail
-    participant LaunchModal as TeamLaunchConfigModal
-    participant ProfileStore as agentTeamLaunchProfileStore
-    participant RunStore as agentTeamRunStore
-    participant Backend
+    participant AgentTeamList
+    participant RunConfigStore as teamRunConfigStore
+    participant WorkspacePage
+    participant ConfigPanel
+    participant ContextsStore as agentTeamContextsStore
 
-    User->>TeamDetail: View team, click "Launch"
-    TeamDetail->>LaunchModal: Open launch config modal
+    User->>AgentTeamList: Click "Run Team"
+    AgentTeamList->>RunConfigStore: prepareTeamRun(teamDef)
+    Note over RunConfigStore: Clears agent config, sets team template
+    AgentTeamList->>WorkspacePage: Navigate to /workspace
 
-    User->>LaunchModal: Configure global settings
-    User->>LaunchModal: Set workspace mode (new/existing/none)
-    User->>LaunchModal: Optionally override per-member
-    User->>LaunchModal: Click "Launch Team"
+    WorkspacePage->>ConfigPanel: Show TeamRunConfigForm
+    User->>ConfigPanel: Select LLM model, enter workspace path
+    ConfigPanel->>RunConfigStore: updateConfig(updates)
 
-    LaunchModal->>RunStore: createAndLaunchTeam(config)
-    RunStore->>ProfileStore: createLaunchProfile(...)
-    ProfileStore-->>RunStore: New profile
-
-    RunStore->>Backend: SendMessageToTeam mutation (lazy create)
-    Backend-->>RunStore: teamId
-
-    RunStore->>Backend: Connect to team WebSocket stream
-    RunStore->>User: Navigate to workspace view
+    User->>ConfigPanel: Click "Run Team"
+    ConfigPanel->>ContextsStore: createInstanceFromTemplate()
+    Note over ContextsStore: Creates new AgentTeamContext with config copy
 ```
 
-### Configuration Hierarchy
+### Send Message to Team
 
-When launching a team, configuration is resolved in this order:
+```mermaid
+sequenceDiagram
+    participant User
+    participant ChatInput
+    participant RunStore as agentTeamRunStore
+    participant ContextsStore as agentTeamContextsStore
+    participant Backend
+
+    User->>ChatInput: Type message, press Send
+    ChatInput->>RunStore: sendMessageToTeam(config, input)
+    RunStore->>Backend: SendMessageToTeam mutation
+    Backend-->>RunStore: teamId
+    RunStore->>ContextsStore: promoteTemporaryId(temp, teamId)
+    RunStore->>ContextsStore: lockConfig(teamId)
+    RunStore->>Backend: Connect to team WebSocket stream
+
+    loop Real-time Events
+        Backend-->>RunStore: Streaming events (WebSocket)
+        RunStore-->>ContextsStore: Update member conversations
+        ContextsStore-->>User: Display in tabbed views
+    end
+```
+
+## Team Run Configuration Form
+
+The `TeamRunConfigForm.vue` provides configuration options:
+
+### Global Settings Section
+
+| Field              | Description                      |
+| ------------------ | -------------------------------- |
+| Team Name          | Read-only, from definition       |
+| Members            | Read-only, shows member initials |
+| Default LLM Model  | Dropdown, applied to all members |
+| Workspace Path     | Input with load button           |
+| Auto-execute Tools | Checkbox                         |
+
+### Member Overrides Section (Collapsible)
+
+- Expandable list of all team members
+- Per-member override options:
+  - Different LLM model
+  - Different tool execution settings
+
+## Configuration Hierarchy
+
+When running a team, configuration is resolved in this order:
 
 1. **Global config** - Applies to all members by default
 2. **Member overrides** - Override specific members' settings
 
 ```
-GlobalConfig
-├── llmModelIdentifier: "gpt-4o"
-├── workspaceConfig: { mode: "new", ... }
-├── autoExecuteTools: true
-└── ...
-
-MemberOverrides
-├── [0] memberName: "code_reviewer"
-│   └── llmModelIdentifier: "claude-3.5-sonnet"  ← Override
-├── [1] memberName: "tester"
-│   └── workspaceConfig: { mode: "existing", id: "..." }  ← Override
+TeamRunConfig
+├── llmModelIdentifier: "gpt-4o"        (Global)
+├── workspaceId: "ws-123"               (Shared)
+├── autoExecuteTools: true              (Global)
+│
+└── memberOverrides:
+    ├── "code_reviewer":
+    │   └── llmModelIdentifier: "claude-3.5"    (Override)
+    └── "tester":
+        └── autoExecuteTools: false             (Override)
 ```
-
-## Team Launch Configuration Modal
-
-The `TeamLaunchConfigModal.vue` provides a comprehensive wizard:
-
-### Step 1: Global Configuration
-
-- Profile name
-- LLM model selection
-- Workspace mode (new/existing/none)
-- Auto-execute tools toggle
-
-- Task notification mode
-- XML tool format toggle
-
-### Step 2: Per-Member Overrides (Optional)
-
-- List of all team members
-- Override individual settings:
-  - Different LLM model
-  - Different workspace
-  - Different tool execution settings
-
-### Step 3: Review & Launch
-
-- Summary of configuration
-- Launch button
 
 ## Differences from Single Agents
 
-| Feature       | Single Agent             | Agent Team                    |
-| ------------- | ------------------------ | ----------------------------- |
-| Execution     | One agent runs           | Multiple agents coordinate    |
-| Configuration | Simple agent + workspace | Global + per-member overrides |
-| Dependencies  | None                     | DAG-based execution order     |
-| Monitoring    | Single conversation      | Tabbed per-member views       |
-| Workspace     | One per agent            | Per-member or shared          |
+| Feature       | Single Agent        | Agent Team                     |
+| ------------- | ------------------- | ------------------------------ |
+| Execution     | One agent runs      | Multiple agents coordinate     |
+| Configuration | AgentRunConfig      | TeamRunConfig + overrides      |
+| Dependencies  | None                | DAG-based execution order      |
+| Monitoring    | Single conversation | Per-member views in left panel |
+| Workspace     | One per agent       | Shared or per-member           |
+
+## useRunActions Composable
+
+Both agents and teams use the same composable for starting runs:
+
+```typescript
+export function useRunActions() {
+  const prepareTeamRun = (teamDef: AgentTeamDefinition) => {
+    agentRunConfigStore.clearConfig(); // Clear agent config
+    teamRunConfigStore.setTemplate(teamDef);
+    selectionStore.clearSelection();
+  };
+
+  return { prepareAgentRun, prepareTeamRun };
+}
+```
+
+This ensures **mutual exclusivity**: only one config (agent or team) is active at a time.
 
 ## Related Documentation
 

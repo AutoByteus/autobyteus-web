@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 
-type PanelName = 'launchProfile' | 'fileExplorer';
+type PanelName = 'running' | 'fileExplorer';
 
 interface PanelState {
   isOpen: boolean;
@@ -13,7 +13,7 @@ interface WorkspaceLeftPanelLayoutState {
 export const useWorkspaceLeftPanelLayoutStore = defineStore('workspaceLeftPanelLayout', {
   state: (): WorkspaceLeftPanelLayoutState => ({
     panels: {
-      launchProfile: { isOpen: true }, // Default to open
+      running: { isOpen: true }, // Default to open
       fileExplorer: { isOpen: true },  // Default to open
     },
   }),

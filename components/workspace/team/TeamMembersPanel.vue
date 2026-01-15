@@ -23,21 +23,21 @@
       </div>
       <div
         v-for="member in teamMembers"
-        :key="member.state.agentId"
-        @click="selectMember(member.state.agentId)"
+        :key="member.memberName"
+        @click="selectMember(member.memberName)"
         class="p-3 rounded-lg cursor-pointer transition-colors duration-150 border"
-        :class="focusedMemberName === member.state.agentId
+        :class="focusedMemberName === member.memberName
           ? 'bg-indigo-100 border-indigo-300 shadow-sm'
           : 'bg-white border-gray-200 hover:bg-gray-100 hover:border-gray-300'"
       >
         <div class="flex justify-between items-center">
-          <p class="font-medium text-sm truncate" :title="member.state.agentId">{{ member.state.agentId }}</p>
-          <span v-if="isCoordinator(member.state.agentId)" class="text-xs font-bold text-yellow-800 bg-yellow-200 px-2 py-0.5 rounded-full">
+          <p class="font-medium text-sm truncate" :title="member.memberName">{{ member.memberName }}</p>
+          <span v-if="isCoordinator(member.memberName)" class="text-xs font-bold text-yellow-800 bg-yellow-200 px-2 py-0.5 rounded-full">
             Coord
           </span>
         </div>
         <div class="mt-2">
-          <AgentStatusDisplay :status="member.state.currentStatus" />
+          <AgentStatusDisplay :status="member.context.state.currentStatus" />
         </div>
       </div>
     </div>
@@ -56,21 +56,34 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
+import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
 import AgentStatusDisplay from '~/components/workspace/agent/AgentStatusDisplay.vue';
 import AgentDeleteConfirmDialog from '~/components/agents/AgentDeleteConfirmDialog.vue';
 
 const teamContextsStore = useAgentTeamContextsStore();
 const teamRunStore = useAgentTeamRunStore();
+const teamDefinitionStore = useAgentTeamDefinitionStore();
 
 const showTerminateConfirm = ref(false);
 
 const teamMembers = computed(() => teamContextsStore.teamMembers);
-const focusedMemberName = computed(() => teamContextsStore.focusedMemberContext?.state.agentId);
-const teamName = computed(() => teamContextsStore.activeTeamContext?.launchProfile.name || 'this team');
-const coordinatorName = computed(() => teamContextsStore.activeTeamContext?.launchProfile.teamDefinition.coordinatorMemberName);
+const focusedMemberName = computed(() => teamContextsStore.activeTeamContext?.focusedMemberName);
+const activeTeam = computed(() => teamContextsStore.activeTeamContext);
+const teamName = computed(() => activeTeam.value?.config.teamDefinitionName || 'this team');
+const coordinatorName = computed(() => {
+  const teamDefId = activeTeam.value?.config.teamDefinitionId;
+  if (!teamDefId) return null;
+  return teamDefinitionStore.getAgentTeamDefinitionById(teamDefId)?.coordinatorMemberName || null;
+});
+
+onMounted(() => {
+  if (teamDefinitionStore.agentTeamDefinitions.length === 0) {
+    teamDefinitionStore.fetchAllAgentTeamDefinitions();
+  }
+});
 
 const isTeamInstanceTemporary = computed(() => {
   return teamContextsStore.activeTeamContext?.teamId.startsWith('temp-') ?? false;

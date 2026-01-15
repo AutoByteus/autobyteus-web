@@ -1,16 +1,15 @@
 # Agent Management Module - Frontend
 
-This document describes the design and implementation of the **Agent Management** module in the autobyteus-web frontend, which provides agent creation, configuration, launch profiles, and execution capabilities.
+This document describes the design and implementation of the **Agent Management** module in the autobyteus-web frontend, including agent definition management, run configurations, and execution capabilities.
 
 ## Overview
 
 The Agent Management module enables users to:
 
-- Create and configure agent definitions with tools, processors, and prompts
-- Manage launch profiles (saved agent + workspace configurations)
+- Browse and manage agent definitions (tools, processors, prompts)
+- Configure and run agents with ephemeral run configurations
 - Run agents with real-time streaming responses
 - Approve or reject tool invocations during agent execution
-- Handle inactive profiles (workspace no longer exists)
 - Create and manage agent teams (multi-agent workflows)
 
 ## Module Structure
@@ -18,7 +17,8 @@ The Agent Management module enables users to:
 ```
 autobyteus-web/
 ├── pages/
-│   └── agents.vue                      # Main agent management page
+│   ├── agents.vue                      # Agent/Team definitions page
+│   └── workspace.vue                   # Main workspace with running agents
 ├── components/agents/
 │   ├── AgentList.vue                   # Agent definitions listing
 │   ├── AgentCard.vue                   # Individual agent card
@@ -26,29 +26,32 @@ autobyteus-web/
 │   ├── AgentEdit.vue                   # Edit agent wrapper
 │   ├── AgentDetail.vue                 # Agent view with details
 │   ├── AgentDefinitionForm.vue         # Shared form for create/edit
-│   ├── AgentDeleteConfirmDialog.vue    # Delete confirmation
-│   ├── RunningAgentList.vue            # Active agent instances
-│   └── RunningAgentCard.vue            # Running agent display
-├── components/launchProfiles/
-│   ├── LaunchProfileManager.vue        # Main profile management view
-│   ├── AgentProfileList.vue            # Profile listing
-│   ├── AgentProfileCard.vue            # Individual profile card
-│   └── ReactivateAgentProfileDialog.vue # Restore inactive profile
-├── components/agentTeams/
-│   ├── AgentTeamList.vue               # Team definitions listing
-│   ├── AgentTeamCard.vue               # Individual team card
-│   ├── AgentTeamCreate.vue             # Create team form
-│   ├── AgentTeamEdit.vue               # Edit team wrapper
-│   └── AgentTeamDetail.vue             # Team view with details
+│   └── AgentDeleteConfirmDialog.vue    # Delete confirmation
+├── components/workspace/
+│   ├── running/
+│   │   ├── RunningAgentsPanel.vue      # Panel showing all running instances
+│   │   ├── RunningAgentGroup.vue       # Group of instances by definition
+│   │   └── RunningInstanceRow.vue      # Individual instance row
+│   └── config/
+│       ├── RunConfigPanel.vue          # Configuration panel for selected instance
+│       ├── AgentRunConfigForm.vue      # Agent configuration form
+│       ├── TeamRunConfigForm.vue       # Team configuration form
+│       └── WorkspacePathInput.vue      # Workspace path input with loading
+├── composables/
+│   └── useRunActions.ts                # Centralized run preparation logic
 ├── stores/
 │   ├── agentDefinitionStore.ts         # Agent definition CRUD
-│   ├── agentLaunchProfileStore.ts      # Launch profile management
+│   ├── agentRunConfigStore.ts          # Agent run configuration (ephemeral template)
 │   ├── agentRunStore.ts                # Agent execution & streaming
-│   ├── agentContextsStore.ts           # Running agent state
+│   ├── agentContextsStore.ts           # Running agent instances state
+│   ├── agentSelectionStore.ts          # Currently selected instance
 │   ├── agentTeamDefinitionStore.ts     # Team definition CRUD
-│   └── agentTeamLaunchProfileStore.ts  # Team launch profiles
-├── types/
-│   └── AgentLaunchProfile.ts           # Launch profile type
+│   ├── teamRunConfigStore.ts           # Team run configuration
+│   └── agentTeamContextsStore.ts       # Running team instances state
+├── types/agent/
+│   ├── AgentRunConfig.ts               # Run configuration type
+│   ├── AgentContext.ts                 # Runtime agent context
+│   └── AgentRunState.ts                # Agent execution state
 └── graphql/
     ├── queries/agentDefinitionQueries.ts
     ├── mutations/agentDefinitionMutations.ts
@@ -59,21 +62,23 @@ autobyteus-web/
 
 ```mermaid
 flowchart TD
-    subgraph "Page Layer"
+    subgraph "Pages"
         AgentsPage[agents.vue]
+        WorkspacePage[workspace.vue]
     end
 
-    subgraph "Views"
-        LaunchProfiles[Launch Profiles]
-        LocalAgents[Local Agents]
-        AgentTeams[Agent Teams]
+    subgraph "Components"
+        RunningPanel[RunningAgentsPanel]
+        ConfigPanel[RunConfigPanel]
+        AgentForm[AgentRunConfigForm]
     end
 
     subgraph "Stores"
         DefStore[agentDefinitionStore]
-        ProfileStore[agentLaunchProfileStore]
+        RunConfigStore[agentRunConfigStore]
+        ContextsStore[agentContextsStore]
+        SelectionStore[agentSelectionStore]
         RunStore[agentRunStore]
-        ContextStore[agentContextsStore]
     end
 
     subgraph "Backend"
@@ -81,36 +86,21 @@ flowchart TD
         WS[WebSocket Streaming]
     end
 
-    AgentsPage --> LaunchProfiles
-    AgentsPage --> LocalAgents
-    AgentsPage --> AgentTeams
+    AgentsPage --> DefStore
+    AgentsPage -- "Run Agent" --> RunConfigStore
+    WorkspacePage --> RunningPanel
+    WorkspacePage --> ConfigPanel
 
-    LaunchProfiles --> ProfileStore
-    LocalAgents --> DefStore
+    RunningPanel --> ContextsStore
+    ConfigPanel --> RunConfigStore
+    ConfigPanel --> AgentForm
 
-    ProfileStore --> RunStore
-    RunStore --> ContextStore
+    RunConfigStore --> ContextsStore
+    ContextsStore --> RunStore
     RunStore --> WS
-
-    DefStore --> GraphQL
     RunStore --> GraphQL
+    DefStore --> GraphQL
 ```
-
-## View Modes
-
-The agents page uses URL query parameters for navigation:
-
-| View              | Component            | Description                          |
-| ----------------- | -------------------- | ------------------------------------ |
-| `launch-profiles` | LaunchProfileManager | Manage saved agent+workspace configs |
-| `list`            | AgentList            | Browse agent definitions             |
-| `create`          | AgentCreate          | Create new agent definition          |
-| `detail`          | AgentDetail          | View agent details                   |
-| `edit`            | AgentEdit            | Edit agent definition                |
-| `team-list`       | AgentTeamList        | Browse agent teams                   |
-| `team-create`     | AgentTeamCreate      | Create new team                      |
-| `team-detail`     | AgentTeamDetail      | View team details                    |
-| `team-edit`       | AgentTeamEdit        | Edit team definition                 |
 
 ## Data Models
 
@@ -130,22 +120,39 @@ interface AgentDefinition {
   toolInvocationPreprocessorNames: string[];
   lifecycleProcessorNames: string[];
   skillNames: string[];
-  systemPromptCategory?: string;
-  systemPromptName?: string;
   prompts?: Prompt[];
 }
 ```
 
-### AgentLaunchProfile
+### AgentRunConfig
+
+Ephemeral configuration for running an agent instance:
 
 ```typescript
-interface AgentLaunchProfile {
-  id: string;
+interface AgentRunConfig {
+  agentDefinitionId: string;
+  agentDefinitionName: string;
+  llmModelIdentifier: string;
   workspaceId: string | null;
-  agentDefinition: AgentDefinition;
-  name: string; // e.g., "Code Assistant @ my-project"
-  createdAt: string;
-  workspaceConfig: any; // Saved workspace configuration
+  autoExecuteTools: boolean;
+  isLocked: boolean; // True once execution starts
+}
+```
+
+### AgentContext
+
+Runtime state for a running agent instance:
+
+```typescript
+interface AgentContext {
+  config: AgentRunConfig;
+  state: AgentRunState;
+}
+
+interface AgentRunState {
+  agentId: string;
+  currentStreamState: string | null;
+  conversationHistory: ConversationEntry[];
 }
 ```
 
@@ -155,16 +162,6 @@ interface AgentLaunchProfile {
 
 Manages agent definition CRUD operations:
 
-```typescript
-interface AgentDefinitionState {
-  agentDefinitions: AgentDefinition[];
-  loading: boolean;
-  error: any;
-}
-```
-
-**Actions:**
-
 | Action                         | Description                        |
 | ------------------------------ | ---------------------------------- |
 | `fetchAllAgentDefinitions()`   | Load all definitions (cache-first) |
@@ -173,171 +170,124 @@ interface AgentDefinitionState {
 | `updateAgentDefinition(input)` | Update existing agent              |
 | `deleteAgentDefinition(id)`    | Delete agent definition            |
 
-### agentLaunchProfileStore.ts
+### agentRunConfigStore.ts
 
-Manages launch profiles with localStorage persistence:
+Manages the **ephemeral template** for configuring a new agent run:
 
-```typescript
-interface AgentLaunchProfileState {
-  activeLaunchProfiles: Record<string, AgentLaunchProfile>;
-  inactiveLaunchProfiles: Record<string, AgentLaunchProfile>;
-}
-```
+| Action                         | Description                             |
+| ------------------------------ | --------------------------------------- |
+| `setTemplate(agentDef)`        | Initialize config from agent definition |
+| `updateAgentConfig(updates)`   | Update config fields                    |
+| `setWorkspaceLoaded(id, path)` | Set loaded workspace ID and path        |
+| `clearConfig()`                | Clear the configuration buffer          |
 
-**Key Concepts:**
+| Getter         | Description                           |
+| -------------- | ------------------------------------- |
+| `hasConfig`    | Whether a config template is active   |
+| `isConfigured` | Whether LLM model is selected (ready) |
 
-- **Active profiles**: Workspace exists and is connected
-- **Inactive profiles**: Original workspace was deleted (can be reactivated)
-- Profiles persist to `localStorage` for cross-session continuity
+### agentContextsStore.ts
 
-**Actions:**
+Manages **running agent instances**:
 
-| Action                                     | Description                                      |
-| ------------------------------------------ | ------------------------------------------------ |
-| `createLaunchProfile(...)`                 | Create new profile with agent + workspace        |
-| `deleteLaunchProfile(id)`                  | Remove profile                                   |
-| `activateByCreatingWorkspace(id)`          | Restore inactive profile by recreating workspace |
-| `activateByAttachingToWorkspace(id, wsId)` | Attach inactive profile to existing workspace    |
-| `setActiveLaunchProfile(id)`               | Select profile for agent run                     |
+| Action                           | Description                                |
+| -------------------------------- | ------------------------------------------ |
+| `createInstanceFromTemplate()`   | Create instance from `agentRunConfigStore` |
+| `removeInstance(id)`             | Remove agent instance                      |
+| `lockConfig(id)`                 | Lock config after first message            |
+| `promoteTemporaryId(temp, perm)` | Replace temp ID with server ID             |
+
+| Getter                  | Description                 |
+| ----------------------- | --------------------------- |
+| `activeInstance`        | Currently selected instance |
+| `instancesByDefinition` | Grouped by agent definition |
 
 ### agentRunStore.ts
 
 Handles agent execution and real-time communication:
 
-**Actions:**
-
-| Action                              | Description                                    |
-| ----------------------------------- | ---------------------------------------------- |
-| `sendUserInputAndSubscribe()`       | Send input to agent and connect WebSocket stream |
-| `connectToAgentStream(agentId)`     | Open WebSocket stream for events               |
-| `postToolExecutionApproval(...)`    | Approve/reject tool invocation (WebSocket)     |
-| `closeAgent(agentId, options)`      | Close agent tab, optionally terminate instance |
-| `ensureAgentForLaunchProfile(id)`   | Create or attach agent context for profile     |
-
-## GraphQL API
-
-### Agent Definition Queries
-
-```graphql
-query GetAgentDefinitions {
-  agentDefinitions {
-    id, name, role, description
-    toolNames, inputProcessorNames, llmResponseProcessorNames
-    systemPromptProcessorNames, toolExecutionResultProcessorNames
-    toolInvocationPreprocessorNames, lifecycleProcessorNames
-    systemPromptCategory, systemPromptName
-    prompts { id, name, category, ... }
-  }
-}
-```
-
-### Agent Definition Mutations
-
-```graphql
-mutation CreateAgentDefinition($input: CreateAgentDefinitionInput!) {
-  createAgentDefinition(input: $input) { id, name, ... }
-}
-
-mutation UpdateAgentDefinition($input: UpdateAgentDefinitionInput!) {
-  updateAgentDefinition(input: $input) { id, name, ... }
-}
-
-mutation DeleteAgentDefinition($id: String!) {
-  deleteAgentDefinition(id: $id) { success, message }
-}
-```
-
-### Agent Runtime Mutations
-
-```graphql
-mutation SendAgentUserInput($input: SendAgentUserInputInput!) {
-  sendAgentUserInput(input: $input) {
-    success
-    message
-    agentId
-  }
-}
-
-mutation TerminateAgentInstance($id: String!) {
-  terminateAgentInstance(id: $id) {
-    success
-    message
-  }
-}
-
-mutation ApproveToolInvocation($input: ApproveToolInvocationInput!) {
-  approveToolInvocation(input: $input) {
-    success
-    message
-  }
-}
-```
-
-### Streaming (WebSocket)
-
-Agent events stream over WebSocket via `AgentStreamingService`. GraphQL subscriptions
-are no longer used for agent output streaming.
+| Action                           | Description                                |
+| -------------------------------- | ------------------------------------------ |
+| `sendUserInputAndSubscribe()`    | Send input and connect WebSocket stream    |
+| `connectToAgentStream(agentId)`  | Open WebSocket stream for events           |
+| `postToolExecutionApproval(...)` | Approve/reject tool invocation             |
+| `closeAgent(agentId, options)`   | Close agent, optionally terminate instance |
 
 ## User Flows
 
-### Create Agent Definition
+### Run Agent from Agent List
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant AgentCreate
-    participant AgentDefinitionForm
-    participant Store as agentDefinitionStore
-    participant Backend
+    participant AgentList
+    participant RunConfigStore as agentRunConfigStore
+    participant WorkspacePage
+    participant ConfigPanel
+    participant ContextsStore as agentContextsStore
 
-    User->>AgentCreate: Navigate to create view
-    AgentCreate->>AgentDefinitionForm: Render form
-    User->>AgentDefinitionForm: Fill name, role, tools, prompt
-    User->>AgentDefinitionForm: Click "Create"
-    AgentDefinitionForm->>Store: createAgentDefinition(input)
-    Store->>Backend: CreateAgentDefinition mutation
-    Backend-->>Store: New agent definition
-    Store-->>AgentCreate: Success
-    AgentCreate->>User: Navigate to agent list
+    User->>AgentList: Click "Run Agent"
+    AgentList->>RunConfigStore: prepareAgentRun(agentDef)
+    Note over RunConfigStore: Clears team config, sets agent template
+    AgentList->>WorkspacePage: Navigate to /workspace
+
+    WorkspacePage->>ConfigPanel: Show AgentRunConfigForm
+    User->>ConfigPanel: Select LLM model, enter workspace path
+    ConfigPanel->>RunConfigStore: updateAgentConfig(updates)
+
+    User->>ConfigPanel: Click "Run Agent"
+    ConfigPanel->>ContextsStore: createInstanceFromTemplate()
+    Note over ContextsStore: Creates new AgentContext with config copy
 ```
 
-### Run Agent with Launch Profile
+### Send Message to Agent
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant ProfileList as LaunchProfileManager
-    participant ProfileStore as agentLaunchProfileStore
+    participant ChatInput
     participant RunStore as agentRunStore
+    participant ContextsStore as agentContextsStore
     participant Backend
 
-    User->>ProfileList: Select launch profile
-    ProfileList->>ProfileStore: setActiveLaunchProfile(id)
-    ProfileStore->>RunStore: ensureAgentForLaunchProfile(id)
-    RunStore->>RunStore: Create agent context
-
-    User->>ProfileList: Enter message, click Send
-    ProfileList->>RunStore: sendUserInputAndSubscribe()
+    User->>ChatInput: Type message, press Send
+    ChatInput->>RunStore: sendUserInputAndSubscribe(config, input)
     RunStore->>Backend: SendAgentUserInput mutation
     Backend-->>RunStore: agentId
+    RunStore->>ContextsStore: promoteTemporaryId(temp, agentId)
+    RunStore->>ContextsStore: lockConfig(agentId)
     RunStore->>Backend: Connect to WebSocket stream
 
     loop Real-time Events
         Backend-->>RunStore: Streaming response chunks (WebSocket)
-        RunStore-->>User: Display in conversation
+        RunStore-->>ContextsStore: Update conversation history
+        ContextsStore-->>User: Display in conversation
     end
 ```
 
-### Reactivate Inactive Profile
+## useRunActions Composable
 
-When a workspace is deleted but the profile remains:
+Centralized logic for starting agent or team runs:
 
-1. User clicks on inactive profile
-2. ReactivateAgentProfileDialog appears
-3. User chooses:
-   - **Recreate workspace**: Creates new workspace from saved config
-   - **Attach to existing**: Links profile to another workspace
-4. Profile moves from `inactiveLaunchProfiles` to `activeLaunchProfiles`
+```typescript
+export function useRunActions() {
+  const prepareAgentRun = (agentDef: AgentDefinition) => {
+    teamRunConfigStore.clearConfig(); // Clear team config
+    agentRunConfigStore.setTemplate(agentDef);
+    selectionStore.clearSelection();
+  };
+
+  const prepareTeamRun = (teamDef: AgentTeamDefinition) => {
+    agentRunConfigStore.clearConfig(); // Clear agent config
+    teamRunConfigStore.setTemplate(teamDef);
+    selectionStore.clearSelection();
+  };
+
+  return { prepareAgentRun, prepareTeamRun };
+}
+```
+
+This ensures **mutual exclusivity**: only one config (agent or team) is active at a time.
 
 ## Agent Definition Form
 

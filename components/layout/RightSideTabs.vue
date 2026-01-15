@@ -3,7 +3,7 @@
     <!-- Header with Tabs and Toggle -->
     <div class="flex items-center justify-between bg-white pt-2 pr-1 border-b border-gray-200">
       <TabList
-        class="flex-1"
+        class="flex-1 min-w-0"
         :tabs="visibleTabs"
         :selected-tab="activeTab"
         @select="handleTabSelect"
@@ -45,15 +45,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { useActiveContextStore } from '~/stores/activeContextStore';
 import { useAgentTodoStore } from '~/stores/agentTodoStore';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { useRightPanel } from '~/composables/useRightPanel';
 import { useRightSideTabs } from '~/composables/useRightSideTabs';
-import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
+import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 import { useAgentArtifactsStore } from '~/stores/agentArtifactsStore';
-import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useAgentActivityStore } from '~/stores/agentActivityStore';
 import TabList from '~/components/tabs/TabList.vue';
 import TeamOverviewPanel from '~/components/workspace/team/TeamOverviewPanel.vue';
@@ -64,11 +63,10 @@ import ArtifactsTab from '~/components/workspace/agent/ArtifactsTab.vue';
 import ProgressPanel from '~/components/progress/ProgressPanel.vue';
 import { useWorkspaceStore } from '~/stores/workspace';
 
-const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
+const selectionStore = useAgentSelectionStore();
 const activeContextStore = useActiveContextStore();
 const fileExplorerStore = useFileExplorerStore();
 const artifactsStore = useAgentArtifactsStore();
-const agentContextsStore = useAgentContextsStore();
 const todoStore = useAgentTodoStore();
 const activityStore = useAgentActivityStore();
 const workspaceStore = useWorkspaceStore();
@@ -83,7 +81,7 @@ const handleTabSelect = (tabName: string) => {
 };
 
 // Watch for changes in the selected profile type to adjust the active tab via the composable logic
-watch(() => selectedLaunchProfileStore.selectedProfileType, (newType) => {
+watch(() => selectionStore.selectedType, (newType) => {
   if (newType === 'team') {
     setActiveTab('teamMembers');
   } else if (newType === 'agent') {
@@ -102,15 +100,14 @@ watch(visibleTabs, (newVisibleTabs) => {
 // Watch the ToDo list for the active agent. If it becomes populated, switch to the To-Do tab.
 // Watch the ToDo list for the active agent. If it becomes populated, switch to the To-Do tab.
 watch(() => currentAgentId.value ? todoStore.getTodos(currentAgentId.value) : [], (newTodoList) => {
-  if (selectedLaunchProfileStore.selectedProfileType === 'agent' && newTodoList.length > 0 && activeTab.value !== 'progress') {
+  if (selectionStore.selectedType === 'agent' && newTodoList.length > 0 && activeTab.value !== 'progress') {
     setActiveTab('progress');
   }
 });
 
 // Auto-switch to Files tab when a file is opened
 watch(() => {
-    const wsId = activeContextStore.activeAgentContext?.workspaceId || (selectedLaunchProfileStore.selectedProfileType === 'team' ? workspaceStore.activeWorkspace?.workspaceId : null);
-    // Fallback to active workspace for main sidebar
+    const wsId = activeContextStore.activeConfig?.workspaceId || (selectionStore.selectedType === 'team' ? workspaceStore.activeWorkspace?.workspaceId : null);
     const targetId = wsId || workspaceStore.activeWorkspace?.workspaceId || '';
     if (!targetId) return [];
     return fileExplorerStore.getOpenFiles(targetId);
@@ -164,4 +161,3 @@ watch(highlightedActivityId, (newVal) => {
   height: 100%;
 }
 </style>
-

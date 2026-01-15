@@ -10,9 +10,11 @@ import type {
 import { TreeNode, convertJsonToTreeNode } from '~/utils/fileExplorer/TreeNode'
 import { createNodeIdToNodeDictionary, handleFileSystemChange as applyTreeChanges } from '~/utils/fileExplorer/fileUtils'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
-import { useAgentLaunchProfileStore } from '~/stores/agentLaunchProfileStore';
-import { useSelectedLaunchProfileStore } from '~/stores/selectedLaunchProfileStore';
+import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
+import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
+import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
+import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
 import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { FileExplorerStreamingService } from '~/services/fileExplorerStreaming/FileExplorerStreamingService'
 import { useRuntimeConfig } from '#app'
@@ -346,23 +348,25 @@ export const useWorkspaceStore = defineStore('workspace', {
 
   getters: {
     activeWorkspace(): WorkspaceInfo | null {
-      const selectedLaunchProfileStore = useSelectedLaunchProfileStore();
-      const agentProfileStore = useAgentLaunchProfileStore();
+      const selectionStore = useAgentSelectionStore();
+      const agentContextsStore = useAgentContextsStore();
       const teamContextsStore = useAgentTeamContextsStore();
-
-      const { selectedProfileId, selectedProfileType } = selectedLaunchProfileStore;
-      if (!selectedProfileId) return null;
+      const agentRunConfigStore = useAgentRunConfigStore();
+      const teamRunConfigStore = useTeamRunConfigStore();
 
       let workspaceId: string | null = null;
 
-      if (selectedProfileType === 'agent') {
-        const agentProfile = agentProfileStore.activeLaunchProfile;
-        workspaceId = agentProfile?.workspaceId || null;
-      } else if (selectedProfileType === 'team') {
-        const focusedMember = teamContextsStore.focusedMemberContext;
-        workspaceId = focusedMember?.config.workspaceId || null;
+      if (selectionStore.selectedType === 'agent') {
+        workspaceId = agentContextsStore.activeInstance?.config.workspaceId || null;
+      } else if (selectionStore.selectedType === 'team') {
+        workspaceId = teamContextsStore.activeTeamContext?.config.workspaceId || null;
+      } else {
+        workspaceId =
+          agentRunConfigStore.config?.workspaceId ||
+          teamRunConfigStore.config?.workspaceId ||
+          null;
       }
-      
+
       return workspaceId ? this.workspaces[workspaceId] : null;
     },
     

@@ -7,13 +7,6 @@
       </div>
       <nav class="flex-1 px-2 py-4 space-y-1">
         <button
-          @click="handleNavigation({ view: 'launch-profiles' })"
-          class="flex items-center w-full px-3 py-2 text-sm font-semibold rounded-md text-left transition-colors"
-          :class="currentView === 'launch-profiles' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-200'"
-        >
-          Launch Profiles
-        </button>
-        <button
           @click="handleNavigation({ view: 'list' })"
           class="flex items-center w-full px-3 py-2 text-sm font-semibold rounded-md text-left transition-colors"
           :class="isLocalAgentsActive ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-200'"
@@ -50,9 +43,6 @@
       <AgentDetail v-else-if="currentView === 'detail' && currentId" :agent-id="currentId" @navigate="handleNavigation" />
       <AgentEdit v-else-if="currentView === 'edit' && currentId" :agent-id="currentId" @navigate="handleNavigation" />
       
-      <!-- Launch Profile View -->
-      <LaunchProfileManager v-else-if="currentView === 'launch-profiles'" @navigate="handleNavigation" />
-
       <!-- Agent Team Views -->
       <AgentTeamList v-else-if="currentView === 'team-list'" @navigate="handleNavigation" />
       <AgentTeamCreate v-else-if="currentView === 'team-create'" @navigate="handleNavigation" />
@@ -63,7 +53,7 @@
       <div v-else class="p-8">
         <h1 class="text-xl font-bold">Invalid View</h1>
         <p>The requested view is not available.</p>
-        <button @click="handleNavigation({ view: 'launch-profiles' })" class="mt-4 text-indigo-600 hover:underline">Go to Launch Profiles</button>
+        <button @click="handleNavigation({ view: 'list' })" class="mt-4 text-indigo-600 hover:underline">Go to Agents</button>
       </div>
     </main>
   </div>
@@ -75,7 +65,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
 import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
-import LaunchProfileManager from '~/components/launchProfiles/LaunchProfileManager.vue';
 // Local Agent Components
 import AgentList from '~/components/agents/AgentList.vue';
 import AgentDetail from '~/components/agents/AgentDetail.vue';
@@ -115,20 +104,18 @@ onMounted(async () => {
 
 type View = 
   'list' | 'detail' | 'create' | 'edit' | 
-  'launch-profiles' | 
   'team-list' | 'team-detail' | 'team-create' | 'team-edit';
 
 const currentView = computed((): View => {
   const view = route.query.view as View;
   const validViews: View[] = [
     'list', 'detail', 'create', 'edit',
-    'launch-profiles',
     'team-list', 'team-detail', 'team-create', 'team-edit'
   ];
   if (view && validViews.includes(view)) {
     return view;
   }
-  return 'launch-profiles'; // Default view
+  return 'list'; // Default view
 });
 
 const currentId = computed(() => route.query.id as string | undefined);

@@ -144,20 +144,19 @@ const layoutStore = useWorkspaceLeftPanelLayoutStore();
 const { panels } = storeToRefs(layoutStore);
 const workspaceStore = useWorkspaceStore();
 const route = useRoute();
-const router = useRouter();
 
-const isProfilePanelOpen = computed(() => panels.value.launchProfile.isOpen);
+const isRunningPanelOpen = computed(() => panels.value.running.isOpen);
 const isFileExplorerOpen = computed(() => panels.value.fileExplorer.isOpen);
-const activeLaunchProfileHasWorkspace = computed(() => !!workspaceStore.activeWorkspace);
+const hasActiveWorkspace = computed(() => !!workspaceStore.activeWorkspace);
 
-const effectiveFileExplorerOpen = computed(() => !activeLaunchProfileHasWorkspace.value || isFileExplorerOpen.value);
+const effectiveFileExplorerOpen = computed(() => !hasActiveWorkspace.value || isFileExplorerOpen.value);
 
 const workspaceIconState = computed(() => {
   if (route.path !== '/workspace') {
     return 'DEFAULT_ICON';
   }
 
-  const profileOpen = isProfilePanelOpen.value;
+  const profileOpen = isRunningPanelOpen.value;
   const explorerOpen = effectiveFileExplorerOpen.value;
 
   if (profileOpen && explorerOpen) {
@@ -177,7 +176,7 @@ const workspaceTooltip = computed(() => {
   switch(workspaceIconState.value) {
     case 'UNCOLLAPSE_MANY': return 'Show panels';
     case 'UNCOLLAPSE_ONE':
-      if (!isProfilePanelOpen.value) return 'Show Profiles';
+      if (!isRunningPanelOpen.value) return 'Show Running';
       if (!effectiveFileExplorerOpen.value) return 'Show Explorer';
       return 'Workspace';
     default: return 'Workspace';
@@ -193,7 +192,7 @@ function handleWorkspaceClick(event: MouseEvent) {
   // If on workspace page, prevent navigation and handle panel toggling
   event.preventDefault();
 
-  const profileOpen = isProfilePanelOpen.value;
+  const profileOpen = isRunningPanelOpen.value;
   const explorerOpen = effectiveFileExplorerOpen.value;
   
   // If both are open, do nothing (matching original disabled logo behavior)
@@ -207,7 +206,7 @@ function handleWorkspaceClick(event: MouseEvent) {
   } 
   // If only one is collapsed, open that one.
   else if (!profileOpen) {
-    layoutStore.openPanel('launchProfile');
+    layoutStore.openPanel('running');
   } else if (!explorerOpen) {
     layoutStore.openPanel('fileExplorer');
   }
