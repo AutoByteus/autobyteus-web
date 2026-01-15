@@ -2,7 +2,7 @@
   <div>
     <!-- Team Instance Header -->
     <div 
-      class="flex items-center justify-between py-1.5 px-2 rounded cursor-pointer group transition-colors"
+      class="flex items-center justify-between py-1.5 pl-2 pr-2 rounded cursor-pointer group transition-colors"
       :class="isSelected 
         ? 'bg-indigo-50 text-indigo-900' 
         : 'hover:bg-gray-50 text-gray-600'"

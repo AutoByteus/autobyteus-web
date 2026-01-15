@@ -2,13 +2,13 @@
   <div class="py-1">
     <!-- Header -->
     <div 
-        class="group-header flex items-center justify-between px-0 py-1.5 hover:bg-gray-50 cursor-pointer select-none"
+        class="group-header flex items-center justify-between pl-1 pr-2 py-1.5 hover:bg-gray-50 cursor-pointer select-none"
         @click="toggleExpand"
     >
         <div class="flex items-center text-sm text-gray-700">
             <!-- Chevron -->
             <span 
-                class="mr-1.5 ml-1 transition-transform duration-200 flex items-center text-gray-400"
+                class="mr-1.5 transition-transform duration-200 flex items-center text-gray-400"
                 :class="isExpanded ? 'rotate-90' : ''"
             >
                 <span class="i-heroicons-chevron-right-20-solid w-3.5 h-3.5"></span>
@@ -28,7 +28,7 @@
     </div>
 
     <!-- Body - Instances -->
-    <div v-if="isExpanded">
+    <div v-if="isExpanded" class="ml-2">
         <RunningTeamRow
             v-for="instance in instances"
             :key="instance.teamId"

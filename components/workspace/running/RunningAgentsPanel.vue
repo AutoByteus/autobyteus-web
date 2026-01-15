@@ -7,8 +7,7 @@
 
       <!-- AGENTS Section -->
       <div v-if="agentGroups.length > 0">
-        <div class="flex items-center px-0 py-2 bg-gray-50/50 border-b border-gray-100">
-          <span class="i-heroicons-cpu-chip-20-solid w-4 h-4 mr-1.5 ml-1 text-indigo-500"></span>
+        <div class="flex items-center pl-3 py-2 bg-gray-50/50 border-b border-gray-100">
           <span class="text-sm font-medium text-indigo-900">Agents</span>
         </div>
         <div>
@@ -32,8 +31,7 @@
 
       <!-- TEAMS Section -->
       <div v-if="teamGroups.length > 0">
-        <div class="flex items-center px-0 py-2 bg-gray-50/50 border-b border-gray-100">
-          <span class="i-heroicons-user-group-20-solid w-4 h-4 mr-1.5 ml-1 text-indigo-500"></span>
+        <div class="flex items-center pl-3 py-2 bg-gray-50/50 border-b border-gray-100">
           <span class="text-sm font-medium text-indigo-900">Teams</span>
         </div>
         <div>
