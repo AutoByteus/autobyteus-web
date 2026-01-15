@@ -82,7 +82,7 @@ describe('AgentRunConfigForm', () => {
     const options = selectStub.props('options');
     
     expect(options).toHaveLength(1);
-    expect(options[0].items[0].name).toBe('GPT-4');
+    expect(options[0].items[0].name).toBe('gpt-4'); // Now displays modelIdentifier for disambiguation
   });
 
   it('disables fields when config is locked', () => {

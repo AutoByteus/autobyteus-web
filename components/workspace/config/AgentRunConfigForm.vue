@@ -100,7 +100,7 @@ const groupedModelOptions = computed<GroupedOption[]>(() => {
         label: provider.provider,
         items: provider.models.map(model => ({
             id: model.modelIdentifier,
-            name: model.name
+            name: model.modelIdentifier  // Use identifier for display to disambiguate multiple hosts
         }))
     }));
 });
