@@ -47,7 +47,7 @@ describe('TeamRunConfigForm', () => {
             },
             global: {
                 stubs: {
-                    WorkspacePathInput: true,
+                    WorkspaceSelector: true,
                     SearchableGroupedSelect: true,
                     MemberOverrideItem: {
                         name: 'MemberOverrideItem',
@@ -86,7 +86,7 @@ describe('TeamRunConfigForm', () => {
             },
             global: {
                 stubs: { 
-                    WorkspacePathInput: true,
+                    WorkspaceSelector: true,
                     SearchableGroupedSelect: {
                         name: 'SearchableGroupedSelect',
                         template: '<div class="searchable-select-stub"></div>',
@@ -111,7 +111,7 @@ describe('TeamRunConfigForm', () => {
                 workspaceLoadingState: { isLoading: false, error: null, loadedPath: null }
             },
             global: {
-                stubs: { WorkspacePathInput: true }
+                stubs: { WorkspaceSelector: true }
             }
         });
 

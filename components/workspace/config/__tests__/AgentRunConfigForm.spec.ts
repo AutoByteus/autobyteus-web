@@ -5,10 +5,12 @@ import AgentRunConfigForm from '../AgentRunConfigForm.vue';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 
 // Mock child components
-vi.mock('../WorkspacePathInput.vue', () => ({
+vi.mock('../WorkspaceSelector.vue', () => ({
   default: {
-    template: '<input class="workspace-input-stub" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" :disabled="disabled" />',
-    props: ['modelValue', 'disabled', 'isLoading', 'error', 'isLoaded'],
+    name: 'WorkspaceSelector',
+    template: '<div class="workspace-selector-stub"></div>',
+    props: ['workspaceId', 'isLoading', 'error', 'disabled'],
+    emits: ['select-existing', 'load-new'],
   }
 }));
 
@@ -54,7 +56,7 @@ describe('AgentRunConfigForm', () => {
 
     expect(wrapper.text()).toContain('TestAgent'); // Agent name displayed
     expect(wrapper.find('.searchable-select-stub').exists()).toBe(true); // Model selector
-    expect(wrapper.find('.workspace-input-stub').exists()).toBe(true); // Workspace input
+    expect(wrapper.find('.workspace-selector-stub').exists()).toBe(true); // Workspace selector
   });
 
   it('populates model options from store', async () => {
@@ -94,13 +96,10 @@ describe('AgentRunConfigForm', () => {
       },
     });
 
-    const selectStub = wrapper.findComponent({ name: 'SearchableGroupedSelect' }) // or find by class
-                       || wrapper.find('.searchable-select-stub');
-    const input = wrapper.find('.workspace-input-stub');
     const checkbox = wrapper.find('input[type="checkbox"]');
 
     expect(wrapper.findComponent({ name: 'SearchableGroupedSelect' }).props('disabled')).toBe(true);
-    expect(input.attributes('disabled')).toBeDefined();
+    expect(wrapper.findComponent({ name: 'WorkspaceSelector' }).props('disabled')).toBe(true);
     expect(checkbox.attributes('disabled')).toBeDefined();
   });
 

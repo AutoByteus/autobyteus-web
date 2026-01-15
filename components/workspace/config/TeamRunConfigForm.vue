@@ -22,14 +22,14 @@
         <p class="mt-1 text-xs text-gray-500">This model will be used by all members unless overridden.</p>
     </div>
 
-    <!-- Workspace Config -->
-    <WorkspacePathInput
-        :model-value="currentPath" 
-        @update:modelValue="handleWorkspacePathUpdate"
+    <!-- Workspace Selector -->
+    <WorkspaceSelector
+        :workspace-id="config.workspaceId"
         :is-loading="workspaceLoadingState.isLoading"
         :error="workspaceLoadingState.error"
-        :is-loaded="!!workspaceLoadingState.loadedPath"
         :disabled="config.isLocked"
+        @select-existing="handleSelectExisting"
+        @load-new="handleLoadNew"
     />
     
     <!-- Auto Execute -->
@@ -87,11 +87,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import type { TeamRunConfig, MemberConfigOverride } from '~/types/agent/TeamRunConfig';
 import type { AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
-import WorkspacePathInput from './WorkspacePathInput.vue';
+import WorkspaceSelector from './WorkspaceSelector.vue';
 import MemberOverrideItem from './MemberOverrideItem.vue';
 import SearchableGroupedSelect, { type GroupedOption } from '~/components/agentTeams/SearchableGroupedSelect.vue';
 
@@ -109,22 +109,16 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:workspacePath', path: string): void;
+  (e: 'select-existing', workspaceId: string): void;
+  (e: 'load-new', path: string): void;
 }>();
 
 const llmStore = useLLMProviderConfigStore();
-const currentPath = ref(props.initialPath || '');
 const overridesExpanded = ref(true);
 
 const overrideCount = computed(() => 
   Object.keys(props.config.memberOverrides || {}).length
 );
-
-watch(() => props.workspaceLoadingState.loadedPath, (newPath) => {
-    if (newPath) {
-        currentPath.value = newPath;
-    }
-});
 
 onMounted(() => {
   if (llmStore.providersWithModels.length === 0) {
@@ -150,9 +144,12 @@ const updateAutoExecute = (checked: boolean) => {
     props.config.autoExecuteTools = checked;
 };
 
-const handleWorkspacePathUpdate = (path: string) => {
-    currentPath.value = path;
-    emit('update:workspacePath', path);
+const handleSelectExisting = (workspaceId: string) => {
+    emit('select-existing', workspaceId);
+};
+
+const handleLoadNew = (path: string) => {
+    emit('load-new', path);
 };
 
 const handleOverrideUpdate = (memberName: string, override: MemberConfigOverride | null) => {

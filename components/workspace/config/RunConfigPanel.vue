@@ -16,7 +16,8 @@
            :agent-definition="activeAgentDefinition"
            :workspace-loading-state="effectiveWorkspaceLoadingState"
            :initial-path="initialWorkspacePath"
-           @update:workspacePath="handleWorkspacePathUpdate"
+           @select-existing="handleSelectExisting"
+           @load-new="handleLoadNew"
         />
 
         <!-- Team Form -->
@@ -26,7 +27,8 @@
            :team-definition="activeTeamDefinition"
            :workspace-loading-state="effectiveWorkspaceLoadingState"
            :initial-path="initialWorkspacePath"
-           @update:workspacePath="handleWorkspacePathUpdate"
+           @select-existing="handleSelectExisting"
+           @load-new="handleLoadNew"
         />
 
         <div v-else class="text-center text-red-500 mt-4">
@@ -164,7 +166,19 @@ const initialWorkspacePath = computed(() => {
 });
 
 // Handlers
-const handleWorkspacePathUpdate = async (path: string) => {
+const handleSelectExisting = (workspaceId: string) => {
+    if (isSelectionMode.value) return;
+
+    if (effectiveTeamConfig.value) {
+        teamRunConfigStore.updateConfig({ workspaceId });
+        setActiveTab('files');
+    } else if (effectiveAgentConfig.value) {
+        runConfigStore.updateAgentConfig({ workspaceId });
+        setActiveTab('files');
+    }
+};
+
+const handleLoadNew = async (path: string) => {
     if (isSelectionMode.value) return;
 
     if (effectiveTeamConfig.value) {

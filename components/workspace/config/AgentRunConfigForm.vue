@@ -21,14 +21,14 @@
         />
     </div>
 
-    <!-- Workspace Config -->
-    <WorkspacePathInput
-        :model-value="currentPath" 
-        @update:modelValue="handleWorkspacePathUpdate"
+    <!-- Workspace Selector -->
+    <WorkspaceSelector
+        :workspace-id="config.workspaceId"
         :is-loading="workspaceLoadingState.isLoading"
         :error="workspaceLoadingState.error"
-        :is-loaded="!!workspaceLoadingState.loadedPath"
         :disabled="config.isLocked"
+        @select-existing="handleSelectExisting"
+        @load-new="handleLoadNew"
     />
     
     <!-- Auto Execute -->
@@ -54,11 +54,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue';
+import { onMounted, computed } from 'vue';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import type { AgentDefinition } from '~/stores/agentDefinitionStore';
-import WorkspacePathInput from './WorkspacePathInput.vue';
+import WorkspaceSelector from './WorkspaceSelector.vue';
 import SearchableGroupedSelect, { type GroupedOption } from '~/components/agentTeams/SearchableGroupedSelect.vue';
 
 interface WorkspaceLoadingState {
@@ -68,26 +68,18 @@ interface WorkspaceLoadingState {
 }
 
 const props = defineProps<{
-  config: AgentRunConfig | any; // Use any to allow partials in tests/flexibility
+  config: AgentRunConfig | any;
   agentDefinition: AgentDefinition;
   workspaceLoadingState: WorkspaceLoadingState;
   initialPath?: string;
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:workspacePath', path: string): void;
-  // We manipulate the config object directly (reactive prop) or could emit specific field updates
+  (e: 'select-existing', workspaceId: string): void;
+  (e: 'load-new', path: string): void;
 }>();
 
 const llmStore = useLLMProviderConfigStore();
-const currentPath = ref(props.initialPath || '');
-
-// Sync local path with loaded path from store if available
-watch(() => props.workspaceLoadingState.loadedPath, (newPath) => {
-    if (newPath) {
-        currentPath.value = newPath;
-    }
-});
 
 onMounted(() => {
   if (llmStore.providersWithModels.length === 0) {
@@ -100,7 +92,7 @@ const groupedModelOptions = computed<GroupedOption[]>(() => {
         label: provider.provider,
         items: provider.models.map(model => ({
             id: model.modelIdentifier,
-            name: model.modelIdentifier  // Use identifier for display to disambiguate multiple hosts
+            name: model.modelIdentifier
         }))
     }));
 });
@@ -113,8 +105,11 @@ const updateAutoExecute = (checked: boolean) => {
     props.config.autoExecuteTools = checked;
 };
 
-const handleWorkspacePathUpdate = (path: string) => {
-    currentPath.value = path;
-    emit('update:workspacePath', path);
+const handleSelectExisting = (workspaceId: string) => {
+    emit('select-existing', workspaceId);
+};
+
+const handleLoadNew = (path: string) => {
+    emit('load-new', path);
 };
 </script>
