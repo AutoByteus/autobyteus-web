@@ -567,8 +567,8 @@ const cancelDelete = () => {
 
 const confirmDelete = async () => {
   if (promptToDelete.value) {
-    await promptStore.deletePrompt(promptToDelete.value);
-    if (deleteResult.value) {
+    const result = await promptStore.deletePrompt(promptToDelete.value);
+    if (result) {
       if (deleteNotificationTimer) clearTimeout(deleteNotificationTimer);
       deleteNotificationTimer = window.setTimeout(() => promptStore.clearDeleteResult(), 5000);
     }
