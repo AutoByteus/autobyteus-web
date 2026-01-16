@@ -5,12 +5,12 @@
       <p class="text-sm text-gray-600 mt-1 h-10 line-clamp-2">{{ teamDef.description }}</p>
 
       <div class="mt-4">
-        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Role</p>
+        <p class="text-xs font-bold text-gray-500 tracking-wider">Role</p>
         <p class="text-sm text-gray-700 font-medium">{{ teamDef.role || 'Not specified' }}</p>
       </div>
 
       <div class="mt-4">
-        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Members</p>
+        <p class="text-xs font-bold text-gray-500 tracking-wider mb-2">Members</p>
         <div class="flex items-center">
           <div class="flex -space-x-2">
             <div v-for="node in teamDef.nodes.slice(0, 5)" :key="node.memberName"
