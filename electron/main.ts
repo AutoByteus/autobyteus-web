@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell, protocol, net } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, protocol, net, dialog } from 'electron'
 import * as path from 'path'
 import isDev from 'electron-is-dev'
 import { serverManager } from './server/serverManagerFactory'
@@ -308,6 +308,22 @@ ipcMain.handle('read-local-text-file', async (event, filePath: string) => {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error reading file'
     };
+  }
+});
+
+// IPC handler for showing native folder picker dialog
+ipcMain.handle('show-folder-dialog', async () => {
+  try {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory']
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return { canceled: true, path: null };
+    }
+    return { canceled: false, path: result.filePaths[0] };
+  } catch (error) {
+    logger.error('Failed to show folder dialog:', error);
+    return { canceled: true, path: null, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 });
 

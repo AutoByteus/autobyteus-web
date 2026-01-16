@@ -13,6 +13,8 @@ import type {
   DeleteAgentTeamDefinitionMutationVariables,
   TeamMemberInput,
 } from '~/generated/graphql';
+import { useServerStore } from '~/stores/serverStore';
+import { ServerStatus } from '~/types/serverStatus';
 
 // Re-exporting this for use in forms
 export type { TeamMemberInput };
@@ -60,6 +62,21 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
 
   async function fetchAllAgentTeamDefinitions() {
     if (agentTeamDefinitions.value.length > 0) return;
+
+    const serverStore = useServerStore();
+    
+    // Wait for server to be ready before fetching (Electron only)
+    if (serverStore.isElectron && serverStore.status !== ServerStatus.RUNNING) {
+      await new Promise<void>((resolve) => {
+        const checkInterval = setInterval(() => {
+          if (serverStore.status === ServerStatus.RUNNING || serverStore.status === ServerStatus.ERROR) {
+            clearInterval(checkInterval);
+            resolve();
+          }
+        }, 500);
+      });
+    }
+
     loading.value = true;
     error.value = null;
     try {

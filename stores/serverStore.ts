@@ -44,20 +44,20 @@ export const useServerStore = defineStore('server', {
         return 'The server is starting up. This may take a moment...'
       }
       if (!state.errorMessage) {
-        return 'Failed to start the application server.'
+        return 'Failed to start the Agent Server.'
       }
       if (state.errorMessage.includes('ECONNREFUSED') || state.errorMessage.includes('connect')) {
-        return 'Could not connect to the application services. Please try again or contact support.'
+        return 'Could not connect to the Agent Server. Please try again or contact support.'
       }
       if (state.errorMessage.includes('timeout')) {
-        return 'Connection to the application server timed out. Please try again or contact support.'
+        return 'Connection to the Agent Server timed out. Please try again or contact support.'
       }
       return state.errorMessage
     },
     
     connectionMessage: (state): string => {
       if (state.status === ServerStatus.STARTING) {
-        return 'Connecting to application server...'
+        return 'Connecting to Agent Server...'
       } else if (state.status === ServerStatus.ERROR) {
         return state.errorMessage || 'Error connecting to server'
       } else {
@@ -119,10 +119,10 @@ export const useServerStore = defineStore('server', {
             this.updateServerStatus(serverStatus)
           })
           .catch((error) => {
-            console.error('serverStore: Failed to get application status:', error)
+            console.error('serverStore: Failed to get Agent Server status:', error)
             if (!this.isInitialStartup) {
               this.status = ServerStatus.ERROR
-              this.errorMessage = 'Failed to connect to the application services'
+              this.errorMessage = 'Failed to connect to the Agent Server'
             }
           })
       } else {
@@ -264,7 +264,7 @@ export const useServerStore = defineStore('server', {
         // The onServerStatus listener will catch the final RUNNING or ERROR state.
         await window.electronAPI.restartServer()
       } catch (error) {
-        console.error('serverStore: Failed to trigger application services restart:', error)
+        console.error('serverStore: Failed to trigger Agent Server restart:', error)
         this.status = ServerStatus.ERROR
         this.errorMessage = 'Failed to restart the application'
       }

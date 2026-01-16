@@ -45,6 +45,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   clearAppCache: () => ipcRenderer.invoke('clear-app-cache'),
   resetServerData: () => ipcRenderer.invoke('reset-server-data'),
 
+  // Method for showing native folder picker dialog
+  showFolderDialog: () => ipcRenderer.invoke('show-folder-dialog'),
+
   // Method for getting file path from a dropped file object
   // In sandboxed renderers, `file.path` is removed. This is the secure way to get the real path.
   getPathForFile: (file: File) => webUtils.getPathForFile(file),

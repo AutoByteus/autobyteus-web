@@ -4,6 +4,8 @@ import { useApolloClient } from '@vue/apollo-composable';
 import { GetAgentDefinitions } from '~/graphql/queries/agentDefinitionQueries';
 import { CreateAgentDefinition, UpdateAgentDefinition, DeleteAgentDefinition } from '~/graphql/mutations/agentDefinitionMutations';
 import type { GetAgentDefinitionsQuery } from '~/generated/graphql';
+import { useServerStore } from '~/stores/serverStore';
+import { ServerStatus } from '~/types/serverStatus';
 
 // This interface should match the GraphQL AgentDefinition type
 export interface AgentDefinition {
@@ -88,6 +90,21 @@ export const useAgentDefinitionStore = defineStore('agentDefinition', () => {
   // Fetch all agent definitions (cache-first)
   async function fetchAllAgentDefinitions() {
     if (agentDefinitions.value.length > 0) return; // Already fetched, rely on cache for updates.
+
+    const serverStore = useServerStore();
+    
+    // Wait for server to be ready before fetching (Electron only)
+    if (serverStore.isElectron && serverStore.status !== ServerStatus.RUNNING) {
+      await new Promise<void>((resolve) => {
+        const checkInterval = setInterval(() => {
+          if (serverStore.status === ServerStatus.RUNNING || serverStore.status === ServerStatus.ERROR) {
+            clearInterval(checkInterval);
+            resolve();
+          }
+        }, 500);
+      });
+    }
+
     loading.value = true;
     error.value = null;
     try {
