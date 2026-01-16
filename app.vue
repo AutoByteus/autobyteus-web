@@ -6,7 +6,7 @@
       <ServerShutdown />
     </template>
     
-    <UiErrorPanel />
+    <UiErrorPanel v-if="config.public.showDebugErrorPanel" />
 
     <NuxtLayout>
       <NuxtPage />
@@ -20,6 +20,7 @@ import ServerLoading from '~/components/server/ServerLoading.vue'
 import ServerShutdown from '~/components/server/ServerShutdown.vue'
 import UiErrorPanel from '~/components/ui/UiErrorPanel.vue'
 
+const config = useRuntimeConfig()
 const serverStore = useServerStore()
 </script>
 

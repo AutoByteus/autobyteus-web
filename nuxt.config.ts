@@ -137,6 +137,7 @@ const baseConfig = {
       terminalWsEndpoint: serverUrls.terminalWsEndpoint,
       fileExplorerWsEndpoint: serverUrls.fileExplorerWsEndpoint,
       googleSpeechApiKey: process.env.GOOGLE_SPEECH_API_KEY || '',
+      showDebugErrorPanel: process.env.SHOW_DEBUG_ERROR_PANEL === 'true',
       
       audio: {
         targetSampleRate: 16000,
