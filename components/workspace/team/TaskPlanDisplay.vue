@@ -1,7 +1,17 @@
 <template>
   <div class="h-full flex flex-col">
-    <div v-if="!tasks || tasks.length === 0" class="text-center text-sm text-gray-500 py-8 px-4 bg-gray-100 rounded-lg m-4">
-      No task plan has been published yet.
+    <!-- Empty State -->
+    <div
+      v-if="!tasks || tasks.length === 0"
+      class="flex-1 flex items-center justify-center text-center bg-white rounded-lg"
+    >
+      <div class="px-4 py-8">
+        <span class="i-heroicons-clipboard-document-list-20-solid w-10 h-10 text-gray-300 mx-auto"></span>
+        <p class="mt-3 text-sm font-semibold text-gray-700">No task plan yet</p>
+        <p class="mt-1 text-xs text-gray-500 max-w-[240px]">
+          The team's task plan will appear here once work begins.
+        </p>
+      </div>
     </div>
     <div v-else class="overflow-auto flex-grow min-h-0 px-4 py-2">
       <table class="min-w-full divide-y divide-gray-200">
