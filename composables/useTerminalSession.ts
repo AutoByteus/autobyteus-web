@@ -12,6 +12,7 @@
 
 import { ref, computed, type Ref } from 'vue';
 import { useRuntimeConfig } from '#app';
+import { v4 as uuidv4 } from 'uuid';
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
@@ -36,7 +37,7 @@ export interface TerminalSession {
 export function useTerminalSession(options: TerminalSessionOptions): TerminalSession {
   const connectionStatus = ref<ConnectionStatus>('disconnected');
   const errorMessage = ref('');
-  const sessionId = ref(options.sessionId || crypto.randomUUID());
+  const sessionId = ref(options.sessionId || uuidv4());
   
   let ws: WebSocket | null = null;
   let outputCallback: ((data: string) => void) | null = null;

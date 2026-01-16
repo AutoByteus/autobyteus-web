@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { useTranscriptionStore } from '~/stores/transcriptionStore';
 import { useRuntimeConfig } from '#app';
+import { v4 as uuidv4 } from 'uuid';
 
 interface AudioChunk {
   id: string;
@@ -127,7 +128,7 @@ export const useAudioStore = defineStore('audio', {
           const { type, wavData, isFinal } = event.data;
           if (type === 'chunk') {
             const chunk: AudioChunk = {
-              id: crypto.randomUUID(),
+              id: uuidv4(),
               wavData: new Uint8Array(wavData),
               targetSampleRate: event.data.targetSampleRate,
               timestamp: Date.now(),
