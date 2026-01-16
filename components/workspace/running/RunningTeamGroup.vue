@@ -8,10 +8,10 @@
         <div class="flex items-center text-sm text-gray-700">
             <!-- Chevron -->
             <span 
-                class="mr-1.5 transition-transform duration-200 flex items-center text-gray-400"
-                :class="isExpanded ? 'rotate-90' : ''"
+                class="mr-1.5 transition-transform duration-200 flex items-center text-gray-500"
+                :class="isExpanded ? 'rotate-0' : '-rotate-90'"
             >
-                <span class="i-heroicons-chevron-right-20-solid w-3.5 h-3.5"></span>
+                <Icon icon="heroicons:chevron-down" class="w-3.5 h-3.5" />
             </span>
             <span class="font-medium">{{ definitionName }}</span>
             <span class="ml-1.5 text-xs text-gray-400">({{ instances.length }})</span>
@@ -45,6 +45,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { Icon } from '@iconify/vue';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import RunningTeamRow from './RunningTeamRow.vue';
 
