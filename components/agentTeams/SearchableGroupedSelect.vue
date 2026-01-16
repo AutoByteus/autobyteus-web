@@ -46,7 +46,7 @@
             No options found.
           </div>
           <div v-for="group in filteredOptions" :key="group.label" class="py-1">
-            <div class="px-3 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <div class="px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
               {{ group.label }}
             </div>
             <ul>
