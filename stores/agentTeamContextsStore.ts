@@ -175,6 +175,10 @@ export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
       this.teams.set(context.teamId, context);
     },
 
+    /**
+     * Remove a team context.
+     * If the removed team was selected, auto-select another remaining team.
+     */
     removeTeamContext(teamId: string) {
       const context = this.teams.get(teamId);
       if (context) {
@@ -183,7 +187,13 @@ export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
 
         const selectionStore = useAgentSelectionStore();
         if (selectionStore.selectedType === 'team' && selectionStore.selectedInstanceId === teamId) {
-          selectionStore.clearSelection();
+          // Auto-select another team instance if available
+          const remainingTeams = Array.from(this.teams.keys());
+          if (remainingTeams.length > 0) {
+            selectionStore.selectInstance(remainingTeams[0], 'team');
+          } else {
+            selectionStore.clearSelection();
+          }
         }
       }
     },

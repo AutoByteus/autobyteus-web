@@ -107,6 +107,7 @@ export const useAgentContextsStore = defineStore('agentContexts', {
 
     /**
      * Remove an instance.
+     * If the removed instance was selected, auto-select another remaining instance.
      */
     removeInstance(instanceId: string) {
       const selectionStore = useAgentSelectionStore();
@@ -115,7 +116,13 @@ export const useAgentContextsStore = defineStore('agentContexts', {
       if (this.instances.has(instanceId)) {
         this.instances.delete(instanceId);
         if (isSelected) {
-          selectionStore.clearSelection();
+          // Auto-select another agent instance if available
+          const remainingInstances = Array.from(this.instances.keys());
+          if (remainingInstances.length > 0) {
+            selectionStore.selectInstance(remainingInstances[0], 'agent');
+          } else {
+            selectionStore.clearSelection();
+          }
         }
       }
     },

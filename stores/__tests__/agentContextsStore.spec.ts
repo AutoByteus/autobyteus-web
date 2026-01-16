@@ -74,7 +74,27 @@ describe('agentContextsStore', () => {
     });
 
     describe('removeInstance', () => {
-        it('should remove instance and clear selection if it was selected', () => {
+        it('should auto-select another instance when removing the selected one', () => {
+            const store = useAgentContextsStore();
+            const configStore = useAgentRunConfigStore();
+            const selectionStore = useAgentSelectionStore();
+
+            configStore.setTemplate(mockAgentDef);
+            const id1 = store.createInstanceFromTemplate();
+            const id2 = store.createInstanceFromTemplate();
+
+            // id2 is selected (most recently created)
+            expect(selectionStore.selectedInstanceId).toBe(id2);
+
+            store.removeInstance(id2);
+
+            expect(store.instances.has(id2)).toBe(false);
+            // Should auto-select the remaining instance
+            expect(selectionStore.selectedInstanceId).toBe(id1);
+            expect(selectionStore.selectedType).toBe('agent');
+        });
+
+        it('should clear selection when removing the only instance', () => {
             const store = useAgentContextsStore();
             const configStore = useAgentRunConfigStore();
             const selectionStore = useAgentSelectionStore();
