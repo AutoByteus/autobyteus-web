@@ -5,12 +5,12 @@
       <p class="text-sm text-gray-600 mt-1 h-10 line-clamp-2">{{ agentDef.description }}</p>
 
       <div class="mt-4">
-        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Role</p>
+        <p class="text-xs font-bold text-gray-500 tracking-wider">Role</p>
         <p class="text-sm text-gray-700 font-medium">{{ agentDef.role }}</p>
       </div>
 
       <div class="mt-4">
-        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tools Required (Libraries)</p>
+        <p class="text-xs font-bold text-gray-500 tracking-wider mb-2">Tools</p>
         <div class="flex flex-wrap gap-1.5">
           <span v-for="tool in visibleTools" :key="tool" class="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
             {{ tool }}
@@ -25,7 +25,7 @@
       </div>
 
       <div class="mt-4">
-        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Skills</p>
+        <p class="text-xs font-bold text-gray-500 tracking-wider mb-2">Skills</p>
         <div class="flex flex-wrap gap-1.5">
           <span v-for="skill in visibleSkills" :key="skill" class="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">
             {{ skill }}
@@ -65,13 +65,7 @@ const { agentDef } = toRefs(props);
 
 const MAX_TAGS = 3;
 
-const allSkills = computed(() => [
-  ...(agentDef.value.inputProcessorNames || []),
-  ...(agentDef.value.llmResponseProcessorNames || []),
-  ...(agentDef.value.systemPromptProcessorNames || []),
-  ...(agentDef.value.toolExecutionResultProcessorNames || []),
-  ...(agentDef.value.lifecycleProcessorNames || []),
-]);
+const allSkills = computed(() => agentDef.value.skillNames || []);
 
 const visibleTools = computed(() => (agentDef.value.toolNames || []).slice(0, MAX_TAGS));
 const remainingToolsCount = computed(() => Math.max(0, (agentDef.value.toolNames || []).length - MAX_TAGS));
