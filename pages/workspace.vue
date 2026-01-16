@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full bg-gray-100 pl-2 font-sans text-gray-800 border-t border-b border-gray-300">
-    <DesktopLayout v-if="isDesktop" :show-file-content="showFileContent" />
-    <MobileLayout v-else :show-file-content="showFileContent" />
+    <WorkspaceDesktopLayout v-if="isDesktop" :show-file-content="showFileContent" />
+    <WorkspaceMobileLayout v-else :show-file-content="showFileContent" />
   </div>
 </template>
 
@@ -10,8 +10,8 @@ import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { useServerSettingsStore } from '~/stores/serverSettings';
 import { useWorkspaceStore } from '~/stores/workspace';
-import DesktopLayout from '~/components/layout/DesktopLayout.vue';
-import MobileLayout from '~/components/layout/MobileLayout.vue';
+import WorkspaceDesktopLayout from '~/components/layout/WorkspaceDesktopLayout.vue';
+import WorkspaceMobileLayout from '~/components/layout/WorkspaceMobileLayout.vue';
 
 const fileExplorerStore = useFileExplorerStore();
 const serverSettingsStore = useServerSettingsStore();
@@ -34,7 +34,7 @@ onMounted(() => {
   console.log('Workspace.vue: Mounted. Fetching server settings and loading profiles...');
 
   if (typeof window !== 'undefined') {
-    mediaQuery = window.matchMedia('(min-width: 768px)');
+    mediaQuery = window.matchMedia('(min-width: 640px)');
     handleMediaChange(mediaQuery);
     if (mediaQuery.addEventListener) {
       mediaQuery.addEventListener('change', handleMediaChange);

@@ -1,7 +1,7 @@
 <template>
   <div class="flex-1 overflow-auto p-8">
     <div class="max-w-full mx-auto">
-      <div class="flex justify-between items-center mb-6">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Local Agents</h1>
           <p class="text-gray-500 mt-1">Access your installed local AI agents</p>
@@ -89,7 +89,7 @@
       </div>
 
       <!-- Agent Grid -->
-      <div v-else-if="filteredAgentDefinitions.length > 0" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div v-else-if="filteredAgentDefinitions.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <AgentCard
           v-for="agentDef in filteredAgentDefinitions"
           :key="agentDef.id"

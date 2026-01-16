@@ -29,12 +29,33 @@
 
       <!-- Running Panel -->
       <div v-show="activeMobilePanel === 'running'" class="h-full p-0 overflow-auto flex flex-col">
-        <div class="flex-1 overflow-auto">
-          <RunningAgentsPanel />
-        </div>
-        <div class="flex-1 overflow-auto border-t border-gray-200">
-          <RunConfigPanel />
-        </div>
+          <!-- View Toggle -->
+          <div class="flex-shrink-0 p-2 border-b border-gray-200 bg-gray-50 flex gap-2">
+            <button 
+                @click="runningViewMode = 'list'"
+                class="flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-colors border"
+                :class="runningViewMode === 'list' 
+                    ? 'bg-white text-blue-600 border-gray-300 shadow-sm' 
+                    : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-200'"
+            >
+                Running List
+            </button>
+            <button 
+                @click="runningViewMode = 'config'"
+                class="flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-colors border"
+                :class="runningViewMode === 'config' 
+                    ? 'bg-white text-blue-600 border-gray-300 shadow-sm' 
+                    : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-200'"
+            >
+                Configuration
+            </button>
+          </div>
+
+          <!-- Content -->
+          <div class="flex-1 overflow-auto bg-white">
+            <RunningAgentsPanel v-show="runningViewMode === 'list'" />
+            <RunConfigPanel v-show="runningViewMode === 'config'" />
+          </div>
       </div>
 
       <!-- Main Interaction View (Agent or Team) -->
@@ -76,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import FileExplorer from '~/components/fileExplorer/FileExplorer.vue';
 import FileExplorerTabs from '~/components/fileExplorer/FileExplorerTabs.vue';
@@ -88,6 +109,8 @@ import RightSideTabs from './RightSideTabs.vue';
 import { useMobilePanels } from '~/composables/useMobilePanels';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 import { useWorkspaceStore } from '~/stores/workspace';
+import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
+import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
 
 const props = defineProps<{  
   showFileContent: boolean
@@ -95,16 +118,40 @@ const props = defineProps<{
 
 const selectionStore = useAgentSelectionStore();
 const workspaceStore = useWorkspaceStore();
+const runConfigStore = useAgentRunConfigStore();
+const teamRunConfigStore = useTeamRunConfigStore();
 const { activeMobilePanel } = useMobilePanels();
 
 const hasActiveWorkspace = computed(() => !!workspaceStore.activeWorkspace);
+
+// --- Mobile Running Tab Logic ---
+const runningViewMode = ref<'list' | 'config'>('list');
+
+// Watch for new run configuration to switch to config view
+watch(
+  [() => runConfigStore.config, () => teamRunConfigStore.config],
+  ([newAgentConfig, newTeamConfig]) => {
+    // Only switch if we are NOT in selection mode (meaning we are setting up a NEW run)
+    // and a config just appeared.
+    if (!selectionStore.selectedInstanceId) {
+      if ((newAgentConfig?.agentDefinitionId || newTeamConfig?.teamDefinitionId)) {
+        runningViewMode.value = 'config';
+        // Ensure we are on the running panel
+        if (activeMobilePanel.value !== 'running') {
+            activeMobilePanel.value = 'running';
+        }
+      }
+    }
+  },
+  { deep: true }
+);
 
 const availableTabs = computed(() => {
   const mainTabLabel = selectionStore.selectedType === 'team' ? 'Team' : 'Agent';
 
   const tabs = [
-    ...(hasActiveWorkspace.value ? [{ id: 'explorer', label: 'Files' }] : []),
     { id: 'running', label: 'Running' },
+    ...(hasActiveWorkspace.value ? [{ id: 'explorer', label: 'Files' }] : []),
     { id: 'main', label: mainTabLabel },
     { id: 'tools', label: 'Tools' }
   ];

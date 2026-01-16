@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
-import DesktopLayout from '../DesktopLayout.vue';
+import WorkspaceDesktopLayout from '../WorkspaceDesktopLayout.vue';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 
 // Mock noVNC and Xterm to prevent import errors during testing
@@ -16,9 +16,9 @@ vi.mock('~/lib/novnc/core/rfb', () => ({
 const AgentWorkspaceViewValue = { template: '<div class="agent-view"></div>' };
 const TeamWorkspaceViewValue = { template: '<div class="team-view"></div>' };
 
-describe('DesktopLayout', () => {
+describe('WorkspaceDesktopLayout', () => {
   const mountComponent = (initialState = {}) => {
-    return mount(DesktopLayout, {
+    return mount(WorkspaceDesktopLayout, {
       global: {
         plugins: [
             createTestingPinia({

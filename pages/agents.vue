@@ -1,61 +1,70 @@
 <template>
-  <div class="flex h-full bg-white font-sans">
-    <!-- Secondary Sidebar -->
-    <aside class="w-56 flex-shrink-0 bg-gray-50 border-r border-gray-200 flex flex-col">
-      <div class="h-16 flex items-center px-4">
-        <h1 class="text-lg font-bold text-gray-800">AI Agents</h1>
-      </div>
-      <nav class="flex-1 px-2 py-4 space-y-1">
-        <button
-          @click="handleNavigation({ view: 'list' })"
-          class="flex items-center w-full px-3 py-2 text-sm font-semibold rounded-md text-left transition-colors"
-          :class="isLocalAgentsActive ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-200'"
-        >
-          Local Agents
-        </button>
-        <button
-          @click="handleNavigation({ view: 'team-list' })"
-          class="flex items-center w-full px-3 py-2 text-sm font-semibold rounded-md text-left transition-colors"
-          :class="isAgentTeamsActive ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-200'"
-        >
-          Agent Teams
-        </button>
-        <a href="#" class="flex items-center px-3 py-2 text-sm font-semibold text-gray-400 cursor-not-allowed">
-          Running Agents
-        </a>
-        <a href="#" class="flex items-center px-3 py-2 text-sm font-semibold text-gray-400 cursor-not-allowed">
-          Agent Marketplace
-        </a>
-      </nav>
-    </aside>
+  <div class="h-full bg-white font-sans">
+    <ResponsiveMasterDetail sidebar-width="w-56">
+      <!-- Sidebar Slot: Secondary Navigation -->
+      <template #sidebar>
+        <div class="flex flex-col h-full">
+          <!-- Header for Sidebar -->
+          <div class="h-16 flex items-center px-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+            <h1 class="text-lg font-bold text-gray-800">AI Agents</h1>
+          </div>
+          
+          <!-- Navigation Links -->
+          <nav class="flex-1 px-2 py-4 space-y-1 lg:space-y-1 flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible space-x-2 lg:space-x-0">
+            <button
+              @click="handleNavigation({ view: 'list' })"
+              class="flex items-center flex-shrink-0 lg:w-full px-3 py-2 text-sm font-semibold rounded-md text-left transition-colors whitespace-nowrap"
+              :class="isLocalAgentsActive ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-200'"
+            >
+              Local Agents
+            </button>
+            <button
+              @click="handleNavigation({ view: 'team-list' })"
+              class="flex items-center flex-shrink-0 lg:w-full px-3 py-2 text-sm font-semibold rounded-md text-left transition-colors whitespace-nowrap"
+              :class="isAgentTeamsActive ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-200'"
+            >
+              Agent Teams
+            </button>
+            <a href="#" class="flex items-center flex-shrink-0 px-3 py-2 text-sm font-semibold text-gray-400 cursor-not-allowed whitespace-nowrap">
+              Running Agents
+            </a>
+            <a href="#" class="flex items-center flex-shrink-0 px-3 py-2 text-sm font-semibold text-gray-400 cursor-not-allowed whitespace-nowrap">
+              Agent Marketplace
+            </a>
+          </nav>
+        </div>
+      </template>
 
-    <!-- Main Content Area -->
-    <main v-if="loading" class="flex-1 overflow-y-auto flex items-center justify-center">
-      <div class="text-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p class="mt-4 text-lg text-gray-600">Preparing Agent Manager...</p>
-      </div>
-    </main>
-    <main v-else class="flex-1 overflow-y-auto">
-      <!-- Local Agent Views -->
-      <AgentList v-if="currentView === 'list'" @navigate="handleNavigation" />
-      <AgentCreate v-else-if="currentView === 'create'" @navigate="handleNavigation" />
-      <AgentDetail v-else-if="currentView === 'detail' && currentId" :agent-id="currentId" @navigate="handleNavigation" />
-      <AgentEdit v-else-if="currentView === 'edit' && currentId" :agent-id="currentId" @navigate="handleNavigation" />
-      
-      <!-- Agent Team Views -->
-      <AgentTeamList v-else-if="currentView === 'team-list'" @navigate="handleNavigation" />
-      <AgentTeamCreate v-else-if="currentView === 'team-create'" @navigate="handleNavigation" />
-      <AgentTeamDetail v-else-if="currentView === 'team-detail' && currentId" :team-id="currentId" @navigate="handleNavigation" />
-      <AgentTeamEdit v-else-if="currentView === 'team-edit' && currentId" :team-id="currentId" @navigate="handleNavigation" />
-
-      <!-- Fallback -->
-      <div v-else class="p-8">
-        <h1 class="text-xl font-bold">Invalid View</h1>
-        <p>The requested view is not available.</p>
-        <button @click="handleNavigation({ view: 'list' })" class="mt-4 text-indigo-600 hover:underline">Go to Agents</button>
-      </div>
-    </main>
+      <!-- Content Slot: Main View -->
+      <template #content>
+        <div v-if="loading" class="h-full w-full flex items-center justify-center">
+          <div class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p class="mt-4 text-lg text-gray-600">Preparing Agent Manager...</p>
+          </div>
+        </div>
+        <div v-else class="h-full w-full">
+          <!-- Local Agent Views -->
+          <AgentList v-if="currentView === 'list'" @navigate="handleNavigation" />
+          <AgentCreate v-else-if="currentView === 'create'" @navigate="handleNavigation" />
+          <AgentDetail v-else-if="currentView === 'detail' && currentId" :agent-id="currentId" @navigate="handleNavigation" />
+          <AgentEdit v-else-if="currentView === 'edit' && currentId" :agent-id="currentId" @navigate="handleNavigation" />
+          
+          <!-- Agent Team Views -->
+          <AgentTeamList v-else-if="currentView === 'team-list'" @navigate="handleNavigation" />
+          <AgentTeamCreate v-else-if="currentView === 'team-create'" @navigate="handleNavigation" />
+          <AgentTeamDetail v-else-if="currentView === 'team-detail' && currentId" :team-id="currentId" @navigate="handleNavigation" />
+          <AgentTeamEdit v-else-if="currentView === 'team-edit' && currentId" :team-id="currentId" @navigate="handleNavigation" />
+    
+          <!-- Fallback -->
+          <div v-else class="p-8">
+            <h1 class="text-xl font-bold">Invalid View</h1>
+            <p>The requested view is not available.</p>
+            <button @click="handleNavigation({ view: 'list' })" class="mt-4 text-indigo-600 hover:underline">Go to Agents</button>
+          </div>
+        </div>
+      </template>
+    </ResponsiveMasterDetail>
   </div>
 </template>
 
@@ -75,6 +84,7 @@ import AgentTeamList from '~/components/agentTeams/AgentTeamList.vue';
 import AgentTeamDetail from '~/components/agentTeams/AgentTeamDetail.vue';
 import AgentTeamCreate from '~/components/agentTeams/AgentTeamCreate.vue';
 import AgentTeamEdit from '~/components/agentTeams/AgentTeamEdit.vue';
+import ResponsiveMasterDetail from '~/components/layout/ResponsiveMasterDetail.vue';
 
 
 const route = useRoute();

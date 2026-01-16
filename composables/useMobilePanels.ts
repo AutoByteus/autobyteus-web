@@ -3,7 +3,7 @@ import { useFileExplorerStore } from '~/stores/fileExplorer'
 
 export function useMobilePanels() {
   const fileExplorerStore = useFileExplorerStore()
-  const activeMobilePanel = ref('explorer')
+  const activeMobilePanel = ref('running')
 
   watch(() => fileExplorerStore.openFiles, (newFiles) => {
     if (newFiles.length > 0 && window.innerWidth < 768) {
