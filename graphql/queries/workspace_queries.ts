@@ -9,6 +9,9 @@ export const GetAllWorkspaces = gql`
       config
       fileExplorer
       absolutePath
+      isTemp
     }
   }
 `
+
+

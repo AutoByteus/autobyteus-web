@@ -59,7 +59,7 @@
 
     <!-- New Workspace Path Input -->
     <div v-else class="transition-all duration-200">
-      <div class="flex gap-3">
+      <div class="flex gap-2">
         <div class="relative flex-grow">
           <input
             type="text"
@@ -71,14 +71,26 @@
             placeholder="/absolute/path/to/workspace"
           />
         </div>
+        <!-- Browse Button (Electron only) -->
+        <button
+          v-if="isElectron"
+          type="button"
+          @click="handleBrowse"
+          :disabled="isLoading || disabled"
+          class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+          title="Browse for folder"
+        >
+          <Icon icon="heroicons:folder-open" class="w-5 h-5" />
+        </button>
         <button
           type="button"
           @click="handleLoad"
           :disabled="isLoading || disabled || !tempPath.trim()"
-          class="inline-flex items-center justify-center px-5 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed min-w-[72px] transition-colors duration-200"
+          class="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+          title="Load workspace"
         >
-          <span v-if="isLoading" class="i-heroicons-arrow-path-20-solid h-4 w-4 animate-spin"></span>
-          <span v-else>Load</span>
+          <Icon v-if="isLoading" icon="heroicons:arrow-path" class="w-5 h-5 animate-spin" />
+          <Icon v-else icon="heroicons:arrow-right" class="w-5 h-5" />
         </button>
       </div>
     </div>
@@ -104,7 +116,7 @@
           <span v-else>Select a previously loaded workspace.</span>
         </template>
         <template v-else>
-          Enter path to load a new workspace.
+          {{ isElectron ? 'Browse for a folder or enter path manually.' : 'Enter path to load a new workspace.' }}
           <span class="i-heroicons-information-circle-20-solid h-4 w-4 ml-1.5 text-gray-400 cursor-help" title="Path must be an absolute file system path"></span>
         </template>
       </p>
@@ -114,8 +126,11 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useWorkspaceStore } from '~/stores/workspace';
+import { useServerStore } from '~/stores/serverStore';
 import SearchableSelect from '~/components/common/SearchableSelect.vue';
+import { Icon } from '@iconify/vue';
 
 const props = defineProps<{
   workspaceId: string | null;
@@ -130,6 +145,8 @@ const emit = defineEmits<{
 }>();
 
 const workspaceStore = useWorkspaceStore();
+const serverStore = useServerStore();
+const { isElectron } = storeToRefs(serverStore);
 
 // Local state
 const mode = ref<'existing' | 'new'>('new');
@@ -137,13 +154,32 @@ const tempPath = ref('');
 const successMessage = ref<string | null>(null);
 
 // Computed
-const workspaceOptions = computed(() => 
-  workspaceStore.allWorkspaces.map(ws => ({
-    id: ws.workspaceId,
-    name: ws.name,
-    description: ws.absolutePath || ''
-  }))
-);
+const workspaceOptions = computed(() => {
+  const tempId = workspaceStore.tempWorkspaceId;
+  
+  // Get all non-temp workspaces
+  const regularWorkspaces = workspaceStore.allWorkspaces
+    .filter(ws => ws.workspaceId !== tempId)
+    .map(ws => ({
+      id: ws.workspaceId,
+      name: ws.name,
+      description: ws.absolutePath || ''
+    }));
+  
+  // Put temp workspace at top with special styling
+  if (workspaceStore.tempWorkspace) {
+    return [
+      {
+        id: tempId!,
+        name: '📁 Temp Workspace (Default)',
+        description: 'Default temporary workspace'
+      },
+      ...regularWorkspaces
+    ];
+  }
+  
+  return regularWorkspaces;
+});
 
 const existingDisabled = computed(() => workspaceOptions.value.length === 0);
 
@@ -154,11 +190,18 @@ const selectedWorkspace = computed(() => {
 
 // Initialize mode based on available workspaces
 onMounted(async () => {
-  // Fetch all workspaces to populate the dropdown (safe in test environment)
+  // Fetch all workspaces and ensure temp workspace is available
   try {
     await workspaceStore.fetchAllWorkspaces();
   } catch {
     // Ignore errors (e.g., no Apollo client in tests)
+  }
+  
+  // Auto-select temp workspace if no workspace currently selected
+  if (!props.workspaceId && workspaceStore.tempWorkspaceId) {
+    emit('select-existing', workspaceStore.tempWorkspaceId);
+    mode.value = 'existing';
+    return; // Skip further mode logic, we've auto-selected
   }
   
   // Set initial mode based on whether workspaces exist
@@ -208,5 +251,19 @@ const handleLoad = () => {
   if (props.isLoading || props.disabled || !tempPath.value.trim()) return;
   successMessage.value = null;
   emit('load-new', tempPath.value.trim());
+};
+
+// Native folder picker (Electron only)
+const handleBrowse = async () => {
+  if (!isElectron.value || !window.electronAPI?.showFolderDialog) return;
+  
+  try {
+    const result = await window.electronAPI.showFolderDialog();
+    if (!result.canceled && result.path) {
+      tempPath.value = result.path;
+    }
+  } catch (error) {
+    console.error('Failed to open folder dialog:', error);
+  }
 };
 </script>

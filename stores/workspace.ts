@@ -26,6 +26,7 @@ export interface WorkspaceInfo {
   nodeIdToNode: Record<string, TreeNode>;
   workspaceConfig: any;
   absolutePath: string | null;
+  isTemp?: boolean;
 }
 
 interface WorkspaceState {
@@ -119,6 +120,7 @@ export const useWorkspaceStore = defineStore('workspace', {
               nodeIdToNode: nodeIdToNode,
               workspaceConfig: ws.config,
               absolutePath: ws.absolutePath ?? null,
+              isTemp: (ws as any).isTemp ?? false,
             };
             // Connect to WebSocket for file system changes
             this.connectToFileSystemChanges(ws.workspaceId);
@@ -133,6 +135,7 @@ export const useWorkspaceStore = defineStore('workspace', {
         this.loading = false;
       }
     },
+
     handleFileSystemChange(workspaceId: string, event: FileSystemChangeEvent) {
       const workspace = this.workspaces[workspaceId];
       if (!workspace) {
@@ -372,6 +375,15 @@ export const useWorkspaceStore = defineStore('workspace', {
     
     allWorkspaceIds: (state): string[] => Object.keys(state.workspaces),
     allWorkspaces: (state): WorkspaceInfo[] => Object.values(state.workspaces),
+    
+    tempWorkspaceId: (state): string | null => {
+      // Find workspace with ID 'temp_ws_default' or where isTemp is true
+      return Object.values(state.workspaces).find(w => w.workspaceId === 'temp_ws_default' || w.isTemp)?.workspaceId ?? null;
+    },
+    
+    tempWorkspace: (state): WorkspaceInfo | null => {
+       return Object.values(state.workspaces).find(w => w.workspaceId === 'temp_ws_default' || w.isTemp) || null;
+    },
     
     currentWorkspaceTree(): TreeNode | null {
       return this.activeWorkspace ? this.activeWorkspace.fileExplorer : null;
