@@ -115,6 +115,7 @@ export abstract class BaseServerManager extends EventEmitter {
       }
 
       logger.info('First-run initialization completed successfully')
+      this.firstRun = false
     } catch (error) {
       logger.error('Error during first-run initialization:', error)
       throw new Error(`Failed to initialize app data: ${error instanceof Error ? error.message : String(error)}`)
@@ -389,6 +390,22 @@ export abstract class BaseServerManager extends EventEmitter {
    */
   public getAppDataDir(): string {
     return this.appDataDir;
+  }
+
+  /**
+   * Reset the app data directory to a clean state.
+   */
+  public resetAppDataDir(): void {
+    try {
+      if (fs.existsSync(this.appDataDir)) {
+        fs.rmSync(this.appDataDir, { recursive: true, force: true })
+      }
+      this.firstRun = true
+      this.initAppDataDir()
+    } catch (error) {
+      logger.error('Failed to reset app data directory:', error)
+      throw error
+    }
   }
 
   /**

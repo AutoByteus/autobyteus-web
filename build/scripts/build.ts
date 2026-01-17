@@ -117,6 +117,21 @@ async function main(): Promise<void> {
   try {
     // Generate icons first
     await generateIcons()
+
+    const requiredServerFiles = ['.env', 'alembic.ini', 'logging_config.ini']
+    for (const file of requiredServerFiles) {
+      const filePath = `resources/server/${file}`
+      if (!require('fs').existsSync(filePath)) {
+        throw new Error(`Missing required server file for packaging: ${filePath}`)
+      }
+    }
+    const requiredServerDirs = ['alembic', 'download']
+    for (const dir of requiredServerDirs) {
+      const dirPath = `resources/server/${dir}`
+      if (!require('fs').existsSync(dirPath)) {
+        throw new Error(`Missing required server directory for packaging: ${dirPath}`)
+      }
+    }
     
     // Then proceed with electron-builder
     console.log('Starting electron-builder...')
