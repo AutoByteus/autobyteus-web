@@ -46,7 +46,7 @@ class TestServerManager extends BaseServerManager {
 
 describe('BaseServerManager', () => {
   beforeEach(() => {
-    vi.resetAllMocks()
+    vi.clearAllMocks()
   })
 
   it('resetAppDataDir removes and recreates the app data directory', () => {
