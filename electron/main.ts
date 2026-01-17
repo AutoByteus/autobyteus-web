@@ -225,13 +225,30 @@ ipcMain.handle('get-platform', () => {
 });
 
 ipcMain.handle('clear-app-cache', async () => {
+  try {
+    await serverManager.stopServer();
+  } catch (error) {
+    logger.error('Failed to stop server before clearing cache:', error);
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
   const cacheDir = serverManager.getCacheDir();
   return clearDirectoryContents(cacheDir);
 });
 
 ipcMain.handle('reset-server-data', async () => {
-  const dataDir = serverManager.getAppDataDir();
-  return clearDirectoryContents(dataDir);
+  try {
+    await serverManager.stopServer();
+  } catch (error) {
+    logger.error('Failed to stop server before resetting data:', error);
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+  try {
+    serverManager.resetAppDataDir();
+    return { success: true };
+  } catch (error) {
+    logger.error('Failed to reset app data directory:', error);
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
 });
 
 ipcMain.handle('open-log-file', async (event, filePath) => {
