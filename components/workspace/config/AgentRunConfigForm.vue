@@ -21,6 +21,15 @@
         />
     </div>
 
+    <ModelConfigSection
+        :schema="modelConfigSchema"
+        :model-config="config.llmConfig"
+        :disabled="config.isLocked"
+        :apply-defaults="true"
+        :clear-on-empty-schema="true"
+        @update:config="updateModelConfig"
+    />
+
     <!-- Workspace Selector -->
     <WorkspaceSelector
         :workspace-id="config.workspaceId"
@@ -60,6 +69,7 @@ import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import type { AgentDefinition } from '~/stores/agentDefinitionStore';
 import WorkspaceSelector from './WorkspaceSelector.vue';
 import SearchableGroupedSelect, { type GroupedOption } from '~/components/agentTeams/SearchableGroupedSelect.vue';
+import ModelConfigSection from './ModelConfigSection.vue';
 
 interface WorkspaceLoadingState {
   isLoading: boolean;
@@ -97,8 +107,17 @@ const groupedModelOptions = computed<GroupedOption[]>(() => {
     }));
 });
 
+const modelConfigSchema = computed(() => {
+    if (!props.config.llmModelIdentifier) return null;
+    return llmStore.modelConfigSchemaByIdentifier(props.config.llmModelIdentifier);
+});
+
 const updateModel = (value: string) => {
     props.config.llmModelIdentifier = value;
+};
+
+const updateModelConfig = (config: Record<string, unknown> | null) => {
+    props.config.llmConfig = config;
 };
 
 const updateAutoExecute = (checked: boolean) => {

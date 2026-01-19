@@ -34,7 +34,7 @@ autobyteus-web/
 │   │   └── RunningInstanceRow.vue      # Individual instance row
 │   └── config/
 │       ├── RunConfigPanel.vue          # Configuration panel for selected instance
-│       ├── AgentRunConfigForm.vue      # Agent configuration form
+│       ├── AgentRunConfigForm.vue      # Agent configuration form (supports dynamic LLM config schema)
 │       ├── TeamRunConfigForm.vue       # Team configuration form
 │       └── WorkspacePathInput.vue      # Workspace path input with loading
 ├── composables/
@@ -135,6 +135,7 @@ interface AgentRunConfig {
   llmModelIdentifier: string;
   workspaceId: string | null;
   autoExecuteTools: boolean;
+  llmConfig?: Record<string, unknown>; // Dynamic model parameters (e.g. thinking_level)
   isLocked: boolean; // True once execution starts
 }
 ```

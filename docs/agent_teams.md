@@ -179,6 +179,7 @@ interface MemberConfigOverride {
   agentDefinitionId: string;
   llmModelIdentifier?: string;
   autoExecuteTools?: boolean;
+  llmConfig?: Record<string, unknown>;
 }
 ```
 
@@ -340,6 +341,7 @@ The `TeamRunConfigForm.vue` provides configuration options:
 - Expandable list of all team members
 - Per-member override options:
   - Different LLM model
+  - Model parameters (e.g. thinking level) - Dynamically generated form
   - Different tool execution settings
 
 ## Configuration Hierarchy

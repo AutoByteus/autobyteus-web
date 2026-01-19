@@ -125,6 +125,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
                 llmModelIdentifier: override?.llmModelIdentifier || activeTeam.config.llmModelIdentifier,
                 workspaceId: activeTeam.config.workspaceId,
                 autoExecuteTools: override?.autoExecuteTools ?? activeTeam.config.autoExecuteTools,
+                llmConfig: override?.llmConfig ?? null,
               };
             });
 

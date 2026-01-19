@@ -26,4 +26,10 @@ export interface AgentRunConfig {
    * Set to true after the first message is sent to the backend.
    */
   isLocked: boolean;
+  
+  /**
+   * Model-specific runtime configuration (e.g., thinking_level for Gemini).
+   * Schema is defined by the model's configSchema.
+   */
+  llmConfig?: Record<string, unknown> | null;
 }

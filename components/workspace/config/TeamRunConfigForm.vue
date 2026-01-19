@@ -71,6 +71,7 @@
                 :member-name="node.memberName"
                 :agent-definition-id="node.referenceId"
                 :override="config.memberOverrides[node.memberName]"
+                :global-llm-model="config.llmModelIdentifier"
                 :options="groupedModelOptions"
                 :is-coordinator="node.memberName === teamDefinition.coordinatorMemberName"
                 :disabled="config.isLocked"

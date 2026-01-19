@@ -4,6 +4,7 @@ export interface MemberConfigOverride {
     agentDefinitionId: string; // The ID of the agent definition for this member (for verification/display)
     llmModelIdentifier?: string;
     autoExecuteTools?: boolean;
+    llmConfig?: Record<string, unknown> | null;
 }
 
 export interface TeamRunConfig {

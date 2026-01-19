@@ -77,6 +77,7 @@ export const useAgentRunStore = defineStore('agentRun', {
               workspaceId: config.workspaceId,
               llmModelIdentifier: config.llmModelIdentifier,
               autoExecuteTools: config.autoExecuteTools,
+              llmConfig: config.llmConfig ?? null,
             }
           }
         });

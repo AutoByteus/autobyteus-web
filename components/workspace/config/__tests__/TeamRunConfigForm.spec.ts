@@ -52,7 +52,7 @@ describe('TeamRunConfigForm', () => {
                     MemberOverrideItem: {
                         name: 'MemberOverrideItem',
                         template: '<div class="member-override-item-stub"></div>',
-                        props: ['memberName', 'override', 'isCoordinator', 'options', 'disabled'],
+                        props: ['memberName', 'override', 'isCoordinator', 'options', 'disabled', 'globalLlmModel'],
                         emits: ['update:override']
                     }
                 }
@@ -74,6 +74,32 @@ describe('TeamRunConfigForm', () => {
         expect(items[0].props('isCoordinator')).toBe(true);
         expect(items[1].props('memberName')).toBe('Member B');
         expect(items[1].props('isCoordinator')).toBe(false);
+    });
+
+    it('passes global model to member overrides', () => {
+        const config = { ...mockConfig, llmModelIdentifier: 'gpt-4' };
+        const wrapper = mount(TeamRunConfigForm, {
+            props: {
+                config,
+                teamDefinition: mockTeamDef as any,
+                workspaceLoadingState: { isLoading: false, error: null, loadedPath: null }
+            },
+            global: {
+                stubs: {
+                    WorkspaceSelector: true,
+                    SearchableGroupedSelect: true,
+                    MemberOverrideItem: {
+                        name: 'MemberOverrideItem',
+                        template: '<div class="member-override-item-stub"></div>',
+                        props: ['memberName', 'override', 'isCoordinator', 'options', 'disabled', 'globalLlmModel'],
+                        emits: ['update:override']
+                    }
+                }
+            }
+        });
+
+        const items = wrapper.findAllComponents({ name: 'MemberOverrideItem' });
+        expect(items[0].props('globalLlmModel')).toBe('gpt-4');
     });
 
     it('updates model', async () => {

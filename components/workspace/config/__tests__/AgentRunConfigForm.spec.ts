@@ -137,4 +137,106 @@ describe('AgentRunConfigForm', () => {
     
     expect(localConfig.llmModelIdentifier).toBe('gpt-3.5');
   });
+
+  it('renders dynamic config form when model has schema', async () => {
+    const store = useLLMProviderConfigStore();
+    store.providersWithModels = [
+      {
+        provider: 'Google',
+        models: [
+          { 
+            modelIdentifier: 'gemini-1.5-pro', 
+            name: 'Gemini 1.5 Pro', 
+            value: 'gemini-1.5-pro', 
+            canonicalName: 'gemini-1.5-pro', 
+            provider: 'google', 
+            runtime: 'python',
+            configSchema: {
+                parameters: [
+                    { name: 'thinking_level', type: 'integer', description: 'Thinking Budget' },
+                    { name: 'temperature', type: 'number', default_value: 0.7 },
+                    { name: 'mode', type: 'string', enum_values: ['balanced', 'creative'] }
+                ]
+            }
+          }
+        ]
+      }
+    ];
+
+    const localConfig = { ...mockConfig, llmModelIdentifier: 'gemini-1.5-pro', llmConfig: {} };
+    
+    const wrapper = mount(AgentRunConfigForm, {
+      props: {
+        config: localConfig,
+        agentDefinition: mockAgentDef as any,
+        workspaceLoadingState: { isLoading: false, error: null, loadedPath: null },
+      },
+    });
+
+    // Wait for watchers to fire
+    await wrapper.vm.$nextTick();
+
+    const advancedToggle = wrapper.find('[data-testid=\"advanced-params-toggle\"]');
+    await advancedToggle.trigger('click');
+
+    // Check if form is visible
+    expect(wrapper.text()).toContain('Model Parameters');
+    expect(wrapper.text()).toContain('thinking_level');
+    expect(wrapper.text()).toContain('temperature');
+    expect(wrapper.text()).toContain('mode');
+    
+    // Check default values applied
+    expect(localConfig.llmConfig).toBeDefined();
+    // @ts-ignore
+    expect(localConfig.llmConfig.temperature).toBe(0.7);
+  });
+
+  it('updates llmConfig when dynamic inputs change', async () => {
+    const store = useLLMProviderConfigStore();
+    store.providersWithModels = [
+      {
+        provider: 'Google',
+        models: [
+          { 
+            modelIdentifier: 'gemini-1.5-pro', 
+            name: 'Gemini 1.5 Pro', 
+            value: 'gemini-1.5-pro', 
+            canonicalName: 'gemini-1.5-pro', 
+            provider: 'google', 
+            runtime: 'python',
+            configSchema: {
+                parameters: [
+                    { name: 'thinking_level', type: 'integer' }
+                ]
+            }
+          }
+        ]
+      }
+    ];
+
+    const localConfig = { ...mockConfig, llmModelIdentifier: 'gemini-1.5-pro', llmConfig: {} };
+    
+    const wrapper = mount(AgentRunConfigForm, {
+      props: {
+        config: localConfig,
+        agentDefinition: mockAgentDef as any,
+        workspaceLoadingState: { isLoading: false, error: null, loadedPath: null },
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+    
+    const advancedToggle = wrapper.find('[data-testid=\"advanced-params-toggle\"]');
+    await advancedToggle.trigger('click');
+
+    // Find input for thinking_level
+    const label = wrapper.findAll('label').find(l => l.text().includes('thinking_level'));
+    const inputId = label?.attributes('for');
+    const input = wrapper.find(`input[id="${inputId}"]`);
+    
+    await input.setValue('5');
+    
+    // @ts-ignore
+    expect(localConfig.llmConfig.thinking_level).toBe(5);
+  });
 });

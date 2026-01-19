@@ -325,6 +325,7 @@ export type Model = {
 export type ModelDetail = {
   __typename?: 'ModelDetail';
   canonicalName: Scalars['String']['output'];
+  configSchema?: Maybe<Scalars['JSON']['output']>;
   hostUrl?: Maybe<Scalars['String']['output']>;
   modelIdentifier: Scalars['String']['output'];
   name: Scalars['String']['output'];
@@ -854,6 +855,7 @@ export type SendAgentUserInputInput = {
   agentDefinitionId?: InputMaybe<Scalars['String']['input']>;
   agentId?: InputMaybe<Scalars['String']['input']>;
   autoExecuteTools?: InputMaybe<Scalars['Boolean']['input']>;
+  llmConfig?: InputMaybe<Scalars['JSON']['input']>;
   llmModelIdentifier?: InputMaybe<Scalars['String']['input']>;
   useXmlToolFormat?: InputMaybe<Scalars['Boolean']['input']>;
   userInput: AgentUserInput;
@@ -990,6 +992,7 @@ export type TeamMember = {
 export type TeamMemberConfigInput = {
   agentDefinitionId: Scalars['String']['input'];
   autoExecuteTools: Scalars['Boolean']['input'];
+  llmConfig?: InputMaybe<Scalars['JSON']['input']>;
   llmModelIdentifier: Scalars['String']['input'];
   memberName: Scalars['String']['input'];
   workspaceId?: InputMaybe<Scalars['String']['input']>;
@@ -1121,6 +1124,7 @@ export type WorkspaceInfo = {
   absolutePath?: Maybe<Scalars['String']['output']>;
   config: Scalars['JSON']['output'];
   fileExplorer?: Maybe<Scalars['JSON']['output']>;
+  isTemp: Scalars['Boolean']['output'];
   name: Scalars['String']['output'];
   workspaceId: Scalars['String']['output'];
 };
@@ -1457,7 +1461,7 @@ export type GetLlmProviderApiKeyQuery = { __typename?: 'Query', getLlmProviderAp
 export type GetAvailableLlmProvidersWithModelsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAvailableLlmProvidersWithModelsQuery = { __typename?: 'Query', availableLlmProvidersWithModels: Array<{ __typename: 'ProviderWithModels', provider: string, models: Array<{ __typename: 'ModelDetail', modelIdentifier: string, name: string, value: string, canonicalName: string, provider: string, runtime: string, hostUrl?: string | null }> }>, availableAudioProvidersWithModels: Array<{ __typename: 'ProviderWithModels', provider: string, models: Array<{ __typename: 'ModelDetail', modelIdentifier: string, name: string, value: string, canonicalName: string, provider: string, runtime: string, hostUrl?: string | null }> }>, availableImageProvidersWithModels: Array<{ __typename: 'ProviderWithModels', provider: string, models: Array<{ __typename: 'ModelDetail', modelIdentifier: string, name: string, value: string, canonicalName: string, provider: string, runtime: string, hostUrl?: string | null }> }> };
+export type GetAvailableLlmProvidersWithModelsQuery = { __typename?: 'Query', availableLlmProvidersWithModels: Array<{ __typename: 'ProviderWithModels', provider: string, models: Array<{ __typename: 'ModelDetail', modelIdentifier: string, name: string, value: string, canonicalName: string, provider: string, runtime: string, hostUrl?: string | null, configSchema?: any | null }> }>, availableAudioProvidersWithModels: Array<{ __typename: 'ProviderWithModels', provider: string, models: Array<{ __typename: 'ModelDetail', modelIdentifier: string, name: string, value: string, canonicalName: string, provider: string, runtime: string, hostUrl?: string | null }> }>, availableImageProvidersWithModels: Array<{ __typename: 'ProviderWithModels', provider: string, models: Array<{ __typename: 'ModelDetail', modelIdentifier: string, name: string, value: string, canonicalName: string, provider: string, runtime: string, hostUrl?: string | null }> }> };
 
 export type GetMcpServersQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1524,7 +1528,7 @@ export type GetToolsGroupedByCategoryQuery = { __typename?: 'Query', toolsGroupe
 export type GetAllWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAllWorkspacesQuery = { __typename?: 'Query', workspaces: Array<{ __typename: 'WorkspaceInfo', workspaceId: string, name: string, config: any, fileExplorer?: any | null, absolutePath?: string | null }> };
+export type GetAllWorkspacesQuery = { __typename?: 'Query', workspaces: Array<{ __typename: 'WorkspaceInfo', workspaceId: string, name: string, config: any, fileExplorer?: any | null, absolutePath?: string | null, isTemp: boolean }> };
 
 export type GetSkillSourcesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -3321,6 +3325,7 @@ export const GetAvailableLlmProvidersWithModelsDocument = gql`
       provider
       runtime
       hostUrl
+      configSchema
     }
   }
   availableAudioProvidersWithModels {
@@ -3738,6 +3743,7 @@ export const GetAllWorkspacesDocument = gql`
     config
     fileExplorer
     absolutePath
+    isTemp
   }
 }
     `;

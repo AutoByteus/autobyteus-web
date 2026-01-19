@@ -41,9 +41,9 @@ We follow a **colocated testing strategy** where tests live alongside the code i
 *   **Philosophy**: See **[Testing Strategy in Architecture](./ARCHITECTURE.md#testing-strategy)**.
 *   **Key Commands**:
     *   `yarn test`: Run all tests (Nuxt + Electron).
-    *   `yarn test:nuxt`: Run only web/frontend tests (Recommended).
+    *   `yarn test:nuxt`: Run only web/frontend tests (Recommended). **Always include `--run` to avoid watch mode timeouts**.
     *   `yarn test:electron`: Run only Electron-specific tests.
-    *   *Note: Use `--run` (e.g., `yarn test:nuxt path/to/test --run`) to execute once without watch mode.*
+    *   *Note: Always use `--run` (e.g., `yarn test:nuxt path/to/test --run`) to execute once without watch mode.*
 *   **Full Guide**: See **[Testing in README](./README.md#testing)**.
 
 ### Project Structure

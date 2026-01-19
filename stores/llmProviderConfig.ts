@@ -11,6 +11,7 @@ import {
 } from '~/graphql/mutations/llm_provider_mutations'
 import type { LLMProvider } from '~/types/llm'
 import { LLMProvider as LLMProviderEnum } from '~/types/llm'
+import { normalizeModelConfigSchema, type UiModelConfigSchema } from '~/utils/llmConfigSchema';
 
 interface LLMProviderConfig {
   apiKey?: string
@@ -24,6 +25,7 @@ interface ModelInfo {
   provider: string;
   runtime: string;
   hostUrl?: string | null;
+  configSchema?: Record<string, unknown> | null;  // ParameterSchema for model-specific config
 }
 
 interface ProviderWithModels {
@@ -58,6 +60,21 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
     },
     providersWithModelsForSelection(state): ProviderWithModels[] {
       return state.providersWithModels.filter(p => p.models && p.models.length > 0);
+    },
+    modelConfigSchemaByIdentifier(state): (modelIdentifier: string | null | undefined) => UiModelConfigSchema | null {
+      return (modelIdentifier: string | null | undefined) => {
+        if (!modelIdentifier) return null;
+        for (const provider of state.providersWithModels) {
+          const model = provider.models.find(m => m.modelIdentifier === modelIdentifier);
+          if (model?.configSchema) {
+            const normalized = normalizeModelConfigSchema(model.configSchema);
+            if (normalized && Object.keys(normalized).length > 0) {
+              return normalized;
+            }
+          }
+        }
+        return null;
+      };
     },
     /**
      * Getter for a sorted list of unique canonical model names, with "default" as the first option.

@@ -41,6 +41,15 @@
         {{ autoExecuteLabel }}
       </label>
     </div>
+
+    <ModelConfigSection
+        :schema="modelConfigSchema"
+        :model-config="override?.llmConfig"
+        :disabled="disabled"
+        :compact="true"
+        :id-prefix="`config-${memberName}`"
+        @update:config="emitOverrideWithConfig"
+    />
   </div>
 </template>
 
@@ -48,12 +57,14 @@
 import { computed } from 'vue';
 import type { MemberConfigOverride } from '~/types/agent/TeamRunConfig';
 import SearchableGroupedSelect, { type GroupedOption } from '~/components/agentTeams/SearchableGroupedSelect.vue';
+import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
+import ModelConfigSection from './ModelConfigSection.vue';
 
 const props = defineProps<{
   memberName: string;
   agentDefinitionId: string;
   override: MemberConfigOverride | undefined;
-  // globalLlmModel: string; // No longer needed for display in SearchableGroupedSelect if we rely on placeholder logic
+  globalLlmModel: string;
   options: GroupedOption[];
   isCoordinator?: boolean;
   disabled: boolean;
@@ -63,9 +74,11 @@ const emit = defineEmits<{
   (e: 'update:override', memberName: string, override: MemberConfigOverride | null): void;
 }>();
 
+const llmStore = useLLMProviderConfigStore();
+
 const hasOverride = computed(() => {
   if (!props.override) return false;
-  return props.override.llmModelIdentifier || props.override.autoExecuteTools !== undefined;
+  return props.override.llmModelIdentifier || props.override.autoExecuteTools !== undefined || (props.override.llmConfig && Object.keys(props.override.llmConfig).length > 0);
 });
 
 const autoExecuteLabel = computed(() => {
@@ -75,15 +88,43 @@ const autoExecuteLabel = computed(() => {
   return props.override.autoExecuteTools ? 'Auto-execute: ON' : 'Auto-execute: OFF';
 });
 
+const effectiveModelIdentifier = computed(() => {
+    // If override has specific model, use it. Otherwise use global.
+    // BUT if overrides are completely null, we still know the global model.
+    return props.override?.llmModelIdentifier || props.globalLlmModel;
+});
+
+const modelConfigSchema = computed(() => {
+    if (!effectiveModelIdentifier.value) return null;
+    return llmStore.modelConfigSchemaByIdentifier(effectiveModelIdentifier.value);
+});
+
+const emitOverrideWithConfig = (nextConfig: Record<string, unknown> | null | undefined) => {
+    const newOverride: MemberConfigOverride = {
+        agentDefinitionId: props.agentDefinitionId,
+        llmModelIdentifier: props.override?.llmModelIdentifier,
+        autoExecuteTools: props.override?.autoExecuteTools,
+        llmConfig: nextConfig ?? undefined,
+    };
+
+    if (!newOverride.llmModelIdentifier && newOverride.autoExecuteTools === undefined && (!newOverride.llmConfig || Object.keys(newOverride.llmConfig).length === 0)) {
+        emit('update:override', props.memberName, null);
+    } else {
+        emit('update:override', props.memberName, newOverride);
+    }
+};
+
 const handleModelChange = (value: string) => {
   const newOverride: MemberConfigOverride = {
     agentDefinitionId: props.agentDefinitionId,
     llmModelIdentifier: value || undefined,
     autoExecuteTools: props.override?.autoExecuteTools,
+    llmConfig: props.override?.llmConfig, // Persist config? Might differ if model changes... ideally verify schema match.
+    // For simplicity, we keep it. If incompatible, it won't be shown in UI (schema mismatch).
   };
   
   // If no overrides set, remove entirely
-  if (!newOverride.llmModelIdentifier && newOverride.autoExecuteTools === undefined) {
+  if (!newOverride.llmModelIdentifier && newOverride.autoExecuteTools === undefined && (!newOverride.llmConfig || Object.keys(newOverride.llmConfig).length === 0)) {
     emit('update:override', props.memberName, null);
   } else {
     emit('update:override', props.memberName, newOverride);
@@ -107,9 +148,10 @@ const handleAutoExecuteChange = (event: Event) => {
     agentDefinitionId: props.agentDefinitionId,
     llmModelIdentifier: props.override?.llmModelIdentifier,
     autoExecuteTools: newValue,
+    llmConfig: props.override?.llmConfig,
   };
   
-  if (!newOverride.llmModelIdentifier && newOverride.autoExecuteTools === undefined) {
+  if (!newOverride.llmModelIdentifier && newOverride.autoExecuteTools === undefined && (!newOverride.llmConfig || Object.keys(newOverride.llmConfig).length === 0)) {
     emit('update:override', props.memberName, null);
   } else {
     emit('update:override', props.memberName, newOverride);
