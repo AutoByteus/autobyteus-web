@@ -1,11 +1,11 @@
 import { ChildProcess } from 'child_process'
 import * as path from 'path'
-import * as fs from 'fs'
 import * as net from 'net'
 import { app } from 'electron'
 import axios from 'axios'
 import { EventEmitter } from 'events'
 import { logger } from '../logger'
+import { AppDataService } from './services/AppDataService'
 
 // Fixed server port
 export const FIXED_SERVER_PORT = 29695
@@ -27,179 +27,22 @@ export abstract class BaseServerManager extends EventEmitter {
   protected firstRun: boolean = false
   protected serverDir: string = ''
   protected gracefulShutdownTimeoutMs: number = 5000  // 5 seconds for graceful shutdown
+  protected appDataService: AppDataService
 
   constructor() {
     super()
-    // Initialize the app data directory
-    this.initAppDataDir()
-  }
-
-  /**
-   * Initialize the application data directory.
-   */
-  protected initAppDataDir(): void {
-    // Use the standard app data location (platform specific)
-    this.appDataDir = path.join(app.getPath('userData'), 'server-data')
-    
-    const dataDirExists = fs.existsSync(this.appDataDir)
-    const requiredDataDirs = ['db', 'logs', 'download']
-    const missingDataDirs = dataDirExists
-      ? requiredDataDirs.filter((dir) => !fs.existsSync(path.join(this.appDataDir, dir)))
-      : []
-    const hasEnvFile = dataDirExists && fs.existsSync(path.join(this.appDataDir, '.env'))
-    
-    // Treat missing .env as first run so we can repopulate.
-    this.firstRun = !dataDirExists || !hasEnvFile
-    
-    if (dataDirExists && !hasEnvFile) {
-      logger.warn('App data directory is missing .env. Reinitializing first-run data.')
-    }
-
-    // Create the directory if it doesn't exist
-    if (this.firstRun) {
-      try {
-        fs.mkdirSync(this.appDataDir, { recursive: true })
-        logger.info(`Created app data directory: ${this.appDataDir}`)
-      } catch (error) {
-        logger.error('Failed to create app data directory:', error)
-        throw new Error(`Failed to create app data directory at ${this.appDataDir}: ${error}`)
-      }
-    }
-
-    if (dataDirExists && missingDataDirs.length > 0) {
-      for (const dir of missingDataDirs) {
-        try {
-          const dirPath = path.join(this.appDataDir, dir)
-          fs.mkdirSync(dirPath, { recursive: true })
-          logger.info(`Created missing data directory: ${dirPath}`)
-        } catch (error) {
-          logger.error(`Failed to create data directory ${dir}:`, error)
-          throw new Error(`Failed to create data directory ${dir}: ${error}`)
-        }
-      }
-    }
-  }
-
-  /**
-   * Initialize the application data for first run.
-   */
-  protected initializeFirstRun(serverDir: string): void {
-    logger.info('Performing first-run initialization...')
-
-    try {
-      // Check for required files in the server directory before proceeding
-      const requiredServerFiles = ['alembic.ini', 'logging_config.ini', '.env']
-      for (const file of requiredServerFiles) {
-        const filePath = path.join(serverDir, file)
-        if (!fs.existsSync(filePath)) {
-          throw new Error(`Required server file not found: ${filePath}`)
-        }
-      }
-
-      // Check for required directories in the server directory
-      const requiredServerDirs = ['alembic']
-      for (const dir of requiredServerDirs) {
-        const dirPath = path.join(serverDir, dir)
-        if (!fs.existsSync(dirPath)) {
-          throw new Error(`Required server directory not found: ${dirPath}`)
-        }
-      }
-
-      // Create the app data directory if it doesn't exist
-      if (!fs.existsSync(this.appDataDir)) {
-        fs.mkdirSync(this.appDataDir, { recursive: true })
-      }
-
-      // Create required subdirectories in the app data directory
-      const requiredDataDirs = ['db', 'logs', 'download']
-      for (const dir of requiredDataDirs) {
-        const dirPath = path.join(this.appDataDir, dir)
-        if (!fs.existsSync(dirPath)) {
-          fs.mkdirSync(dirPath, { recursive: true })
-          logger.info(`Created directory: ${dirPath}`)
-        }
-      }
-
-      // Copy .env file on first run (but don't update it later)
-      const envFileSrc = path.join(serverDir, '.env')
-      const envFileDest = path.join(this.appDataDir, '.env')
-      fs.copyFileSync(envFileSrc, envFileDest)
-      logger.info(`Copied .env file to: ${envFileDest}`)
-
-      // Copy download directory if it exists in the server directory
-      const downloadSrcDir = path.join(serverDir, 'download')
-      const downloadDestDir = path.join(this.appDataDir, 'download')
-      if (fs.existsSync(downloadSrcDir)) {
-        try {
-          this.copyDirectory(downloadSrcDir, downloadDestDir)
-          logger.info(`Copied download directory contents to: ${downloadDestDir}`)
-        } catch (copyError) {
-          logger.warn(`Warning: Failed to copy download directory contents: ${copyError}`)
-        }
-      }
-
-      logger.info('First-run initialization completed successfully')
-      this.firstRun = false
-    } catch (error) {
-      logger.error('Error during first-run initialization:', error)
-      throw new Error(`Failed to initialize app data: ${error instanceof Error ? error.message : String(error)}`)
-    }
-  }
-
-  /**
-   * Recursively copy a directory.
-   */
-  protected copyDirectory(sourceDir: string, destDir: string): void {
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true })
-    }
-    const entries = fs.readdirSync(sourceDir, { withFileTypes: true })
-    for (const entry of entries) {
-      const sourcePath = path.join(sourceDir, entry.name)
-      const destPath = path.join(destDir, entry.name)
-      if (entry.isDirectory()) {
-        this.copyDirectory(sourcePath, destPath)
-      } else {
-        fs.copyFileSync(sourcePath, destPath)
-      }
-    }
+    this.appDataService = new AppDataService(app.getPath('userData'))
+    this.appDataDir = this.appDataService.getAppDataDir()
+    this.firstRun = this.appDataService.isFirstRun()
+    this.appDataService.initialize()
   }
 
   /**
    * Validate that all required files and directories exist.
    */
   protected validateServerEnvironment(serverDir: string): string[] {
-    const errors: string[] = []
     const serverPath = this.getServerPath()
-    if (!fs.existsSync(serverPath)) {
-      errors.push(`Server executable not found at: ${serverPath}`)
-    }
-    const requiredServerFiles = ['alembic.ini', 'logging_config.ini']
-    for (const file of requiredServerFiles) {
-      const filePath = path.join(serverDir, file)
-      if (!fs.existsSync(filePath)) {
-        errors.push(`Required server file not found: ${filePath}`)
-      }
-    }
-    const requiredServerDirs = ['alembic']
-    for (const dir of requiredServerDirs) {
-      const dirPath = path.join(serverDir, dir)
-      if (!fs.existsSync(dirPath)) {
-        errors.push(`Required server directory not found: ${dirPath}`)
-      }
-    }
-    const requiredDataDirs = ['logs', 'db', 'download']
-    for (const dir of requiredDataDirs) {
-      const dirPath = path.join(this.appDataDir, dir)
-      if (!fs.existsSync(dirPath)) {
-        errors.push(`Required data directory not found: ${dirPath}`)
-      }
-    }
-    const envFilePath = path.join(this.appDataDir, '.env')
-    if (!fs.existsSync(envFilePath)) {
-      errors.push(`Required config file not found: ${envFilePath}`)
-    }
-    return errors
+    return this.appDataService.validateEnvironment(serverDir, serverPath)
   }
 
   /**
@@ -246,8 +89,10 @@ export abstract class BaseServerManager extends EventEmitter {
       logger.info(`Server installation directory: ${this.serverDir}`)
       logger.info(`App data directory: ${this.appDataDir}`)
       
+      this.firstRun = this.appDataService.isFirstRun()
       if (this.firstRun) {
-        this.initializeFirstRun(this.serverDir)
+        this.appDataService.initializeFirstRun(this.serverDir)
+        this.firstRun = this.appDataService.isFirstRun()
       }
       
       const validationErrors = this.validateServerEnvironment(this.serverDir)
@@ -413,7 +258,7 @@ export abstract class BaseServerManager extends EventEmitter {
    * Get the application's data directory path.
    */
   public getAppDataDir(): string {
-    return this.appDataDir;
+    return this.appDataService.getAppDataDir()
   }
 
   /**
@@ -421,31 +266,12 @@ export abstract class BaseServerManager extends EventEmitter {
    */
   public async resetAppDataDir(): Promise<void> {
     try {
-      if (fs.existsSync(this.appDataDir)) {
-        await this.removeDirWithRetries(this.appDataDir)
-      }
-      this.firstRun = true
-      this.initAppDataDir()
+      await this.appDataService.resetAppDataDir()
+      this.appDataDir = this.appDataService.getAppDataDir()
+      this.firstRun = this.appDataService.isFirstRun()
     } catch (error) {
       logger.error('Failed to reset app data directory:', error)
       throw error
-    }
-  }
-
-  private async removeDirWithRetries(dirPath: string, retries: number = 5, delayMs: number = 300): Promise<void> {
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        await fs.promises.rm(dirPath, { recursive: true, force: true })
-        return
-      } catch (error) {
-        const err = error as NodeJS.ErrnoException
-        const shouldRetry = err?.code === 'EBUSY' || err?.code === 'EPERM' || err?.code === 'EACCES'
-        if (!shouldRetry || attempt === retries) {
-          throw error
-        }
-        const backoffMs = delayMs * (attempt + 1)
-        await new Promise((resolve) => setTimeout(resolve, backoffMs))
-      }
     }
   }
 

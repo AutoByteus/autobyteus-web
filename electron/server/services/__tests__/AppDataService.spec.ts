@@ -9,6 +9,9 @@ vi.mock('fs', () => ({
   mkdirSync: vi.fn(),
   copyFileSync: vi.fn(),
   readdirSync: vi.fn(),
+  promises: {
+    rm: vi.fn()
+  }
 }))
 
 // Mock the logger
@@ -40,7 +43,18 @@ describe('AppDataService', () => {
       expect(service.getAppDataDir()).toBe(expectedAppDataDir)
     })
 
-    it('should detect non-first run when directory exists', () => {
+    it('should detect first run when env file is missing', () => {
+      mockedFs.existsSync.mockImplementation((filePath) => {
+        return filePath !== path.join(expectedAppDataDir, '.env')
+      })
+
+      const service = new AppDataService(testUserDataPath)
+
+      expect(service.isFirstRun()).toBe(true)
+      expect(service.getAppDataDir()).toBe(expectedAppDataDir)
+    })
+
+    it('should detect non-first run when env file exists', () => {
       mockedFs.existsSync.mockReturnValue(true)
 
       const service = new AppDataService(testUserDataPath)
@@ -51,20 +65,29 @@ describe('AppDataService', () => {
   })
 
   describe('initialize', () => {
-    it('should create app data directory when it does not exist', () => {
+    it('should create app data directory and data dirs when missing', () => {
       mockedFs.existsSync.mockReturnValue(false)
 
       const service = new AppDataService(testUserDataPath)
       service.initialize()
 
       expect(mockedFs.mkdirSync).toHaveBeenCalledWith(expectedAppDataDir, { recursive: true })
+      expect(mockedFs.mkdirSync).toHaveBeenCalledWith(path.join(expectedAppDataDir, 'db'), { recursive: true })
+      expect(mockedFs.mkdirSync).toHaveBeenCalledWith(path.join(expectedAppDataDir, 'logs'), { recursive: true })
+      expect(mockedFs.mkdirSync).toHaveBeenCalledWith(path.join(expectedAppDataDir, 'download'), { recursive: true })
     })
 
     it('should not create directory when it already exists', () => {
-      // First call for constructor, second for initialize check
-      mockedFs.existsSync
-        .mockReturnValueOnce(true)  // constructor check
-        .mockReturnValueOnce(true)  // initialize check
+      const dataDirPaths = ['db', 'logs', 'download'].map((dir) => path.join(expectedAppDataDir, dir))
+      mockedFs.existsSync.mockImplementation((filePath) => {
+        if (filePath === expectedAppDataDir) {
+          return true
+        }
+        if (dataDirPaths.includes(filePath)) {
+          return true
+        }
+        return true
+      })
 
       const service = new AppDataService(testUserDataPath)
       service.initialize()
@@ -151,6 +174,30 @@ describe('AppDataService', () => {
 
       expect(mockedFs.mkdirSync).toHaveBeenCalled()
       expect(mockedFs.copyFileSync).toHaveBeenCalled()
+    })
+  })
+
+  describe('resetAppDataDir', () => {
+    it('retries on busy deletion', async () => {
+      vi.useFakeTimers()
+      mockedFs.existsSync.mockReturnValue(true)
+      let callCount = 0
+      mockedFs.promises.rm.mockImplementation(async () => {
+        callCount += 1
+        if (callCount < 3) {
+          const err = new Error('busy') as NodeJS.ErrnoException
+          err.code = 'EBUSY'
+          throw err
+        }
+      })
+
+      const service = new AppDataService(testUserDataPath)
+      const resetPromise = service.resetAppDataDir()
+      await vi.runAllTimersAsync()
+      await resetPromise
+
+      expect(mockedFs.promises.rm).toHaveBeenCalledTimes(3)
+      vi.useRealTimers()
     })
   })
 })

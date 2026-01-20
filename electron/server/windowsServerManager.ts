@@ -7,6 +7,22 @@ import { logger } from '../logger'
 import { getLocalIp } from '../utils/networkUtils'
 
 export class WindowsServerManager extends BaseServerManager {
+  private async cleanupOrphanedServers(): Promise<void> {
+    return new Promise((resolve) => {
+      const imagePattern = 'autobyteus_server*.exe'
+      const cleanup = spawn('taskkill', ['/f', '/t', '/im', imagePattern])
+
+      cleanup.on('close', () => {
+        resolve()
+      })
+
+      cleanup.on('error', (err) => {
+        logger.error(`Failed to cleanup orphaned server processes (${imagePattern}):`, err)
+        resolve()
+      })
+    })
+  }
+
   private async waitForProcessExit(proc: ChildProcess, timeoutMs: number): Promise<boolean> {
     if (proc.exitCode !== null) {
       return true
@@ -159,12 +175,15 @@ export class WindowsServerManager extends BaseServerManager {
           
           forceKill.on('close', () => {
             logger.info(`Force taskkill for PID ${pid} completed`);
-            this.waitForProcessExit(proc, 2000).then(() => resolveOnce());
+            this.waitForProcessExit(proc, 2000).then(async () => {
+              await this.cleanupOrphanedServers()
+              resolveOnce()
+            });
           });
           
           forceKill.on('error', (err) => {
             logger.error(`Force taskkill failed for PID ${pid}:`, err);
-            resolveOnce(); // Resolve anyway to not hang
+            this.cleanupOrphanedServers().finally(() => resolveOnce()); // Resolve anyway to not hang
           });
         }
       }, this.gracefulShutdownTimeoutMs);
@@ -173,7 +192,7 @@ export class WindowsServerManager extends BaseServerManager {
       hardTimeout = setTimeout(() => {
         if (!isResolved) {
           logger.warn(`Server process ${pid} did not exit in time; continuing with cleanup`);
-          resolveOnce();
+          this.cleanupOrphanedServers().finally(() => resolveOnce());
         }
       }, this.gracefulShutdownTimeoutMs + 7000);
     });

@@ -13,6 +13,8 @@ const serverStatusManager = new ServerStatusManager(serverManager);
 
 let mainWindow: BrowserWindow | null
 let isQuitting = false; // Flag to prevent multiple shutdown attempts
+let shutdownTimer: NodeJS.Timeout | null = null
+const shutdownTimeoutMs = 8000
 
 function getWindowIcon(): string {
   const iconFile = '512x512.png'
@@ -76,6 +78,18 @@ function createWindow() {
         // Notify the renderer to show the shutdown screen
         logger.info('Sending app-quitting event to renderer.')
         mainWindow?.webContents.send('app-quitting')
+
+        // Fallback: if renderer does not respond, force shutdown from main process.
+        shutdownTimer = setTimeout(async () => {
+          logger.warn('Renderer did not acknowledge shutdown. Forcing app quit.')
+          try {
+            await serverManager.stopServer()
+          } catch (error) {
+            logger.error('Error stopping server during forced shutdown:', error)
+          } finally {
+            app.quit()
+          }
+        }, shutdownTimeoutMs)
       }
       // If isQuitting is true, the app.quit() was called, so let it proceed.
     })
@@ -201,6 +215,10 @@ ipcMain.on('ping', (event, args) => {
 // Listen for the signal from the renderer to start the actual shutdown
 ipcMain.on('start-shutdown', () => {
   logger.info('Received start-shutdown signal from renderer. Quitting app.')
+  if (shutdownTimer) {
+    clearTimeout(shutdownTimer)
+    shutdownTimer = null
+  }
   app.quit()
 })
 
@@ -389,6 +407,10 @@ app.on('window-all-closed', () => {
 // This event is fired when the app is about to close.
 app.on('will-quit', async (event) => {
   logger.info('App is about to quit. Shutting down server...');
+  if (shutdownTimer) {
+    clearTimeout(shutdownTimer)
+    shutdownTimer = null
+  }
   try {
     // Await the server shutdown to ensure it completes before the app exits.
     await serverManager.stopServer();

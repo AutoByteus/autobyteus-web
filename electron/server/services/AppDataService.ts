@@ -9,10 +9,16 @@ import { logger } from '../../logger'
 export class AppDataService {
   private appDataDir: string
   private firstRun: boolean
+  private requiredDataDirs = ['db', 'logs', 'download']
 
   constructor(userDataPath: string) {
     this.appDataDir = path.join(userDataPath, 'server-data')
-    this.firstRun = !fs.existsSync(this.appDataDir)
+    const dataDirExists = fs.existsSync(this.appDataDir)
+    const hasEnvFile = dataDirExists && fs.existsSync(path.join(this.appDataDir, '.env'))
+    this.firstRun = !dataDirExists || !hasEnvFile
+    if (dataDirExists && !hasEnvFile) {
+      logger.warn('App data directory is missing .env. Reinitializing first-run data.')
+    }
   }
 
   /**
@@ -43,6 +49,7 @@ export class AppDataService {
         throw new Error(`Failed to create app data directory at ${this.appDataDir}: ${error}`)
       }
     }
+    this.ensureDataDirs()
   }
 
   /**
@@ -76,8 +83,7 @@ export class AppDataService {
       }
 
       // Create required subdirectories in the app data directory
-      const requiredDataDirs = ['db', 'logs', 'download']
-      for (const dir of requiredDataDirs) {
+      for (const dir of this.requiredDataDirs) {
         const dirPath = path.join(this.appDataDir, dir)
         if (!fs.existsSync(dirPath)) {
           fs.mkdirSync(dirPath, { recursive: true })
@@ -104,6 +110,7 @@ export class AppDataService {
       }
 
       logger.info('First-run initialization completed successfully')
+      this.firstRun = false
     } catch (error) {
       logger.error('Error during first-run initialization:', error)
       throw new Error(`Failed to initialize app data: ${error instanceof Error ? error.message : String(error)}`)
@@ -168,6 +175,49 @@ export class AppDataService {
         this.copyDirectory(sourcePath, destPath)
       } else {
         fs.copyFileSync(sourcePath, destPath)
+      }
+    }
+  }
+
+  /**
+   * Reset the app data directory to a clean state.
+   */
+  async resetAppDataDir(): Promise<void> {
+    try {
+      if (fs.existsSync(this.appDataDir)) {
+        await this.removeDirWithRetries(this.appDataDir)
+      }
+      this.firstRun = true
+      this.initialize()
+    } catch (error) {
+      logger.error('Failed to reset app data directory:', error)
+      throw error
+    }
+  }
+
+  private ensureDataDirs(): void {
+    for (const dir of this.requiredDataDirs) {
+      const dirPath = path.join(this.appDataDir, dir)
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true })
+        logger.info(`Created missing data directory: ${dirPath}`)
+      }
+    }
+  }
+
+  private async removeDirWithRetries(dirPath: string, retries: number = 5, delayMs: number = 300): Promise<void> {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        await fs.promises.rm(dirPath, { recursive: true, force: true })
+        return
+      } catch (error) {
+        const err = error as NodeJS.ErrnoException
+        const shouldRetry = err?.code === 'EBUSY' || err?.code === 'EPERM' || err?.code === 'EACCES'
+        if (!shouldRetry || attempt === retries) {
+          throw error
+        }
+        const backoffMs = delayMs * (attempt + 1)
+        await new Promise((resolve) => setTimeout(resolve, backoffMs))
       }
     }
   }
