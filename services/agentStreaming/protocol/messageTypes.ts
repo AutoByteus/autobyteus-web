@@ -26,6 +26,7 @@ export type ServerMessageType =
   | 'INTER_AGENT_MESSAGE'
   | 'SYSTEM_TASK_NOTIFICATION'
   | 'ARTIFACT_PERSISTED'
+  | 'ARTIFACT_UPDATED'
   | 'ERROR';
 
 export type SegmentType = 
@@ -173,11 +174,21 @@ export interface SystemTaskNotificationPayload {
 
 export interface ArtifactPersistedPayload {
   artifact_id: string;
-  status: string;
+  status?: string;
   path: string;
   agent_id: string;
   type: string;
+  workspace_root?: string;
   url?: string;  // URL for media artifacts (image, audio)
+}
+
+export interface ArtifactUpdatedPayload {
+  artifact_id?: string;
+  status?: string;
+  path: string;
+  agent_id: string;
+  type: string;
+  workspace_root?: string;
 }
 
 export interface ErrorPayload {
@@ -203,6 +214,7 @@ export type ServerMessage =
   | { type: 'INTER_AGENT_MESSAGE'; payload: InterAgentMessagePayload }
   | { type: 'SYSTEM_TASK_NOTIFICATION'; payload: SystemTaskNotificationPayload }
   | { type: 'ARTIFACT_PERSISTED'; payload: ArtifactPersistedPayload }
+  | { type: 'ARTIFACT_UPDATED'; payload: ArtifactUpdatedPayload }
   | { type: 'ERROR'; payload: ErrorPayload };
 
 // ============================================================================

@@ -11,7 +11,9 @@ export interface AgentArtifact {
   status: ArtifactStatus;
   content?: string; // Content buffer for text files
   url?: string; // URL for media files
+  workspaceRoot?: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 interface AgentArtifactsState {
@@ -51,7 +53,9 @@ export const useAgentArtifactsStore = defineStore('agentArtifacts', {
         // Update existing artifact - reset for new streaming session
         existingArtifact.status = 'streaming';
         existingArtifact.content = '';
-        existingArtifact.createdAt = new Date().toISOString();
+        const now = new Date().toISOString();
+        existingArtifact.createdAt = now;
+        existingArtifact.updatedAt = now;
         this.activeStreamingArtifactByAgent.set(agentId, existingArtifact);
         return;
       }
@@ -65,6 +69,7 @@ export const useAgentArtifactsStore = defineStore('agentArtifacts', {
         status: 'streaming',
         content: '',
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
       // Set as active streaming
@@ -96,6 +101,7 @@ export const useAgentArtifactsStore = defineStore('agentArtifacts', {
       const artifact = this.activeStreamingArtifactByAgent.get(agentId);
       if (artifact) {
         artifact.status = 'pending_approval';
+        artifact.updatedAt = new Date().toISOString();
         // Clear active streamer so we don't accidentally append to it later
         this.activeStreamingArtifactByAgent.set(agentId, null);
       }
@@ -105,12 +111,16 @@ export const useAgentArtifactsStore = defineStore('agentArtifacts', {
      * Mark artifact as persisted (Tool was approved and executed)
      * This might be called by a separate event or optimistic update
      */
-    markArtifactPersisted(agentId: string, path: string) {
+    markArtifactPersisted(agentId: string, path: string, workspaceRoot?: string | null) {
         const artifacts = this.artifactsByAgent.get(agentId) || [];
         // Find the pending one matching path
         const artifact = artifacts.find(a => a.path === path && a.status === 'pending_approval');
         if (artifact) {
             artifact.status = 'persisted';
+            artifact.updatedAt = new Date().toISOString();
+            if (workspaceRoot !== undefined) {
+              artifact.workspaceRoot = workspaceRoot;
+            }
         }
     },
 
@@ -118,10 +128,12 @@ export const useAgentArtifactsStore = defineStore('agentArtifacts', {
      * Create a media artifact directly (for image/audio files that don't stream).
      * These are created as 'persisted' immediately since the file already exists.
      */
-    createMediaArtifact(artifact: Omit<AgentArtifact, 'status' | 'createdAt'> & { timestamp?: string }) {
+    createMediaArtifact(artifact: Omit<AgentArtifact, 'status' | 'createdAt' | 'updatedAt'> & { timestamp?: string }) {
+      const timestamp = artifact.timestamp || new Date().toISOString();
       const newArtifact: AgentArtifact = {
         ...artifact,
-        createdAt: artifact.timestamp || new Date().toISOString(),
+        createdAt: timestamp,
+        updatedAt: timestamp,
         status: 'persisted',
       };
 
@@ -139,7 +151,48 @@ export const useAgentArtifactsStore = defineStore('agentArtifacts', {
         const artifact = artifacts.find(a => a.path === path && a.status === 'pending_approval');
         if (artifact) {
             artifact.status = 'failed';
+            artifact.updatedAt = new Date().toISOString();
         }
+    },
+
+    /**
+     * Touch an existing artifact to trigger refreshes (e.g., patch_file updates).
+     * Creates a persisted artifact if none exists yet.
+     */
+    touchArtifact(
+      agentId: string,
+      path: string,
+      type: AgentArtifact['type'] = 'file',
+      artifactId?: string,
+      workspaceRoot?: string | null
+    ) {
+      const artifacts = this.artifactsByAgent.get(agentId) || [];
+      const artifact = artifacts.find(a => a.path === path || (artifactId && a.id === artifactId));
+      const now = new Date().toISOString();
+
+      if (artifact) {
+        artifact.updatedAt = now;
+        if (workspaceRoot !== undefined) {
+          artifact.workspaceRoot = workspaceRoot;
+        }
+        return;
+      }
+
+      const newArtifact: AgentArtifact = {
+        id: artifactId || `artifact-${Date.now()}`,
+        agentId,
+        path,
+        type,
+        status: 'persisted',
+        workspaceRoot: workspaceRoot ?? null,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      if (!this.artifactsByAgent.has(agentId)) {
+        this.artifactsByAgent.set(agentId, []);
+      }
+      this.artifactsByAgent.get(agentId)?.push(newArtifact);
     },
 
     /**
@@ -158,9 +211,11 @@ export const useAgentArtifactsStore = defineStore('agentArtifacts', {
             id: a.id,
             agentId: a.agentId,
             path: a.path,
-            type: a.type as 'file' | 'image' | 'video' | 'pdf' | 'other',
+            type: a.type as 'file' | 'image' | 'audio' | 'video' | 'pdf' | 'csv' | 'excel' | 'other',
             status: 'persisted' as ArtifactStatus, // Backend only stores persisted artifacts
             createdAt: a.createdAt,
+            updatedAt: a.updatedAt,
+            workspaceRoot: (a as any).workspaceRoot ?? null,
           }));
           this.artifactsByAgent.set(agentId, artifacts);
         }
@@ -170,4 +225,3 @@ export const useAgentArtifactsStore = defineStore('agentArtifacts', {
     },
   },
 });
-

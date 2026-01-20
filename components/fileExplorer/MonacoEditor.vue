@@ -38,6 +38,10 @@ const props = defineProps({
     type: String,
     default: 'vs'
   },
+  readOnly: {
+    type: Boolean,
+    default: false
+  },
   wordWrap: {
     type: [Boolean, String] as PropType<boolean | WordWrapSetting | null>,
     default: null
@@ -54,6 +58,7 @@ const editorContainer = ref<HTMLElement | null>(null);
 let editor: any = null;
 let monaco: any = null;
 let containerKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
+let isUnmounted = false;
 
 const initialWordWrap =
   normalizeWordWrapInput(props.wordWrap) ??
@@ -95,9 +100,11 @@ const cleanupContainerShortcuts = () => {
 
 const initMonaco = async () => {
   if (!editorContainer.value) return;
-  
+
   monaco = await loader.init();
-  
+
+  if (isUnmounted || !editorContainer.value || !editorContainer.value.isConnected) return;
+
   const { wordWrap: _wordWrap, ...restOptions } = props.options || {};
 
   editor = monaco.editor.create(editorContainer.value, {
@@ -106,6 +113,7 @@ const initMonaco = async () => {
     theme: props.theme,
     automaticLayout: true,
     minimap: { enabled: false },
+    readOnly: props.readOnly,
     wordWrap: wordWrapState.value,
     ...restOptions
   });
@@ -224,6 +232,12 @@ watch(() => props.options, (newOptions) => {
   }
 }, { deep: true });
 
+watch(() => props.readOnly, (newValue) => {
+  if (editor) {
+    editor.updateOptions({ readOnly: newValue });
+  }
+});
+
 watch(() => props.wordWrap, (newValue) => {
   const normalized = normalizeWordWrapInput(newValue);
   if (!normalized) return;
@@ -238,6 +252,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  isUnmounted = true;
   if (editor) {
     const model = editor.getModel();
     editor.dispose();

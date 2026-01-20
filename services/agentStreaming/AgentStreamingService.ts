@@ -20,6 +20,7 @@ import {
   handleTodoListUpdate,
   handleError,
   handleArtifactPersisted,
+  handleArtifactUpdated,
 } from './handlers';
 
 const shouldLogStreaming = (): boolean => {
@@ -246,6 +247,10 @@ export class AgentStreamingService {
 
       case 'ARTIFACT_PERSISTED':
         handleArtifactPersisted(message.payload, context);
+        break;
+        
+      case 'ARTIFACT_UPDATED':
+        handleArtifactUpdated(message.payload, context);
         break;
 
       case 'CONNECTED':

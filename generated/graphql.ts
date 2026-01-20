@@ -38,6 +38,7 @@ export type AgentArtifactType = {
   path: Scalars['String']['output'];
   type: Scalars['String']['output'];
   updatedAt: Scalars['String']['output'];
+  workspaceRoot?: Maybe<Scalars['String']['output']>;
 };
 
 export type AgentConversation = {
@@ -1380,7 +1381,7 @@ export type GetAgentArtifactsQueryVariables = Exact<{
 }>;
 
 
-export type GetAgentArtifactsQuery = { __typename?: 'Query', agentArtifacts: Array<{ __typename?: 'AgentArtifactType', id: string, agentId: string, path: string, type: string, createdAt: string, updatedAt: string }> };
+export type GetAgentArtifactsQuery = { __typename?: 'Query', agentArtifacts: Array<{ __typename?: 'AgentArtifactType', id: string, agentId: string, path: string, type: string, workspaceRoot?: string | null, createdAt: string, updatedAt: string }> };
 
 export type GetAgentCustomizationOptionsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -2817,6 +2818,7 @@ export const GetAgentArtifactsDocument = gql`
     agentId
     path
     type
+    workspaceRoot
     createdAt
     updatedAt
   }

@@ -5,10 +5,10 @@ import type { AgentArtifact } from '~/stores/agentArtifactsStore';
 
 describe('ArtifactList.vue', () => {
     const mockArtifacts: AgentArtifact[] = [
-        { id: '1', agentId: 'a1', path: 'test.txt', type: 'file', status: 'persisted', createdAt: '' },
-        { id: '2', agentId: 'a1', path: 'image.png', type: 'file', status: 'persisted', createdAt: '' },
-        { id: '3', agentId: 'a1', path: 'script.py', type: 'file', status: 'streaming', createdAt: '' },
-        { id: '4', agentId: 'a1', path: 'video.mp4', type: 'file', status: 'pending_approval', createdAt: '' },
+        { id: '1', agentId: 'a1', path: 'test.txt', type: 'file', status: 'persisted', createdAt: '', updatedAt: '' },
+        { id: '2', agentId: 'a1', path: 'image.png', type: 'file', status: 'persisted', createdAt: '', updatedAt: '' },
+        { id: '3', agentId: 'a1', path: 'script.py', type: 'file', status: 'streaming', createdAt: '', updatedAt: '' },
+        { id: '4', agentId: 'a1', path: 'video.mp4', type: 'file', status: 'pending_approval', createdAt: '', updatedAt: '' },
     ];
 
     it('renders empty state when no artifacts', () => {

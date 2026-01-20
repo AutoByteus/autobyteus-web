@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { handleArtifactPersisted } from '../artifactHandler';
+import { handleArtifactPersisted, handleArtifactUpdated } from '../artifactHandler';
 import { useAgentArtifactsStore } from '~/stores/agentArtifactsStore';
-import type { ArtifactPersistedPayload } from '../../protocol/messageTypes';
+import type { ArtifactPersistedPayload, ArtifactUpdatedPayload } from '../../protocol/messageTypes';
 import type { AgentContext } from '~/types/agent/AgentContext';
 
 describe('artifactHandler', () => {
@@ -83,6 +83,53 @@ describe('artifactHandler', () => {
       expect(artifacts[0].type).toBe('audio');
       expect(artifacts[0].status).toBe('persisted');
       expect(artifacts[0].url).toBe(url);
+    });
+  });
+
+  describe('handleArtifactUpdated', () => {
+    it('should touch existing artifact by path', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2024-01-01T00:00:00Z'));
+      const store = useAgentArtifactsStore();
+      const agentId = 'agent-1';
+      const path = 'src/app.py';
+
+      store.createPendingArtifact(agentId, path, 'file');
+      store.finalizeArtifactStream(agentId);
+      store.markArtifactPersisted(agentId, path);
+      const before = store.getArtifactsForAgent(agentId)[0].updatedAt;
+
+      const payload: ArtifactUpdatedPayload = {
+        path,
+        agent_id: agentId,
+        type: 'file',
+      };
+      
+      vi.setSystemTime(new Date('2024-01-01T00:00:01Z'));
+      handleArtifactUpdated(payload, mockContext);
+      const after = store.getArtifactsForAgent(agentId)[0].updatedAt;
+
+      expect(after).not.toBe(before);
+      vi.useRealTimers();
+    });
+
+    it('should create a persisted artifact when missing', () => {
+      const store = useAgentArtifactsStore();
+      const agentId = 'agent-1';
+      const path = 'src/new_file.py';
+
+      const payload: ArtifactUpdatedPayload = {
+        path,
+        agent_id: agentId,
+        type: 'file',
+      };
+
+      handleArtifactUpdated(payload, mockContext);
+
+      const artifacts = store.getArtifactsForAgent(agentId);
+      expect(artifacts).toHaveLength(1);
+      expect(artifacts[0].path).toBe(path);
+      expect(artifacts[0].status).toBe('persisted');
     });
   });
 });

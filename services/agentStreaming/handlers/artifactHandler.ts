@@ -1,12 +1,12 @@
-import { useAgentArtifactsStore } from '~/stores/agentArtifactsStore';
+import { useAgentArtifactsStore, type AgentArtifact } from '~/stores/agentArtifactsStore';
 import type { AgentContext } from '~/types/agent/AgentContext';
-import type { ArtifactPersistedPayload } from '../protocol/messageTypes';
+import type { ArtifactPersistedPayload, ArtifactUpdatedPayload } from '../protocol/messageTypes';
 
 export const handleArtifactPersisted = (
   payload: ArtifactPersistedPayload,
   context: AgentContext
 ): void => {
-  const { agent_id, path, type, url } = payload;
+  const { agent_id, path, type, url, workspace_root } = payload;
   const store = useAgentArtifactsStore();
   
   const MEDIA_AND_DOC_TYPES = ['image', 'audio', 'video', 'pdf', 'csv', 'excel'];
@@ -22,10 +22,25 @@ export const handleArtifactPersisted = (
         agentId: agent_id,
         path,
         type: type as any, // Cast to any or Specific union
-        url: url || ''
+        url: url || '',
+        workspaceRoot: workspace_root ?? null
     });
   } else {
     // File artifacts were already created during streaming
-    store.markArtifactPersisted(agent_id, path);
+    store.markArtifactPersisted(agent_id, path, workspace_root ?? null);
   }
+};
+
+export const handleArtifactUpdated = (
+  payload: ArtifactUpdatedPayload,
+  context: AgentContext
+): void => {
+  const store = useAgentArtifactsStore();
+  store.touchArtifact(
+    payload.agent_id,
+    payload.path,
+    payload.type as AgentArtifact['type'],
+    payload.artifact_id,
+    payload.workspace_root ?? null
+  );
 };

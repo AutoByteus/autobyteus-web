@@ -7,6 +7,7 @@ export const GetAgentArtifacts = gql`
       agentId
       path
       type
+      workspaceRoot
       createdAt
       updatedAt
     }

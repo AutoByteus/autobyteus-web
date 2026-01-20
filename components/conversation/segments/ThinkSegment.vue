@@ -1,8 +1,13 @@
 <template>
   <div class="think-segment">
-    <button @click="toggle" class="think-toggle-button">
-      <span class="icon" :class="{ 'is-expanded': showContent }">›</span>
-      <span class="button-text">{{ showContent ? 'Hide' : 'Show' }} Thinking Output</span>
+    <button @click="toggle" class="think-toggle-button" :class="{ 'is-active': showContent }">
+      <Icon icon="mdi:lightbulb-on-outline" class="think-icon" />
+      <span class="button-text">Thinking</span>
+      <Icon 
+        icon="mdi:chevron-right" 
+        class="chevron-icon" 
+        :class="{ 'is-expanded': showContent }" 
+      />
     </button>
     <transition name="fade-slide">
       <div v-if="showContent" class="think-content">
@@ -14,6 +19,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { Icon } from '@iconify/vue';
 import MarkdownRenderer from '~/components/conversation/segments/renderer/MarkdownRenderer.vue';
 
 const props = defineProps<{ content: string }>();
@@ -26,72 +32,75 @@ const toggle = () => {
 
 <style scoped>
 .think-segment {
-  margin: 1em 0;
-  border-radius: 8px;
-  padding: 1em;
-  background-color: #f9f9f9;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin: 0.5em 0;
 }
 
 .think-toggle-button {
-  background-color: #edf2f7;
-  color: #2d3748;
-  border: 1px solid #e2e8f0;
-  padding: 0.5em 1em;
+  background-color: #dbeafe; /* blue-100 */
+  color: #1e40af; /* blue-800 */
+  border: 1px solid #bfdbfe; /* blue-200 */
+  padding: 0.35em 0.85em;
   cursor: pointer;
-  border-radius: 6px;
-  display: flex;
+  border-radius: 9999px;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5em;
+  gap: 0.4em;
   transition: all 0.2s ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  user-select: none;
 }
 
 .think-toggle-button:hover {
-  background-color: #e2e8f0;
-  border-color: #cbd5e0;
-  color: #1a202c;
+  background-color: #bfdbfe; /* blue-200 */
+  border-color: #93c5fd; /* blue-300 */
+}
+
+.think-toggle-button.is-active {
+  background-color: #bfdbfe; /* blue-200 */
+  border-color: #93c5fd; /* blue-300 */
+}
+
+.think-icon {
+  font-size: 1.1em;
+  color: inherit;
+}
+
+.chevron-icon {
+  font-size: 1.1em;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  color: inherit;
+  opacity: 0.7;
+}
+
+.chevron-icon.is-expanded {
+  transform: rotate(90deg);
 }
 
 .button-text {
-  font-weight: 500;
-  font-size: 0.95rem;
   letter-spacing: 0.01em;
-}
-
-.icon {
-  font-size: 20px;
-  line-height: 1;
-  transform: rotate(90deg);
-  transition: transform 0.2s ease;
-  color: #4a5568;
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  text-align: center;
-  font-weight: 600;
-}
-
-.icon.is-expanded {
-  transform: rotate(270deg);
 }
 
 .think-content {
   margin-top: 0.75em;
   padding: 1em;
-  background: #ffffff;
+  background: #eff6ff; /* blue-50 */
+  border: 1px solid #bfdbfe; /* blue-200 */
+  border-left: 3px solid #3b82f6; /* blue-500 accent */
   border-radius: 6px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   line-height: 1.6;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  color: #1e3a5f;
 }
 
 .fade-slide-enter-active, .fade-slide-leave-active {
   transition: opacity 0.3s, transform 0.3s;
 }
 
-.fade-slide-enter, .fade-slide-leave-to {
+.fade-slide-enter-from, .fade-slide-leave-to {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(-8px);
 }
 </style>
+

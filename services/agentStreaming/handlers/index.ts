@@ -31,4 +31,5 @@ export {
 
 export {
   handleArtifactPersisted,
+  handleArtifactUpdated,
 } from './artifactHandler';
