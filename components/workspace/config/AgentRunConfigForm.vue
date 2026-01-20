@@ -31,6 +31,7 @@
     />
 
     <!-- Workspace Selector -->
+    <div class="mt-8">
     <WorkspaceSelector
         :workspace-id="config.workspaceId"
         :is-loading="workspaceLoadingState.isLoading"
@@ -39,20 +40,28 @@
         @select-existing="handleSelectExisting"
         @load-new="handleLoadNew"
     />
+    </div>
     
     <!-- Auto Execute -->
-    <div class="flex items-center">
-        <input
-            id="auto-execute"
-            type="checkbox"
-            :checked="config.autoExecuteTools"
-            @change="updateAutoExecute(($event.target as HTMLInputElement).checked)"
-            :disabled="config.isLocked"
-            class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50"
-        />
-        <label for="auto-execute" class="ml-2 block text-sm text-gray-700 select-none" :class="{ 'text-gray-400': config.isLocked }">
+    <div class="flex items-center justify-between gap-4 py-2 mt-2">
+        <label for="auto-execute" class="block text-base text-gray-900 select-none" :class="{ 'text-gray-400': config.isLocked }">
             Auto approve tools
         </label>
+        <button 
+            id="auto-execute"
+            type="button" 
+            class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            :class="config.autoExecuteTools ? 'bg-blue-600' : 'bg-gray-200'"
+            @click="updateAutoExecute(!config.autoExecuteTools)"
+            :disabled="config.isLocked"
+        >
+            <span class="sr-only">Auto approve tools</span>
+            <span 
+                aria-hidden="true" 
+                class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                :class="config.autoExecuteTools ? 'translate-x-5' : 'translate-x-0'"
+            />
+        </button>
     </div>
 
     <div v-if="config.isLocked" class="flex items-center text-xs text-amber-600 bg-amber-50 p-2 rounded">

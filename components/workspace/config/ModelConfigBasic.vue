@@ -1,16 +1,25 @@
 <template>
-  <div class="flex items-center justify-between gap-4">
+  <div class="flex items-center justify-between gap-4 py-2">
     <div>
       <label :class="labelClass">{{ label }}</label>
       <p v-if="description" :class="descriptionClass">{{ description }}</p>
     </div>
-    <input
-      type="checkbox"
-      :checked="enabled"
-      :disabled="disabled"
-      :class="checkboxClass"
-      @change="emitEnabled(($event.target as HTMLInputElement).checked)"
-    />
+    <div class="flex items-center">
+      <button 
+        type="button" 
+        class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        :class="enabled ? 'bg-blue-600' : 'bg-gray-200'"
+        @click="emitEnabled(!enabled)"
+        :disabled="disabled"
+      >
+        <span class="sr-only">Use setting</span>
+        <span 
+          aria-hidden="true" 
+          class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+          :class="enabled ? 'translate-x-5' : 'translate-x-0'"
+        />
+      </button>
+    </div>
   </div>
 </template>
 
@@ -31,8 +40,8 @@ const emit = defineEmits<{
 
 const labelClass = computed(() =>
   props.compact
-    ? 'block text-xs font-medium text-gray-700'
-    : 'block text-sm font-medium text-gray-700'
+    ? 'block text-sm text-gray-900' // Increased size slightly for better readability
+    : 'block text-base text-gray-900'
 );
 
 const descriptionClass = computed(() =>
@@ -41,13 +50,8 @@ const descriptionClass = computed(() =>
     : 'text-xs text-gray-500'
 );
 
-const checkboxClass = computed(() =>
-  props.compact
-    ? 'h-3 w-3 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500'
-    : 'h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500'
-);
-
 const emitEnabled = (value: boolean) => {
+  if (props.disabled) return;
   emit('update:enabled', value);
 };
 </script>
