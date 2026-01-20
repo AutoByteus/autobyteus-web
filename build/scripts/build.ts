@@ -79,7 +79,7 @@ const options: Configuration = {
     differentialPackage: false         // Disable differential updates
   },
   mac: {
-    target: ['zip'],
+    target: ['dmg'],
     icon: 'build/icons/icon.icns',
     // Custom naming for macOS builds based on architecture
     artifactName: '${productName}_macos-${arch}-${version}.${ext}'
@@ -102,7 +102,7 @@ if (platform !== 'ALL') {
   buildConfig.targets = new Map([
     [Platform.LINUX, new Map([[Arch.x64, ['AppImage']]])],
     [Platform.WINDOWS, new Map([[Arch.x64, ['nsis']]])],
-    [Platform.MAC, new Map([[Arch.x64, ['zip']], [Arch.arm64, ['zip']]])]
+    [Platform.MAC, new Map([[Arch.x64, ['dmg']], [Arch.arm64, ['dmg']]])]
   ])
 }
 
@@ -171,7 +171,7 @@ async function main(): Promise<void> {
         
         await build({
           config: macConfig,
-          targets: new Map([[Platform.MAC, new Map([[arch, ['zip']]])]])
+          targets: new Map([[Platform.MAC, new Map([[arch, ['dmg']]])]])
         });
       }
       
