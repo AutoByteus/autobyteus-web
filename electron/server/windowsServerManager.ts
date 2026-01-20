@@ -1,13 +1,35 @@
-import { spawn } from 'child_process'
+import { spawn, ChildProcess, StdioOptions } from 'child_process'
 import * as path from 'path'
 import * as os from 'os'
 import isDev from 'electron-is-dev'
-import { StdioOptions } from 'child_process'
 import { BaseServerManager } from './baseServerManager'
 import { logger } from '../logger'
 import { getLocalIp } from '../utils/networkUtils'
 
 export class WindowsServerManager extends BaseServerManager {
+  private async waitForProcessExit(proc: ChildProcess, timeoutMs: number): Promise<boolean> {
+    if (proc.exitCode !== null) {
+      return true
+    }
+
+    return new Promise((resolve) => {
+      let timeoutId: NodeJS.Timeout | undefined
+      const onClose = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+        }
+        resolve(true)
+      }
+
+      proc.once('close', onClose)
+
+      timeoutId = setTimeout(() => {
+        proc.removeListener('close', onClose)
+        resolve(false)
+      }, timeoutMs)
+    })
+  }
+
   /**
    * Get path to the server executable for Windows.
    */
@@ -74,7 +96,8 @@ export class WindowsServerManager extends BaseServerManager {
     logger.info('Stopping server on Windows...');
 
     return new Promise((resolve) => {
-      const pid = this.serverProcess?.pid;
+      const proc = this.serverProcess
+      const pid = proc?.pid;
       
       const cleanup = () => {
         this.isServerRunning = false;
@@ -83,27 +106,34 @@ export class WindowsServerManager extends BaseServerManager {
         this.emit('stopped');
       };
 
-      if (!pid) {
+      if (!pid || !proc) {
         logger.warn('Server process exists but has no PID. Cannot kill.');
         cleanup();
         resolve();
         return;
       }
 
-      // Detach original process object
-      this.serverProcess = null;
-      
       let forceKillTimeout: NodeJS.Timeout;
+      let hardTimeout: NodeJS.Timeout;
       let isResolved = false;
       
       const resolveOnce = () => {
         if (!isResolved) {
           isResolved = true;
           clearTimeout(forceKillTimeout);
+          clearTimeout(hardTimeout);
           cleanup();
           resolve();
         }
       };
+
+      // Wait for actual process exit, not just taskkill completion.
+      this.waitForProcessExit(proc, this.gracefulShutdownTimeoutMs).then((exited) => {
+        if (exited) {
+          logger.info(`Server process ${pid} exited after graceful shutdown`);
+          resolveOnce();
+        }
+      });
       
       // Step 1: Try graceful kill first (without /f flag)
       logger.info(`Sending graceful taskkill for PID ${pid}`);
@@ -112,7 +142,6 @@ export class WindowsServerManager extends BaseServerManager {
       gracefulKill.on('close', (code) => {
         if (code === 0) {
           logger.info(`Graceful taskkill for PID ${pid} completed successfully`);
-          resolveOnce();
         }
         // If code !== 0, the timeout will handle force kill
       });
@@ -130,7 +159,7 @@ export class WindowsServerManager extends BaseServerManager {
           
           forceKill.on('close', () => {
             logger.info(`Force taskkill for PID ${pid} completed`);
-            resolveOnce();
+            this.waitForProcessExit(proc, 2000).then(() => resolveOnce());
           });
           
           forceKill.on('error', (err) => {
@@ -139,6 +168,14 @@ export class WindowsServerManager extends BaseServerManager {
           });
         }
       }, this.gracefulShutdownTimeoutMs);
+
+      // Hard timeout to avoid hanging if the process never exits.
+      hardTimeout = setTimeout(() => {
+        if (!isResolved) {
+          logger.warn(`Server process ${pid} did not exit in time; continuing with cleanup`);
+          resolveOnce();
+        }
+      }, this.gracefulShutdownTimeoutMs + 7000);
     });
   }
 

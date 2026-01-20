@@ -243,7 +243,7 @@ ipcMain.handle('reset-server-data', async () => {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
   try {
-    serverManager.resetAppDataDir();
+    await serverManager.resetAppDataDir();
     return { success: true };
   } catch (error) {
     logger.error('Failed to reset app data directory:', error);

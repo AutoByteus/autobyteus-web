@@ -12,6 +12,8 @@ export class ServerStatusManager extends EventEmitter {
   private manager: BaseServerManager
   private isInitializing: boolean = false
   private healthCheckStatus: string = ''
+  private currentStatus: ServerStatus = ServerStatus.STARTING
+  private statusMessage?: string
   
   constructor(serverManager: BaseServerManager) {
     super()
@@ -132,17 +134,13 @@ export class ServerStatusManager extends EventEmitter {
    * Get the current server status.
    */
   getStatus(): any {
-    const isRunning = this.manager.isRunning()
     const urls = this.manager.getServerUrls()
-    let currentStatus = ServerStatus.STARTING;
-    if(this.manager.isRunning()) {
-      currentStatus = ServerStatus.RUNNING
-    }
     
     return {
-      status: currentStatus,
+      status: this.currentStatus,
       urls,
-      healthCheckStatus: this.healthCheckStatus
+      healthCheckStatus: this.healthCheckStatus,
+      message: this.statusMessage
     }
   }
   
@@ -150,6 +148,8 @@ export class ServerStatusManager extends EventEmitter {
    * Emit status change event.
    */
   private emitStatusChange(status: ServerStatus, message?: string): void {
+    this.currentStatus = status
+    this.statusMessage = message
     const urls = this.manager.getServerUrls()
     const statusObject = {
       status,

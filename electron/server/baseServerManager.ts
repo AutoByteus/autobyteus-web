@@ -41,9 +41,20 @@ export abstract class BaseServerManager extends EventEmitter {
     // Use the standard app data location (platform specific)
     this.appDataDir = path.join(app.getPath('userData'), 'server-data')
     
-    // Check if this is the first run by checking if the directory exists
-    this.firstRun = !fs.existsSync(this.appDataDir)
+    const dataDirExists = fs.existsSync(this.appDataDir)
+    const requiredDataDirs = ['db', 'logs', 'download']
+    const missingDataDirs = dataDirExists
+      ? requiredDataDirs.filter((dir) => !fs.existsSync(path.join(this.appDataDir, dir)))
+      : []
+    const hasEnvFile = dataDirExists && fs.existsSync(path.join(this.appDataDir, '.env'))
     
+    // Treat missing .env as first run so we can repopulate.
+    this.firstRun = !dataDirExists || !hasEnvFile
+    
+    if (dataDirExists && !hasEnvFile) {
+      logger.warn('App data directory is missing .env. Reinitializing first-run data.')
+    }
+
     // Create the directory if it doesn't exist
     if (this.firstRun) {
       try {
@@ -52,6 +63,19 @@ export abstract class BaseServerManager extends EventEmitter {
       } catch (error) {
         logger.error('Failed to create app data directory:', error)
         throw new Error(`Failed to create app data directory at ${this.appDataDir}: ${error}`)
+      }
+    }
+
+    if (dataDirExists && missingDataDirs.length > 0) {
+      for (const dir of missingDataDirs) {
+        try {
+          const dirPath = path.join(this.appDataDir, dir)
+          fs.mkdirSync(dirPath, { recursive: true })
+          logger.info(`Created missing data directory: ${dirPath}`)
+        } catch (error) {
+          logger.error(`Failed to create data directory ${dir}:`, error)
+          throw new Error(`Failed to create data directory ${dir}: ${error}`)
+        }
       }
     }
   }
@@ -395,16 +419,33 @@ export abstract class BaseServerManager extends EventEmitter {
   /**
    * Reset the app data directory to a clean state.
    */
-  public resetAppDataDir(): void {
+  public async resetAppDataDir(): Promise<void> {
     try {
       if (fs.existsSync(this.appDataDir)) {
-        fs.rmSync(this.appDataDir, { recursive: true, force: true })
+        await this.removeDirWithRetries(this.appDataDir)
       }
       this.firstRun = true
       this.initAppDataDir()
     } catch (error) {
       logger.error('Failed to reset app data directory:', error)
       throw error
+    }
+  }
+
+  private async removeDirWithRetries(dirPath: string, retries: number = 5, delayMs: number = 300): Promise<void> {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        await fs.promises.rm(dirPath, { recursive: true, force: true })
+        return
+      } catch (error) {
+        const err = error as NodeJS.ErrnoException
+        const shouldRetry = err?.code === 'EBUSY' || err?.code === 'EPERM' || err?.code === 'EACCES'
+        if (!shouldRetry || attempt === retries) {
+          throw error
+        }
+        const backoffMs = delayMs * (attempt + 1)
+        await new Promise((resolve) => setTimeout(resolve, backoffMs))
+      }
     }
   }
 

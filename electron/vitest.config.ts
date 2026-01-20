@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config'
+import { fileURLToPath } from 'url'
 
 export default defineConfig({
   test: {
@@ -6,7 +7,7 @@ export default defineConfig({
     // This is crucial for testing Electron main process code.
     environment: 'node',
     // Define the root for this test suite to ensure paths are resolved correctly.
-    root: new URL('./', import.meta.url).pathname,
+    root: fileURLToPath(new URL('./', import.meta.url)),
     // Tell this runner to ONLY look for tests inside the /electron directory.
     include: ['**/*.{test,spec}.{js,ts}'],
   },
