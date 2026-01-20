@@ -82,6 +82,7 @@ export const useAgentContextsStore = defineStore('agentContexts', {
         llmModelIdentifier: template.llmModelIdentifier,
         workspaceId: template.workspaceId,
         autoExecuteTools: template.autoExecuteTools,
+        llmConfig: template.llmConfig ?? null,
         isLocked: false,
       };
 
