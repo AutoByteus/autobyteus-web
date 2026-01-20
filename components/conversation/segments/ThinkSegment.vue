@@ -36,9 +36,9 @@ const toggle = () => {
 }
 
 .think-toggle-button {
-  background-color: #dbeafe; /* blue-100 */
-  color: #1e40af; /* blue-800 */
-  border: 1px solid #bfdbfe; /* blue-200 */
+  background-color: #eff6ff; /* blue-50 */
+  color: #3b82f6; /* blue-500 */
+  border: 1px solid #dbeafe; /* blue-100 */
   padding: 0.35em 0.85em;
   cursor: pointer;
   border-radius: 9999px;
@@ -53,13 +53,13 @@ const toggle = () => {
 }
 
 .think-toggle-button:hover {
-  background-color: #bfdbfe; /* blue-200 */
-  border-color: #93c5fd; /* blue-300 */
+  background-color: #dbeafe; /* blue-100 */
+  border-color: #bfdbfe; /* blue-200 */
 }
 
 .think-toggle-button.is-active {
-  background-color: #bfdbfe; /* blue-200 */
-  border-color: #93c5fd; /* blue-300 */
+  background-color: #dbeafe; /* blue-100 */
+  border-color: #bfdbfe; /* blue-200 */
 }
 
 .think-icon {
@@ -86,8 +86,7 @@ const toggle = () => {
   margin-top: 0.75em;
   padding: 1em;
   background: #eff6ff; /* blue-50 */
-  border: 1px solid #bfdbfe; /* blue-200 */
-  border-left: 3px solid #3b82f6; /* blue-500 accent */
+  border: 1px solid #dbeafe; /* blue-100 */
   border-radius: 6px;
   line-height: 1.6;
   font-size: 0.95rem;
