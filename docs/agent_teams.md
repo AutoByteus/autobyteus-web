@@ -236,6 +236,8 @@ Manages **running team instances**:
 | `lockConfig(id)`                 | Lock config after first message           |
 | `promoteTemporaryId(temp, perm)` | Replace temp ID with server ID            |
 
+Note: While a team is still local-only (ID starts with `temp-`), the UI labels it as **"New - {TeamName}"** instead of showing the raw temp ID.
+
 ### agentTeamRunStore.ts
 
 Handles team execution and real-time communication:

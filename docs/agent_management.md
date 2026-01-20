@@ -203,6 +203,8 @@ Manages **running agent instances**:
 | `activeInstance`        | Currently selected instance |
 | `instancesByDefinition` | Grouped by agent definition |
 
+Note: While an agent is still local-only (ID starts with `temp-`), the UI labels it as **"New - {AgentName}"** instead of showing the raw temp ID.
+
 ### agentRunStore.ts
 
 Handles agent execution and real-time communication:

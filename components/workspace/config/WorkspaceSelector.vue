@@ -83,14 +83,18 @@
           <Icon icon="heroicons:folder-open" class="w-5 h-5" />
         </button>
         <button
+          v-else
           type="button"
           @click="handleLoad"
           :disabled="isLoading || disabled || !tempPath.trim()"
           class="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
           title="Load workspace"
         >
-          <Icon v-if="isLoading" icon="heroicons:arrow-path" class="w-5 h-5 animate-spin" />
-          <Icon v-else icon="heroicons:arrow-right" class="w-5 h-5" />
+          <span v-if="isLoading" class="flex items-center gap-2">
+            <Icon icon="heroicons:arrow-path" class="w-5 h-5 animate-spin" />
+            <span>Loading</span>
+          </span>
+          <span v-else>Load</span>
         </button>
       </div>
     </div>
@@ -261,6 +265,7 @@ const handleBrowse = async () => {
     const result = await window.electronAPI.showFolderDialog();
     if (!result.canceled && result.path) {
       tempPath.value = result.path;
+      handleLoad();
     }
   } catch (error) {
     console.error('Failed to open folder dialog:', error);

@@ -99,6 +99,8 @@ describe('WorkspaceSelector', () => {
     // Path should be populated
     const input = wrapper.find('input[type="text"]');
     expect((input.element as HTMLInputElement).value).toBe('/selected/folder/path');
+    expect(wrapper.emitted('load-new')).toBeTruthy();
+    expect(wrapper.emitted('load-new')![0]).toEqual(['/selected/folder/path']);
   });
 
   it('does not update path when dialog is canceled', async () => {
@@ -129,6 +131,7 @@ describe('WorkspaceSelector', () => {
 
     // Path should remain unchanged
     expect((input.element as HTMLInputElement).value).toBe('/initial/path');
+    expect(wrapper.emitted('load-new')).toBeFalsy();
   });
 
   it('emits load-new when Load button is clicked with path', async () => {
