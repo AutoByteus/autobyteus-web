@@ -50,10 +50,7 @@
         <template v-else>
           <h3>No skills created yet</h3>
           <p>Create your first skill to extend capabilities.</p>
-          <button class="btn-primary" @click="showCreateDialog = true">
-            <Icon icon="heroicons:plus" />
-            Create Skill
-          </button>
+
         </template>
       </div>
     </div>
@@ -242,6 +239,9 @@ async function handleToggleDisable(skill: Skill) {
   padding: 2rem;
   max-width: 1600px;
   margin: 0 auto;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Header Styles */
@@ -388,6 +388,7 @@ button {
   background: #f9fafb;
   border-radius: 12px;
   border: 1px dashed #e5e7eb;
+  flex: 1;
 }
 
 .spinner {
