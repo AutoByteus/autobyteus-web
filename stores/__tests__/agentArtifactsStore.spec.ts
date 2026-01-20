@@ -24,16 +24,24 @@ describe('AgentArtifactsStore', () => {
     expect(all[0]).toBe(active);
   });
 
-  it('should append content to the active artifact', () => {
+  it('should append content to the active artifact', async () => {
     const store = useAgentArtifactsStore();
     const agentId = 'agent-1';
     store.createPendingArtifact(agentId, 'test.py');
+    
+    // Check that updatedAt is recent (not the original createdAt)
+    // Wait to ensure timestamp difference
+    await new Promise(resolve => setTimeout(resolve, 2));
 
     store.appendArtifactContent(agentId, 'print(');
     store.appendArtifactContent(agentId, '"hello")');
-
+    
+    // Wait for timestamp update
     const active = store.getActiveStreamingArtifact(agentId);
     expect(active?.content).toBe('print("hello")');
+    expect(active?.updatedAt).toBeDefined();
+    // Check that updatedAt is recent (not the original createdAt)
+    expect(active?.updatedAt).not.toBe(active?.createdAt);
   });
 
   it('should finalize artifact stream and clear active state', () => {

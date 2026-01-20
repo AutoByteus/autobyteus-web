@@ -176,7 +176,7 @@ watch(() => props.modelValue, (newValue) => {
       lastLineLength
     );
 
-    editor.executeEdits('external-update', [{
+    model.applyEdits([{
       range: endRange,
       text: delta,
       forceMoveMarkers: true
@@ -190,7 +190,8 @@ watch(() => props.modelValue, (newValue) => {
   const fullRange = model.getFullModelRange();
 
   editor.pushUndoStop();
-  editor.executeEdits('external-update', [{
+  // Use model.applyEdits for full replacement as well to avoid undo stack pollution during sync
+  model.applyEdits([{
     range: fullRange,
     text: safeValue,
     forceMoveMarkers: true

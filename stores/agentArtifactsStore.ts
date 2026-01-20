@@ -90,7 +90,9 @@ export const useAgentArtifactsStore = defineStore('agentArtifacts', {
     appendArtifactContent(agentId: string, delta: string) {
       const artifact = this.activeStreamingArtifactByAgent.get(agentId);
       if (artifact && artifact.status === 'streaming') {
+        const oldLen = artifact.content?.length || 0;
         artifact.content = (artifact.content || '') + delta;
+        artifact.updatedAt = new Date().toISOString();
       }
     },
 
