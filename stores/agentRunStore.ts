@@ -86,9 +86,18 @@ export const useAgentRunStore = defineStore('agentRun', {
           throw new Error(errors.map(e => e.message).join(', '));
         }
 
-        const permanentAgentId = data?.sendAgentUserInput?.agentId;
+        const result = data?.sendAgentUserInput;
+        if (!result) {
+          throw new Error('Failed to send user input: No response returned.');
+        }
+
+        if (!result.success) {
+          throw new Error(result.message || 'Failed to send user input.');
+        }
+
+        const permanentAgentId = result.agentId;
         if (!permanentAgentId) {
-          throw new Error('Failed to send user input: No agentId returned.');
+          throw new Error('Failed to send user input: No agentId returned on success.');
         }
 
         let finalAgentId = agentId;
@@ -98,7 +107,7 @@ export const useAgentRunStore = defineStore('agentRun', {
         }
 
         agentContextsStore.lockConfig(finalAgentId);
-        
+
         const finalAgent = agentContextsStore.getInstance(finalAgentId)!;
         finalAgent.requirement = '';
         finalAgent.contextFilePaths = [];
@@ -109,12 +118,29 @@ export const useAgentRunStore = defineStore('agentRun', {
 
         const conversationHistoryStore = useConversationHistoryStore();
         if (state.conversation.agentDefinitionId && conversationHistoryStore.agentDefinitionId === state.conversation.agentDefinitionId) {
-           await conversationHistoryStore.fetchConversationHistory();
+          await conversationHistoryStore.fetchConversationHistory();
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error sending user input:', error);
         currentAgent.isSending = false;
-        throw error;
+
+        // Push error segment to conversation
+        currentAgent.state.conversation.messages.push({
+          type: 'ai',
+          text: 'Error Occurred',
+          timestamp: new Date(),
+          isComplete: true,
+          segments: [{
+            type: 'error',
+            source: 'System',
+            message: error.message || 'An unexpected error occurred.',
+            details: error.toString()
+          }]
+        });
+        currentAgent.state.conversation.updatedAt = new Date().toISOString();
+
+        // We do NOT re-throw here because we've handled it by showing it in the UI.
+        // If we re-throw, parent catch blocks might try to handle it again (e.g. log it).
       }
     },
 
@@ -125,7 +151,7 @@ export const useAgentRunStore = defineStore('agentRun', {
     connectToAgentStream(agentId: string) {
       const agentContextsStore = useAgentContextsStore();
       const agent = agentContextsStore.getInstance(agentId);
-      
+
       if (!agent) return;
 
       // Get the WebSocket endpoint from runtime config (like terminal and file explorer)
@@ -144,7 +170,7 @@ export const useAgentRunStore = defineStore('agentRun', {
 
       service.connect(agentId, agent);
     },
-    
+
     /**
      * @action postToolExecutionApproval
      * @description Sends the user's approval or denial for a tool call via WebSocket.
@@ -153,7 +179,7 @@ export const useAgentRunStore = defineStore('agentRun', {
       const service = streamingServices.get(agentId);
       const agentContextsStore = useAgentContextsStore();
       const agent = agentContextsStore.getInstance(agentId);
-      
+
       if (service) {
         if (isApproved) {
           service.approveTool(invocationId, _reason || undefined);
@@ -194,7 +220,7 @@ export const useAgentRunStore = defineStore('agentRun', {
 
       streamingServices.delete(agentIdToClose);
       agentContextsStore.removeInstance(agentIdToClose);
-      
+
       if (options.terminate && !agentIdToClose.startsWith('temp-')) {
         try {
           const { client } = useApolloClient();

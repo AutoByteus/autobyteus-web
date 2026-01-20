@@ -107,6 +107,7 @@ export const useActiveContextStore = defineStore('activeContext', () => {
       }
     } catch (error) {
       console.error('Failed to send message via activeContextStore:', error);
+      throw error;
     }
   };
 

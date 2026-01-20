@@ -7,6 +7,7 @@
     </template>
     
     <UiErrorPanel v-if="config.public.showDebugErrorPanel" />
+    <ToastContainer />
 
     <NuxtLayout>
       <NuxtPage />
@@ -19,6 +20,7 @@ import { useServerStore } from '~/stores/serverStore'
 import ServerLoading from '~/components/server/ServerLoading.vue'
 import ServerShutdown from '~/components/server/ServerShutdown.vue'
 import UiErrorPanel from '~/components/ui/UiErrorPanel.vue'
+import ToastContainer from '~/components/common/ToastContainer.vue'
 
 const config = useRuntimeConfig()
 const serverStore = useServerStore()

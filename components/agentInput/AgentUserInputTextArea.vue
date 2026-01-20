@@ -151,7 +151,6 @@ const handleSend = async () => {
     await activeContextStore.send();
   } catch (error) {
     console.error('Error sending requirement:', error);
-    alert('Failed to send requirement. Please try again.');
   }
 };
 
