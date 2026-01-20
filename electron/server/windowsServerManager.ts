@@ -10,6 +10,7 @@ export class WindowsServerManager extends BaseServerManager {
   private async cleanupOrphanedServers(): Promise<void> {
     return new Promise((resolve) => {
       const imagePattern = 'autobyteus_server*.exe'
+      logger.info(`Cleaning up orphaned server processes (${imagePattern})`)
       const cleanup = spawn('taskkill', ['/f', '/t', '/im', imagePattern])
 
       cleanup.on('close', () => {
@@ -144,9 +145,10 @@ export class WindowsServerManager extends BaseServerManager {
       };
 
       // Wait for actual process exit, not just taskkill completion.
-      this.waitForProcessExit(proc, this.gracefulShutdownTimeoutMs).then((exited) => {
+      this.waitForProcessExit(proc, this.gracefulShutdownTimeoutMs).then(async (exited) => {
         if (exited) {
           logger.info(`Server process ${pid} exited after graceful shutdown`);
+          await this.cleanupOrphanedServers()
           resolveOnce();
         }
       });
