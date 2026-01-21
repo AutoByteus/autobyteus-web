@@ -13,7 +13,7 @@
          </div>
 
          <!-- Edit/Preview Toggle -->
-         <div v-if="supportsPreview" class="flex items-center gap-1 border-l border-gray-200 pl-2 ml-2">
+         <div v-if="supportsPreview && !isDeleted" class="flex items-center gap-1 border-l border-gray-200 pl-2 ml-2">
            <button
              class="p-1.5 rounded-md transition-all duration-200 focus:outline-none"
              :class="viewMode === 'edit' 
@@ -47,6 +47,14 @@
     <div v-else class="flex-1 flex flex-col min-h-0 overflow-hidden relative">
         <div v-if="isLoading" class="flex-1 flex items-center justify-center text-gray-400">
             Loading content...
+        </div>
+
+        <div v-else-if="isDeleted" class="flex-1 flex flex-col items-center justify-center text-gray-400 p-8">
+             <Icon icon="heroicons:trash" class="w-16 h-16 mb-4 text-gray-300" />
+             <h3 class="text-lg font-medium text-gray-500 mb-1">File not found</h3>
+             <p class="text-sm text-center max-w-sm">
+               This file has been deleted from the workspace or moved to a different location.
+             </p>
         </div>
         
         <FileViewer
@@ -92,6 +100,7 @@ const isFetchingContent = ref(false);
 const fetchedContent = ref<string | null>(null);
 const resolvedUrl = ref<string | null>(null);
 const errorMessage = ref<string | null>(null);
+const isDeleted = ref(false);
 let fetchToken = 0;
 
 const agentContextsStore = useAgentContextsStore();
@@ -183,6 +192,7 @@ const refreshPersistedContent = async () => {
   const artifact = props.artifact;
   resolvedUrl.value = null;
   errorMessage.value = null;
+  isDeleted.value = false;
 
   if (!artifact || artifact.status !== 'persisted') {
     fetchedContent.value = null;
@@ -206,6 +216,14 @@ const refreshPersistedContent = async () => {
   isFetchingContent.value = true;
   try {
     const response = await fetch(artifactUrl.value, { cache: 'no-store' });
+    
+    if (response.status === 404) {
+      if (currentToken !== fetchToken) return;
+      isDeleted.value = true;
+      fetchedContent.value = null;
+      return;
+    }
+
     if (!response.ok) {
       throw new Error(`Failed to fetch content (${response.status})`);
     }
@@ -225,6 +243,7 @@ const refreshPersistedContent = async () => {
 watch(() => props.artifact, async () => {
   resolvedUrl.value = null;
   errorMessage.value = null;
+  isDeleted.value = false; // Reset deleted state on change
   await updateFileType();
   
   // Default to preview mode for supported types when opening a new artifact
