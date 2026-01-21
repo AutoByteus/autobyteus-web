@@ -412,7 +412,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
 
       if (file && file.type === 'Text') {
         file.content = null;
-        this.fetchFileContent(filePath);
+        this.fetchFileContent(filePath, workspaceId);
       }
     },
 
@@ -509,7 +509,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
         }
 
         if (data?.deleteFileOrFolder) {
-          if (wsState.openFiles.some(f => f.path === filePath)) this.closeFile(filePath);
+          if (wsState.openFiles.some(f => f.path === filePath)) this.closeFile(filePath, workspaceId);
           wsState.openFiles = wsState.openFiles.filter(file => !file.path.startsWith(filePath + '/'));
           
           const changeEvent: FileSystemChangeEvent = JSON.parse(data.deleteFileOrFolder);
