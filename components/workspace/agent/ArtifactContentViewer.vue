@@ -3,13 +3,37 @@
     <!-- Header / Meta Info -->
     <div v-if="artifact" class="flex items-center gap-2 px-4 py-3 border-b border-gray-200 bg-white flex-shrink-0 min-h-[45px]">
          <!-- Breadcrumb style path display -->
-         <div class="flex items-center text-sm text-gray-600 space-x-1">
+         <div class="flex items-center text-sm text-gray-600 space-x-1 flex-1 min-w-0">
              <!-- Root/Workspace Icon -->
              <Icon icon="heroicons:folder-open" class="w-4 h-4 text-gray-400" />
              <!-- Separator -->
              <span class="text-gray-300">/</span>
              <!-- Path -->
-             <span class="font-medium text-gray-800">{{ artifact.path }}</span>
+             <span class="font-medium text-gray-800 truncate">{{ artifact.path }}</span>
+         </div>
+
+         <!-- Edit/Preview Toggle -->
+         <div v-if="supportsPreview" class="flex items-center gap-1 border-l border-gray-200 pl-2 ml-2">
+           <button
+             class="p-1.5 rounded-md transition-all duration-200 focus:outline-none"
+             :class="viewMode === 'edit' 
+               ? 'bg-blue-50 text-blue-600' 
+               : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'"
+             @click="viewMode = 'edit'"
+             title="Edit Mode"
+           >
+             <Icon icon="heroicons:pencil-square" class="h-4 w-4" />
+           </button>
+           <button
+             class="p-1.5 rounded-md transition-all duration-200 focus:outline-none"
+             :class="viewMode === 'preview' 
+               ? 'bg-blue-50 text-blue-600' 
+               : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'"
+             @click="viewMode = 'preview'"
+             title="Preview Mode"
+           >
+             <Icon icon="heroicons:eye" class="h-4 w-4" />
+           </button>
          </div>
     </div>
 
@@ -33,7 +57,7 @@
                 content: displayContent,
                 url: displayUrl
             }"
-            :mode="'edit'" 
+            :mode="viewMode" 
             :read-only="true"
             :error="errorMessage"
             class="h-full w-full"
@@ -48,6 +72,7 @@
 import { computed, ref, watch } from 'vue';
 import { Icon } from '@iconify/vue';
 import type { AgentArtifact } from '~/stores/agentArtifactsStore';
+import type { FileOpenMode } from '~/stores/fileExplorer';
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { determineFileType } from '~/utils/fileExplorer/fileUtils';
@@ -61,6 +86,7 @@ const props = defineProps<{
 }>();
 
 const fileType = ref<'Text' | 'Image' | 'Audio' | 'Video' | 'Excel' | 'PDF'>('Text');
+const viewMode = ref<FileOpenMode>('edit');
 const isDeterminingType = ref(false);
 const isFetchingContent = ref(false);
 const fetchedContent = ref<string | null>(null);
@@ -124,13 +150,23 @@ const displayContent = computed(() => {
   }
   return props.artifact.content ?? '';
 });
-
 const displayUrl = computed(() => {
   if (!props.artifact) return null;
   if (props.artifact.status === 'persisted') {
     return resolvedUrl.value ?? props.artifact.url ?? null;
   }
   return props.artifact.url ?? null;
+});
+
+const supportsPreview = computed(() => {
+  if (fileType.value !== 'Text') return false;
+  const path = props.artifact?.path?.toLowerCase() ?? '';
+  // Check against supported preview extensions (Markdown, HTML)
+  // This list should match what FileViewer supports for preview
+  return path.endsWith('.md') || 
+         path.endsWith('.markdown') || 
+         path.endsWith('.html') || 
+         path.endsWith('.htm');
 });
 
 const updateFileType = async () => {
@@ -187,10 +223,17 @@ const refreshPersistedContent = async () => {
 };
 
 watch(() => props.artifact, async () => {
-  fetchedContent.value = null;
   resolvedUrl.value = null;
   errorMessage.value = null;
   await updateFileType();
+  
+  // Default to preview mode for supported types when opening a new artifact
+  if (supportsPreview.value) {
+      viewMode.value = 'preview';
+  } else {
+      viewMode.value = 'edit';
+  }
+  
   await refreshPersistedContent();
 }, { immediate: true });
 
