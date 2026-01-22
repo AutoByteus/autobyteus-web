@@ -23,8 +23,8 @@ describe('ArtifactList.vue', () => {
             props: { artifacts: mockArtifacts }
         });
 
-        // "Media" header should exist
-        expect(wrapper.text()).toContain('Media');
+        // "Assets" header should exist
+        expect(wrapper.text()).toContain('Assets');
         // "Files" header should exist
         expect(wrapper.text()).toContain('Files');
 
@@ -47,5 +47,44 @@ describe('ArtifactList.vue', () => {
         
         expect(wrapper.emitted('select')).toBeTruthy();
         expect(wrapper.emitted('select')?.[0][0]).toEqual(mockArtifacts[1]);
+    });
+
+    it('navigates artifacts using arrow keys', async () => {
+        const wrapper = mount(ArtifactList, {
+            props: { 
+                artifacts: mockArtifacts,
+                selectedArtifactId: mockArtifacts[1].id // image.png (index 0 in flattened list: Assets -> Files)
+            }
+        });
+
+        // Current order: 
+        // Assets: image.png (id 2), video.mp4 (id 4)
+        // Files: test.txt (id 1), script.py (id 3)
+        // Flattened: [image.png, video.mp4, test.txt, script.py]
+        
+        // Initial selection is image.png (index 0)
+         
+        // KeyDown Down -> Should select video.mp4 (index 1)
+        await wrapper.find('div[tabindex="0"]').trigger('keydown', { key: 'ArrowDown' });
+        
+        expect(wrapper.emitted('select')).toBeTruthy();
+        const event1 = wrapper.emitted('select')?.[0] as unknown as [AgentArtifact];
+        expect(event1[0].id).toBe('4');
+
+        // Update props to simulate selection change
+        await wrapper.setProps({ selectedArtifactId: '4' });
+
+        // KeyDown Down -> Should select test.txt (index 2)
+        await wrapper.find('div[tabindex="0"]').trigger('keydown', { key: 'ArrowDown' });
+        const event2 = wrapper.emitted('select')?.[1] as unknown as [AgentArtifact];
+        expect(event2[0].id).toBe('1');
+
+        // Update props
+        await wrapper.setProps({ selectedArtifactId: '1' });
+
+        // KeyDown Up -> Should select video.mp4 (index 1)
+        await wrapper.find('div[tabindex="0"]').trigger('keydown', { key: 'ArrowUp' });
+        const event3 = wrapper.emitted('select')?.[2] as unknown as [AgentArtifact];
+        expect(event3[0].id).toBe('4');
     });
 });
