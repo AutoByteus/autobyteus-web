@@ -246,8 +246,8 @@ watch(() => props.artifact, async () => {
   isDeleted.value = false; // Reset deleted state on change
   await updateFileType();
   
-  // Default to preview mode for supported types when opening a new artifact
-  if (supportsPreview.value) {
+  // Default to preview mode for supported types ONLY when the artifact is persisted
+  if (supportsPreview.value && props.artifact?.status === 'persisted') {
       viewMode.value = 'preview';
   } else {
       viewMode.value = 'edit';
