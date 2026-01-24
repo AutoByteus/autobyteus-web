@@ -33,7 +33,8 @@ describe('TeamRunConfigForm', () => {
             providersWithModels: [
                 { provider: 'OpenAI', models: [{ modelIdentifier: 'gpt-4', name: 'GPT-4' }] }
             ],
-            fetchProvidersWithModels: vi.fn()
+            fetchProvidersWithModels: vi.fn(),
+            modelConfigSchemaByIdentifier: vi.fn().mockReturnValue(null) // Mock the schema getter
         });
     });
 
@@ -141,7 +142,7 @@ describe('TeamRunConfigForm', () => {
             }
         });
 
-        await wrapper.find('input[type="checkbox"]').setValue(true);
+        await wrapper.find('button#team-auto-execute').trigger('click');
         expect(config.autoExecuteTools).toBe(true);
     });
 });

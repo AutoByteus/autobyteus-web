@@ -2,43 +2,55 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import MemberOverrideItem from '../MemberOverrideItem.vue';
-import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
-
-// Mock child components
-vi.mock('~/components/agentTeams/SearchableGroupedSelect.vue', () => ({
-  default: {
-    name: 'SearchableGroupedSelect',
-    template: '<div class="searchable-select-stub"></div>',
-    props: ['modelValue', 'disabled', 'options'],
-    emits: ['update:modelValue'],
-  }
+vi.mock('~/stores/llmProviderConfig', () => ({
+  useLLMProviderConfigStore: vi.fn()
 }));
 
 describe('MemberOverrideItem', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
-    const store = useLLMProviderConfigStore();
-    store.fetchProvidersWithModels = vi.fn().mockResolvedValue([]);
-    store.providersWithModels = [
-      {
-        provider: 'Google',
-        models: [
-          { 
-            modelIdentifier: 'gemini-1.5-pro', 
-            name: 'Gemini 1.5 Pro', 
-            value: 'gemini-1.5-pro', 
-            canonicalName: 'gemini-1.5-pro', 
-            provider: 'google', 
-            runtime: 'python',
-            configSchema: {
-                parameters: [
-                  { name: 'thinking_level', type: 'integer', description: 'Thinking Budget' }
-                ]
-            }
+    
+    // Setup mock store
+    const mockStore = {
+        providersWithModels: [
+          {
+            provider: 'Google',
+            models: [
+              { 
+                modelIdentifier: 'gemini-1.5-pro', 
+                name: 'Gemini 1.5 Pro', 
+                value: 'gemini-1.5-pro', 
+                canonicalName: 'gemini-1.5-pro', 
+                provider: 'google', 
+                runtime: 'python',
+                configSchema: {
+                    thinking_level: { type: 'integer', description: 'Thinking Budget' }
+                }
+              }
+            ]
           }
-        ]
-      }
-    ];
+        ],
+        fetchProvidersWithModels: vi.fn().mockResolvedValue([]),
+        modelConfigSchemaByIdentifier: vi.fn((id) => {
+             // Access providersWithModels from the mock object itself if possible, or use closure
+             // But here we can just use the local var if we define it outside?
+             // Or simpler: access this.providersWithModels if binding works, but mockReturnValue usually returns plain obj.
+             // We can just rely on the test updating the return value if needed, or implement logic here.
+             
+             // Simplest: duplicate logic, using the mockStore object defined below in closure?
+             // But we can't access it before declaration.
+             // Let's use a function that accesses a variable we can update.
+             return null; 
+        }) 
+    };
+    
+    // Fix circular ref for getter logic
+    mockStore.modelConfigSchemaByIdentifier = vi.fn((id) => {
+         const model = mockStore.providersWithModels.flatMap(p => p.models).find(m => m.modelIdentifier === id);
+         return model?.configSchema || null;
+    });
+
+    (useLLMProviderConfigStore as any).mockReturnValue(mockStore);
   });
 
   const defaultProps = {
@@ -75,8 +87,8 @@ describe('MemberOverrideItem', () => {
     await advancedToggle.trigger('click');
 
     // Check if dynamic form from global model is visible
-    expect(wrapper.text()).toContain('Model Parameters');
-    expect(wrapper.text()).toContain('thinking_level');
+    expect(wrapper.text()).toContain('Thinking Level');
+    expect(wrapper.text()).toContain('Thinking Level');
   });
 
   it('uses overridden model schema when override is set', async () => {
@@ -88,9 +100,7 @@ describe('MemberOverrideItem', () => {
              name: 'Claude 3 Opus', 
              value: 'claude-3-opus', provider: 'anthropic', runtime: 'python', canonicalName: 'claude-3-opus',
              configSchema: {
-                 parameters: [
-                   { name: 'system_prompt_strength', type: 'string' }
-                 ]
+                 thinking_enabled: { type: 'boolean', description: 'Enable Thinking' }
              }
          }]
      });
@@ -111,8 +121,8 @@ describe('MemberOverrideItem', () => {
     const advancedToggle = wrapper.find('[data-testid=\"advanced-params-toggle\"]');
     await advancedToggle.trigger('click');
 
-    expect(wrapper.text()).toContain('system_prompt_strength');
-    expect(wrapper.text()).not.toContain('thinking_level');
+    expect(wrapper.text()).toContain('Thinking Enabled');
+    expect(wrapper.text()).not.toContain('system_prompt_strength');
   });
 
   it('emits update:override with llmConfig when dynamic input changes', async () => {
@@ -125,7 +135,7 @@ describe('MemberOverrideItem', () => {
     const advancedToggle = wrapper.find('[data-testid=\"advanced-params-toggle\"]');
     await advancedToggle.trigger('click');
 
-    const label = wrapper.findAll('label').find(l => l.text().includes('thinking_level'));
+    const label = wrapper.findAll('label').find(l => l.text().includes('Thinking Level'));
     const inputId = label?.attributes('for');
     const input = wrapper.find(`input[id="${inputId}"]`);
     

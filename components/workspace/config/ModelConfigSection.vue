@@ -157,4 +157,41 @@ watch(
     showAdvancedParams.value = false;
   },
 );
+
+// Reset config when schema changes (switching between different providers/models)
+// This prevents old provider-specific params (e.g. Claude's thinking_enabled) from
+// persisting when switching to a different provider (e.g. GPT)
+let previousSchemaJson: string | null = null;
+let previousModelConfig: Record<string, unknown> | null | undefined = props.modelConfig;
+
+watch(
+  () => [props.schema, props.modelConfig],
+  ([newSchema, newModelConfig]) => {
+    const newSchemaJson = JSON.stringify(newSchema ?? null);
+    
+    // On first run, just store the state
+    if (previousSchemaJson === null) {
+      previousSchemaJson = newSchemaJson;
+      previousModelConfig = newModelConfig;
+      return;
+    }
+    
+    // If schema changed
+    if (newSchemaJson !== previousSchemaJson) {
+      previousSchemaJson = newSchemaJson;
+      // Only reset if the modelConfig object reference has NOT changed.
+      // - If modelConfig changed, it means we switched agents (context switch) -> Don't reset.
+      // - If modelConfig is same, it means we changed model dropdown for same agent -> Reset.
+      if (newModelConfig === previousModelConfig) {
+        if (props.modelConfig != null) {
+          emitConfig(null);
+        }
+      }
+    }
+    
+    // Always update previous config ref
+    previousModelConfig = newModelConfig;
+  },
+  { immediate: true },
+);
 </script>
