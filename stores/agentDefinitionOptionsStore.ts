@@ -10,21 +10,15 @@ interface PromptCategory {
   names: string[];
 }
 
-export interface ProcessorOption {
-  __typename?: 'ProcessorOption';
-  name: string;
-  isMandatory: boolean;
-}
-
 export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOptions', () => {
   // State
   const toolNames = ref<string[]>([]);
-  const inputProcessors = ref<ProcessorOption[]>([]);
-  const llmResponseProcessors = ref<ProcessorOption[]>([]);
-  const systemPromptProcessors = ref<ProcessorOption[]>([]);
-  const toolExecutionResultProcessors = ref<ProcessorOption[]>([]);
-  const toolInvocationPreprocessors = ref<ProcessorOption[]>([]);
-  const lifecycleProcessors = ref<ProcessorOption[]>([]);
+  const inputProcessors = ref<string[]>([]);
+  const llmResponseProcessors = ref<string[]>([]);
+  const systemPromptProcessors = ref<string[]>([]);
+  const toolExecutionResultProcessors = ref<string[]>([]);
+  const toolInvocationPreprocessors = ref<string[]>([]);
+  const lifecycleProcessors = ref<string[]>([]);
   const promptCategories = ref<PromptCategory[]>([]);
   
   const loading = ref(false);
@@ -46,13 +40,12 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
       
       if (data) {
         toolNames.value = data.availableToolNames || [];
-        inputProcessors.value = data.availableInputProcessors || [];
-        llmResponseProcessors.value = data.availableLlmResponseProcessors || [];
-        systemPromptProcessors.value = data.availableSystemPromptProcessors || [];
-        toolExecutionResultProcessors.value = data.availableToolExecutionResultProcessors || [];
-        // The generated type may lag behind the schema; cast to any for the new field.
-        toolInvocationPreprocessors.value = (data as any).availableToolInvocationPreprocessors || [];
-        lifecycleProcessors.value = (data as any).availableLifecycleProcessors || [];
+        toolInvocationPreprocessors.value = data.availableOptionalToolInvocationPreprocessorNames || [];
+        lifecycleProcessors.value = data.availableOptionalLifecycleProcessorNames || [];
+        inputProcessors.value = data.availableOptionalInputProcessorNames || [];
+        llmResponseProcessors.value = data.availableOptionalLlmResponseProcessorNames || [];
+        systemPromptProcessors.value = data.availableOptionalSystemPromptProcessorNames || [];
+        toolExecutionResultProcessors.value = data.availableOptionalToolExecutionResultProcessorNames || [];
         promptCategories.value = data.availablePromptCategories || [];
       }
     } catch (e) {

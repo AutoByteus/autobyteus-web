@@ -614,12 +614,6 @@ export type MutationWriteFileContentArgs = {
   workspaceId: Scalars['String']['input'];
 };
 
-export type ProcessorOption = {
-  __typename?: 'ProcessorOption';
-  isMandatory: Scalars['Boolean']['output'];
-  name: Scalars['String']['output'];
-};
-
 export type Prompt = {
   __typename?: 'Prompt';
   category: Scalars['String']['output'];
@@ -672,14 +666,14 @@ export type Query = {
   agentTeamInstances: Array<AgentTeamInstance>;
   availableAudioProvidersWithModels: Array<ProviderWithModels>;
   availableImageProvidersWithModels: Array<ProviderWithModels>;
-  availableInputProcessors: Array<ProcessorOption>;
-  availableLifecycleProcessors: Array<ProcessorOption>;
   availableLlmProvidersWithModels: Array<ProviderWithModels>;
-  availableLlmResponseProcessors: Array<ProcessorOption>;
+  availableOptionalInputProcessorNames: Array<Scalars['String']['output']>;
+  availableOptionalLifecycleProcessorNames: Array<Scalars['String']['output']>;
+  availableOptionalLlmResponseProcessorNames: Array<Scalars['String']['output']>;
+  availableOptionalSystemPromptProcessorNames: Array<Scalars['String']['output']>;
+  availableOptionalToolExecutionResultProcessorNames: Array<Scalars['String']['output']>;
+  availableOptionalToolInvocationPreprocessorNames: Array<Scalars['String']['output']>;
   availablePromptCategories: Array<PromptCategory>;
-  availableSystemPromptProcessors: Array<ProcessorOption>;
-  availableToolExecutionResultProcessors: Array<ProcessorOption>;
-  availableToolInvocationPreprocessors: Array<ProcessorOption>;
   availableToolNames: Array<Scalars['String']['output']>;
   fileContent: Scalars['String']['output'];
   folderChildren: Scalars['String']['output'];
@@ -1386,7 +1380,7 @@ export type GetAgentArtifactsQuery = { __typename?: 'Query', agentArtifacts: Arr
 export type GetAgentCustomizationOptionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentCustomizationOptionsQuery = { __typename?: 'Query', availableToolNames: Array<string>, availableInputProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableLlmResponseProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableSystemPromptProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableToolExecutionResultProcessors: Array<{ __typename: 'ProcessorOption', name: string, isMandatory: boolean }>, availableToolInvocationPreprocessors: Array<{ __typename?: 'ProcessorOption', name: string, isMandatory: boolean }>, availableLifecycleProcessors: Array<{ __typename?: 'ProcessorOption', name: string, isMandatory: boolean }>, availablePromptCategories: Array<{ __typename: 'PromptCategory', category: string, names: Array<string> }> };
+export type GetAgentCustomizationOptionsQuery = { __typename?: 'Query', availableToolNames: Array<string>, availableOptionalInputProcessorNames: Array<string>, availableOptionalLlmResponseProcessorNames: Array<string>, availableOptionalSystemPromptProcessorNames: Array<string>, availableOptionalToolExecutionResultProcessorNames: Array<string>, availableOptionalToolInvocationPreprocessorNames: Array<string>, availableOptionalLifecycleProcessorNames: Array<string>, availablePromptCategories: Array<{ __typename: 'PromptCategory', category: string, names: Array<string> }> };
 
 export type GetAgentDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -2850,34 +2844,12 @@ export type GetAgentArtifactsQueryCompositionFunctionResult = VueApolloComposabl
 export const GetAgentCustomizationOptionsDocument = gql`
     query GetAgentCustomizationOptions {
   availableToolNames
-  availableInputProcessors {
-    __typename
-    name
-    isMandatory
-  }
-  availableLlmResponseProcessors {
-    __typename
-    name
-    isMandatory
-  }
-  availableSystemPromptProcessors {
-    __typename
-    name
-    isMandatory
-  }
-  availableToolExecutionResultProcessors {
-    __typename
-    name
-    isMandatory
-  }
-  availableToolInvocationPreprocessors {
-    name
-    isMandatory
-  }
-  availableLifecycleProcessors {
-    name
-    isMandatory
-  }
+  availableOptionalInputProcessorNames
+  availableOptionalLlmResponseProcessorNames
+  availableOptionalSystemPromptProcessorNames
+  availableOptionalToolExecutionResultProcessorNames
+  availableOptionalToolInvocationPreprocessorNames
+  availableOptionalLifecycleProcessorNames
   availablePromptCategories {
     __typename
     category

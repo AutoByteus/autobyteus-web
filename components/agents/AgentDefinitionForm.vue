@@ -112,20 +112,24 @@
 
     <!-- Advanced Settings -->
     <details class="border-t border-gray-200 pt-8">
-      <summary class="text-xl font-semibold text-gray-900 cursor-pointer">Advanced Settings</summary>
+      <summary class="text-xl font-semibold text-gray-900 cursor-pointer">Optional Processors (Advanced)</summary>
       <p class="text-sm text-gray-500 mt-2 mb-4">
-        The following components are pre-selected with sensible defaults. Modify them only if you need to customize the agent's core behavior. Mandatory components are locked.
+        Only optional processors are shown here. Mandatory processors are applied automatically at runtime.
       </p>
       <fieldset class="mt-4 space-y-8">
-        <div v-for="field in componentFields.filter(f => f.name !== 'tool_names' && f.name !== 'skill_names')" :key="field.name">
+        <div v-if="visibleProcessorFields.length === 0" class="text-sm text-gray-500">
+          No optional processors available.
+        </div>
+        <div v-for="field in visibleProcessorFields" :key="field.name">
           <div class="flex justify-between items-baseline mb-1">
             <label :for="field.name" class="block text-base font-medium text-gray-800">{{ field.label }}</label>
             <button
+              v-if="hasSelection(field.name)"
               type="button"
-              @click="resetToDefaults(field.name)"
+              @click="clearSelection(field.name)"
               class="text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-md px-2 py-1 -my-1"
             >
-              Reset to Defaults
+              Clear
             </button>
           </div>
           <p class="text-sm text-gray-500 mb-2">{{ field.helpText }}</p>
@@ -166,7 +170,6 @@ import { useToolManagementStore } from '~/stores/toolManagementStore';
 import { useSkillStore } from '~/stores/skillStore';
 import GroupableTagInput from '~/components/agents/GroupableTagInput.vue';
 import type { GroupedSource, FlatSource } from '~/components/agents/GroupableTagInput.vue';
-import type { ProcessorOption } from '~/stores/agentDefinitionOptionsStore';
 
 const props = defineProps<{
   initialData?: any;
@@ -214,12 +217,12 @@ const componentFields = computed(() => [
 const toolSource = computed((): GroupedSource => {
   const localToolGroups = toolStore.getLocalToolsByCategory.map(group => ({
     name: group.categoryName,
-    tags: group.tools.map(t => ({ name: t.name, isMandatory: false })), // Tools are never mandatory in this context
+    tags: group.tools.map(t => t.name),
     allowAll: true,
   }));
   const mcpServerGroups = toolStore.getMcpServers.map(server => ({
     name: `MCP: ${server.serverId}`,
-    tags: toolStore.getToolsForServer(server.serverId).map(t => ({ name: t.name, isMandatory: false })),
+    tags: toolStore.getToolsForServer(server.serverId).map(t => t.name),
     allowAll: true,
   }));
   return { type: 'grouped', groups: [...localToolGroups, ...mcpServerGroups] };
@@ -228,9 +231,18 @@ const toolSource = computed((): GroupedSource => {
 const skillSource = computed((): FlatSource => {
   return {
     type: 'flat',
-    tags: skillStore.skills.map(s => ({ name: s.name, isMandatory: false }))
+    tags: skillStore.skills.map(s => s.name)
   };
 });
+
+const processorFieldMap: { [key: string]: keyof typeof optionsStore } = {
+  'input_processor_names': 'inputProcessors',
+  'llm_response_processor_names': 'llmResponseProcessors',
+  'system_prompt_processor_names': 'systemPromptProcessors',
+  'tool_execution_result_processor_names': 'toolExecutionResultProcessors',
+  'tool_invocation_preprocessor_names': 'toolInvocationPreprocessors',
+  'lifecycle_processor_names': 'lifecycleProcessors',
+};
 
 const getComponentSource = (fieldName: string): GroupedSource | FlatSource => {
   if (fieldName === 'tool_names') {
@@ -239,21 +251,29 @@ const getComponentSource = (fieldName: string): GroupedSource | FlatSource => {
   if (fieldName === 'skill_names') {
     return skillSource.value;
   }
-  const storeKeyMap: { [key: string]: keyof typeof optionsStore } = {
-    'input_processor_names': 'inputProcessors',
-    'llm_response_processor_names': 'llmResponseProcessors',
-    'system_prompt_processor_names': 'systemPromptProcessors',
-    'tool_execution_result_processor_names': 'toolExecutionResultProcessors',
-    'tool_invocation_preprocessor_names': 'toolInvocationPreprocessors',
-    'lifecycle_processor_names': 'lifecycleProcessors',
-  };
-  const key = storeKeyMap[fieldName];
-  const tags = optionsStore[key] as ProcessorOption[] | undefined;
+  const key = processorFieldMap[fieldName];
+  const tags = optionsStore[key] as string[] | undefined;
   return {
     type: 'flat',
     tags: tags || []
   };
 };
+
+const visibleProcessorFields = computed(() => {
+  return componentFields.value
+    .filter(field => field.name in processorFieldMap)
+    .filter(field => {
+      const key = processorFieldMap[field.name];
+      const options = optionsStore[key] as string[] | undefined;
+      const selected = (formData as any)[field.name] as string[] | undefined;
+      return (options && options.length > 0) || (selected && selected.length > 0);
+    });
+});
+
+function hasSelection(fieldName: string) {
+  const selected = (formData as any)[fieldName] as string[] | undefined;
+  return Array.isArray(selected) && selected.length > 0;
+}
 
 const getInitialValue = (): { [key: string]: any } => ({
   name: '',
@@ -281,30 +301,6 @@ watch(initialData, (newData) => {
     Object.assign(formData, getInitialValue());
   }
 }, { immediate: true, deep: true });
-
-// New logic for defaulting processors in create mode
-watch(() => optionsStore.loading, (isLoading) => {
-  if (!isLoading && isCreateMode.value) {
-    if (formData.input_processor_names.length === 0) {
-      formData.input_processor_names = optionsStore.inputProcessors.filter(p => p.isMandatory).map(p => p.name);
-    }
-    if (formData.llm_response_processor_names.length === 0) {
-      formData.llm_response_processor_names = optionsStore.llmResponseProcessors.filter(p => p.isMandatory).map(p => p.name);
-    }
-    if (formData.system_prompt_processor_names.length === 0) {
-      formData.system_prompt_processor_names = optionsStore.systemPromptProcessors.filter(p => p.isMandatory).map(p => p.name);
-    }
-    if (formData.tool_execution_result_processor_names.length === 0) {
-      formData.tool_execution_result_processor_names = optionsStore.toolExecutionResultProcessors.filter(p => p.isMandatory).map(p => p.name);
-    }
-    if (formData.tool_invocation_preprocessor_names.length === 0) {
-      formData.tool_invocation_preprocessor_names = optionsStore.toolInvocationPreprocessors.filter(p => p.isMandatory).map(p => p.name);
-    }
-    if (formData.lifecycle_processor_names.length === 0) {
-      formData.lifecycle_processor_names = optionsStore.lifecycleProcessors.filter(p => p.isMandatory).map(p => p.name);
-    }
-  }
-});
 
 const availablePromptNames = computed(() => {
   if (!formData.system_prompt_category) return [];
@@ -341,23 +337,8 @@ function handleAddAllSkills() {
 }
 
 // NEW: Reset to defaults function
-function resetToDefaults(fieldName: string) {
-  const storeKeyMap: { [key: string]: keyof typeof optionsStore } = {
-    'input_processor_names': 'inputProcessors',
-    'llm_response_processor_names': 'llmResponseProcessors',
-    'system_prompt_processor_names': 'systemPromptProcessors',
-    'tool_execution_result_processor_names': 'toolExecutionResultProcessors',
-    'tool_invocation_preprocessor_names': 'toolInvocationPreprocessors',
-
-  };
-  const key = storeKeyMap[fieldName];
-  if (!key) return;
-
-  const defaultOptions = optionsStore[key] as ProcessorOption[] | undefined;
-  if (defaultOptions) {
-    // This directly replaces the current list with the default list of names.
-    (formData as any)[fieldName] = defaultOptions.filter(p => p.isMandatory).map(p => p.name);
-  }
+function clearSelection(fieldName: string) {
+  (formData as any)[fieldName] = [];
 }
 
 const handleSubmit = () => {

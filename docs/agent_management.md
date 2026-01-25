@@ -311,6 +311,8 @@ The `AgentDefinitionForm.vue` component allows configuring:
 | Lifecycle Processors             | Hook into agent lifecycle events   |
 | Skills                           | File-based capabilities (scripts)  |
 
+**Note:** Processor lists in the UI are **optional-only**. Mandatory processors are applied automatically at runtime by the server and are not shown in the form.
+
 ## Related Documentation
 
 - **[Agent Teams](./agent_teams.md)**: Agents can be combined into teams for complex workflows.
