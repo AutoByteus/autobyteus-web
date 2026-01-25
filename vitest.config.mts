@@ -14,6 +14,7 @@ export default defineVitestConfig({
         domEnvironment: 'happy-dom', // or 'jsdom'
       },
     },
+    setupFiles: ['tests/setup/websocket.ts'],
   },
   resolve: {
     alias: {

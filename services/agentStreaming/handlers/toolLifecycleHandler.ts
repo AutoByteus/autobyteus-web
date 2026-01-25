@@ -43,6 +43,7 @@ export function handleToolApprovalRequested(
   // Sidecar Store Update
   const activityStore = useAgentActivityStore();
   activityStore.updateActivityStatus(context.state.agentId, payload.invocation_id, 'awaiting-approval');
+  activityStore.updateActivityArguments(context.state.agentId, payload.invocation_id, payload.arguments);
 
   // Auto-highlight tools awaiting approval (including write_file since streaming is done)
   activityStore.setHighlightedActivity(context.state.agentId, payload.invocation_id);
@@ -73,6 +74,7 @@ export function handleToolAutoExecuting(
   // Sidecar Store Update
   const activityStore = useAgentActivityStore();
   activityStore.updateActivityStatus(context.state.agentId, payload.invocation_id, 'executing');
+  activityStore.updateActivityArguments(context.state.agentId, payload.invocation_id, payload.arguments);
 
   // Auto-highlight executing tools (except write_file which shows artifacts)
   if (segment.type !== 'write_file') {

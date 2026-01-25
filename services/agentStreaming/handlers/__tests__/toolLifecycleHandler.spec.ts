@@ -50,6 +50,7 @@ describe('toolLifecycleHandler', () => {
 
     mockActivityStore = {
       updateActivityStatus: vi.fn(),
+      updateActivityArguments: vi.fn(),
       setHighlightedActivity: vi.fn(),
       addActivityLog: vi.fn(),
       setActivityResult: vi.fn(),
@@ -80,6 +81,7 @@ describe('toolLifecycleHandler', () => {
     expect(segment.path).toBe('/tmp/example.txt');
     expect(segment.originalContent).toBe('--- a\n+++ b\n@@\n+line\n');
     expect(mockActivityStore.updateActivityStatus).toHaveBeenCalledWith(agentId, invocationId, 'executing');
+    expect(mockActivityStore.updateActivityArguments).toHaveBeenCalledWith(agentId, invocationId, payload.arguments);
     expect(mockActivityStore.setHighlightedActivity).toHaveBeenCalledWith(agentId, invocationId);
   });
 
@@ -105,6 +107,7 @@ describe('toolLifecycleHandler', () => {
     expect(segment.path).toBe('/tmp/approved.txt');
     expect(segment.originalContent).toBe('--- a\n+++ b\n@@\n+approved\n');
     expect(mockActivityStore.updateActivityStatus).toHaveBeenCalledWith(agentId, invocationId, 'awaiting-approval');
+    expect(mockActivityStore.updateActivityArguments).toHaveBeenCalledWith(agentId, invocationId, payload.arguments);
     expect(mockActivityStore.setHighlightedActivity).toHaveBeenCalledWith(agentId, invocationId);
   });
 
