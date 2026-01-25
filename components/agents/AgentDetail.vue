@@ -86,9 +86,6 @@
           <!-- Optional Processors (Advanced) -->
           <details v-if="optionalProcessorLists.length" class="border-t border-gray-200 pt-6 mt-6">
             <summary class="text-lg font-semibold text-gray-800 cursor-pointer">Optional Processors (Advanced)</summary>
-            <p class="text-sm text-gray-500 mt-2">
-              Mandatory processors are applied automatically at runtime.
-            </p>
             <!-- Component Lists -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
               <div v-for="list in optionalProcessorLists" :key="list.title">
