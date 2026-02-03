@@ -30,6 +30,56 @@ const session = useTerminalSession({
 });
 
 let resizeObserver: ResizeObserver | null = null;
+let initScheduled = false;
+let pendingConnect = false;
+
+const safeFit = () => {
+  if (!fitAddon.value || !terminalElement.value || !terminalInstance.value) {
+    return;
+  }
+  const { clientWidth, clientHeight } = terminalElement.value;
+  if (clientWidth === 0 || clientHeight === 0) {
+    return;
+  }
+  try {
+    fitAddon.value.fit();
+  } catch (error) {
+    console.warn('[Terminal] Fit skipped:', error);
+  }
+};
+
+const scheduleInitializeTerminal = () => {
+  if (terminalInstance.value || initScheduled) {
+    return;
+  }
+  initScheduled = true;
+
+  const attempt = () => {
+    if (terminalInstance.value) {
+      initScheduled = false;
+      return;
+    }
+    if (!terminalElement.value) {
+      requestAnimationFrame(attempt);
+      return;
+    }
+    const { clientWidth, clientHeight } = terminalElement.value;
+    if (clientWidth === 0 || clientHeight === 0) {
+      requestAnimationFrame(attempt);
+      return;
+    }
+    initScheduled = false;
+    initializeTerminal();
+    if (pendingConnect) {
+      pendingConnect = false;
+      if (workspaceStore.activeWorkspace?.workspaceId) {
+        session.connect();
+      }
+    }
+  };
+
+  requestAnimationFrame(attempt);
+};
 
 const initializeTerminal = () => {
   if (terminalInstance.value) {
@@ -94,7 +144,7 @@ const initializeTerminal = () => {
   
   // Initial fit
   nextTick(() => {
-    fitAddon.value?.fit();
+    safeFit();
   });
 
   // Handle Input: Send data to WebSocket
@@ -121,17 +171,22 @@ const initializeTerminal = () => {
 };
 
 const connectTerminal = () => {
+  if (!terminalInstance.value) {
+    pendingConnect = true;
+    scheduleInitializeTerminal();
+    return;
+  }
   if (workspaceStore.activeWorkspace?.workspaceId) {
     session.connect();
   }
 };
 
 const handleWindowResize = () => {
-  fitAddon.value?.fit();
+  safeFit();
 };
 
 onMounted(() => {
-  initializeTerminal();
+  scheduleInitializeTerminal();
   connectTerminal();
 
   // Watch for workspace changes to reconnect
@@ -146,7 +201,8 @@ onMounted(() => {
   // Setup resize observer for the container
   if (terminalContainer.value) {
     resizeObserver = new ResizeObserver(() => {
-      fitAddon.value?.fit();
+      scheduleInitializeTerminal();
+      safeFit();
     });
     resizeObserver.observe(terminalContainer.value);
   }
