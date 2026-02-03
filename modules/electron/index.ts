@@ -1,4 +1,7 @@
 import { type AddressInfo } from 'net'
+import { access, mkdir, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { precomputeDependencies } from 'vue-bundle-renderer'
 import { defineNuxtModule } from '@nuxt/kit'
 import type {
   ResolvedConfig,
@@ -166,7 +169,7 @@ export default defineNuxtModule<ElectronOptions>({
         }
       }
     },
-    'build:manifest'(manifest) {
+    async 'build:manifest'(manifest) {
       logger.info('Processing build manifest')
       try {
         for (const key in manifest) {
@@ -176,6 +179,24 @@ export default defineNuxtModule<ElectronOptions>({
       } catch (error) {
         logger.error('Error processing manifest:', error)
         throw error
+      }
+      try {
+        if (!nuxt) return
+        const serverDist = join(nuxt.options.buildDir, 'dist/server')
+        const precomputedPath = join(serverDist, 'client.precomputed.mjs')
+        await access(precomputedPath)
+      } catch {
+        try {
+          if (!nuxt) return
+          const serverDist = join(nuxt.options.buildDir, 'dist/server')
+          const precomputedPath = join(serverDist, 'client.precomputed.mjs')
+          await mkdir(serverDist, { recursive: true })
+          const precomputed = precomputeDependencies(manifest)
+          await writeFile(precomputedPath, `export default ${JSON.stringify(precomputed)}`, 'utf8')
+          logger.warn('client.precomputed.mjs was missing; wrote computed fallback to keep prerenderer stable')
+        } catch (error) {
+          logger.warn('Failed to write fallback client.precomputed.mjs', error)
+        }
       }
     },
   } : {}, // Empty hooks object when not an electron build

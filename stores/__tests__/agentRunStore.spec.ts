@@ -6,21 +6,19 @@ import { useConversationHistoryStore } from '../conversationHistory';
 import { AgentStreamingService } from '~/services/agentStreaming';
 
 // Mocks
-vi.mock('@vue/apollo-composable', () => ({
-  useApolloClient: vi.fn(() => ({
-    client: {
-      mutate: vi.fn().mockResolvedValue({
-        data: {
-          sendAgentUserInput: {
-            success: true,
-            agentId: 'perm-agent-id',
-            message: 'Success'
-          }
+vi.mock('~/utils/apolloClient', () => ({
+  getApolloClient: vi.fn(() => ({
+    mutate: vi.fn().mockResolvedValue({
+      data: {
+        sendAgentUserInput: {
+          success: true,
+          agentId: 'perm-agent-id',
+          message: 'Success',
         },
-        errors: []
-      })
-    }
-  }))
+      },
+      errors: [],
+    }),
+  })),
 }));
 
 vi.mock('~/services/agentStreaming', () => ({

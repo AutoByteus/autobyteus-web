@@ -1,10 +1,22 @@
 import { defineNuxtConfig } from 'nuxt/config'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { applyElectronConfig } from './nuxt.electron.config'
 
 // Fixed server port for internal server
 const INTERNAL_SERVER_PORT = 29695
-const isDevelopment = process.env.NODE_ENV === 'development'
+const isDevelopment = process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test'
 const isElectronBuild = process.env.BUILD_TARGET === 'electron'
+const isTest = process.env.NODE_ENV === 'test' || process.env.NUXT_TEST === 'true' || process.env.VITEST === 'true'
+
+if (isDevelopment) {
+  const serverDir = join(process.cwd(), '.nuxt', 'dist', 'server')
+  const precomputedPath = join(serverDir, 'client.precomputed.mjs')
+  if (!existsSync(precomputedPath)) {
+    mkdirSync(serverDir, { recursive: true })
+    writeFileSync(precomputedPath, 'export default { \"dependencies\": {} }')
+  }
+}
 
 // --- Server URL Configuration ---
 
@@ -77,7 +89,8 @@ const baseConfig = {
   modules: [
     '@nuxtjs/apollo',
     '@pinia/nuxt',
-    '@nuxt/test-utils/module'
+    './modules/devhandler-compat',
+    ...(isTest ? ['@nuxt/test-utils/module'] : [])
   ],
 
   routeRules: {
@@ -85,14 +98,17 @@ const baseConfig = {
     '/': { middleware: ['workspace'] }
   },
 
-  // In development, HTTP requests are proxied via vite.server.proxy
-  nitro: {
-    preset: 'static',
-    output: {
-      dir: 'dist',
-      publicDir: 'dist/public'
+  // In development, HTTP requests are proxied via vite.server.proxy.
+  // Static output is only needed for production/electron builds.
+  ...(isDevelopment ? {} : {
+    nitro: {
+      preset: 'static',
+      output: {
+        dir: 'dist',
+        publicDir: 'dist/public'
+      }
     }
-  },
+  }),
 
   vite: {
     server: {
@@ -110,7 +126,7 @@ const baseConfig = {
     assetsInclude: ['**/*.jpeg', '**/*.jpg', '**/*.png', '**/*.svg'],
     worker: {
       format: 'es',
-      plugins: [],
+      plugins: () => [],
       rollupOptions: {
         output: {
           format: 'es',
@@ -153,6 +169,20 @@ const baseConfig = {
       }
     }
   },
+
+  ...(isDevelopment ? {
+    hooks: {
+      'nitro:init': (nitro: any) => {
+        const outputDir = resolve(nitro.options.output.dir)
+        const serverDir = join(outputDir, 'server')
+        const precomputedPath = join(serverDir, 'client.precomputed.mjs')
+        if (!existsSync(precomputedPath)) {
+          mkdirSync(serverDir, { recursive: true })
+          writeFileSync(precomputedPath, 'export default { \"dependencies\": {} }')
+        }
+      }
+    }
+  } : {}),
 
   apollo: {
     clients: {

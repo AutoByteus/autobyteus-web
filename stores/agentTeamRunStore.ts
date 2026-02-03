@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { useRuntimeConfig } from '#app';
-import { useApolloClient } from '@vue/apollo-composable';
+import { getApolloClient } from '~/utils/apolloClient'
 import { TerminateAgentTeamInstance, SendMessageToTeam } from '~/graphql/mutations/agentTeamInstanceMutations';
 import type {
   SendMessageToTeamMutation,
@@ -70,7 +70,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       if (teamId.startsWith('temp-')) return;
 
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         await client.mutate({
           mutation: TerminateAgentTeamInstance,
           variables: { id: teamId },
@@ -105,7 +105,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       const isTemporary = activeTeam.teamId.startsWith('temp-');
 
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         let variables: SendMessageToTeamMutationVariables;
 
         if (isTemporary) {

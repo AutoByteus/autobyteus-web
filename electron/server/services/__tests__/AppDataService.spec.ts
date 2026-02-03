@@ -109,37 +109,36 @@ describe('AppDataService', () => {
 
   describe('validateEnvironment', () => {
     const testServerDir = '/test/server'
-    const testServerPath = '/test/server/autobyteus_server'
 
     it('should return empty array when all required files exist', () => {
       mockedFs.existsSync.mockReturnValue(true)
 
       const service = new AppDataService(testUserDataPath)
-      const errors = service.validateEnvironment(testServerDir, testServerPath)
+      const errors = service.validateEnvironment(testServerDir)
 
       expect(errors).toEqual([])
     })
 
-    it('should return error for missing server executable', () => {
+    it('should return error for missing server entrypoint', () => {
       mockedFs.existsSync.mockImplementation((filePath) => {
-        return filePath !== testServerPath
+        return filePath !== path.join(testServerDir, 'dist', 'app.js')
       })
 
       const service = new AppDataService(testUserDataPath)
-      const errors = service.validateEnvironment(testServerDir, testServerPath)
+      const errors = service.validateEnvironment(testServerDir)
 
-      expect(errors).toContain(`Server executable not found at: ${testServerPath}`)
+      expect(errors).toContain(`Required server entrypoint not found: ${path.join(testServerDir, 'dist', 'app.js')}`)
     })
 
     it('should return errors for multiple missing files', () => {
       mockedFs.existsSync.mockReturnValue(false)
 
       const service = new AppDataService(testUserDataPath)
-      const errors = service.validateEnvironment(testServerDir, testServerPath)
+      const errors = service.validateEnvironment(testServerDir)
 
       expect(errors.length).toBeGreaterThan(1)
-      expect(errors.some(e => e.includes('Server executable'))).toBe(true)
-      expect(errors.some(e => e.includes('alembic.ini'))).toBe(true)
+      expect(errors.some(e => e.includes('server entrypoint'))).toBe(true)
+      expect(errors.some(e => e.includes('package.json'))).toBe(true)
     })
   })
 

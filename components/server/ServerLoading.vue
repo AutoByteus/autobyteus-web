@@ -98,12 +98,6 @@
             </p>
             <div class="mt-4 flex flex-col gap-2">
               <button 
-                @click="handleClearCache"
-                class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 focus:outline-none"
-              >
-                Clear Cache and Restart
-              </button>
-              <button 
                 @click="handleResetData"
                 class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none"
               >
@@ -125,13 +119,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
+import { ref, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useServerStore } from '~/stores/serverStore'
-import { useRouter } from 'vue-router'
 
 // Use the server store
 const serverStore = useServerStore()
-const router = useRouter()
 
 // Toggle for showing technical details
 const showDetails = ref(false)
@@ -146,17 +138,6 @@ const showRecoveryOptions = ref(false)
 const logFilePath = ref('')
 
 // Recovery handlers
-const handleClearCache = () => {
-  const confirmed = window.confirm(
-    'Are you sure you want to clear the application cache?\n\n' +
-    'This will remove temporary server files but should not affect your data. ' +
-    'This can help resolve issues from corrupted cache files.'
-  );
-  if (confirmed) {
-    serverStore.clearCacheAndRestart();
-  }
-};
-
 const handleResetData = () => {
   const confirmed = window.confirm(
     '⚠️ DANGER: PERMANENT DATA LOSS ⚠️\n\n' +

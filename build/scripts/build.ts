@@ -46,6 +46,10 @@ const options: Configuration = {
     main: "dist/electron/main.js"
   },
   asar: true,
+  asarUnpack: [
+    "**/server/node_modules/**",
+    "**/server/prisma/**"
+  ],
   // Default icon for all platforms
   icon: 'build/icons/512x512.png',
   // Include the resources directory which contains the server
@@ -91,8 +95,20 @@ const options: Configuration = {
   }
 }
 
+const sanitizeFileEntries = <T>(value?: T[] | null): T[] | undefined => {
+  if (!value) return value === null ? undefined : value
+  return value.filter((item) => item != null)
+}
+
+const sanitizeConfig = (config: Configuration): Configuration => ({
+  ...config,
+  files: sanitizeFileEntries(config.files as string[]),
+  extraFiles: sanitizeFileEntries(config.extraFiles as any[]),
+  extraResources: sanitizeFileEntries(config.extraResources as any[])
+})
+
 const buildConfig: BuildConfig = {
-  config: options
+  config: sanitizeConfig(options)
 }
 
 if (platform !== 'ALL') {
@@ -118,14 +134,19 @@ async function main(): Promise<void> {
     // Generate icons first
     await generateIcons()
 
-    const requiredServerFiles = ['.env', 'alembic.ini', 'logging_config.ini']
+    const requiredServerFiles = [
+      '.env',
+      'package.json',
+      'dist/app.js',
+      'prisma/schema.prisma'
+    ]
     for (const file of requiredServerFiles) {
       const filePath = `resources/server/${file}`
       if (!require('fs').existsSync(filePath)) {
         throw new Error(`Missing required server file for packaging: ${filePath}`)
       }
     }
-    const requiredServerDirs = ['alembic', 'download']
+    const requiredServerDirs = ['dist', 'prisma', 'node_modules']
     for (const dir of requiredServerDirs) {
       const dirPath = `resources/server/${dir}`
       if (!require('fs').existsSync(dirPath)) {
@@ -144,14 +165,14 @@ async function main(): Promise<void> {
       // Build for Linux
       console.log('Building for Linux...')
       await build({
-        config: options,
+        config: sanitizeConfig(options),
         targets: new Map([[Platform.LINUX, new Map([[Arch.x64, ['AppImage']]])]])
       })
       
       // Build for Windows
       console.log('Building for Windows...')
       await build({
-        config: options,
+        config: sanitizeConfig(options),
         targets: new Map([[Platform.WINDOWS, new Map([[Arch.x64, ['nsis']]])]])
       })
       
@@ -161,13 +182,13 @@ async function main(): Promise<void> {
         const archName = getArchName(arch);
         console.log(`Building for macOS (${archName})...`);
         
-        const macConfig = {
+        const macConfig = sanitizeConfig({
           ...options,
           mac: {
             ...options.mac,
             artifactName: `\${productName}_macos-${archName}-\${version}.\${ext}`
           }
-        };
+        });
         
         await build({
           config: macConfig,

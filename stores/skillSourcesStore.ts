@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useApolloClient } from '@vue/apollo-composable'
+import { getApolloClient } from '~/utils/apolloClient'
 import {
   GET_SKILL_SOURCES,
   ADD_SKILL_SOURCE,
@@ -14,7 +14,6 @@ export interface SkillSource {
 }
 
 export const useSkillSourcesStore = defineStore('skillSources', () => {
-  const { client } = useApolloClient()
 
   // State
   const skillSources = ref<SkillSource[]>([])
@@ -27,6 +26,7 @@ export const useSkillSourcesStore = defineStore('skillSources', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.query({
         query: GET_SKILL_SOURCES,
         fetchPolicy: 'network-only',
@@ -52,6 +52,7 @@ export const useSkillSourcesStore = defineStore('skillSources', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.mutate({
         mutation: ADD_SKILL_SOURCE,
         variables: { path },
@@ -77,6 +78,7 @@ export const useSkillSourcesStore = defineStore('skillSources', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.mutate({
         mutation: REMOVE_SKILL_SOURCE,
         variables: { path },

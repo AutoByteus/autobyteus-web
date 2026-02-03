@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useApolloClient } from '@vue/apollo-composable'
+import { getApolloClient } from '~/utils/apolloClient'
 import {
   GET_SKILLS,
   GET_SKILL,
@@ -28,7 +28,6 @@ import type {
 } from '~/types/skill'
 
 export const useSkillStore = defineStore('skill', () => {
-  const { client } = useApolloClient()
 
   // State
   const skills = ref<Skill[]>([])
@@ -55,6 +54,7 @@ export const useSkillStore = defineStore('skill', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.query({
         query: GET_SKILLS,
         fetchPolicy: 'network-only',
@@ -80,6 +80,7 @@ export const useSkillStore = defineStore('skill', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.query({
         query: GET_SKILL,
         variables: { name },
@@ -108,6 +109,7 @@ export const useSkillStore = defineStore('skill', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.query({
         query: GET_SKILL_FILE_TREE,
         variables: { name },
@@ -133,6 +135,7 @@ export const useSkillStore = defineStore('skill', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.query({
         query: GET_SKILL_FILE_CONTENT,
         variables: { skillName, path },
@@ -155,6 +158,7 @@ export const useSkillStore = defineStore('skill', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.mutate({
         mutation: CREATE_SKILL,
         variables: { input },
@@ -182,6 +186,7 @@ export const useSkillStore = defineStore('skill', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.mutate({
         mutation: UPDATE_SKILL,
         variables: { input },
@@ -218,6 +223,7 @@ export const useSkillStore = defineStore('skill', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.mutate({
         mutation: DELETE_SKILL,
         variables: { name },
@@ -253,6 +259,7 @@ export const useSkillStore = defineStore('skill', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.mutate({
         mutation: UPLOAD_SKILL_FILE,
         variables: { skillName, path, content },
@@ -273,6 +280,7 @@ export const useSkillStore = defineStore('skill', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.mutate({
         mutation: DELETE_SKILL_FILE,
         variables: { skillName, path },
@@ -295,6 +303,7 @@ export const useSkillStore = defineStore('skill', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.mutate({
         mutation: DISABLE_SKILL,
         variables: { name },
@@ -331,6 +340,7 @@ export const useSkillStore = defineStore('skill', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.mutate({
         mutation: ENABLE_SKILL,
         variables: { name },
@@ -366,6 +376,7 @@ export const useSkillStore = defineStore('skill', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.query({
         query: GET_SKILL_VERSIONS,
         variables: { skillName },
@@ -391,6 +402,7 @@ export const useSkillStore = defineStore('skill', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.query({
         query: GET_SKILL_VERSION_DIFF,
         variables: { skillName, fromVersion, toVersion },
@@ -413,6 +425,7 @@ export const useSkillStore = defineStore('skill', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.mutate({
         mutation: ENABLE_SKILL_VERSIONING,
         variables: { input: { skillName } },
@@ -448,6 +461,7 @@ export const useSkillStore = defineStore('skill', () => {
     error.value = ''
 
     try {
+      const client = getApolloClient()
       const { data, errors } = await client.mutate({
         mutation: ACTIVATE_SKILL_VERSION,
         variables: { input: { skillName, version } },

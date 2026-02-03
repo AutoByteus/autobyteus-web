@@ -10,12 +10,10 @@ import { TreeNode } from '~/utils/fileExplorer/TreeNode';
 const mockMutate = vi.fn();
 const mockQuery = vi.fn();
 
-vi.mock('@vue/apollo-composable', () => ({
-  useApolloClient: () => ({
-    client: {
-      mutate: mockMutate,
-      query: mockQuery,
-    },
+vi.mock('~/utils/apolloClient', () => ({
+  getApolloClient: () => ({
+    mutate: mockMutate,
+    query: mockQuery,
   }),
 }));
 

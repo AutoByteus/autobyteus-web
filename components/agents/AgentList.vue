@@ -100,11 +100,16 @@
       </div>
 
       <!-- Empty State for Search -->
-      <div v-else class="text-center bg-gray-50 rounded-lg py-12 px-6 border border-gray-200">
-         <h3 class="text-lg font-medium text-gray-900">No Agents Found</h3>
-         <p class="mt-1 text-sm text-gray-500">
-            No agents matched your search query "{{ searchQuery }}".
-         </p>
+      <div v-else class="text-center py-16">
+        <div class="text-gray-500">
+          <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 7a4 4 0 014 4c0 1.37-.69 2.62-1.84 3.38-.42.28-.66.77-.66 1.28V17a1 1 0 01-1 1h-1.5a1 1 0 01-1-1v-1.34c0-.51-.25-1-.66-1.28A4 4 0 018 11a4 4 0 014-4zm-3 12h6M10 5.5a2 2 0 114 0" />
+          </svg>
+          <p class="text-lg font-medium mb-2">No agents found</p>
+          <p class="text-gray-400">
+            {{ searchQuery.trim() ? `No agents matched "${searchQuery}"` : 'Create a new agent to get started.' }}
+          </p>
+        </div>
       </div>
     </div>
 

@@ -42,7 +42,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startShutdown: () => ipcRenderer.send('start-shutdown'),
 
   // Advanced recovery options
-  clearAppCache: () => ipcRenderer.invoke('clear-app-cache'),
   resetServerData: () => ipcRenderer.invoke('reset-server-data'),
 
   // Method for showing native folder picker dialog

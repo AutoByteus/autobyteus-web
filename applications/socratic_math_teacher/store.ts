@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { useMutation, useQuery } from '@vue/apollo-composable';
+import { getApolloClient } from '~/utils/apolloClient';
 import { RunApplication, SetApplicationConfiguration } from '~/graphql/mutations/applicationMutations';
 import { GetApplicationConfiguration } from '~/graphql/queries/applicationQueries';
 import type { ContextFilePath } from '~/types/conversation';
@@ -31,11 +31,6 @@ export const useSocraticMathTeacherStore = defineStore('socraticMathTeacherApp',
       .join(', ');
   });
 
-  // --- GRAPHQL ---
-  const { mutate: runApplicationMutation } = useMutation<RunApplicationResult>(RunApplication);
-  const { mutate: setConfigMutation } = useMutation(SetApplicationConfiguration);
-  const { refetch: fetchConfigQuery } = useQuery(GetApplicationConfiguration, { appId: APP_ID }, { fetchPolicy: 'network-only' });
-
   // --- ACTIONS ---
   function reset() {
     // Keep isLoading as is, because a reset might be triggered while a new process starts.
@@ -48,7 +43,12 @@ export const useSocraticMathTeacherStore = defineStore('socraticMathTeacherApp',
   async function loadConfiguration() {
     isConfigLoading.value = true;
     try {
-      const { data } = await fetchConfigQuery()!;
+      const client = getApolloClient();
+      const { data } = await client.query({
+        query: GetApplicationConfiguration,
+        variables: { appId: APP_ID },
+        fetchPolicy: 'network-only',
+      });
       if (data?.getApplicationConfiguration) {
         agentLlmConfig.value = data.getApplicationConfiguration;
       } else {
@@ -67,7 +67,11 @@ export const useSocraticMathTeacherStore = defineStore('socraticMathTeacherApp',
 
   async function saveConfiguration(newConfig: Record<string, string>) {
     try {
-      await setConfigMutation({ appId: APP_ID, configData: newConfig });
+      const client = getApolloClient();
+      await client.mutate({
+        mutation: SetApplicationConfiguration,
+        variables: { appId: APP_ID, configData: newConfig },
+      });
       agentLlmConfig.value = newConfig;
     } catch (e) {
       console.error("Failed to save application configuration:", e);
@@ -82,12 +86,16 @@ export const useSocraticMathTeacherStore = defineStore('socraticMathTeacherApp',
     animationUrl.value = null;
 
     try {
-      const result = await runApplicationMutation({
-        appId: APP_ID,
-        input: {
-          problem_text: problemText,
-          agent_llm_config: agentLlmConfig.value,
-          context_files: contextFiles.map(cf => ({ path: cf.path, type: cf.type.toUpperCase() }))
+      const client = getApolloClient();
+      const result = await client.mutate<RunApplicationResult>({
+        mutation: RunApplication,
+        variables: {
+          appId: APP_ID,
+          input: {
+            problem_text: problemText,
+            agent_llm_config: agentLlmConfig.value,
+            context_files: contextFiles.map(cf => ({ path: cf.path, type: cf.type.toUpperCase() }))
+          }
         }
       });
 

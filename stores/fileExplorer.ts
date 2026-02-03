@@ -1,5 +1,5 @@
 import { defineStore, storeToRefs } from 'pinia'
-import { useApolloClient } from '@vue/apollo-composable'
+import { getApolloClient } from '~/utils/apolloClient'
 import { GetFileContent, SearchFiles } from '~/graphql/queries/file_explorer_queries'
 import { 
   WriteFileContent, 
@@ -377,7 +377,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       if (!workspaceId) throw new Error("workspaceId required for fetching content");
 
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.query<GetFileContentQuery, GetFileContentQueryVariables>({
           query: GetFileContent,
           variables: { workspaceId, filePath },
@@ -422,7 +422,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
      * @private
      */
     async _writeFileCore(workspaceId: string, filePath: string, content: string) {
-      const { client } = useApolloClient();
+      const client = getApolloClient()
       const wsState = this._getOrCreateWorkspaceState(workspaceId);
       
       // "Tag" this file to ignore the incoming subscription event echo for 'modify'
@@ -498,7 +498,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       if (!workspaceId) throw new Error("workspaceId required");
 
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.mutate<DeleteFileOrFolderMutation, DeleteFileOrFolderMutationVariables>({
           mutation: DeleteFileOrFolder,
           variables: { workspaceId, path: filePath },
@@ -535,7 +535,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     
     
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.mutate<RenameFileOrFolderMutation, RenameFileOrFolderMutationVariables>({
           mutation: RenameFileOrFolder,
           variables: { workspaceId, targetPath, newName },
@@ -581,7 +581,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       if (!workspaceId) throw new Error("workspaceId required");
       
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.mutate<MoveFileOrFolderMutation, MoveFileOrFolderMutationVariables>({
           mutation: MoveFileOrFolder,
           variables: { workspaceId, sourcePath, destinationPath },
@@ -623,7 +623,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       if (!workspaceId) throw new Error("workspaceId required");
 
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.mutate<CreateFileOrFolderMutation, CreateFileOrFolderMutationVariables>({
           mutation: CreateFileOrFolder,
           variables: { workspaceId, path, isFile },
@@ -676,7 +676,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
       }
       
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.query<SearchFilesQuery, SearchFilesQueryVariables>({
           query: SearchFiles,
           variables: { workspaceId, query },

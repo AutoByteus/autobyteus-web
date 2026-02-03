@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { useApolloClient } from '@vue/apollo-composable'
+import { getApolloClient } from '~/utils/apolloClient'
 import { GET_SERVER_SETTINGS } from '~/graphql/queries/server_settings_queries'
 import { UPDATE_SERVER_SETTING } from '~/graphql/mutations/server_settings_mutations'
 
@@ -28,8 +28,7 @@ export const useServerSettingsStore = defineStore('serverSettings', {
       this.isLoading = true
       this.error = null
 
-      const { client } = useApolloClient()
-
+      const client = getApolloClient()
       try {
         const { data } = await client.query({
           query: GET_SERVER_SETTINGS
@@ -51,7 +50,7 @@ export const useServerSettingsStore = defineStore('serverSettings', {
       this.isLoading = true;
       this.error = null;
 
-      const { client } = useApolloClient();
+      const client = getApolloClient()
 
       try {
         const { data } = await client.query({
@@ -75,8 +74,7 @@ export const useServerSettingsStore = defineStore('serverSettings', {
       this.isUpdating = true
       this.error = null
       
-      const { client } = useApolloClient()
-      
+      const client = getApolloClient()
       try {
         const { data, errors } = await client.mutate({
           mutation: UPDATE_SERVER_SETTING,

@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAgentDefinitionOptionsStore } from '~/stores/agentDefinitionOptionsStore'
-import * as apolloComposable from '@vue/apollo-composable'
+import { getApolloClient } from '~/utils/apolloClient'
+
+vi.mock('~/utils/apolloClient', () => ({
+  getApolloClient: vi.fn(),
+}))
 
 const buildQueryMock = (data: any) => {
   return vi.fn().mockResolvedValue({ data })
@@ -31,9 +35,7 @@ describe('agentDefinitionOptionsStore', () => {
     }
 
     const queryMock = buildQueryMock(queryResult)
-    vi.spyOn(apolloComposable, 'useApolloClient').mockReturnValue({
-      client: { query: queryMock }
-    } as any)
+    vi.mocked(getApolloClient).mockReturnValue({ query: queryMock } as any)
 
     const store = useAgentDefinitionOptionsStore()
     await store.fetchAllAvailableOptions()

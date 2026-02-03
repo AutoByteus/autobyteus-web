@@ -107,6 +107,39 @@ export const useServerStore = defineStore('server', {
         this.isInitialStartup = false
       }, 30000)
     },
+
+    /**
+     * Wait until the server is ready (Electron only).
+     * Returns true when running, false on error/timeout.
+     */
+    async waitForServerReady(timeoutMs = 30000, pollMs = 250): Promise<boolean> {
+      if (!this.isElectron) {
+        return true
+      }
+      if (this.status === ServerStatus.RUNNING) {
+        return true
+      }
+
+      const start = Date.now()
+      return await new Promise<boolean>((resolve) => {
+        const interval = setInterval(() => {
+          if (this.status === ServerStatus.RUNNING) {
+            clearInterval(interval)
+            resolve(true)
+            return
+          }
+          if (this.status === ServerStatus.ERROR || this.status === ServerStatus.SHUTTING_DOWN) {
+            clearInterval(interval)
+            resolve(false)
+            return
+          }
+          if (Date.now() - start >= timeoutMs) {
+            clearInterval(interval)
+            resolve(false)
+          }
+        }, pollMs)
+      })
+    },
     
     /**
      * Initialize through Electron's server manager.
@@ -267,30 +300,6 @@ export const useServerStore = defineStore('server', {
         console.error('serverStore: Failed to trigger Agent Server restart:', error)
         this.status = ServerStatus.ERROR
         this.errorMessage = 'Failed to restart the application'
-      }
-    },
-
-    /**
-     * Advanced Recovery: Clears cache and restarts the server.
-     */
-    async clearCacheAndRestart(): Promise<void> {
-      if (!this.isElectron || !window.electronAPI?.clearAppCache) {
-        this.errorMessage = 'Cache clearing is not available in this environment.';
-        return;
-      }
-      console.log('serverStore: Clearing app cache and restarting...');
-      this.errorMessage = 'Clearing cache...'; // Give user feedback
-      try {
-        const result = await window.electronAPI.clearAppCache();
-        if (result.success) {
-          await this.restartServer();
-        } else {
-          this.status = ServerStatus.ERROR;
-          this.errorMessage = `Failed to clear cache: ${result.error}`;
-        }
-      } catch (error) {
-        this.status = ServerStatus.ERROR;
-        this.errorMessage = `An unexpected error occurred while clearing cache: ${error instanceof Error ? error.message : String(error)}`;
       }
     },
 

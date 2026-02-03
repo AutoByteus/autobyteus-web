@@ -39,9 +39,9 @@ The internal server is a bundled backend server that runs within the Electron ap
 
 The internal server stores its data in the following locations based on your operating system:
 
-- **Windows**: `C:\Users\<username>\AppData\Roaming\autobyteus\server-data`
-- **macOS**: `~/Library/Application Support/autobyteus/server-data`
-- **Linux**: `~/.config/autobyteus/server-data`
+- **Windows**: `C:\Users\<username>\.autobyteus\server-data`
+- **macOS**: `~/.autobyteus/server-data`
+- **Linux**: `~/.autobyteus/server-data`
 
 These directories contain:
 
@@ -81,7 +81,7 @@ cd autobyteus-web
 2. Install dependencies:
 
 ```bash
-yarn install
+pnpm install
 ```
 
 ## Development
@@ -91,7 +91,7 @@ yarn install
 Start the development server:
 
 ```bash
-yarn dev
+pnpm dev
 ```
 
 The application will be available at `http://localhost:3000` in your web browser. Use this command for normal frontend development when you want to work on the web version of the application.
@@ -103,8 +103,8 @@ The application will be available at `http://localhost:3000` in your web browser
 For deploying the web version:
 
 ```bash
-yarn build
-yarn preview  # To preview the build
+pnpm build
+pnpm preview  # To preview the build
 ```
 
 ### Desktop Application Build
@@ -113,11 +113,11 @@ To build the desktop application, use the appropriate command for your operating
 
 ```bash
 # For Linux
-yarn build:electron:linux
+pnpm build:electron:linux
 # For Windows
-yarn build:electron:windows
+pnpm build:electron:windows
 # For macOS
-yarn build:electron:mac
+pnpm build:electron:mac
 ```
 
 The built applications will be available in the `dist` directory. Use these commands when you want to create a standalone desktop application for distribution.
@@ -134,7 +134,7 @@ Before building the Electron application with the integrated server:
 2. Run the prepare-server script to copy the server files:
 
 ```bash
-yarn prepare-server
+pnpm prepare-server
 ```
 
 This script copies the built backend server and its configurations to the `resources/server` directory.
@@ -145,11 +145,11 @@ The standard build commands for Electron automatically include the backend serve
 
 ```bash
 # For Linux with integrated server
-yarn build:electron:linux
+pnpm build:electron:linux
 # For Windows with integrated server
-yarn build:electron:windows
+pnpm build:electron:windows
 # For macOS with integrated server
-yarn build:electron:mac
+pnpm build:electron:mac
 ```
 
 #### Dynamic Port Allocation
@@ -190,28 +190,28 @@ This keeps tests close to the code they test, making them easier to find and mai
 
 ```bash
 # Run ALL tests (nuxt + electron)
-yarn test
+pnpm test
 
 # Run only Nuxt tests (recommended for most development)
-yarn test:nuxt
+pnpm test:nuxt
 
 # Run only Electron tests
-yarn test:electron
+pnpm test:electron
 ```
 
 ### Running Specific Test Files
 
-Use `yarn test:nuxt` with the file path to run specific tests:
+Use `pnpm test:nuxt` with the file path to run specific tests:
 
 ```bash
 # Run a specific test file
-yarn test:nuxt utils/fileExplorer/__tests__/treeNode.test.ts --run
+pnpm test:nuxt utils/fileExplorer/__tests__/treeNode.test.ts --run
 
 # Run component tests
-yarn test:nuxt components/fileExplorer/__tests__/FileItem.spec.ts --run
+pnpm test:nuxt components/fileExplorer/__tests__/FileItem.spec.ts --run
 
 # Run with pattern matching (all files matching path)
-yarn test:nuxt components/settings --run
+pnpm test:nuxt components/settings --run
 ```
 
 > **Note**: Use `--run` flag to run once and exit (non-watch mode).
@@ -220,10 +220,10 @@ yarn test:nuxt components/settings --run
 
 ```bash
 # Run tests matching a description
-yarn test:nuxt utils/fileExplorer/__tests__/treeNode.test.ts -t "childrenLoaded" --run
+pnpm test:nuxt utils/fileExplorer/__tests__/treeNode.test.ts -t "childrenLoaded" --run
 
 # Run with verbose output
-yarn test:nuxt components/fileExplorer/__tests__/FileItem.spec.ts --run --reporter=verbose
+pnpm test:nuxt components/fileExplorer/__tests__/FileItem.spec.ts --run --reporter=verbose
 ```
 
 ### Performance Tips
@@ -231,7 +231,7 @@ yarn test:nuxt components/fileExplorer/__tests__/FileItem.spec.ts --run --report
 If your environment limits worker processes (e.g., containers):
 
 ```bash
-yarn test:nuxt components/settings/__tests__/ProviderAPIKeyManager.spec.ts --run --pool threads --maxWorkers 1 --no-file-parallelism --no-isolate
+pnpm test:nuxt components/settings/__tests__/ProviderAPIKeyManager.spec.ts --run --pool threads --maxWorkers 1 --no-file-parallelism --no-isolate
 ```
 
 ## GraphQL Codegen
@@ -239,20 +239,20 @@ yarn test:nuxt components/settings/__tests__/ProviderAPIKeyManager.spec.ts --run
 Generate TypeScript types from GraphQL schema:
 
 ```bash
-yarn codegen
+pnpm codegen
 ```
 
 ## Available Scripts
 
-- `yarn dev`: Start development server (browser-based)
-- `yarn build`: Build for web production
-- `yarn test`: Run tests
-- `yarn preview`: Preview web production build
-- `yarn prepare-server`: Prepare the backend server for packaging with Electron
-- `yarn build:electron:linux`: Build desktop application for Linux
-- `yarn build:electron:windows`: Build desktop application for Windows
-- `yarn build:electron:mac`: Build desktop application for macOS
-- `yarn codegen`: Generate GraphQL types
+- `pnpm dev`: Start development server (browser-based)
+- `pnpm build`: Build for web production
+- `pnpm test`: Run tests
+- `pnpm preview`: Preview web production build
+- `pnpm prepare-server`: Prepare the backend server for packaging with Electron
+- `pnpm build:electron:linux`: Build desktop application for Linux
+- `pnpm build:electron:windows`: Build desktop application for Windows
+- `pnpm build:electron:mac`: Build desktop application for macOS
+- `pnpm codegen`: Generate GraphQL types
 
 ## Project Structure
 

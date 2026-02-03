@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { useRuntimeConfig } from '#app';
-import { useApolloClient } from '@vue/apollo-composable';
+import { getApolloClient } from '~/utils/apolloClient'
 import { v4 as uuidv4 } from 'uuid';
 import { useApplicationContextStore } from './applicationContextStore';
 import { SendMessageToTeam, TerminateAgentTeamInstance } from '~/graphql/mutations/agentTeamInstanceMutations';
@@ -184,7 +184,7 @@ export const useApplicationRunStore = defineStore('applicationRun', {
       const isTemporary = teamContext.teamId.startsWith('temp-');
 
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const appProfileStore = useApplicationLaunchProfileStore();
         const profile = appProfileStore.profiles[runContext.launchProfileId];
         if (!profile) throw new Error(`Launch profile ${runContext.launchProfileId} not found for sending message.`);
@@ -262,7 +262,7 @@ export const useApplicationRunStore = defineStore('applicationRun', {
 
       if (!teamId.startsWith('temp-')) {
         try {
-          const { client } = useApolloClient();
+          const client = getApolloClient()
           await client.mutate({
             mutation: TerminateAgentTeamInstance,
             variables: { id: teamId },

@@ -1,7 +1,19 @@
 import { mount } from '@vue/test-utils';
+import { describe, it, expect, vi } from 'vitest';
+
+const { TabStub } = vi.hoisted(() => ({
+  TabStub: {
+    name: 'Tab',
+    template: '<button class="tab-stub" @click="$emit(\'select\', name)">{{ name }}</button>',
+    props: ['name', 'selected'],
+  },
+}));
+
+vi.mock('../Tab.vue', () => ({
+  default: TabStub,
+}));
+
 import TabList from '../TabList.vue';
-import Tab from '../Tab.vue';
-import { describe, it, expect } from 'vitest';
 
 describe('TabList.vue', () => {
 
@@ -11,17 +23,20 @@ describe('TabList.vue', () => {
     { name: 'Tab2' },
     { name: 'Tab3' },
   ];
-
+  
   it('renders the correct number of Tab components', () => {
     const wrapper = mount(TabList, {
       props: {
         tabs: sampleTabs,
         selectedTab: 'Tab1'
-      }
+      },
+      global: {
+        stubs: { Tab: TabStub },
+      },
     });
 
     // Expecting three Tab components
-    expect(wrapper.findAllComponents(Tab).length).toBe(3);
+    expect(wrapper.findAllComponents(TabStub).length).toBe(3);
   });
 
   it('passes the correct props to each Tab component', () => {
@@ -29,10 +44,13 @@ describe('TabList.vue', () => {
       props: {
         tabs: sampleTabs,
         selectedTab: 'Tab1'
-      }
+      },
+      global: {
+        stubs: { Tab: TabStub },
+      },
     });
 
-    const tabs = wrapper.findAllComponents(Tab);
+    const tabs = wrapper.findAllComponents(TabStub);
     for (let i = 0; i < sampleTabs.length; i++) {
       expect(tabs[i].props().name).toBe(sampleTabs[i].name);
       expect(tabs[i].props().selected).toBe(sampleTabs[i].name === 'Tab1');
@@ -44,11 +62,14 @@ describe('TabList.vue', () => {
       props: {
         tabs: sampleTabs,
         selectedTab: 'Tab1'
-      }
+      },
+      global: {
+        stubs: { Tab: TabStub },
+      },
     });
 
     // Simulating a click on the second tab
-    await wrapper.findAllComponents(Tab)[1].trigger('click');
+    await wrapper.findAllComponents(TabStub)[1].trigger('click');
 
     // Expecting the emitted event's payload to be 'Tab2'
     expect(wrapper.emitted().select[0]).toEqual(['Tab2']);

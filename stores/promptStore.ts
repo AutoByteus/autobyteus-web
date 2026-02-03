@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { useApolloClient } from '@vue/apollo-composable';
+import { getApolloClient } from '~/utils/apolloClient';
 import { GET_PROMPTS, GET_PROMPT_BY_ID } from '~/graphql/queries/prompt_queries';
 import { CREATE_PROMPT, UPDATE_PROMPT, ADD_NEW_PROMPT_REVISION, SYNC_PROMPTS, DELETE_PROMPT, MARK_ACTIVE_PROMPT } from '~/graphql/mutations/prompt_mutations';
 import { GetAgentCustomizationOptions } from '~/graphql/queries/agentCustomizationOptionsQueries';
@@ -36,7 +36,6 @@ interface DeleteResult {
 }
 
 export const usePromptStore = defineStore('prompt', () => {
-  const { client } = useApolloClient();
 
   // State
   const prompts = ref<Prompt[]>([]);
@@ -54,6 +53,7 @@ export const usePromptStore = defineStore('prompt', () => {
     error.value = '';
 
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.query({
         query: GET_PROMPTS,
         variables: { isActive },
@@ -80,6 +80,7 @@ export const usePromptStore = defineStore('prompt', () => {
     error.value = '';
 
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.query({
         query: GET_PROMPTS,
         variables: { isActive: null },
@@ -106,6 +107,7 @@ export const usePromptStore = defineStore('prompt', () => {
     error.value = '';
 
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.query({
         query: GET_PROMPT_BY_ID,
         variables: { id },
@@ -138,6 +140,7 @@ export const usePromptStore = defineStore('prompt', () => {
     suitableForModels?: string,
   ) {
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.mutate({
         mutation: CREATE_PROMPT,
         variables: { input: { name, category, promptContent, description, suitableForModels } },
@@ -173,6 +176,7 @@ export const usePromptStore = defineStore('prompt', () => {
     category?: string,
   ) {
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.mutate({
         mutation: UPDATE_PROMPT,
         variables: { input: { id, promptContent, description, suitableForModels, isActive, name, category } },
@@ -205,6 +209,7 @@ export const usePromptStore = defineStore('prompt', () => {
     newPromptContent: string,
   ) {
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.mutate({
         mutation: ADD_NEW_PROMPT_REVISION,
         variables: { input: { id, newPromptContent } },
@@ -227,6 +232,7 @@ export const usePromptStore = defineStore('prompt', () => {
 
   async function setActivePrompt(promptId: string) {
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.mutate({
         mutation: MARK_ACTIVE_PROMPT,
         variables: { input: { id: promptId } },
@@ -253,6 +259,7 @@ export const usePromptStore = defineStore('prompt', () => {
     syncResult.value = null;
 
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.mutate({
         mutation: SYNC_PROMPTS,
         refetchQueries: [
@@ -284,6 +291,7 @@ export const usePromptStore = defineStore('prompt', () => {
     deleteResult.value = null;
 
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.mutate({
         mutation: DELETE_PROMPT,
         variables: { input: { id } },

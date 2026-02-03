@@ -1,6 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import { app } from 'electron'
+import * as os from 'os'
 import * as util from 'util'
 
 class Logger {
@@ -9,7 +9,7 @@ class Logger {
 
   constructor() {
     // Ensure log directory exists
-    const logDir = path.join(app.getPath('userData'), 'logs')
+    const logDir = path.join(os.homedir(), '.autobyteus', 'logs')
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true })
     }

@@ -215,7 +215,7 @@ Unit tests are colocated with the store:
 **Run tests**:
 
 ```bash
-yarn test:nuxt stores/__tests__/agentArtifactsStore.spec.ts --run
+pnpm test:nuxt stores/__tests__/agentArtifactsStore.spec.ts --run
 ```
 
 **Test Coverage**:

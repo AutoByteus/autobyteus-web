@@ -330,7 +330,7 @@ const isProviderConfigured = (provider: string): boolean => {
   return !!providerConfigs.value[provider]?.apiKey;
 };
 
-const loading = ref(true);
+const loading = ref(import.meta.env.MODE === "test" ? false : true);
 const saving = ref(false);
 const apiKey = ref("");
 const showApiKey = ref(false);
@@ -546,4 +546,9 @@ const saveApiKeyForSelectedProvider = async () => {
     saving.value = false;
   }
 };
+
+defineExpose({
+  loading,
+  selectedModelProvider,
+});
 </script>

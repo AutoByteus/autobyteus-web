@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import { createTestingPinia } from '@pinia/testing'
 import { setActivePinia } from 'pinia'
 
 import FileItem from '../FileItem.vue'
-import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { useWorkspaceStore } from '~/stores/workspace'
 import { TreeNode } from '~/utils/fileExplorer/TreeNode'
 
@@ -49,8 +49,20 @@ describe('FileItem - Lazy Loading', () => {
     const pinia = createTestingPinia({ createSpy: vi.fn, stubActions: true })
     setActivePinia(pinia)
 
-    const fileExplorerStore = useFileExplorerStore()
     const workspaceStore = useWorkspaceStore()
+
+    const explorer = {
+      openFolders: ref<Record<string, boolean>>({}),
+      activeFile: ref<string | null>(null),
+      workspaceId: ref('test-workspace-id'),
+      openFile: vi.fn(),
+      openFilePreview: vi.fn(),
+      toggleFolder: vi.fn(),
+      renameFileOrFolder: vi.fn(),
+      deleteFileOrFolder: vi.fn(),
+      createFileOrFolder: vi.fn(),
+      moveFileOrFolder: vi.fn(),
+    }
 
     // Mock the activeWorkspace getter
     Object.defineProperty(workspaceStore, 'activeWorkspace', {
@@ -65,16 +77,13 @@ describe('FileItem - Lazy Loading', () => {
       configurable: true
     })
 
-    // Mock isFolderOpen to return false initially (folder is closed)
-    Object.defineProperty(fileExplorerStore, 'isFolderOpen', {
-        value: vi.fn().mockReturnValue(false),
-        writable: true
-    })
-
     const wrapper = mount(FileItem, {
       props: { file },
       global: {
         plugins: [pinia],
+        provide: {
+          workspaceFileExplorer: explorer,
+        },
         stubs: {
           // Stub child components to avoid deep rendering issues
           FileContextMenu: true,
@@ -85,7 +94,7 @@ describe('FileItem - Lazy Loading', () => {
     })
 
     await flushPromises()
-    return { wrapper, fileExplorerStore, workspaceStore }
+    return { wrapper, explorer, workspaceStore }
   }
 
   beforeEach(() => {
@@ -94,10 +103,8 @@ describe('FileItem - Lazy Loading', () => {
 
   it('should trigger fetchFolderChildren when expanding unloaded folder', async () => {
     const unloadedFolder = createMockFolder(false) // childrenLoaded = false
-    const { wrapper, fileExplorerStore, workspaceStore } = await mountComponent(unloadedFolder)
-
-    // Simulate folder will be open after click
-    ;(fileExplorerStore as any).isFolderOpen = vi.fn().mockReturnValue(true)
+    const { wrapper, explorer, workspaceStore } = await mountComponent(unloadedFolder)
+    explorer.openFolders.value[unloadedFolder.path] = true
 
     // Click on the file item (folder)
     const fileHeader = wrapper.find('.file-header')
@@ -105,7 +112,7 @@ describe('FileItem - Lazy Loading', () => {
     await flushPromises()
 
     // Verify toggleFolder was called
-    expect(fileExplorerStore.toggleFolder).toHaveBeenCalledWith('root/test-folder')
+    expect(explorer.toggleFolder).toHaveBeenCalledWith('root/test-folder')
 
     // Verify fetchFolderChildren was called because folder wasn't loaded
     expect(workspaceStore.fetchFolderChildren).toHaveBeenCalledWith(
@@ -116,10 +123,8 @@ describe('FileItem - Lazy Loading', () => {
 
   it('should NOT trigger fetchFolderChildren when expanding already-loaded folder', async () => {
     const loadedFolder = createMockFolder(true) // childrenLoaded = true
-    const { wrapper, fileExplorerStore, workspaceStore } = await mountComponent(loadedFolder)
-
-    // Simulate folder will be open after click  
-    ;(fileExplorerStore as any).isFolderOpen = vi.fn().mockReturnValue(true)
+    const { wrapper, explorer, workspaceStore } = await mountComponent(loadedFolder)
+    explorer.openFolders.value[loadedFolder.path] = true
 
     // Click on the file item
     const fileHeader = wrapper.find('.file-header')
@@ -127,7 +132,7 @@ describe('FileItem - Lazy Loading', () => {
     await flushPromises()
 
     // Verify toggleFolder was called
-    expect(fileExplorerStore.toggleFolder).toHaveBeenCalledWith('root/test-folder')
+    expect(explorer.toggleFolder).toHaveBeenCalledWith('root/test-folder')
 
     // fetchFolderChildren should NOT be called since folder is already loaded
     expect(workspaceStore.fetchFolderChildren).not.toHaveBeenCalled()
@@ -135,10 +140,8 @@ describe('FileItem - Lazy Loading', () => {
 
   it('should NOT trigger fetchFolderChildren when collapsing a folder', async () => {
     const unloadedFolder = createMockFolder(false)
-    const { wrapper, fileExplorerStore, workspaceStore } = await mountComponent(unloadedFolder)
-
-    // Simulate folder will be CLOSED after click (collapsing)
-    ;(fileExplorerStore as any).isFolderOpen = vi.fn().mockReturnValue(false)
+    const { wrapper, explorer, workspaceStore } = await mountComponent(unloadedFolder)
+    explorer.openFolders.value[unloadedFolder.path] = false
 
     // Click on the file item
     const fileHeader = wrapper.find('.file-header')
@@ -146,7 +149,7 @@ describe('FileItem - Lazy Loading', () => {
     await flushPromises()
 
     // toggleFolder should be called
-    expect(fileExplorerStore.toggleFolder).toHaveBeenCalled()
+    expect(explorer.toggleFolder).toHaveBeenCalled()
 
     // fetchFolderChildren should NOT be called when collapsing
     expect(workspaceStore.fetchFolderChildren).not.toHaveBeenCalled()
@@ -154,7 +157,7 @@ describe('FileItem - Lazy Loading', () => {
 
   it('should open file instead of fetching children when clicking a file', async () => {
     const file = createMockFile()
-    const { wrapper, fileExplorerStore, workspaceStore } = await mountComponent(file)
+    const { wrapper, explorer, workspaceStore } = await mountComponent(file)
 
     // Click on the file item
     const fileHeader = wrapper.find('.file-header')
@@ -162,19 +165,19 @@ describe('FileItem - Lazy Loading', () => {
     await flushPromises()
 
     // openFile should be called, not toggleFolder
-    expect(fileExplorerStore.openFile).toHaveBeenCalledWith('root/test-file.txt')
-    expect(fileExplorerStore.toggleFolder).not.toHaveBeenCalled()
+    expect(explorer.openFile).toHaveBeenCalledWith('root/test-file.txt')
+    expect(explorer.toggleFolder).not.toHaveBeenCalled()
     expect(workspaceStore.fetchFolderChildren).not.toHaveBeenCalled()
   })
 
   it('should open file in preview mode when clicking a previewable file', async () => {
     const file = createMockPreviewableFile()
-    const { wrapper, fileExplorerStore } = await mountComponent(file)
+    const { wrapper, explorer } = await mountComponent(file)
 
     await wrapper.find('.file-header').trigger('click')
     await flushPromises()
 
-    expect(fileExplorerStore.openFilePreview).toHaveBeenCalledWith('root/README.md')
-    expect(fileExplorerStore.openFile).not.toHaveBeenCalled()
+    expect(explorer.openFilePreview).toHaveBeenCalledWith('root/README.md')
+    expect(explorer.openFile).not.toHaveBeenCalled()
   })
 })

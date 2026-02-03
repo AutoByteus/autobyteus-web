@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { useApolloClient } from '@vue/apollo-composable';
+import { getApolloClient } from '~/utils/apolloClient'
 import { GET_TOOLS, GET_TOOLS_GROUPED_BY_CATEGORY } from '~/graphql/queries/toolQueries';
 import { GET_MCP_SERVERS, PREVIEW_MCP_SERVER_TOOLS } from '~/graphql/queries/mcpServerQueries';
 import { 
@@ -115,7 +115,7 @@ export const useToolManagementStore = defineStore('toolManagement', {
       this.loading = true;
       this.error = null;
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.query<GetToolsGroupedByCategoryQuery, GetToolsGroupedByCategoryQueryVariables>({
           query: GET_TOOLS_GROUPED_BY_CATEGORY,
           variables: { origin: 'LOCAL' },
@@ -142,7 +142,7 @@ export const useToolManagementStore = defineStore('toolManagement', {
       this.loading = true;
       this.error = null;
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.query<GetMcpServersQuery>({
           query: GET_MCP_SERVERS,
           fetchPolicy: 'network-only',
@@ -167,7 +167,7 @@ export const useToolManagementStore = defineStore('toolManagement', {
       this.loading = true;
       this.error = null;
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.query<GetToolsQuery, GetToolsQueryVariables>({
           query: GET_TOOLS,
           variables: { sourceServerId: serverId },
@@ -197,7 +197,7 @@ export const useToolManagementStore = defineStore('toolManagement', {
         this.previewResult = null;
         this.error = null;
         try {
-            const { client } = useApolloClient();
+            const client = getApolloClient()
             const { data, errors } = await client.query<PreviewMcpServerToolsQuery, PreviewMcpServerToolsQueryVariables>({
                 query: PREVIEW_MCP_SERVER_TOOLS,
                 variables: { input },
@@ -232,7 +232,7 @@ export const useToolManagementStore = defineStore('toolManagement', {
         this.loading = true;
         this.error = null;
         try {
-            const { client } = useApolloClient();
+            const client = getApolloClient()
             const { data, errors } = await client.mutate({
                 mutation: CONFIGURE_MCP_SERVER,
                 variables: { input },
@@ -260,7 +260,7 @@ export const useToolManagementStore = defineStore('toolManagement', {
       this.loading = true;
       this.error = null;
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.mutate({
           mutation: DELETE_MCP_SERVER,
           variables: { serverId },
@@ -289,7 +289,7 @@ export const useToolManagementStore = defineStore('toolManagement', {
       this.loading = true;
       this.error = null;
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.mutate({
           mutation: DISCOVER_AND_REGISTER_MCP_SERVER_TOOLS,
           variables: { serverId },
@@ -318,7 +318,7 @@ export const useToolManagementStore = defineStore('toolManagement', {
       this.loading = true;
       this.error = null;
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.mutate({
           mutation: IMPORT_MCP_SERVER_CONFIGS,
           variables: { jsonString },
@@ -346,7 +346,7 @@ export const useToolManagementStore = defineStore('toolManagement', {
       this.loading = true;
       this.error = null;
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.mutate<ReloadToolSchemaMutation, ReloadToolSchemaMutationVariables>({
           mutation: RELOAD_TOOL_SCHEMA,
           variables: { name: toolName },

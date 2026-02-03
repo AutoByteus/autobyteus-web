@@ -14,7 +14,6 @@ interface Window {
     getPlatform: () => Promise<'win32' | 'linux' | 'darwin'>;
     onAppQuitting: (callback: () => void) => void;
     startShutdown: () => void;
-    clearAppCache: () => Promise<{ success: boolean; error?: string }>;
     resetServerData: () => Promise<{ success: boolean; error?: string }>;
     showFolderDialog: () => Promise<{ canceled: boolean; path: string | null }>;
     getPathForFile: (file: File) => Promise<string | null>;

@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, toRaw } from 'vue';
 import { Icon } from '@iconify/vue';
 import type { UiModelConfigSchema } from '~/utils/llmConfigSchema';
 import { applyThinkingToggle, getThinkingParamKeys, getThinkingToggleState, hasThinkingSupport } from '~/utils/llmThinkingConfigAdapter';
@@ -182,7 +182,10 @@ watch(
       // Only reset if the modelConfig object reference has NOT changed.
       // - If modelConfig changed, it means we switched agents (context switch) -> Don't reset.
       // - If modelConfig is same, it means we changed model dropdown for same agent -> Reset.
-      if (newModelConfig === previousModelConfig) {
+      const sameConfigRef =
+        toRaw(newModelConfig ?? null) === toRaw(previousModelConfig ?? null);
+
+      if (sameConfigRef) {
         if (props.modelConfig != null) {
           emitConfig(null);
         }

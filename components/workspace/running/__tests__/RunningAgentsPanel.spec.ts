@@ -6,13 +6,10 @@ import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 
-// Mock Apollo Client globally for this test file
-vi.mock('@vue/apollo-composable', () => ({
-  useApolloClient: () => ({
-    client: {
-      query: vi.fn(),
-      mutate: vi.fn(),
-    },
+vi.mock('~/utils/apolloClient', () => ({
+  getApolloClient: () => ({
+    query: vi.fn(),
+    mutate: vi.fn(),
   }),
 }));
 

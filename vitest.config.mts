@@ -15,6 +15,15 @@ export default defineVitestConfig({
       },
     },
     setupFiles: ['tests/setup/websocket.ts'],
+    exclude: [
+      'node_modules/**',
+      'dist/**',
+      'electron-dist/**',
+      'resources/**',
+      '**/resources/**',
+      '**/server/tests/**',
+      '**/.output/**',
+    ],
   },
   resolve: {
     alias: {

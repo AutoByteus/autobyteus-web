@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { useApolloClient } from '@vue/apollo-composable'
+import { getApolloClient } from '~/utils/apolloClient'
 import { 
   GET_LLM_PROVIDER_API_KEY, 
   GET_AVAILABLE_LLM_PROVIDERS_WITH_MODELS
@@ -135,7 +135,7 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
     async fetchProvidersWithModels() {
       if (this.hasFetchedProviders) return;
       this.isLoadingModels = true;
-      const { client } = useApolloClient();
+      const client = getApolloClient()
 
       try {
         const { data } = await client.query({
@@ -164,7 +164,7 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
       if (showLoading) {
         this.isReloadingModels = true;
       }
-      const { client } = useApolloClient();
+      const client = getApolloClient()
 
       try {
         const { data } = await client.query({
@@ -194,7 +194,7 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
       this.isReloadingModels = true;
       
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.mutate({
           mutation: RELOAD_LLM_MODELS,
         });
@@ -229,7 +229,7 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
       this.reloadingProvider = provider;
 
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.mutate({
           mutation: RELOAD_LLM_PROVIDER_MODELS,
           variables: { provider },
@@ -258,7 +258,7 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
 
     async setLLMProviderApiKey(provider: string, apiKey: string) {
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.mutate({
           mutation: SET_LLM_PROVIDER_API_KEY,
           variables: { provider, apiKey },
@@ -291,7 +291,7 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
     },
 
     async getLLMProviderApiKey(provider: string) {
-      const { client } = useApolloClient();
+      const client = getApolloClient()
       
       try {
         const { data } = await client.query({

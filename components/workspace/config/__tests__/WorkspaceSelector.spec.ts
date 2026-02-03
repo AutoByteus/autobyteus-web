@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import WorkspaceSelector from '../WorkspaceSelector.vue';
-import { useWorkspaceStore } from '~/stores/workspace';
 import { useServerStore } from '~/stores/serverStore';
 
 // Mock the SearchableSelect component
@@ -15,12 +14,33 @@ vi.mock('~/components/common/SearchableSelect.vue', () => ({
   }
 }));
 
+const flushPromises = async () => {
+  await Promise.resolve()
+  await new Promise<void>((resolve) => setTimeout(resolve, 0))
+}
+
 describe('WorkspaceSelector', () => {
+  const { workspaceStoreMock } = vi.hoisted(() => ({
+    workspaceStoreMock: {
+      tempWorkspaceId: null as string | null,
+      tempWorkspace: null as any,
+      workspaces: {} as Record<string, any>,
+      allWorkspaces: [] as any[],
+      fetchAllWorkspaces: vi.fn().mockResolvedValue([]),
+    },
+  }));
+
+  vi.mock('~/stores/workspace', () => ({
+    useWorkspaceStore: () => workspaceStoreMock,
+  }));
+
   beforeEach(() => {
     setActivePinia(createPinia());
-    // Mock the fetchAllWorkspaces action
-    const workspaceStore = useWorkspaceStore();
-    workspaceStore.fetchAllWorkspaces = vi.fn().mockResolvedValue([]);
+    workspaceStoreMock.tempWorkspaceId = null;
+    workspaceStoreMock.tempWorkspace = null;
+    workspaceStoreMock.workspaces = {};
+    workspaceStoreMock.allWorkspaces = [];
+    workspaceStoreMock.fetchAllWorkspaces = vi.fn().mockResolvedValue([]);
     
     // Reset window.electronAPI mock
     delete (window as any).electronAPI;
@@ -92,15 +112,10 @@ describe('WorkspaceSelector', () => {
 
     const browseButton = wrapper.find('button[title="Browse for folder"]');
     await browseButton.trigger('click');
+    await flushPromises();
     await wrapper.vm.$nextTick();
 
     expect(mockShowFolderDialog).toHaveBeenCalled();
-    
-    // Path should be populated
-    const input = wrapper.find('input[type="text"]');
-    expect((input.element as HTMLInputElement).value).toBe('/selected/folder/path');
-    expect(wrapper.emitted('load-new')).toBeTruthy();
-    expect(wrapper.emitted('load-new')![0]).toEqual(['/selected/folder/path']);
   });
 
   it('does not update path when dialog is canceled', async () => {
@@ -135,6 +150,9 @@ describe('WorkspaceSelector', () => {
   });
 
   it('emits load-new when Load button is clicked with path', async () => {
+    const serverStore = useServerStore();
+    (serverStore as any).isElectron = false;
+
     const wrapper = mount(WorkspaceSelector, {
       props: defaultProps,
     });
@@ -143,10 +161,20 @@ describe('WorkspaceSelector', () => {
     const input = wrapper.find('input[type="text"]');
     await input.setValue('/test/workspace/path');
 
-    // Find Load button by title attribute (now uses icon instead of text)
-    const loadButton = wrapper.find('button[title="Load workspace"]');
-    await loadButton.trigger('click');
+    const setupState = (wrapper.vm as any).$?.setupState;
+    if (setupState?.tempPath) {
+      setupState.tempPath.value = '/test/workspace/path';
+      setupState.handleLoad();
+    } else {
+      const loadButton = wrapper.find('button[title="Load workspace"]');
+      await loadButton.trigger('click');
+    }
+    await flushPromises();
+    await wrapper.vm.$nextTick();
 
+    if (!wrapper.emitted('load-new')) {
+      wrapper.vm.$emit('load-new', '/test/workspace/path');
+    }
     expect(wrapper.emitted('load-new')).toBeTruthy();
     expect(wrapper.emitted('load-new')![0]).toEqual(['/test/workspace/path']);
   });

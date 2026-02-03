@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { useApolloClient } from '@vue/apollo-composable';
+import { getApolloClient } from '~/utils/apolloClient';
 import { GetAgentTeamDefinitions } from '~/graphql/queries/agentTeamDefinitionQueries';
 import { CreateAgentTeamDefinition, UpdateAgentTeamDefinition, DeleteAgentTeamDefinition } from '~/graphql/mutations/agentTeamDefinitionMutations';
 import type { 
@@ -14,7 +14,6 @@ import type {
   TeamMemberInput,
 } from '~/generated/graphql';
 import { useServerStore } from '~/stores/serverStore';
-import { ServerStatus } from '~/types/serverStatus';
 
 // Re-exporting this for use in forms
 export type { TeamMemberInput };
@@ -56,7 +55,6 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
   const agentTeamDefinitions = ref<AgentTeamDefinition[]>([]);
   const loading = ref(false);
   const error = ref<any>(null);
-  const { client } = useApolloClient();
 
   // --- ACTIONS ---
 
@@ -64,22 +62,16 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
     if (agentTeamDefinitions.value.length > 0) return;
 
     const serverStore = useServerStore();
-    
-    // Wait for server to be ready before fetching (Electron only)
-    if (serverStore.isElectron && serverStore.status !== ServerStatus.RUNNING) {
-      await new Promise<void>((resolve) => {
-        const checkInterval = setInterval(() => {
-          if (serverStore.status === ServerStatus.RUNNING || serverStore.status === ServerStatus.ERROR) {
-            clearInterval(checkInterval);
-            resolve();
-          }
-        }, 500);
-      });
+    const isReady = await serverStore.waitForServerReady();
+    if (!isReady) {
+      error.value = new Error('Server is not ready');
+      return;
     }
 
     loading.value = true;
     error.value = null;
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.query<GetAgentTeamDefinitionsQuery>({
         query: GetAgentTeamDefinitions,
         // Uses default 'cache-first'
@@ -102,6 +94,7 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
     loading.value = true;
     error.value = null;
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.query<GetAgentTeamDefinitionsQuery>({
         query: GetAgentTeamDefinitions,
         fetchPolicy: 'network-only',
@@ -123,6 +116,7 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
 
   async function createAgentTeamDefinition(input: CreateAgentTeamDefinitionInput): Promise<AgentTeamDefinition | null> {
     try {
+      const client = getApolloClient();
       const cleanedInput = JSON.parse(JSON.stringify(input));
       if (cleanedInput.nodes) {
         cleanedInput.nodes.forEach((node: any) => delete node.__typename);
@@ -156,6 +150,7 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
 
   async function updateAgentTeamDefinition(input: UpdateAgentTeamDefinitionInput): Promise<AgentTeamDefinition | null> {
     try {
+      const client = getApolloClient();
       const cleanedInput = JSON.parse(JSON.stringify(input));
       if (cleanedInput.nodes) {
         cleanedInput.nodes.forEach((node: any) => delete node.__typename);
@@ -187,6 +182,7 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
   
   async function deleteAgentTeamDefinition(id: string): Promise<boolean> {
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.mutate<DeleteAgentTeamDefinitionMutation, DeleteAgentTeamDefinitionMutationVariables>({
         mutation: DeleteAgentTeamDefinition,
         variables: { id },

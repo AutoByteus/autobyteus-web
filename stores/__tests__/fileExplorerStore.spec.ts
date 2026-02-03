@@ -5,13 +5,11 @@ import { useFileExplorerStore } from '../fileExplorer';
 import { useWorkspaceStore } from '../workspace';
 
 // Mocks
-vi.mock('@vue/apollo-composable', () => ({
-  useApolloClient: vi.fn(() => ({
-    client: {
-      mutate: vi.fn(),
-      query: vi.fn(),
-    }
-  }))
+vi.mock('~/utils/apolloClient', () => ({
+  getApolloClient: vi.fn(() => ({
+    mutate: vi.fn(),
+    query: vi.fn(),
+  })),
 }));
 
 vi.mock('../workspace', () => ({
@@ -59,7 +57,7 @@ describe('fileExplorerStore', () => {
         store._getOrCreateWorkspaceState(workspaceId).activeFile = filePath;
 
         // 2. Mock Apollo Client mutation response
-        const { useApolloClient } = await import('@vue/apollo-composable');
+        const { getApolloClient } = await import('~/utils/apolloClient');
         const mutateMock = vi.fn().mockResolvedValue({
             data: {
                 deleteFileOrFolder: JSON.stringify({
@@ -73,7 +71,7 @@ describe('fileExplorerStore', () => {
             errors: []
         });
         // @ts-ignore
-        useApolloClient.mockReturnValue({ client: { mutate: mutateMock } });
+        getApolloClient.mockReturnValue({ mutate: mutateMock });
 
         // 3. Execute delete
         await store.deleteFileOrFolder(filePath, workspaceId);

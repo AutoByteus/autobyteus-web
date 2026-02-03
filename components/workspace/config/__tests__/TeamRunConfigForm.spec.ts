@@ -65,8 +65,8 @@ describe('TeamRunConfigForm', () => {
         // Members list should NOT exist anymore
         expect(wrapper.findAll('li').length).toBe(0);
 
-        // Overrides section should be expanded by default
-        expect(wrapper.find('button').text()).toContain('Team Members Override');
+        const overrideToggle = wrapper.findAll('button').find(button => button.text().includes('Team Members Override'));
+        expect(overrideToggle).toBeTruthy();
         const items = wrapper.findAllComponents({ name: 'MemberOverrideItem' });
         expect(items).toHaveLength(2);
         

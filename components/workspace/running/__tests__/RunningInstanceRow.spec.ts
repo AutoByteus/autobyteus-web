@@ -14,7 +14,7 @@ describe('RunningInstanceRow', () => {
     },
   };
 
-  it('renders instance ID (name is in parent group)', () => {
+  it('renders instance label with name and suffix', () => {
     const wrapper = mount(RunningInstanceRow, {
       props: {
         instance: mockInstance as any,
@@ -22,8 +22,7 @@ describe('RunningInstanceRow', () => {
       },
     });
 
-    // Instance row now only shows ID (name is displayed in parent group)
-    expect(wrapper.text()).toContain('agent-12'); // Truncated ID
+    expect(wrapper.text()).toContain('TestAgent - -123');
   });
 
   it('emits select event on click', async () => {
@@ -66,7 +65,7 @@ describe('RunningInstanceRow', () => {
       },
     });
 
-    expect(wrapper.classes()).toContain('bg-emerald-50'); // Selected state uses emerald
+    expect(wrapper.classes()).toContain('bg-indigo-50');
   });
 
   it('shows status indicator', () => {

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { useApolloClient } from '@vue/apollo-composable'
+import { getApolloClient } from '~/utils/apolloClient'
 import { ListApplications } from '~/graphql/queries/applicationQueries'
 import { RunApplication } from '~/graphql/mutations/applicationMutations'
 import type {
@@ -34,8 +34,7 @@ export const useApplicationStore = defineStore('application', {
       this.loading = true
       this.error = null
 
-      const { client } = useApolloClient()
-
+      const client = getApolloClient()
       try {
         const { data } = await client.query<ListApplicationsQuery>({
           query: ListApplications,
@@ -55,8 +54,7 @@ export const useApplicationStore = defineStore('application', {
       this.runError = null
       this.lastRunResult = null
 
-      const { client } = useApolloClient()
-
+      const client = getApolloClient()
       try {
         const { data, errors } = await client.mutate<RunApplicationMutation>({
           mutation: RunApplication,

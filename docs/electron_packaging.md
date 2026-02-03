@@ -78,7 +78,7 @@ autobyteus-web/
 │   │   └── generateIcons.ts    # Icon generation
 │   └── icons/                  # Platform-specific icons
 └── resources/
-    └── server/                 # Bundled Python server
+    └── server/                 # Bundled Node.js server
 ```
 
 ---
@@ -96,7 +96,6 @@ Abstract class providing platform-agnostic server lifecycle management:
 | `isRunning()`     | Check if server is running and ready    |
 | `getServerUrls()` | Get all API endpoint URLs               |
 | `getServerPort()` | Return the fixed port (29695)           |
-| `getCacheDir()`   | Platform-specific cache directory       |
 | `getAppDataDir()` | Application data directory              |
 
 Key features:
@@ -109,17 +108,16 @@ Key features:
 
 ### Platform-Specific Managers
 
-| Platform | Class                  | Executable              | Cache Dir                   |
-| -------- | ---------------------- | ----------------------- | --------------------------- |
-| Linux    | `LinuxServerManager`   | `autobyteus_server`     | `~/.cache/autobyteus`       |
-| macOS    | `MacOSServerManager`   | `autobyteus_server.app` | `~/.cache/autobyteus`       |
-| Windows  | `WindowsServerManager` | `autobyteus_server.exe` | `%LOCALAPPDATA%\autobyteus` |
+| Platform | Class                  | Entrypoint              |
+| -------- | ---------------------- | ----------------------- |
+| Linux    | `LinuxServerManager`   | `dist/app.js` (Node)    |
+| macOS    | `MacOSServerManager`   | `dist/app.js` (Node)    |
+| Windows  | `WindowsServerManager` | `dist/app.js` (Node)    |
 
 Each extends `BaseServerManager` and implements:
 
-- `getServerPath()` - Returns path to platform-specific executable
+- `getServerRoot()` - Returns path to the bundled server root directory
 - `launchServerProcess()` - Spawns the server with correct environment
-- `getCacheDir()` - Returns platform-specific cache location
 
 ### ServerStatusManager
 
@@ -164,7 +162,6 @@ Methods:
 | `read-log-file`        | Read last 500 lines of log       |
 | `read-local-text-file` | Securely read local file content |
 | `open-external-link`   | Open URL in system browser       |
-| `clear-app-cache`      | Clear Nuitka extraction cache    |
 | `reset-server-data`    | Clear server data directory      |
 | `get-platform`         | Return OS platform string        |
 
@@ -179,7 +176,6 @@ sequenceDiagram
 
     App->>App: whenReady()
     App->>Window: createWindow()
-    App->>App: cleanOldCacheIfNeeded()
     App->>Status: initializeServer()
     Status->>Server: startServer()
     Server->>Server: waitForPortToBeFree()
@@ -280,26 +276,34 @@ npx ts-node build/scripts/build.ts --mac
 npx ts-node build/scripts/build.ts
 ```
 
+`scripts/prepare-server.sh` now builds the Node server, deploys it into `resources/server`, and rebuilds native modules (e.g., `node-pty`) for the Electron runtime.
+
 ---
 
 ## Server Resource Packaging
 
 The bundled server is located at `resources/server/` and includes:
 
-| File/Directory                 | Purpose                             |
-| ------------------------------ | ----------------------------------- |
-| `autobyteus_server[.exe/.app]` | Compiled Python executable (Nuitka) |
-| `alembic/`                     | Database migration scripts          |
-| `alembic.ini`                  | Alembic configuration               |
-| `logging_config.ini`           | Server logging configuration        |
-| `.env`                         | Default environment configuration   |
-| `download/`                    | Pre-packaged downloadable assets    |
+| File/Directory       | Purpose                                   |
+| -------------------- | ----------------------------------------- |
+| `dist/`              | Compiled Node.js server output            |
+| `prisma/`            | Prisma schema + migrations                |
+| `node_modules/`      | Production dependencies (incl. prisma)   |
+| `package.json`       | Server package metadata                   |
+| `.env`               | Default environment configuration         |
+| `download/`          | Pre-packaged downloadable assets (optional) |
 
 At runtime, the server:
 
 1. Runs on a fixed port (`29695`)
-2. Stores data in `{userData}/server-data/`
+2. Stores data in `~/.autobyteus/server-data/`
 3. Provides endpoints: `/graphql`, `/rest`, `/transcribe`
+
+For one-time migration of an existing SQLite DB into `server-data`, use:
+
+```bash
+scripts/migrate-legacy-db.sh --from /path/to/production.db --to ~/.autobyteus/server-data
+```
 
 ---
 
@@ -318,7 +322,7 @@ At runtime, the server:
 
 ### Logger (`logger.ts`)
 
-- Writes to both console and `{userData}/logs/app.log`
+- Writes to both console and `~/.autobyteus/logs/app.log`
 - Overwrites log on each app start
 - Methods: `debug()`, `info()`, `warn()`, `error()`
 
@@ -328,18 +332,17 @@ At runtime, the server:
 
 | Directory                          | Purpose                                |
 | ---------------------------------- | -------------------------------------- |
-| `{userData}/`                      | Electron user data (logs, preferences) |
-| `{userData}/server-data/`          | Server runtime data                    |
-| `{userData}/server-data/db/`       | SQLite databases                       |
-| `{userData}/server-data/logs/`     | Server logs                            |
-| `{userData}/server-data/download/` | Downloaded assets                      |
-| `{cache}/autobyteus/`              | Nuitka extraction cache                |
+| `~/.autobyteus/`                      | Electron user data (logs, preferences) |
+| `~/.autobyteus/server-data/`          | Server runtime data                    |
+| `~/.autobyteus/server-data/db/`       | SQLite databases                       |
+| `~/.autobyteus/server-data/logs/`     | Server logs                            |
+| `~/.autobyteus/server-data/download/` | Downloaded assets                      |
 
 Where:
 
-- **Linux**: `~/.config/autobyteus/` and `~/.cache/autobyteus/`
-- **macOS**: `~/Library/Application Support/autobyteus/`
-- **Windows**: `%APPDATA%\autobyteus\` and `%LOCALAPPDATA%\autobyteus\`
+- **Linux**: `~/.autobyteus/`
+- **macOS**: `~/.autobyteus/`
+- **Windows**: `%USERPROFILE%\\.autobyteus\\`
 
 ## Related Documentation
 

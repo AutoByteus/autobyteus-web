@@ -1,6 +1,6 @@
 import { spawn } from 'child_process'
 import * as path from 'path'
-import * as os from 'os'
+import * as fs from 'fs'
 import isDev from 'electron-is-dev'
 import { StdioOptions } from 'child_process'
 import { BaseServerManager } from './baseServerManager'
@@ -12,20 +12,21 @@ export class LinuxServerManager extends BaseServerManager {
   /**
    * Get path to the server executable for Linux.
    */
-  protected getServerPath(): string {
-    const resourcePath = isDev 
-      ? path.join(process.cwd(), 'resources', 'server') 
+  protected getServerRoot(): string {
+    return isDev
+      ? path.join(process.cwd(), 'resources', 'server')
       : path.join(process.resourcesPath, 'server')
-    
-    const executableName = 'autobyteus_server'
-    return path.join(resourcePath, executableName)
   }
 
   /**
    * Launch the server process for Linux.
    */
   protected async launchServerProcess(): Promise<void> {
-    const serverPath = this.getServerPath()
+    const serverEntry = path.join(this.serverDir, 'dist', 'app.js')
+
+    if (!fs.existsSync(serverEntry)) {
+      throw new Error(`Server entrypoint not found at: ${serverEntry}`)
+    }
     
     // Dynamically determine the host IP, falling back to localhost if needed.
     const hostIp = getLocalIp() || 'localhost'
@@ -39,6 +40,7 @@ export class LinuxServerManager extends BaseServerManager {
     const env = {
       ...process.env,
       ...(loginShellPath ? { PATH: loginShellPath } : {}),
+      ELECTRON_RUN_AS_NODE: '1',
       PORT: this.serverPort.toString(),
       SERVER_PORT: this.serverPort.toString(),
       // Explicitly provide the server with its public-facing URL.
@@ -56,21 +58,17 @@ export class LinuxServerManager extends BaseServerManager {
     logger.info(`App data directory: ${this.appDataDir}`)
     
     const args = [
+      serverEntry,
       `--port`, `${this.serverPort}`,
       `--data-dir`, `${this.appDataDir}`
     ]
-    
-    const formattedPath = serverPath.includes(' ') ? `"${serverPath}"` : serverPath
+
+    const formattedPath = process.execPath.includes(' ') ? `"${process.execPath}"` : process.execPath
     logger.info(`Executing: ${formattedPath} ${args.join(' ')}`)
-    
-    this.serverProcess = spawn(serverPath, args, options)
+
+    this.serverProcess = spawn(process.execPath, args, options)
     this.setupProcessHandlers()
   }
 
-  /**
-   * Get the platform-specific cache directory path for Autobyteus.
-   */
-  public getCacheDir(): string {
-    return path.join(os.homedir(), '.cache', 'autobyteus')
-  }
+  // No cache directory needed for Node-based server runtime.
 }

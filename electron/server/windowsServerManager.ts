@@ -1,29 +1,12 @@
 import { spawn, ChildProcess, StdioOptions } from 'child_process'
 import * as path from 'path'
-import * as os from 'os'
+import * as fs from 'fs'
 import isDev from 'electron-is-dev'
 import { BaseServerManager } from './baseServerManager'
 import { logger } from '../logger'
 import { getLocalIp } from '../utils/networkUtils'
 
 export class WindowsServerManager extends BaseServerManager {
-  private async cleanupOrphanedServers(): Promise<void> {
-    return new Promise((resolve) => {
-      const imagePattern = 'autobyteus_server*.exe'
-      logger.info(`Cleaning up orphaned server processes (${imagePattern})`)
-      const cleanup = spawn('taskkill', ['/f', '/t', '/im', imagePattern])
-
-      cleanup.on('close', () => {
-        resolve()
-      })
-
-      cleanup.on('error', (err) => {
-        logger.error(`Failed to cleanup orphaned server processes (${imagePattern}):`, err)
-        resolve()
-      })
-    })
-  }
-
   private async waitForProcessExit(proc: ChildProcess, timeoutMs: number): Promise<boolean> {
     if (proc.exitCode !== null) {
       return true
@@ -50,20 +33,20 @@ export class WindowsServerManager extends BaseServerManager {
   /**
    * Get path to the server executable for Windows.
    */
-  protected getServerPath(): string {
-    const resourcePath = isDev 
-      ? path.join(process.cwd(), 'resources', 'server') 
+  protected getServerRoot(): string {
+    return isDev
+      ? path.join(process.cwd(), 'resources', 'server')
       : path.join(process.resourcesPath, 'server')
-    
-    const executableName = 'autobyteus_server.exe'
-    return path.join(resourcePath, executableName)
   }
 
   /**
    * Launch the server process for Windows.
    */
   protected async launchServerProcess(): Promise<void> {
-    const serverPath = this.getServerPath()
+    const serverEntry = path.join(this.serverDir, 'dist', 'app.js')
+    if (!fs.existsSync(serverEntry)) {
+      throw new Error(`Server entrypoint not found at: ${serverEntry}`)
+    }
     
     // Dynamically determine the host IP, falling back to localhost if needed.
     const hostIp = getLocalIp() || 'localhost'
@@ -71,6 +54,7 @@ export class WindowsServerManager extends BaseServerManager {
 
     const env = {
       ...process.env,
+      ELECTRON_RUN_AS_NODE: '1',
       PORT: this.serverPort.toString(),
       SERVER_PORT: this.serverPort.toString(),
       // Explicitly provide the server with its public-facing URL.
@@ -89,14 +73,15 @@ export class WindowsServerManager extends BaseServerManager {
     logger.info(`App data directory: ${this.appDataDir}`)
     
     const args = [
+      serverEntry,
       `--port`, `${this.serverPort}`,
       `--data-dir`, `${this.appDataDir}`
     ]
-    
-    const formattedPath = serverPath.includes(' ') ? `"${serverPath}"` : serverPath
+
+    const formattedPath = process.execPath.includes(' ') ? `"${process.execPath}"` : process.execPath
     logger.info(`Executing: ${formattedPath} ${args.join(' ')}`)
-    
-    this.serverProcess = spawn(serverPath, args, options)
+
+    this.serverProcess = spawn(process.execPath, args, options)
     this.setupProcessHandlers()
   }
 
@@ -145,10 +130,9 @@ export class WindowsServerManager extends BaseServerManager {
       };
 
       // Wait for actual process exit, not just taskkill completion.
-      this.waitForProcessExit(proc, this.gracefulShutdownTimeoutMs).then(async (exited) => {
+      this.waitForProcessExit(proc, this.gracefulShutdownTimeoutMs).then((exited) => {
         if (exited) {
           logger.info(`Server process ${pid} exited after graceful shutdown`);
-          await this.cleanupOrphanedServers()
           resolveOnce();
         }
       });
@@ -177,15 +161,12 @@ export class WindowsServerManager extends BaseServerManager {
           
           forceKill.on('close', () => {
             logger.info(`Force taskkill for PID ${pid} completed`);
-            this.waitForProcessExit(proc, 2000).then(async () => {
-              await this.cleanupOrphanedServers()
-              resolveOnce()
-            });
+            this.waitForProcessExit(proc, 2000).then(() => resolveOnce());
           });
           
           forceKill.on('error', (err) => {
             logger.error(`Force taskkill failed for PID ${pid}:`, err);
-            this.cleanupOrphanedServers().finally(() => resolveOnce()); // Resolve anyway to not hang
+            resolveOnce(); // Resolve anyway to not hang
           });
         }
       }, this.gracefulShutdownTimeoutMs);
@@ -194,17 +175,11 @@ export class WindowsServerManager extends BaseServerManager {
       hardTimeout = setTimeout(() => {
         if (!isResolved) {
           logger.warn(`Server process ${pid} did not exit in time; continuing with cleanup`);
-          this.cleanupOrphanedServers().finally(() => resolveOnce());
+          resolveOnce();
         }
       }, this.gracefulShutdownTimeoutMs + 7000);
     });
   }
 
-  /**
-   * Get the platform-specific cache directory path for Autobyteus.
-   */
-  public getCacheDir(): string {
-    const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local')
-    return path.join(localAppData, 'autobyteus')
-  }
+  // No cache directory needed for Node-based server runtime.
 }

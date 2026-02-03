@@ -1,35 +1,36 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import * as os from 'os'
-import { getLocalIp } from '../networkUtils'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { NetworkInterfaceInfo } from 'os'
 
-// Mock the entire 'os' module
-vi.mock('os', async (importOriginal) => {
-  const actualOs = await importOriginal<typeof os>()
-  return {
-    ...actualOs,
-    // Provide a default mock implementation for networkInterfaces
-    networkInterfaces: vi.fn(() => ({})),
-  }
-})
-
-// Mock the logger to prevent console output during tests
-vi.mock('../../logger', () => ({
-  logger: {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-}))
-
-// Cast the imported os to its mocked type to satisfy TypeScript
-const mockedOs = vi.mocked(os)
+let getLocalIp: typeof import('../networkUtils').getLocalIp
+let mockedNetworkInterfaces: ReturnType<typeof vi.fn>
 
 describe('networkUtils', () => {
   
-  beforeEach(() => {
-    // Reset mocks before each test to ensure isolation
+  beforeEach(async () => {
     vi.clearAllMocks()
+    vi.resetModules()
+
+    const networkInterfacesMock = vi.fn(() => ({}))
+
+    vi.doMock('os', () => ({
+      networkInterfaces: networkInterfacesMock,
+      default: {
+        networkInterfaces: networkInterfacesMock,
+      },
+    }))
+
+    vi.doMock('../../logger', () => ({
+      logger: {
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+    }))
+
+    const osModule = await import('os')
+    mockedNetworkInterfaces = vi.mocked(osModule.networkInterfaces)
+
+    ;({ getLocalIp } = await import('../networkUtils'))
   })
 
   describe('getLocalIp', () => {
@@ -44,7 +45,7 @@ describe('networkUtils', () => {
           { address: 'fe80::abc:1234:5678:90ab', netmask: 'ffff:ffff:ffff:ffff::', family: 'IPv6', mac: 'aa:bb:cc:dd:ee:ff', internal: false, cidr: 'fe80::abc:1234:5678:90ab/64', scopeid: 4 },
         ],
       }
-      mockedOs.networkInterfaces.mockReturnValue(mockInterfaces)
+      mockedNetworkInterfaces.mockReturnValue(mockInterfaces)
 
       const ip = getLocalIp()
       expect(ip).toBe('192.168.1.100')
@@ -56,7 +57,7 @@ describe('networkUtils', () => {
             { address: '192.168.0.42', netmask: '255.255.255.0', family: 'IPv4', mac: 'aa:bb:cc:dd:ee:ff', internal: false, cidr: '192.168.0.42/24' },
           ],
         }
-        mockedOs.networkInterfaces.mockReturnValue(mockInterfaces)
+        mockedNetworkInterfaces.mockReturnValue(mockInterfaces)
   
         const ip = getLocalIp()
         expect(ip).toBe('192.168.0.42')
@@ -69,7 +70,7 @@ describe('networkUtils', () => {
           { address: '10.0.0.5', netmask: '255.255.255.0', family: 'IPv4', mac: '11:22:33:44:55:66', internal: false, cidr: '10.0.0.5/24' },
         ],
       }
-      mockedOs.networkInterfaces.mockReturnValue(mockInterfaces)
+      mockedNetworkInterfaces.mockReturnValue(mockInterfaces)
 
       const ip = getLocalIp()
       expect(ip).toBe('10.0.0.5')
@@ -82,7 +83,7 @@ describe('networkUtils', () => {
           { address: '172.16.0.11', netmask: '255.255.255.0', family: 'IPv4', mac: 'aa:bb:cc:dd:ee:ff', internal: false, cidr: '172.16.0.11/24' },
         ],
       }
-      mockedOs.networkInterfaces.mockReturnValue(mockInterfaces)
+      mockedNetworkInterfaces.mockReturnValue(mockInterfaces)
 
       const ip = getLocalIp()
       expect(ip).toBe('172.16.0.10')
@@ -95,7 +96,7 @@ describe('networkUtils', () => {
           { address: 'fe80::abc:1234:5678:90ab', netmask: 'ffff:ffff:ffff:ffff::', family: 'IPv6', mac: 'aa:bb:cc:dd:ee:ff', internal: false, cidr: 'fe80::abc:1234:5678:90ab/64', scopeid: 4 },
         ],
       }
-      mockedOs.networkInterfaces.mockReturnValue(mockInterfaces)
+      mockedNetworkInterfaces.mockReturnValue(mockInterfaces)
 
       const ip = getLocalIp()
       expect(ip).toBeNull()
@@ -103,21 +104,21 @@ describe('networkUtils', () => {
 
     it('should return null when networkInterfaces returns an empty object', () => {
       const mockInterfaces: NodeJS.Dict<NetworkInterfaceInfo[]> = {}
-      mockedOs.networkInterfaces.mockReturnValue(mockInterfaces)
+      mockedNetworkInterfaces.mockReturnValue(mockInterfaces)
 
       const ip = getLocalIp()
       expect(ip).toBeNull()
     })
 
     it('should return null when networkInterfaces returns undefined', () => {
-      mockedOs.networkInterfaces.mockReturnValue(undefined)
+      mockedNetworkInterfaces.mockReturnValue(undefined)
 
       const ip = getLocalIp()
       expect(ip).toBeNull()
     })
 
     it('should return null and not crash if networkInterfaces throws an error', () => {
-      mockedOs.networkInterfaces.mockImplementation(() => {
+      mockedNetworkInterfaces.mockImplementation(() => {
         throw new Error('OS Error')
       })
 

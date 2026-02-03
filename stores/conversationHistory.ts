@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { useApolloClient } from '@vue/apollo-composable';
+import { getApolloClient } from '~/utils/apolloClient'
 import { GET_AGENT_CONVERSATION_HISTORY } from '~/graphql/queries/conversation_queries';
 import type { GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables } from '~/generated/graphql';
 import type { Conversation, UserMessage, AIMessage } from '~/types/conversation';
@@ -52,7 +52,7 @@ export const useConversationHistoryStore = defineStore('conversationHistory', {
       };
 
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.query<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables>({
           query: GET_AGENT_CONVERSATION_HISTORY,
           variables,

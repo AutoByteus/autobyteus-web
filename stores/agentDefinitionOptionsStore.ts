@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { useApolloClient } from '@vue/apollo-composable';
+import { getApolloClient } from '~/utils/apolloClient';
 import { GetAgentCustomizationOptions } from '~/graphql/queries/agentCustomizationOptionsQueries';
 import type { GetAgentCustomizationOptionsQuery } from '~/generated/graphql';
 
@@ -23,13 +23,13 @@ export const useAgentDefinitionOptionsStore = defineStore('agentDefinitionOption
   
   const loading = ref(false);
   const error = ref<any>(null);
-  const { client } = useApolloClient();
 
   // Actions
   async function fetchAllAvailableOptions() {
     loading.value = true;
     error.value = null;
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.query<GetAgentCustomizationOptionsQuery>({
         query: GetAgentCustomizationOptions,
       });

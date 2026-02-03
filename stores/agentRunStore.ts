@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { useApolloClient } from '@vue/apollo-composable';
+import { getApolloClient } from '~/utils/apolloClient'
 import { useRuntimeConfig } from '#app';
 import { SendAgentUserInput, TerminateAgentInstance } from '~/graphql/mutations/agentMutations';
 import type {
@@ -63,7 +63,7 @@ export const useAgentRunStore = defineStore('agentRun', {
       currentAgent.isSending = true;
 
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.mutate<SendAgentUserInputMutation, SendAgentUserInputMutationVariables>({
           mutation: SendAgentUserInput,
           variables: {
@@ -223,7 +223,7 @@ export const useAgentRunStore = defineStore('agentRun', {
 
       if (options.terminate && !agentIdToClose.startsWith('temp-')) {
         try {
-          const { client } = useApolloClient();
+          const client = getApolloClient()
           await client.mutate({
             mutation: TerminateAgentInstance,
             variables: { id: agentIdToClose },

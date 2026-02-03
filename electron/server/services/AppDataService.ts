@@ -11,8 +11,8 @@ export class AppDataService {
   private firstRun: boolean
   private requiredDataDirs = ['db', 'logs', 'download']
 
-  constructor(userDataPath: string) {
-    this.appDataDir = path.join(userDataPath, 'server-data')
+  constructor(baseDataPath: string) {
+    this.appDataDir = path.join(baseDataPath, 'server-data')
     const dataDirExists = fs.existsSync(this.appDataDir)
     const hasEnvFile = dataDirExists && fs.existsSync(path.join(this.appDataDir, '.env'))
     this.firstRun = !dataDirExists || !hasEnvFile
@@ -60,7 +60,7 @@ export class AppDataService {
 
     try {
       // Check for required files in the server directory before proceeding
-      const requiredServerFiles = ['alembic.ini', 'logging_config.ini', '.env']
+      const requiredServerFiles = ['.env', 'package.json']
       for (const file of requiredServerFiles) {
         const filePath = path.join(serverDir, file)
         if (!fs.existsSync(filePath)) {
@@ -69,12 +69,20 @@ export class AppDataService {
       }
 
       // Check for required directories in the server directory
-      const requiredServerDirs = ['alembic']
+      const requiredServerDirs = ['dist', 'prisma', 'node_modules']
       for (const dir of requiredServerDirs) {
         const dirPath = path.join(serverDir, dir)
         if (!fs.existsSync(dirPath)) {
           throw new Error(`Required server directory not found: ${dirPath}`)
         }
+      }
+      const serverEntry = path.join(serverDir, 'dist', 'app.js')
+      if (!fs.existsSync(serverEntry)) {
+        throw new Error(`Required server entrypoint not found: ${serverEntry}`)
+      }
+      const prismaSchema = path.join(serverDir, 'prisma', 'schema.prisma')
+      if (!fs.existsSync(prismaSchema)) {
+        throw new Error(`Required Prisma schema not found: ${prismaSchema}`)
       }
 
       // Create the app data directory if it doesn't exist
@@ -96,6 +104,8 @@ export class AppDataService {
       const envFileDest = path.join(this.appDataDir, '.env')
       fs.copyFileSync(envFileSrc, envFileDest)
       logger.info(`Copied .env file to: ${envFileDest}`)
+
+      this.migrateLegacyDatabaseIfNeeded(serverDir)
 
       // Copy download directory if it exists in the server directory
       const downloadSrcDir = path.join(serverDir, 'download')
@@ -121,14 +131,10 @@ export class AppDataService {
    * Validate that all required files and directories exist.
    * Returns an array of error messages for any missing items.
    */
-  validateEnvironment(serverDir: string, serverPath: string): string[] {
+  validateEnvironment(serverDir: string): string[] {
     const errors: string[] = []
 
-    if (!fs.existsSync(serverPath)) {
-      errors.push(`Server executable not found at: ${serverPath}`)
-    }
-
-    const requiredServerFiles = ['alembic.ini', 'logging_config.ini']
+    const requiredServerFiles = ['.env', 'package.json']
     for (const file of requiredServerFiles) {
       const filePath = path.join(serverDir, file)
       if (!fs.existsSync(filePath)) {
@@ -136,12 +142,22 @@ export class AppDataService {
       }
     }
 
-    const requiredServerDirs = ['alembic']
+    const requiredServerDirs = ['dist', 'prisma', 'node_modules']
     for (const dir of requiredServerDirs) {
       const dirPath = path.join(serverDir, dir)
       if (!fs.existsSync(dirPath)) {
         errors.push(`Required server directory not found: ${dirPath}`)
       }
+    }
+
+    const serverEntry = path.join(serverDir, 'dist', 'app.js')
+    if (!fs.existsSync(serverEntry)) {
+      errors.push(`Required server entrypoint not found: ${serverEntry}`)
+    }
+
+    const prismaSchema = path.join(serverDir, 'prisma', 'schema.prisma')
+    if (!fs.existsSync(prismaSchema)) {
+      errors.push(`Required Prisma schema not found: ${prismaSchema}`)
     }
 
     const requiredDataDirs = ['logs', 'db', 'download']
@@ -158,6 +174,15 @@ export class AppDataService {
     }
 
     return errors
+  }
+
+  private migrateLegacyDatabaseIfNeeded(serverDir: string): void {
+    const legacyDbPath = path.join(serverDir, 'db', 'production.db')
+    const targetDbPath = path.join(this.appDataDir, 'db', 'production.db')
+    if (!fs.existsSync(targetDbPath) && fs.existsSync(legacyDbPath)) {
+      fs.copyFileSync(legacyDbPath, targetDbPath)
+      logger.info(`Migrated legacy database to: ${targetDbPath}`)
+    }
   }
 
   /**

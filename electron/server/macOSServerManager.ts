@@ -1,7 +1,6 @@
-import { spawn, execSync } from 'child_process'
+import { spawn } from 'child_process'
 import * as path from 'path'
 import * as fs from 'fs'
-import * as os from 'os'
 import isDev from 'electron-is-dev'
 import { StdioOptions } from 'child_process'
 import { BaseServerManager } from './baseServerManager'
@@ -10,49 +9,25 @@ import { getLocalIp } from '../utils/networkUtils'
 import { getLoginShellPath } from '../utils/shellEnv'
 
 export class MacOSServerManager extends BaseServerManager {
-  private executableInsideApp: string = ''
-
   /**
-   * Get path to the server executable for macOS.
+   * Get path to the server root for macOS.
    */
-  protected getServerPath(): string {
-    const resourcePath = isDev 
-      ? path.join(process.cwd(), 'resources', 'server') 
+  protected getServerRoot(): string {
+    return isDev
+      ? path.join(process.cwd(), 'resources', 'server')
       : path.join(process.resourcesPath, 'server')
-    
-    const appBundlePath = path.join(resourcePath, 'autobyteus_server.app')
-    if (fs.existsSync(appBundlePath)) {
-      this.executableInsideApp = path.join(appBundlePath, 'Contents', 'MacOS', 'autobyteus_server')
-      return appBundlePath
-    }
-    return path.join(resourcePath, 'autobyteus_server')
   }
 
   /**
    * Launch the server process for macOS.
    */
   protected async launchServerProcess(): Promise<void> {
-    const serverPath = this.getServerPath()
-    const isAppBundle = serverPath.endsWith('.app')
-    const executablePath = isAppBundle ? this.executableInsideApp : serverPath
+    const serverEntry = path.join(this.serverDir, 'dist', 'app.js')
     
-    logger.info(`Server app bundle path: ${serverPath}`)
-    logger.info(`Executable path: ${executablePath}`)
-    
-    if (!fs.existsSync(executablePath)) {
-      throw new Error(`Server executable not found at: ${executablePath}`)
-    }
-    
-    try {
-      fs.accessSync(executablePath, fs.constants.X_OK)
-    } catch (error) {
-      logger.warn(`Executable permissions issue, attempting to chmod: ${executablePath}`)
-      try {
-        execSync(`chmod +x "${executablePath}"`)
-      } catch (chmodError) {
-        logger.error(`Failed to set executable permissions: ${chmodError}`)
-        throw new Error(`Failed to set executable permissions on ${executablePath}`)
-      }
+    logger.info(`Server entrypoint: ${serverEntry}`)
+
+    if (!fs.existsSync(serverEntry)) {
+      throw new Error(`Server entrypoint not found at: ${serverEntry}`)
     }
     
     // Dynamically determine the host IP, falling back to localhost if needed.
@@ -67,6 +42,7 @@ export class MacOSServerManager extends BaseServerManager {
     const env = {
       ...process.env,
       ...(loginShellPath ? { PATH: loginShellPath } : {}),
+      ELECTRON_RUN_AS_NODE: '1',
       PORT: this.serverPort.toString(),
       SERVER_PORT: this.serverPort.toString(),
       // Explicitly provide the server with its public-facing URL.
@@ -85,27 +61,23 @@ export class MacOSServerManager extends BaseServerManager {
     logger.info(`App data directory: ${this.appDataDir}`)
     
     const args = [
+      serverEntry,
       `--port`, `${this.serverPort}`,
       `--data-dir`, `${this.appDataDir}`
     ]
-    
-    const formattedPath = executablePath.includes(' ') ? `"${executablePath}"` : executablePath
+
+    const formattedPath = process.execPath.includes(' ') ? `"${process.execPath}"` : process.execPath
     logger.info(`Executing: ${formattedPath} ${args.join(' ')}`)
     
-    this.serverProcess = spawn(executablePath, args, options)
+    this.serverProcess = spawn(process.execPath, args, options)
     
     if (!this.serverProcess || !this.serverProcess.pid) {
-      throw new Error(`Failed to spawn server process at ${executablePath}`)
+      throw new Error(`Failed to spawn server process at ${process.execPath}`)
     }
     
     logger.info(`Server process spawned with PID: ${this.serverProcess.pid}`)
     this.setupProcessHandlers()
   }
 
-  /**
-   * Get the platform-specific cache directory path for Autobyteus.
-   */
-  public getCacheDir(): string {
-    return path.join(os.homedir(), '.cache', 'autobyteus')
-  }
+  // No cache directory needed for Node-based server runtime.
 }

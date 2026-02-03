@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { useApolloClient } from '@vue/apollo-composable'
+import { getApolloClient } from '~/utils/apolloClient'
 import { CreateWorkspace } from '~/graphql/mutations/workspace_mutations'
 import { GetAllWorkspaces } from '~/graphql/queries/workspace_queries'
 import type {
@@ -17,6 +17,7 @@ import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
 import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
 import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { FileExplorerStreamingService } from '~/services/fileExplorerStreaming/FileExplorerStreamingService'
+import { useServerStore } from '~/stores/serverStore'
 import { useRuntimeConfig } from '#app'
 
 export interface WorkspaceInfo {
@@ -49,7 +50,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     async createWorkspace(config: { root_path: string }): Promise<string> {
       this.loading = true;
       this.error = null;
-      const { client } = useApolloClient();
+      const client = getApolloClient()
       try {
         const { data, errors } = await client.mutate<CreateWorkspaceMutation, CreateWorkspaceMutationVariables>({
           mutation: CreateWorkspace,
@@ -99,7 +100,12 @@ export const useWorkspaceStore = defineStore('workspace', {
       this.loading = true;
       this.error = null;
       try {
-        const { client } = useApolloClient();
+        const serverStore = useServerStore()
+        const isReady = await serverStore.waitForServerReady()
+        if (!isReady) {
+          throw new Error('Server is not ready')
+        }
+        const client = getApolloClient()
         const { data, errors } = await client.query<GetAllWorkspacesQuery>({
           query: GetAllWorkspaces,
           fetchPolicy: 'network-only',
@@ -227,7 +233,7 @@ export const useWorkspaceStore = defineStore('workspace', {
         return;
       }
 
-      const { client } = useApolloClient();
+      const client = getApolloClient()
       try {
         const { GetFolderChildren } = await import('~/graphql/queries/file_explorer_queries');
         const { data, errors } = await client.query({

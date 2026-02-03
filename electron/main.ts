@@ -34,8 +34,6 @@ function getWindowIcon(): string {
  */
 function createWindow() {
   try {
-    const cacheDir = serverManager.getCacheDir()
-    logger.info(`Computed cache directory: ${cacheDir}`)
     const userDataPath = app.getPath('userData')
     logger.info(`user data path: ${userDataPath}`)
 
@@ -151,61 +149,6 @@ function createWindow() {
   }
 }
 
-/**
- * Helper function to clear contents of a directory.
- */
-async function clearDirectoryContents(dirPath: string) {
-  logger.info(`Starting to clear contents of directory: ${dirPath}`);
-  try {
-    const entries = await fs.readdir(dirPath, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = path.join(dirPath, entry.name);
-      logger.info(`Deleting: ${fullPath}`);
-      await fs.rm(fullPath, { recursive: true, force: true });
-    }
-    logger.info(`Successfully cleared contents of directory: ${dirPath}`);
-    return { success: true };
-  } catch (error) {
-    logger.error(`Failed to clear directory ${dirPath}:`, error);
-    if (error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
-      logger.warn(`Directory not found, considering it cleared: ${dirPath}`);
-      return { success: true }; // If directory doesn't exist, it's already "cleared"
-    }
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
-  }
-}
-
-/**
- * Clean up the Nuitka-extracted cache folder on version upgrade.
- */
-function cleanOldCacheIfNeeded(): void {
-  try {
-    const cacheDir = serverManager.getCacheDir()
-    logger.info(`Computed cache directory: ${cacheDir}`)
-
-    const userDataPath = app.getPath('userData')
-    const versionFile = path.join(userDataPath, '.last-version')
-    const currentVersion = app.getVersion()
-
-    let previousVersion: string | null = null
-    if (fsSync.existsSync(versionFile)) {
-      previousVersion = fsSync.readFileSync(versionFile, 'utf8')
-    }
-
-    if (previousVersion !== currentVersion) {
-      if (fsSync.existsSync(cacheDir)) {
-        logger.info(
-          `Clearing old cache at ${cacheDir} (upgrading from ${previousVersion} to ${currentVersion})`
-        )
-        fsSync.rmSync(cacheDir, { recursive: true, force: true })
-        logger.info(`Cache cleared at ${cacheDir}`)
-      }
-      fsSync.writeFileSync(versionFile, currentVersion, 'utf8')
-    }
-  } catch (error) {
-    logger.error('Error during cache cleanup:', error)
-  }
-}
 
 ipcMain.on('ping', (event, args) => {
   logger.info('Received ping:', args)
@@ -240,17 +183,6 @@ ipcMain.handle('get-log-file-path', () => {
 
 ipcMain.handle('get-platform', () => {
   return process.platform;
-});
-
-ipcMain.handle('clear-app-cache', async () => {
-  try {
-    await serverManager.stopServer();
-  } catch (error) {
-    logger.error('Failed to stop server before clearing cache:', error);
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
-  }
-  const cacheDir = serverManager.getCacheDir();
-  return clearDirectoryContents(cacheDir);
 });
 
 ipcMain.handle('reset-server-data', async () => {
@@ -381,9 +313,6 @@ app.whenReady()
     });
 
     createWindow();
-
-    // Ensure Nuitka cache is cleaned when the Electron version changes
-    cleanOldCacheIfNeeded();
 
     serverStatusManager.initializeServer().catch(err => {
       logger.error('Server initialization failed in background:', err);

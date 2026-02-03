@@ -1,11 +1,10 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { useApolloClient } from '@vue/apollo-composable';
+import { getApolloClient } from '~/utils/apolloClient';
 import { GetAgentDefinitions } from '~/graphql/queries/agentDefinitionQueries';
 import { CreateAgentDefinition, UpdateAgentDefinition, DeleteAgentDefinition } from '~/graphql/mutations/agentDefinitionMutations';
 import type { GetAgentDefinitionsQuery } from '~/generated/graphql';
 import { useServerStore } from '~/stores/serverStore';
-import { ServerStatus } from '~/types/serverStatus';
 
 // This interface should match the GraphQL AgentDefinition type
 export interface AgentDefinition {
@@ -83,7 +82,6 @@ export const useAgentDefinitionStore = defineStore('agentDefinition', () => {
   const loading = ref(false);
   const error = ref<any>(null);
   const deleteResult = ref<DeleteResult | null>(null);
-  const { client } = useApolloClient();
 
   // --- ACTIONS ---
 
@@ -92,22 +90,16 @@ export const useAgentDefinitionStore = defineStore('agentDefinition', () => {
     if (agentDefinitions.value.length > 0) return; // Already fetched, rely on cache for updates.
 
     const serverStore = useServerStore();
-    
-    // Wait for server to be ready before fetching (Electron only)
-    if (serverStore.isElectron && serverStore.status !== ServerStatus.RUNNING) {
-      await new Promise<void>((resolve) => {
-        const checkInterval = setInterval(() => {
-          if (serverStore.status === ServerStatus.RUNNING || serverStore.status === ServerStatus.ERROR) {
-            clearInterval(checkInterval);
-            resolve();
-          }
-        }, 500);
-      });
+    const isReady = await serverStore.waitForServerReady();
+    if (!isReady) {
+      error.value = new Error('Server is not ready');
+      return;
     }
 
     loading.value = true;
     error.value = null;
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.query<GetAgentDefinitionsQuery>({
         query: GetAgentDefinitions,
         // The default fetchPolicy is now 'cache-first'
@@ -131,6 +123,7 @@ export const useAgentDefinitionStore = defineStore('agentDefinition', () => {
     loading.value = true;
     error.value = null;
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.query<GetAgentDefinitionsQuery>({
         query: GetAgentDefinitions,
         fetchPolicy: 'network-only', // Bypass the cache
@@ -153,6 +146,7 @@ export const useAgentDefinitionStore = defineStore('agentDefinition', () => {
   // Create a new agent definition
   async function createAgentDefinition(input: CreateAgentDefinitionInput): Promise<AgentDefinition | null> {
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.mutate({
         mutation: CreateAgentDefinition,
         variables: { input },
@@ -194,6 +188,7 @@ export const useAgentDefinitionStore = defineStore('agentDefinition', () => {
   // Update an agent definition
   async function updateAgentDefinition(input: UpdateAgentDefinitionInput): Promise<AgentDefinition | null> {
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.mutate({
         mutation: UpdateAgentDefinition,
         variables: { input },
@@ -227,10 +222,10 @@ export const useAgentDefinitionStore = defineStore('agentDefinition', () => {
     // Clear any previous delete result to prevent stale notifications
     deleteResult.value = null;
     try {
+      const client = getApolloClient();
       const { data, errors } = await client.mutate({
         mutation: DeleteAgentDefinition,
-        variables: { id },
-        refetchQueries: [{ query: GetAgentDefinitions }]
+        variables: { id }
       });
 
       if (errors && errors.length > 0) {
@@ -242,6 +237,8 @@ export const useAgentDefinitionStore = defineStore('agentDefinition', () => {
         if (data.deleteAgentDefinition.success) {
           // Update local Pinia state now that the operation is confirmed by the server.
           agentDefinitions.value = agentDefinitions.value.filter(def => def.id !== id);
+          // Force a network refresh to keep Pinia in sync with Apollo cache.
+          await reloadAllAgentDefinitions();
         }
         return data.deleteAgentDefinition;
       }

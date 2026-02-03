@@ -73,6 +73,6 @@ To ensure reliability across the "Concerns," we adopt a colocated testing strate
 
 ### How We Test
 1.  **Write**: create a `__tests__` folder in your module's directory. Add `.spec.ts` (for components) or `.test.ts` (for utils) files.
-2.  **Run**: Use `yarn test` for the full suite or `yarn test:nuxt` for faster web-only iterations.
+2.  **Run**: Use `pnpm test` for the full suite or `pnpm test:nuxt` for faster web-only iterations.
 
 For detailed commands and performance tips, refer to the **[Testing Section in README](./README.md#testing)**.

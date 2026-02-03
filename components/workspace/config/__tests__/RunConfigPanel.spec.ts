@@ -62,6 +62,10 @@ vi.mock('~/stores/workspace', () => ({
     useWorkspaceStore: () => ({
         createWorkspace: vi.fn(),
         workspaces: {},
+        allWorkspaces: [],
+        tempWorkspaceId: null,
+        tempWorkspace: null,
+        fetchAllWorkspaces: vi.fn().mockResolvedValue([]),
     })
 }));
 

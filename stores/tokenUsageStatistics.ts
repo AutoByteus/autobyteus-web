@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { useApolloClient } from '@vue/apollo-composable';
+import { getApolloClient } from '~/utils/apolloClient'
 import { GET_TOKEN_USAGE_STATISTICS } from '~/graphql/queries/token_usage_statistics_queries';
 import type {
   GetUsageStatisticsInPeriodQuery,
@@ -33,7 +33,7 @@ export const useTokenUsageStatisticsStore = defineStore('tokenUsageStatistics', 
       this.loading = true;
       this.error = null;
       try {
-        const { client } = useApolloClient();
+        const client = getApolloClient()
         const { data, errors } = await client.query<
           GetUsageStatisticsInPeriodQuery,
           GetUsageStatisticsInPeriodQueryVariables

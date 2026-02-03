@@ -55,7 +55,7 @@ describe('toolUtils', () => {
       const generatedId = generateBaseInvocationId(toolName, args);
       
       // We can also assert the actual value if we know it from the backend test run
-      const expectedHash = "052154d3757ff80aa113066ab64fc7a5aced011c88239dd69dfd5b3f43788365";
+      const expectedHash = "6e7a1f08f143518a8375c8a33868bef43d8c649dae8b5c13c4ef31ca285f9744";
       expect(generatedId).toBe(`call_${expectedHash}`);
     });
   });

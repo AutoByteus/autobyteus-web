@@ -14,18 +14,18 @@ vi.mock('~/stores/agentActivityStore', () => ({
   useAgentActivityStore: () => mockActivityStore,
 }));
 
-const mockFindOrCreateAIMessage = vi.fn((context) => {
-    // Return the last message if it's AI, or a mock one
+const { mockFindOrCreateAIMessage, mockFindSegmentById } = vi.hoisted(() => ({
+  mockFindOrCreateAIMessage: vi.fn((context) => {
     const last = context.conversation.messages[context.conversation.messages.length - 1];
     if (last && last.type === 'ai') return last;
     const newMsg = { type: 'ai', segments: [], isComplete: false };
     context.conversation.messages.push(newMsg);
     return newMsg;
-});
-
-const mockFindSegmentById = vi.fn((context, id: string) => {
-  return context.__segmentsById?.[id] ?? null;
-});
+  }),
+  mockFindSegmentById: vi.fn((context, id: string) => {
+    return context.__segmentsById?.[id] ?? null;
+  }),
+}));
 
 // Mock segment handler helpers used in handleError
 vi.mock('../segmentHandler', () => ({

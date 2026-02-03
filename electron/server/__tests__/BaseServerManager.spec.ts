@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'
-import { app } from 'electron'
+import * as os from 'os'
 import { BaseServerManager } from '../baseServerManager'
 
 vi.mock('fs', () => ({
@@ -14,11 +14,10 @@ vi.mock('fs', () => ({
   }
 }))
 
-vi.mock('electron', () => ({
-  app: {
-    getPath: vi.fn(() => '/user/data')
-  }
+vi.mock('os', () => ({
+  homedir: vi.fn()
 }))
+
 
 vi.mock('../../logger', () => ({
   logger: {
@@ -29,18 +28,15 @@ vi.mock('../../logger', () => ({
 }))
 
 const mockedFs = vi.mocked(fs)
+const mockedOs = vi.mocked(os)
 
 class TestServerManager extends BaseServerManager {
   protected async launchServerProcess(): Promise<void> {
     return
   }
 
-  protected getServerPath(): string {
-    return '/server/autobyteus_server.exe'
-  }
-
-  public getCacheDir(): string {
-    return '/cache'
+  protected getServerRoot(): string {
+    return '/server'
   }
 
   public getFirstRun(): boolean {
@@ -51,11 +47,11 @@ class TestServerManager extends BaseServerManager {
 describe('BaseServerManager', () => {
   beforeEach(() => {
     vi.resetAllMocks()
-    vi.mocked(app.getPath).mockReturnValue('/user/data')
+    mockedOs.homedir.mockReturnValue('/user/home')
   })
 
   it('resetAppDataDir removes and recreates the app data directory', async () => {
-    const appDataDir = path.join('/user/data', 'server-data')
+    const appDataDir = path.join('/user/home', '.autobyteus', 'server-data')
     const envPath = path.join(appDataDir, '.env')
     const dataDirPaths = ['db', 'logs', 'download'].map((dir) => path.join(appDataDir, dir))
     let appDataExists = false

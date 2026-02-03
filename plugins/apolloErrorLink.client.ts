@@ -5,7 +5,12 @@ import { useUiErrorStore } from '~/stores/uiErrorStore'
 
 export default defineNuxtPlugin((nuxtApp) => {
   const store = useUiErrorStore()
-  const { client } = nuxtApp.runWithContext(() => useApolloClient())
+  let client: ReturnType<typeof useApolloClient>['client'] | undefined
+  try {
+    ;({ client } = nuxtApp.runWithContext(() => useApolloClient()))
+  } catch {
+    return
+  }
   if (!client) return
 
   const marker = '__uiErrorApolloLink__'

@@ -1,7 +1,7 @@
 import { ChildProcess } from 'child_process'
-import * as path from 'path'
 import * as net from 'net'
-import { app } from 'electron'
+import * as os from 'os'
+import * as path from 'path'
 import axios from 'axios'
 import { EventEmitter } from 'events'
 import { logger } from '../logger'
@@ -31,18 +31,25 @@ export abstract class BaseServerManager extends EventEmitter {
 
   constructor() {
     super()
-    this.appDataService = new AppDataService(app.getPath('userData'))
+    this.appDataService = new AppDataService(this.getBaseDataDir())
     this.appDataDir = this.appDataService.getAppDataDir()
     this.firstRun = this.appDataService.isFirstRun()
     this.appDataService.initialize()
+  }
+
+  private getBaseDataDir(): string {
+    const homeDir = os.homedir()
+    if (process.platform === 'win32') {
+      return path.join(homeDir, '.autobyteus')
+    }
+    return path.join(homeDir, '.autobyteus')
   }
 
   /**
    * Validate that all required files and directories exist.
    */
   protected validateServerEnvironment(serverDir: string): string[] {
-    const serverPath = this.getServerPath()
-    return this.appDataService.validateEnvironment(serverDir, serverPath)
+    return this.appDataService.validateEnvironment(serverDir)
   }
 
   /**
@@ -83,8 +90,8 @@ export abstract class BaseServerManager extends EventEmitter {
 
     try {
       this.serverUrl = `http://localhost:${this.serverPort}`
-      const serverPath = this.getServerPath()
-      this.serverDir = path.dirname(serverPath)
+      const serverRoot = this.getServerRoot()
+      this.serverDir = serverRoot
       
       logger.info(`Server installation directory: ${this.serverDir}`)
       logger.info(`App data directory: ${this.appDataDir}`)
@@ -247,12 +254,7 @@ export abstract class BaseServerManager extends EventEmitter {
    * Get path to the server executable based on the platform.
    * Must be implemented by subclasses.
    */
-  protected abstract getServerPath(): string;
-
-  /**
-   * Get the platform-specific cache directory path for Autobyteus.
-   */
-  public abstract getCacheDir(): string;
+  protected abstract getServerRoot(): string;
 
   /**
    * Get the application's data directory path.
@@ -328,6 +330,8 @@ export abstract class BaseServerManager extends EventEmitter {
       output.includes('Application startup complete') || 
       output.includes('Running on http://') || 
       output.includes('Uvicorn running on') ||
+      output.includes('Server listening on') ||
+      output.includes('Server listening at') ||
       output.includes('INFO:     Application startup complete') ||
       output.includes('INFO:     Uvicorn running on')
     )
