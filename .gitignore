@@ -10,3 +10,4 @@ resources
 android
 build/icons
 .nuxtrc
+.env.local

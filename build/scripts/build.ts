@@ -1,5 +1,10 @@
 import { build, Configuration, Platform, Arch } from 'electron-builder'
 import { generateIcons } from './generateIcons'
+import * as dotenv from 'dotenv'
+import * as path from 'path'
+
+// Load environment variables from .env.local (for Apple credentials)
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
 // Ensure we're in production mode
 process.env.NODE_ENV = 'production'
@@ -13,16 +18,16 @@ interface BuildConfig {
 
 function getPlatform(): PlatformType {
   const args: string[] = process.argv.slice(2)
-  
+
   if (args.includes('--linux')) return 'LINUX'
   if (args.includes('--windows')) return 'WINDOWS'
   if (args.includes('--mac')) return 'MAC'
-  
+
   const directPlatform = args[0]?.toUpperCase() as PlatformType
   if (['LINUX', 'WINDOWS', 'MAC'].includes(directPlatform)) {
     return directPlatform
   }
-  
+
   return 'ALL'
 }
 
@@ -38,6 +43,8 @@ const options: Configuration = {
   directories: {
     output: 'electron-dist'
   },
+  // Hook to sign extra resources (server binaries) on macOS
+  afterPack: './build/dist/afterPack.js',
   files: [
     "dist/**/*",
     "package.json"
@@ -86,7 +93,20 @@ const options: Configuration = {
     target: ['dmg'],
     icon: 'build/icons/icon.icns',
     // Custom naming for macOS builds based on architecture
-    artifactName: '${productName}_macos-${arch}-${version}.${ext}'
+    artifactName: '${productName}_macos-${arch}-${version}.${ext}',
+    // Code signing configuration (reads from .env.local)
+    identity: process.env.APPLE_SIGNING_IDENTITY || null,
+    hardenedRuntime: true,
+    gatekeeperAssess: false,
+    entitlements: 'build/entitlements.mac.plist',
+    entitlementsInherit: 'build/entitlements.mac.plist',
+    // Notarization: set to true, it reads APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID from env
+    notarize: !!process.env.APPLE_TEAM_ID,
+    // Debugging: Allow disabling timestamp to isolate network issues
+    timestamp: process.env.NO_TIMESTAMP ? null : undefined
+  },
+  dmg: {
+    sign: false // DMG signing is optional and can cause issues
   },
   linux: {
     target: ['AppImage'],
@@ -153,35 +173,35 @@ async function main(): Promise<void> {
         throw new Error(`Missing required server directory for packaging: ${dirPath}`)
       }
     }
-    
+
     // Then proceed with electron-builder
     console.log('Starting electron-builder...')
-    
+
     // Handle different platforms separately to customize naming
     if (platform === 'ALL') {
       // Custom handling for builds with specific architecture naming
       console.log('Building for all platforms with custom naming...')
-      
+
       // Build for Linux
       console.log('Building for Linux...')
       await build({
         config: sanitizeConfig(options),
         targets: new Map([[Platform.LINUX, new Map([[Arch.x64, ['AppImage']]])]])
       })
-      
+
       // Build for Windows
       console.log('Building for Windows...')
       await build({
         config: sanitizeConfig(options),
         targets: new Map([[Platform.WINDOWS, new Map([[Arch.x64, ['nsis']]])]])
       })
-      
+
       // Build for macOS with both architectures
       console.log('Building for macOS...')
       for (const arch of [Arch.arm64, Arch.x64]) {
         const archName = getArchName(arch);
         console.log(`Building for macOS (${archName})...`);
-        
+
         const macConfig = sanitizeConfig({
           ...options,
           mac: {
@@ -189,13 +209,13 @@ async function main(): Promise<void> {
             artifactName: `\${productName}_macos-${archName}-\${version}.\${ext}`
           }
         });
-        
+
         await build({
           config: macConfig,
           targets: new Map([[Platform.MAC, new Map([[arch, ['dmg']]])]])
         });
       }
-      
+
       console.log('All platform builds completed successfully')
     } else {
       // For single platform builds, use the standard configuration
