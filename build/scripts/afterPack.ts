@@ -1,6 +1,6 @@
 /**
  * afterPack hook for electron-builder
- * Signs all Mach-O binaries in extraResources (like the Python server)
+ * Signs Mach-O binaries in the server resources (native Node deps, Prisma engines, etc.)
  */
 import { execSync } from 'child_process'
 import * as path from 'path'
@@ -13,10 +13,24 @@ import { AfterPackContext } from 'electron-builder'
 function isMachOBinary(filePath: string): boolean {
   try {
     const result = execSync(`file "${filePath}"`, { encoding: 'utf-8' })
-    return result.includes('Mach-O') || result.includes('executable')
+    return result.includes('Mach-O')
   } catch {
     return false
   }
+}
+
+function isCandidateBinary(filePath: string): boolean {
+  const ext = path.extname(filePath).toLowerCase()
+  if (ext === '.node' || ext === '.dylib' || ext === '.so') return true
+  if (!ext) {
+    try {
+      const stats = fs.statSync(filePath)
+      return (stats.mode & 0o111) !== 0
+    } catch {
+      return false
+    }
+  }
+  return false
 }
 
 /**
@@ -83,13 +97,24 @@ export default async function afterPack(context: AfterPackContext): Promise<void
     return
   }
 
-  // Get all files in the server directory
-  const allFiles = getAllFiles(resourcesPath)
+  // Scan likely native binary locations only
+  const scanRoots = [
+    path.join(resourcesPath, 'node_modules')
+  ].filter((dir) => fs.existsSync(dir))
+
+  if (scanRoots.length === 0) {
+    scanRoots.push(resourcesPath)
+  }
+
+  let allFiles: string[] = []
+  for (const root of scanRoots) {
+    allFiles = allFiles.concat(getAllFiles(root))
+  }
   const binaries: string[] = []
 
   // Find all Mach-O binaries
   for (const file of allFiles) {
-    if (isMachOBinary(file)) {
+    if (isCandidateBinary(file) && isMachOBinary(file)) {
       binaries.push(file)
     }
   }
@@ -105,16 +130,6 @@ export default async function afterPack(context: AfterPackContext): Promise<void
 
   for (const binary of binaries) {
     signFile(binary, identity, entitlementsPath)
-  }
-
-  // If there's an .app bundle in server, sign it as a whole too
-  const serverAppPath = path.join(resourcesPath, 'autobyteus_server.app')
-  if (fs.existsSync(serverAppPath)) {
-    console.log('  Signing server app bundle...')
-    const timestampArg = process.env.NO_TIMESTAMP ? '' : '--timestamp'
-    const cmd = `codesign --sign "${identity}" --force ${timestampArg} --options runtime --deep "${serverAppPath}"`
-    execSync(cmd, { stdio: 'pipe' })
-    console.log('  [OK] Server app bundle signed')
   }
 
   console.log(`[OK] Signed ${binaries.length} server binaries\n`)
