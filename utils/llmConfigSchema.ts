@@ -12,6 +12,12 @@ type RawParameterSchema = {
   }>;
 };
 
+type RawJsonSchema = {
+  type?: string;
+  properties?: Record<string, unknown>;
+  required?: string[];
+};
+
 export type UiModelConfigSchema = Record<string, {
   type?: string;
   description?: string;
@@ -45,6 +51,43 @@ export const normalizeModelConfigSchema = (schema: unknown): UiModelConfigSchema
         maximum: param.max_value ?? null,
         pattern: param.pattern ?? null,
         required: param.required,
+      };
+    }
+
+    return Object.keys(normalized).length > 0 ? normalized : null;
+  }
+
+  if (isObject((schema as RawJsonSchema).properties)) {
+    const normalized: UiModelConfigSchema = {};
+    const properties = (schema as RawJsonSchema).properties ?? {};
+    const requiredSet = new Set(
+      Array.isArray((schema as RawJsonSchema).required)
+        ? (schema as RawJsonSchema).required?.filter((value): value is string => typeof value === 'string') ?? []
+        : [],
+    );
+
+    for (const [key, value] of Object.entries(properties)) {
+      if (!isObject(value)) continue;
+
+      const type = typeof value.type === 'string' ? value.type : undefined;
+      const description = typeof value.description === 'string' ? value.description : undefined;
+      const enumValues = Array.isArray(value.enum) ? value.enum : undefined;
+      const defaultValue = 'default' in value ? value.default : undefined;
+      const minimum =
+        typeof value.minimum === 'number' ? value.minimum : value.minimum === null ? null : undefined;
+      const maximum =
+        typeof value.maximum === 'number' ? value.maximum : value.maximum === null ? null : undefined;
+      const pattern = typeof value.pattern === 'string' ? value.pattern : undefined;
+
+      normalized[key] = {
+        type,
+        description,
+        enum: enumValues,
+        default: defaultValue,
+        minimum,
+        maximum,
+        pattern,
+        required: requiredSet.has(key),
       };
     }
 
