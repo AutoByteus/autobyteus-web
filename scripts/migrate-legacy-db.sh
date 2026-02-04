@@ -87,3 +87,22 @@ fi
 
 cp "$SOURCE_DB" "$TARGET_DB"
 echo "Legacy DB copied to: $TARGET_DB"
+
+# Normalize legacy datetime strings to Prisma-friendly ISO-8601 (e.g., 2025-01-01T12:34:56.123456Z).
+if command -v sqlite3 >/dev/null 2>&1; then
+  echo "Normalizing legacy datetime columns for Prisma compatibility..."
+  sqlite3 "$TARGET_DB" "
+UPDATE prompts SET created_at=CASE WHEN created_at IS NOT NULL AND instr(created_at,'T')=0 THEN replace(created_at,' ','T')||'Z' ELSE created_at END,
+                updated_at=CASE WHEN updated_at IS NOT NULL AND instr(updated_at,'T')=0 THEN replace(updated_at,' ','T')||'Z' ELSE updated_at END;
+UPDATE agent_conversations SET created_at=CASE WHEN created_at IS NOT NULL AND instr(created_at,'T')=0 THEN replace(created_at,' ','T')||'Z' ELSE created_at END;
+UPDATE agent_conversation_messages SET timestamp=CASE WHEN timestamp IS NOT NULL AND instr(timestamp,'T')=0 THEN replace(timestamp,' ','T')||'Z' ELSE timestamp END;
+UPDATE token_usage_records SET created_at=CASE WHEN created_at IS NOT NULL AND instr(created_at,'T')=0 THEN replace(created_at,' ','T')||'Z' ELSE created_at END;
+UPDATE agent_artifacts SET created_at=CASE WHEN created_at IS NOT NULL AND instr(created_at,'T')=0 THEN replace(created_at,' ','T')||'Z' ELSE created_at END,
+                          updated_at=CASE WHEN updated_at IS NOT NULL AND instr(updated_at,'T')=0 THEN replace(updated_at,' ','T')||'Z' ELSE updated_at END;
+UPDATE mcp_server_configurations SET created_at=CASE WHEN created_at IS NOT NULL AND instr(created_at,'T')=0 THEN replace(created_at,' ','T')||'Z' ELSE created_at END,
+                                    updated_at=CASE WHEN updated_at IS NOT NULL AND instr(updated_at,'T')=0 THEN replace(updated_at,' ','T')||'Z' ELSE updated_at END;
+"
+  echo "Datetime normalization complete."
+else
+  echo "Warning: sqlite3 not found; skipped datetime normalization."
+fi
