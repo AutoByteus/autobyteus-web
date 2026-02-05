@@ -100,6 +100,19 @@
 
         <li class="relative">
           <NuxtLink
+            to="/memory"
+            class="flex justify-center items-center p-3 rounded-md hover:text-blue-300 hover:bg-gray-700 transition-colors group relative"
+            :class="{'bg-gray-700': $route.path.startsWith('/memory')}"
+          >
+            <Icon icon="heroicons:circle-stack" class="w-6 h-6" />
+            <span class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
+              Memory
+            </span>
+          </NuxtLink>
+        </li>
+
+        <li class="relative">
+          <NuxtLink
             to="/media"
             class="flex justify-center items-center p-3 rounded-md hover:text-blue-300 hover:bg-gray-700 transition-colors group relative"
             :class="{'bg-gray-700': $route.path.startsWith('/media')}"
