@@ -87,7 +87,6 @@ export const useAgentMemoryViewStore = defineStore('agentMemoryViewStore', {
 
     async setSelectedAgentId(agentId: string | null) {
       this.selectedAgentId = agentId;
-      this.includeRawTraces = false;
       if (agentId) {
         await this.fetchMemoryView(agentId);
       }

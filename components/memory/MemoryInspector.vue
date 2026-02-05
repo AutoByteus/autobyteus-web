@@ -90,9 +90,7 @@ const headerSubtitle = computed(() => {
 
 const setTab = async (tabId: string) => {
   activeTab.value = tabId;
-  if (tabId === 'raw') {
-    await viewStore.setIncludeRawTraces(true);
-  }
+  await viewStore.setIncludeRawTraces(tabId === 'raw');
 };
 
 const updateRawTraceLimit = async (limit: number) => {

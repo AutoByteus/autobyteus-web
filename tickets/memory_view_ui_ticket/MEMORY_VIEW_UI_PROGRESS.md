@@ -7,6 +7,7 @@
 - 2026-02-05: Refactored memory types to use generated GraphQL types (expects `pnpm -C autobyteus-web codegen` to supply `generated/graphql.ts`). Ran `pnpm -C autobyteus-web exec vitest --run tests/stores/agentMemoryIndexStore.test.ts tests/stores/agentMemoryViewStore.test.ts` (passed; existing warnings about baseline mapping).
 - 2026-02-05: Simplified Memory page layout to a plain two-column flex layout and stacked search/load controls to avoid clipped buttons. Ran `pnpm -C autobyteus-web exec vitest --run pages/__tests__/memory.spec.ts components/memory/__tests__/MemorySidebar.spec.ts` (passed; existing warnings about directives).
 - 2026-02-05: Updated Memory sidebar icon to `ph:brain`. Ran `pnpm -C autobyteus-web exec vitest --run components/__tests__/Sidebar.spec.ts` (passed; existing warnings about baseline mapping).
+- 2026-02-05: Fixed raw traces loading when selecting an agent while Raw Traces tab is active by syncing tab state with `includeRawTraces`. Ran `pnpm -C autobyteus-web exec vitest --run components/memory/__tests__/MemoryInspector.spec.ts tests/stores/agentMemoryViewStore.test.ts` (passed; existing warnings about baseline mapping).
 
 ## Implementation Checklist
 | Source File | Unit Test | Integration Test | UT Status | IT Status | Notes |
