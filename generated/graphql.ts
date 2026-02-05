@@ -81,6 +81,16 @@ export type AgentInstance = {
   workspace?: Maybe<WorkspaceInfo>;
 };
 
+export type AgentMemoryView = {
+  __typename?: 'AgentMemoryView';
+  agentId: Scalars['String']['output'];
+  conversation?: Maybe<Array<MemoryConversationEntry>>;
+  episodic?: Maybe<Array<Scalars['JSON']['output']>>;
+  rawTraces?: Maybe<Array<MemoryTraceEvent>>;
+  semantic?: Maybe<Array<Scalars['JSON']['output']>>;
+  workingContext?: Maybe<Array<MemoryMessage>>;
+};
+
 export type AgentTeamDefinition = {
   __typename?: 'AgentTeamDefinition';
   coordinatorMemberName: Scalars['String']['output'];
@@ -300,6 +310,62 @@ export enum McpTransportTypeEnum {
   Stdio = 'STDIO',
   StreamableHttp = 'STREAMABLE_HTTP'
 }
+
+export type MemoryConversationEntry = {
+  __typename?: 'MemoryConversationEntry';
+  content?: Maybe<Scalars['String']['output']>;
+  kind: Scalars['String']['output'];
+  media?: Maybe<Scalars['JSON']['output']>;
+  role?: Maybe<Scalars['String']['output']>;
+  toolArgs?: Maybe<Scalars['JSON']['output']>;
+  toolError?: Maybe<Scalars['String']['output']>;
+  toolName?: Maybe<Scalars['String']['output']>;
+  toolResult?: Maybe<Scalars['JSON']['output']>;
+  ts?: Maybe<Scalars['Float']['output']>;
+};
+
+export type MemoryMessage = {
+  __typename?: 'MemoryMessage';
+  content?: Maybe<Scalars['String']['output']>;
+  reasoning?: Maybe<Scalars['String']['output']>;
+  role: Scalars['String']['output'];
+  toolPayload?: Maybe<Scalars['JSON']['output']>;
+  ts?: Maybe<Scalars['Float']['output']>;
+};
+
+export type MemorySnapshotPage = {
+  __typename?: 'MemorySnapshotPage';
+  entries: Array<MemorySnapshotSummary>;
+  page: Scalars['Int']['output'];
+  pageSize: Scalars['Int']['output'];
+  total: Scalars['Int']['output'];
+  totalPages: Scalars['Int']['output'];
+};
+
+export type MemorySnapshotSummary = {
+  __typename?: 'MemorySnapshotSummary';
+  agentId: Scalars['String']['output'];
+  hasEpisodic: Scalars['Boolean']['output'];
+  hasRawArchive: Scalars['Boolean']['output'];
+  hasRawTraces: Scalars['Boolean']['output'];
+  hasSemantic: Scalars['Boolean']['output'];
+  hasWorkingContext: Scalars['Boolean']['output'];
+  lastUpdatedAt?: Maybe<Scalars['String']['output']>;
+};
+
+export type MemoryTraceEvent = {
+  __typename?: 'MemoryTraceEvent';
+  content?: Maybe<Scalars['String']['output']>;
+  media?: Maybe<Scalars['JSON']['output']>;
+  seq: Scalars['Int']['output'];
+  toolArgs?: Maybe<Scalars['JSON']['output']>;
+  toolError?: Maybe<Scalars['String']['output']>;
+  toolName?: Maybe<Scalars['String']['output']>;
+  toolResult?: Maybe<Scalars['JSON']['output']>;
+  traceType: Scalars['String']['output'];
+  ts: Scalars['Float']['output'];
+  turnId: Scalars['String']['output'];
+};
 
 export type Message = {
   __typename?: 'Message';
@@ -678,10 +744,12 @@ export type Query = {
   fileContent: Scalars['String']['output'];
   folderChildren: Scalars['String']['output'];
   getAgentConversationHistory: ConversationHistory;
+  getAgentMemoryView: AgentMemoryView;
   getLlmProviderApiKey?: Maybe<Scalars['String']['output']>;
   getModelsByProvider: Array<ProviderModels>;
   getRawConversationHistory: ConversationHistory;
   getServerSettings: Array<ServerSetting>;
+  listAgentMemorySnapshots: MemorySnapshotPage;
   listApplications: Array<ApplicationManifest>;
   mcpServers: Array<McpServerConfigUnion>;
   previewMcpServerTools: Array<ToolDefinitionDetail>;
@@ -749,6 +817,19 @@ export type QueryGetAgentConversationHistoryArgs = {
 };
 
 
+export type QueryGetAgentMemoryViewArgs = {
+  agentId: Scalars['String']['input'];
+  conversationLimit?: InputMaybe<Scalars['Int']['input']>;
+  includeArchive?: Scalars['Boolean']['input'];
+  includeConversation?: Scalars['Boolean']['input'];
+  includeEpisodic?: Scalars['Boolean']['input'];
+  includeRawTraces?: Scalars['Boolean']['input'];
+  includeSemantic?: Scalars['Boolean']['input'];
+  includeWorkingContext?: Scalars['Boolean']['input'];
+  rawTraceLimit?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type QueryGetLlmProviderApiKeyArgs = {
   provider: Scalars['String']['input'];
 };
@@ -759,6 +840,13 @@ export type QueryGetRawConversationHistoryArgs = {
   page?: Scalars['Int']['input'];
   pageSize?: Scalars['Int']['input'];
   searchQuery?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryListAgentMemorySnapshotsArgs = {
+  page?: Scalars['Int']['input'];
+  pageSize?: Scalars['Int']['input'];
+  search?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1391,6 +1479,29 @@ export type GetAgentInstancesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type GetAgentInstancesQuery = { __typename?: 'Query', agentInstances: Array<{ __typename: 'AgentInstance', id: string, name: string, role: string, currentStatus: string, agentDefinitionId?: string | null, workspace?: { __typename: 'WorkspaceInfo', workspaceId: string, name: string, config: any } | null }> };
+
+export type ListAgentMemorySnapshotsQueryVariables = Exact<{
+  search?: InputMaybe<Scalars['String']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  pageSize?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type ListAgentMemorySnapshotsQuery = { __typename?: 'Query', listAgentMemorySnapshots: { __typename?: 'MemorySnapshotPage', total: number, page: number, pageSize: number, totalPages: number, entries: Array<{ __typename?: 'MemorySnapshotSummary', agentId: string, lastUpdatedAt?: string | null, hasWorkingContext: boolean, hasEpisodic: boolean, hasSemantic: boolean, hasRawTraces: boolean, hasRawArchive: boolean }> } };
+
+export type GetAgentMemoryViewQueryVariables = Exact<{
+  agentId: Scalars['String']['input'];
+  includeWorkingContext?: InputMaybe<Scalars['Boolean']['input']>;
+  includeEpisodic?: InputMaybe<Scalars['Boolean']['input']>;
+  includeSemantic?: InputMaybe<Scalars['Boolean']['input']>;
+  includeRawTraces?: InputMaybe<Scalars['Boolean']['input']>;
+  includeArchive?: InputMaybe<Scalars['Boolean']['input']>;
+  rawTraceLimit?: InputMaybe<Scalars['Int']['input']>;
+  conversationLimit?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type GetAgentMemoryViewQuery = { __typename?: 'Query', getAgentMemoryView: { __typename?: 'AgentMemoryView', agentId: string, episodic?: Array<any> | null, semantic?: Array<any> | null, workingContext?: Array<{ __typename?: 'MemoryMessage', role: string, content?: string | null, reasoning?: string | null, toolPayload?: any | null, ts?: number | null }> | null, rawTraces?: Array<{ __typename?: 'MemoryTraceEvent', traceType: string, content?: string | null, toolName?: string | null, toolArgs?: any | null, toolResult?: any | null, toolError?: string | null, media?: any | null, turnId: string, seq: number, ts: number }> | null } };
 
 export type GetAgentTeamDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -2970,6 +3081,118 @@ export function useGetAgentInstancesLazyQuery(options: VueApolloComposable.UseQu
   return VueApolloComposable.useLazyQuery<GetAgentInstancesQuery, GetAgentInstancesQueryVariables>(GetAgentInstancesDocument, {}, options);
 }
 export type GetAgentInstancesQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAgentInstancesQuery, GetAgentInstancesQueryVariables>;
+export const ListAgentMemorySnapshotsDocument = gql`
+    query ListAgentMemorySnapshots($search: String, $page: Int, $pageSize: Int) {
+  listAgentMemorySnapshots(search: $search, page: $page, pageSize: $pageSize) {
+    total
+    page
+    pageSize
+    totalPages
+    entries {
+      agentId
+      lastUpdatedAt
+      hasWorkingContext
+      hasEpisodic
+      hasSemantic
+      hasRawTraces
+      hasRawArchive
+    }
+  }
+}
+    `;
+
+/**
+ * __useListAgentMemorySnapshotsQuery__
+ *
+ * To run a query within a Vue component, call `useListAgentMemorySnapshotsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useListAgentMemorySnapshotsQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param variables that will be passed into the query
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useListAgentMemorySnapshotsQuery({
+ *   search: // value for 'search'
+ *   page: // value for 'page'
+ *   pageSize: // value for 'pageSize'
+ * });
+ */
+export function useListAgentMemorySnapshotsQuery(variables: ListAgentMemorySnapshotsQueryVariables | VueCompositionApi.Ref<ListAgentMemorySnapshotsQueryVariables> | ReactiveFunction<ListAgentMemorySnapshotsQueryVariables> = {}, options: VueApolloComposable.UseQueryOptions<ListAgentMemorySnapshotsQuery, ListAgentMemorySnapshotsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<ListAgentMemorySnapshotsQuery, ListAgentMemorySnapshotsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<ListAgentMemorySnapshotsQuery, ListAgentMemorySnapshotsQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<ListAgentMemorySnapshotsQuery, ListAgentMemorySnapshotsQueryVariables>(ListAgentMemorySnapshotsDocument, variables, options);
+}
+export function useListAgentMemorySnapshotsLazyQuery(variables: ListAgentMemorySnapshotsQueryVariables | VueCompositionApi.Ref<ListAgentMemorySnapshotsQueryVariables> | ReactiveFunction<ListAgentMemorySnapshotsQueryVariables> = {}, options: VueApolloComposable.UseQueryOptions<ListAgentMemorySnapshotsQuery, ListAgentMemorySnapshotsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<ListAgentMemorySnapshotsQuery, ListAgentMemorySnapshotsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<ListAgentMemorySnapshotsQuery, ListAgentMemorySnapshotsQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<ListAgentMemorySnapshotsQuery, ListAgentMemorySnapshotsQueryVariables>(ListAgentMemorySnapshotsDocument, variables, options);
+}
+export type ListAgentMemorySnapshotsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<ListAgentMemorySnapshotsQuery, ListAgentMemorySnapshotsQueryVariables>;
+export const GetAgentMemoryViewDocument = gql`
+    query GetAgentMemoryView($agentId: String!, $includeWorkingContext: Boolean, $includeEpisodic: Boolean, $includeSemantic: Boolean, $includeRawTraces: Boolean, $includeArchive: Boolean, $rawTraceLimit: Int, $conversationLimit: Int) {
+  getAgentMemoryView(
+    agentId: $agentId
+    includeWorkingContext: $includeWorkingContext
+    includeEpisodic: $includeEpisodic
+    includeSemantic: $includeSemantic
+    includeRawTraces: $includeRawTraces
+    includeArchive: $includeArchive
+    rawTraceLimit: $rawTraceLimit
+    conversationLimit: $conversationLimit
+    includeConversation: false
+  ) {
+    agentId
+    workingContext {
+      role
+      content
+      reasoning
+      toolPayload
+      ts
+    }
+    episodic
+    semantic
+    rawTraces {
+      traceType
+      content
+      toolName
+      toolArgs
+      toolResult
+      toolError
+      media
+      turnId
+      seq
+      ts
+    }
+  }
+}
+    `;
+
+/**
+ * __useGetAgentMemoryViewQuery__
+ *
+ * To run a query within a Vue component, call `useGetAgentMemoryViewQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetAgentMemoryViewQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param variables that will be passed into the query
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetAgentMemoryViewQuery({
+ *   agentId: // value for 'agentId'
+ *   includeWorkingContext: // value for 'includeWorkingContext'
+ *   includeEpisodic: // value for 'includeEpisodic'
+ *   includeSemantic: // value for 'includeSemantic'
+ *   includeRawTraces: // value for 'includeRawTraces'
+ *   includeArchive: // value for 'includeArchive'
+ *   rawTraceLimit: // value for 'rawTraceLimit'
+ *   conversationLimit: // value for 'conversationLimit'
+ * });
+ */
+export function useGetAgentMemoryViewQuery(variables: GetAgentMemoryViewQueryVariables | VueCompositionApi.Ref<GetAgentMemoryViewQueryVariables> | ReactiveFunction<GetAgentMemoryViewQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetAgentMemoryViewQuery, GetAgentMemoryViewQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetAgentMemoryViewQuery, GetAgentMemoryViewQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetAgentMemoryViewQuery, GetAgentMemoryViewQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetAgentMemoryViewQuery, GetAgentMemoryViewQueryVariables>(GetAgentMemoryViewDocument, variables, options);
+}
+export function useGetAgentMemoryViewLazyQuery(variables?: GetAgentMemoryViewQueryVariables | VueCompositionApi.Ref<GetAgentMemoryViewQueryVariables> | ReactiveFunction<GetAgentMemoryViewQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetAgentMemoryViewQuery, GetAgentMemoryViewQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetAgentMemoryViewQuery, GetAgentMemoryViewQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetAgentMemoryViewQuery, GetAgentMemoryViewQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetAgentMemoryViewQuery, GetAgentMemoryViewQueryVariables>(GetAgentMemoryViewDocument, variables, options);
+}
+export type GetAgentMemoryViewQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAgentMemoryViewQuery, GetAgentMemoryViewQueryVariables>;
 export const GetAgentTeamDefinitionsDocument = gql`
     query GetAgentTeamDefinitions {
   agentTeamDefinitions {

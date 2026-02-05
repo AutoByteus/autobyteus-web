@@ -35,7 +35,8 @@ export type SegmentType =
   | 'write_file'
   | 'run_bash'
   | 'reasoning'
-  | 'patch_file';
+  | 'patch_file'
+  | 'media';
 
 // --- Payload Types ---
 
@@ -109,10 +110,25 @@ export interface ToolLogPayload {
   agent_id?: string;
 }
 
+export interface AssistantChunkPayload {
+  content?: string | null;
+  reasoning?: string | null;
+  is_complete: boolean;
+  usage?: Record<string, any>;
+  image_urls?: string[];
+  audio_urls?: string[];
+  video_urls?: string[];
+  agent_name?: string;
+  agent_id?: string;
+}
+
 export interface AssistantCompletePayload {
   content?: string | null;
   reasoning?: string | null;
   usage?: Record<string, any>;
+  image_urls?: string[];
+  audio_urls?: string[];
+  video_urls?: string[];
   agent_name?: string;
   agent_id?: string;
 }
@@ -208,6 +224,7 @@ export type ServerMessage =
   | { type: 'TOOL_APPROVAL_REQUESTED'; payload: ToolApprovalRequestedPayload }
   | { type: 'TOOL_AUTO_EXECUTING'; payload: ToolAutoExecutingPayload }
   | { type: 'TOOL_LOG'; payload: ToolLogPayload }
+  | { type: 'ASSISTANT_CHUNK'; payload: AssistantChunkPayload }
   | { type: 'ASSISTANT_COMPLETE'; payload: AssistantCompletePayload }
   | { type: 'TODO_LIST_UPDATE'; payload: TodoListUpdatePayload }
   | { type: 'TASK_PLAN_EVENT'; payload: TaskPlanEventPayload }
