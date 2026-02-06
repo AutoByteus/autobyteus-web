@@ -15,7 +15,7 @@
           label="Copy full conversation"
         />
         <!-- Separator removed -->
-        <WorkspaceHeaderActions @new-agent="createNewAgent" @open-history="openHistoryPanel" />
+        <WorkspaceHeaderActions @new-agent="createNewAgent" />
       </div>
     </div>
     
@@ -24,33 +24,22 @@
       <AgentEventMonitorTabs />
     </div>
 
-    <!-- History Panel (Modal) -->
-    <ConversationHistoryPanel 
-      :is-open="isHistoryPanelOpen"
-      :conversations="[]"
-      @close="isHistoryPanelOpen = false"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import AgentEventMonitorTabs from '~/components/workspace/agent/AgentEventMonitorTabs.vue';
-import ConversationHistoryPanel from '~/components/conversation/ConversationHistoryPanel.vue';
 import WorkspaceHeaderActions from '~/components/workspace/common/WorkspaceHeaderActions.vue';
 import AgentStatusDisplay from '~/components/workspace/agent/AgentStatusDisplay.vue';
 import CopyButton from '~/components/common/CopyButton.vue';
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
-import { useConversationHistoryStore } from '~/stores/conversationHistory';
 
 const agentContextsStore = useAgentContextsStore();
 const runConfigStore = useAgentRunConfigStore();
 const selectionStore = useAgentSelectionStore();
-const conversationHistoryStore = useConversationHistoryStore();
-
-const isHistoryPanelOpen = ref(false);
 
 const selectedAgent = computed(() => agentContextsStore.activeInstance);
 
@@ -87,14 +76,5 @@ const createNewAgent = () => {
   }
   selectionStore.clearSelection();
   agentContextsStore.createInstanceFromTemplate();
-};
-
-const openHistoryPanel = () => {
-  if (selectedAgent.value?.config.agentDefinitionId) {
-    conversationHistoryStore.setAgentDefinitionId(selectedAgent.value.config.agentDefinitionId);
-    isHistoryPanelOpen.value = true;
-  } else {
-    console.error("Cannot open history panel: No active agent selected.");
-  }
 };
 </script>
