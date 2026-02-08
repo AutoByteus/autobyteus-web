@@ -44,6 +44,18 @@
               </button>
             </li>
             <li class="w-full">
+              <button
+                @click="activeSection = 'nodes'"
+                class="flex w-full items-center justify-start px-4 py-2 rounded-md transition-colors duration-200 text-gray-700 hover:bg-gray-100 hover:text-gray-900 group"
+                :class="{ 'bg-gray-100 text-gray-900': activeSection === 'nodes' }"
+              >
+                <div class="flex items-center min-w-[20px] mr-3">
+                  <span class="i-heroicons-circle-stack-20-solid w-5 h-5"></span>
+                </div>
+                <span class="text-left">Nodes</span>
+              </button>
+            </li>
+            <li v-if="isEmbeddedWindow" class="w-full">
               <button 
                 @click="activeSection = 'server-settings'"
                 class="flex w-full items-center justify-start px-4 py-2 rounded-md transition-colors duration-200 text-gray-700 hover:bg-gray-100 hover:text-gray-900 group"
@@ -56,7 +68,7 @@
               </button>
             </li>
             <!-- New Server Status Button -->
-            <li class="w-full">
+            <li v-if="isEmbeddedWindow" class="w-full">
               <button 
                 @click="activeSection = 'server-status'"
                 class="flex w-full items-center justify-start px-4 py-2 rounded-md transition-colors duration-200 text-gray-700 hover:bg-gray-100 hover:text-gray-900 group"
@@ -97,8 +109,9 @@
         <ProviderAPIKeyManager v-if="activeSection === 'api-keys'" />
         <TokenUsageStatistics v-if="activeSection === 'token-usage'" />
         <ConversationHistoryManager v-if="activeSection === 'conversation-logs'" />
-        <ServerSettingsManager v-if="activeSection === 'server-settings'" />
-        <ServerMonitor v-if="activeSection === 'server-status'" />
+        <NodeManager v-if="activeSection === 'nodes'" />
+        <ServerSettingsManager v-if="isEmbeddedWindow && activeSection === 'server-settings'" />
+        <ServerMonitor v-if="isEmbeddedWindow && activeSection === 'server-status'" />
         <div v-else-if="activeSection === ''" class="flex-1 flex flex-col items-center justify-center text-gray-400">
           <span class="i-heroicons-cog-8-tooth-20-solid w-16 h-16 mb-6 opacity-20"></span>
           <h3 class="text-xl font-medium mb-2 text-gray-500">Settings</h3>
@@ -110,18 +123,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useServerStore } from '~/stores/serverStore';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import ProviderAPIKeyManager from '~/components/settings/ProviderAPIKeyManager.vue';
 import TokenUsageStatistics from '~/components/settings/TokenUsageStatistics.vue';
+import NodeManager from '~/components/settings/NodeManager.vue';
 import ServerSettingsManager from '~/components/settings/ServerSettingsManager.vue';
 import ServerMonitor from '~/components/server/ServerMonitor.vue';
 import ConversationHistoryManager from '~/components/settings/ConversationHistoryManager.vue';
 
 const route = useRoute();
 const serverStore = useServerStore();
+const windowNodeContextStore = useWindowNodeContextStore();
 const activeSection = ref('api-keys');
+const isEmbeddedWindow = computed(() => windowNodeContextStore.isEmbeddedWindow);
 
 onMounted(() => {
   // Check for section query parameter
@@ -129,9 +146,13 @@ onMounted(() => {
   if (sectionParam) {
     activeSection.value = sectionParam;
   }
+
+  if (!isEmbeddedWindow.value && (activeSection.value === 'server-settings' || activeSection.value === 'server-status')) {
+    activeSection.value = 'api-keys';
+  }
   
   // If server is not running and we are in Electron mode, default to server-status section
-  if (serverStore.isElectron && serverStore.status !== 'running') {
+  if (isEmbeddedWindow.value && serverStore.status !== 'running') {
     activeSection.value = 'server-status';
   }
 });

@@ -38,7 +38,7 @@
 import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useActiveContextStore } from '~/stores/activeContextStore';
-import { useServerStore } from '~/stores/serverStore';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { Icon } from '@iconify/vue';
 import { getFilePathsFromFolder } from '~/utils/fileExplorer/fileUtils';
@@ -46,12 +46,11 @@ import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
 
 // Initialize stores
 const activeContextStore = useActiveContextStore();
-const serverStore = useServerStore();
+const windowNodeContextStore = useWindowNodeContextStore();
 const workspaceStore = useWorkspaceStore();
 
 // Store refs
 const { isSending, currentRequirement: storeCurrentRequirement } = storeToRefs(activeContextStore);
-const { isElectron } = storeToRefs(serverStore);
 
 // Local component state
 const internalRequirement = ref(''); // Local state for textarea
@@ -203,14 +202,14 @@ const handleDrop = async (event: DragEvent) => {
     } catch (error) {
       console.error('Failed to parse dropped node data:', error);
     }
-  } else if (isElectron.value && dataTransfer.files.length > 0 && window.electronAPI) {
+  } else if (windowNodeContextStore.isEmbeddedWindow && dataTransfer.files.length > 0 && window.electronAPI) {
     console.log('[INFO] Drop event from native OS in Electron.');
     const files = Array.from(dataTransfer.files);
     const pathPromises = files.map(f => window.electronAPI.getPathForFile(f));
     const paths = (await Promise.all(pathPromises)).filter((p): p is string => Boolean(p));
     filePaths = paths;
     console.log('[INFO] Received native file paths from preload bridge:', filePaths);
-  } else if (!isElectron.value && dataTransfer.files.length > 0) {
+  } else if (!windowNodeContextStore.isEmbeddedWindow && dataTransfer.files.length > 0) {
     console.log('[INFO] Drop event from native OS in browser, using filenames as fallback.');
     filePaths = Array.from(dataTransfer.files).map(file => file.name);
   }

@@ -5,6 +5,12 @@ import { setActivePinia } from 'pinia'
 import ServerSettingsManager from '../ServerSettingsManager.vue'
 import { useServerSettingsStore } from '~/stores/serverSettings'
 
+vi.mock('~/stores/windowNodeContextStore', () => ({
+  useWindowNodeContextStore: () => ({
+    isEmbeddedWindow: true,
+  }),
+}))
+
 const flushPromises = async () => {
   await Promise.resolve()
   await new Promise<void>((resolve) => setTimeout(resolve, 0))

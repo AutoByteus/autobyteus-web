@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia';
-import { useRuntimeConfig } from '#app';
 import { getApolloClient } from '~/utils/apolloClient'
 import { v4 as uuidv4 } from 'uuid';
 import { useApplicationContextStore } from './applicationContextStore';
@@ -21,6 +20,7 @@ import { useApplicationLaunchProfileStore } from './applicationLaunchProfileStor
 import type { ApplicationLaunchProfile } from '~/types/application/ApplicationLaunchProfile';
 import { TeamStreamingService } from '~/services/agentStreaming';
 import type { TeamRunConfig, MemberConfigOverride } from '~/types/agent/TeamRunConfig';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 
 
 function _resolveAgentLlmConfig(profile: ApplicationLaunchProfile): Record<string, string> {
@@ -234,9 +234,8 @@ export const useApplicationRunStore = defineStore('applicationRun', {
 
       const { teamContext } = runContext;
 
-      // Get the WebSocket endpoint from runtime config (like terminal and file explorer)
-      const config = useRuntimeConfig();
-      const wsEndpoint = config.public.teamWsEndpoint as string || 'ws://localhost:8000/ws/agent-team';
+      const windowNodeContextStore = useWindowNodeContextStore();
+      const wsEndpoint = windowNodeContextStore.getBoundEndpoints().teamWs;
 
       const service = new TeamStreamingService(wsEndpoint);
       applicationStreamingServices.set(teamContext.teamId, service);

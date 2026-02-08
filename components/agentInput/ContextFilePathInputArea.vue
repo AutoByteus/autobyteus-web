@@ -115,10 +115,9 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { storeToRefs } from 'pinia';
 import { useActiveContextStore } from '~/stores/activeContextStore';
 import { useFileUploadStore } from '~/stores/fileUploadStore';
-import { useServerStore } from '~/stores/serverStore';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { getFilePathsFromFolder, determineFileType } from '~/utils/fileExplorer/fileUtils';
 import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
@@ -126,11 +125,10 @@ import type { ContextFilePath } from '~/types/conversation';
 
 const activeContextStore = useActiveContextStore();
 const fileUploadStore = useFileUploadStore();
-const serverStore = useServerStore();
+const windowNodeContextStore = useWindowNodeContextStore();
 const fileExplorerStore = useFileExplorerStore();
 import { useWorkspaceStore } from '~/stores/workspace';
 const workspaceStore = useWorkspaceStore();
-const { isElectron } = storeToRefs(serverStore);
 
 const contextFilePaths = computed(() => activeContextStore.currentContextPaths);
 const uploadingFiles = ref<string[]>([]);
@@ -255,7 +253,7 @@ const onFileDrop = async (event: DragEvent) => {
     if (filePaths.length > 0 && !isContextListExpanded.value) {
       isContextListExpanded.value = true;
     }
-  } else if (isElectron.value && dataTransfer?.files?.length) {
+  } else if (windowNodeContextStore.isEmbeddedWindow && dataTransfer?.files?.length) {
     console.log('[INFO] Drop event from native OS in Electron.');
     const files = Array.from(dataTransfer.files);
     const pathPromises = files.map(f => window.electronAPI?.getPathForFile(f));
@@ -269,7 +267,7 @@ const onFileDrop = async (event: DragEvent) => {
     if (paths.length > 0 && !isContextListExpanded.value) {
       isContextListExpanded.value = true;
     }
-  } else if (!isElectron.value && dataTransfer?.files?.length) {
+  } else if (!windowNodeContextStore.isEmbeddedWindow && dataTransfer?.files?.length) {
     console.log('[INFO] Drop event from native OS in browser, uploading files.');
     await processAndUploadFiles(Array.from(dataTransfer.files));
   }

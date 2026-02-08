@@ -13,7 +13,7 @@ import type {
   DeleteAgentTeamDefinitionMutationVariables,
   TeamMemberInput,
 } from '~/generated/graphql';
-import { useServerStore } from '~/stores/serverStore';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 
 // Re-exporting this for use in forms
 export type { TeamMemberInput };
@@ -61,10 +61,10 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
   async function fetchAllAgentTeamDefinitions() {
     if (agentTeamDefinitions.value.length > 0) return;
 
-    const serverStore = useServerStore();
-    const isReady = await serverStore.waitForServerReady();
+    const windowNodeContextStore = useWindowNodeContextStore();
+    const isReady = await windowNodeContextStore.waitForBoundBackendReady();
     if (!isReady) {
-      error.value = new Error('Server is not ready');
+      error.value = new Error('Bound backend is not ready');
       return;
     }
 

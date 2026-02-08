@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia';
-import { useRuntimeConfig } from '#app';
 import { getApolloClient } from '~/utils/apolloClient'
 import { TerminateAgentTeamInstance, SendMessageToTeam } from '~/graphql/mutations/agentTeamInstanceMutations';
 import type {
@@ -13,6 +12,7 @@ import { useAgentActivityStore } from '~/stores/agentActivityStore';
 import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
 import { TeamStreamingService } from '~/services/agentStreaming';
 import type { ToolInvocationLifecycle } from '~/types/segments';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 
 // Maintain a map of streaming services per team
 const teamStreamingServices = new Map<string, TeamStreamingService>();
@@ -35,8 +35,8 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
         return;
       }
 
-      const config = useRuntimeConfig();
-      const wsEndpoint = (config.public.teamWsEndpoint as string) || 'ws://localhost:8000/ws/agent-team';
+      const windowNodeContextStore = useWindowNodeContextStore();
+      const wsEndpoint = windowNodeContextStore.getBoundEndpoints().teamWs;
 
       const service = new TeamStreamingService(wsEndpoint);
       teamStreamingServices.set(teamId, service);

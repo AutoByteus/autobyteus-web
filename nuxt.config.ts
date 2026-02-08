@@ -22,6 +22,10 @@ if (isDevelopment) {
 
 // For local and Docker development, the Vite proxy forwards API requests to the backend server.
 const backendProxyUrl = 'http://localhost:8000'
+const backendNodeBaseUrlFromEnv =
+  process.env.BACKEND_NODE_BASE_URL ||
+  process.env.BACKEND_REST_BASE_URL?.replace(/\/rest\/?$/, '') ||
+  backendProxyUrl
 
 let serverUrls = {
   graphqlBaseUrl: '',
@@ -34,7 +38,10 @@ let serverUrls = {
   fileExplorerWsEndpoint: ''
 };
 
+let defaultNodeBaseUrl = '';
+
 if (isElectronBuild) {
+  defaultNodeBaseUrl = `http://localhost:${INTERNAL_SERVER_PORT}`;
   serverUrls = {
     graphqlBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/graphql`,
     restBaseUrl: `http://localhost:${INTERNAL_SERVER_PORT}/rest`,
@@ -46,6 +53,7 @@ if (isElectronBuild) {
     fileExplorerWsEndpoint: `ws://localhost:${INTERNAL_SERVER_PORT}/ws/file-explorer`
   };
 } else if (isDevelopment) {
+  defaultNodeBaseUrl = backendProxyUrl;
   serverUrls = {
     graphqlBaseUrl: '/graphql',
     restBaseUrl: '/rest',
@@ -57,6 +65,7 @@ if (isElectronBuild) {
     fileExplorerWsEndpoint: process.env.BACKEND_FILE_EXPLORER_WS_ENDPOINT || 'ws://localhost:8000/ws/file-explorer'
   };
 } else {
+  defaultNodeBaseUrl = backendNodeBaseUrlFromEnv;
   // Read from our custom-named environment variables to prevent automatic overrides.
   serverUrls = {
     graphqlBaseUrl: process.env.BACKEND_GRAPHQL_BASE_URL || 'http://localhost:8000/graphql',
@@ -87,7 +96,6 @@ const baseConfig = {
   ],
   
   modules: [
-    '@nuxtjs/apollo',
     '@pinia/nuxt',
     './modules/devhandler-compat',
     ...(isTest ? ['@nuxt/test-utils/module'] : [])
@@ -112,6 +120,18 @@ const baseConfig = {
 
   vite: {
     server: {
+      watch: {
+        // Avoid watching packaged outputs with huge embedded node_modules trees.
+        ignored: [
+          '**/.git/**',
+          '**/.nuxt/**',
+          '**/.output/**',
+          '**/dist/**',
+          '**/electron-dist/**',
+          '**/resources/**',
+          '**/node_modules/**'
+        ]
+      },
       proxy: isDevelopment ? {
         '/graphql': {
           target: backendProxyUrl,
@@ -147,6 +167,7 @@ const baseConfig = {
     public: {
       graphqlBaseUrl: serverUrls.graphqlBaseUrl,
       restBaseUrl: serverUrls.restBaseUrl,
+      defaultNodeBaseUrl,
       agentWsEndpoint: serverUrls.agentWsEndpoint,
       teamWsEndpoint: serverUrls.teamWsEndpoint,
       graphqlWsEndpoint: serverUrls.graphqlWsEndpoint,
@@ -184,25 +205,6 @@ const baseConfig = {
     }
   } : {}),
 
-  apollo: {
-    clients: {
-      default: {
-        httpEndpoint: serverUrls.graphqlBaseUrl,
-        wsEndpoint: serverUrls.graphqlWsEndpoint,
-        websocketsOnly: false,
-        inMemoryCacheOptions: {},
-        defaultOptions: {
-          watchQuery: {
-            fetchPolicy: 'cache-first',
-          },
-          query: {
-            fetchPolicy: 'cache-first',
-          },
-        },
-      },
-    },
-  },
-
   postcss: {
     plugins: {
       'postcss-import': {},
@@ -218,7 +220,13 @@ const baseConfig = {
     transpile: [
       '@xenova/transformers',
     ],
-  }
+  },
+
+  // Keep Nuxt's source scanning focused on app source folders.
+  ignore: [
+    '**/electron-dist/**',
+    '**/resources/**'
+  ]
 }
 
 export default defineNuxtConfig(applyElectronConfig(baseConfig))

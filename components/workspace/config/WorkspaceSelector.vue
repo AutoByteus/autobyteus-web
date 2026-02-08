@@ -73,7 +73,7 @@
         </div>
         <!-- Browse Button (Electron only) -->
         <button
-          v-if="isElectron"
+          v-if="isEmbeddedWindow"
           type="button"
           @click="handleBrowse"
           :disabled="isLoading || disabled"
@@ -120,7 +120,7 @@
           <span v-else>Select a previously loaded workspace.</span>
         </template>
         <template v-else>
-          {{ isElectron ? 'Browse for a folder or enter path manually.' : 'Enter path to load a new workspace.' }}
+          {{ isEmbeddedWindow ? 'Browse for a folder or enter path manually.' : 'Enter path to load a new workspace.' }}
           <span class="i-heroicons-information-circle-20-solid h-4 w-4 ml-1.5 text-gray-400 cursor-help" title="Path must be an absolute file system path"></span>
         </template>
       </p>
@@ -132,7 +132,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useWorkspaceStore } from '~/stores/workspace';
-import { useServerStore } from '~/stores/serverStore';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import SearchableSelect from '~/components/common/SearchableSelect.vue';
 import { Icon } from '@iconify/vue';
 
@@ -149,8 +149,8 @@ const emit = defineEmits<{
 }>();
 
 const workspaceStore = useWorkspaceStore();
-const serverStore = useServerStore();
-const { isElectron } = storeToRefs(serverStore);
+const windowNodeContextStore = useWindowNodeContextStore();
+const { isEmbeddedWindow } = storeToRefs(windowNodeContextStore);
 
 // Local state
 const mode = ref<'existing' | 'new'>('new');
@@ -259,7 +259,7 @@ const handleLoad = () => {
 
 // Native folder picker (Electron only)
 const handleBrowse = async () => {
-  if (!isElectron.value || !window.electronAPI?.showFolderDialog) return;
+  if (!isEmbeddedWindow.value || !window.electronAPI?.showFolderDialog) return;
   
   try {
     const result = await window.electronAPI.showFolderDialog();

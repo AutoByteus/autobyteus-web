@@ -1,6 +1,18 @@
 // electron/preload.ts
 
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
+import type { NodeRegistryChange } from './nodeRegistryTypes'
+
+type Cleanup = () => void
+
+function registerIpcListener<T>(
+  channel: string,
+  callback: (payload: T) => void,
+): Cleanup {
+  const listener = (_event: unknown, payload: T) => callback(payload)
+  ipcRenderer.on(channel, listener as any)
+  return () => ipcRenderer.removeListener(channel, listener as any)
+}
 
 contextBridge.exposeInMainWorld('electronAPI', {
   sendPing: (message: string) => ipcRenderer.send('ping', message),
@@ -11,9 +23,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getServerStatus: () => ipcRenderer.invoke('get-server-status'),
   restartServer: () => ipcRenderer.invoke('restart-server'),
   onServerStatus: (callback: (status: any) => void) => {
-    ipcRenderer.on('server-status', (_, status) => callback(status))
-    // Return a function to remove the listener
-    return () => ipcRenderer.removeAllListeners('server-status')
+    return registerIpcListener('server-status', callback)
+  },
+
+  openNodeWindow: (nodeId: string) => ipcRenderer.invoke('open-node-window', nodeId),
+  focusNodeWindow: (nodeId: string) => ipcRenderer.invoke('focus-node-window', nodeId),
+  listNodeWindows: () => ipcRenderer.invoke('list-node-windows'),
+  getWindowContext: () => ipcRenderer.invoke('get-window-context'),
+  upsertNodeRegistry: (change: NodeRegistryChange) => ipcRenderer.invoke('upsert-node-registry', change),
+  getNodeRegistrySnapshot: () => ipcRenderer.invoke('get-node-registry-snapshot'),
+  onNodeRegistryUpdated: (callback: (snapshot: any) => void) => {
+    return registerIpcListener('node-registry-updated', callback)
   },
 
   // Method for directly checking server health
@@ -38,7 +58,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPlatform: () => ipcRenderer.invoke('get-platform'),
 
   // Shutdown communication
-  onAppQuitting: (callback: () => void) => ipcRenderer.on('app-quitting', callback),
+  onAppQuitting: (callback: () => void) => {
+    const listener = () => callback()
+    ipcRenderer.on('app-quitting', listener)
+    return () => ipcRenderer.removeListener('app-quitting', listener)
+  },
   startShutdown: () => ipcRenderer.send('start-shutdown'),
 
   // Advanced recovery options

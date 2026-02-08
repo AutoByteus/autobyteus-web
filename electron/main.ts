@@ -1,359 +1,596 @@
-import { app, BrowserWindow, ipcMain, shell, protocol, net, dialog } from 'electron'
-import * as path from 'path'
-import isDev from 'electron-is-dev'
-import { serverManager } from './server/serverManagerFactory'
-import { logger } from './logger'
-import * as fs from 'fs/promises'
-import * as fsSync from 'fs'
-import { ServerStatusManager } from './server/serverStatusManager'
-import { URL } from 'url'
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, shell } from 'electron';
+import * as fsSync from 'fs';
+import * as fs from 'fs/promises';
+import isDev from 'electron-is-dev';
+import * as path from 'path';
+import { URL } from 'url';
+import type {
+  NodeProfile,
+  NodeRegistryChange,
+  NodeRegistrySnapshot,
+  WindowNodeContext,
+} from './nodeRegistryTypes';
+import { EMBEDDED_NODE_ID } from './nodeRegistryTypes';
+import { logger } from './logger';
+import { serverManager } from './server/serverManagerFactory';
+import { ServerStatusManager } from './server/serverStatusManager';
 
-// Create server status manager
 const serverStatusManager = new ServerStatusManager(serverManager);
 
-let mainWindow: BrowserWindow | null
-let isQuitting = false; // Flag to prevent multiple shutdown attempts
-let shutdownTimer: NodeJS.Timeout | null = null
-const shutdownTimeoutMs = 8000
+const NODE_REGISTRY_FILE_NAME = 'node-registry.v1.json';
+const INTERNAL_SERVER_PORT = 29695;
+const shutdownTimeoutMs = 8000;
+
+let isAppQuitting = false;
+let hasShutdownRun = false;
+let shutdownTimer: NodeJS.Timeout | null = null;
+
+const nodeIdByWindowId = new Map<number, string>();
+const windowIdByNodeId = new Map<string, number>();
+let nodeRegistrySnapshot: NodeRegistrySnapshot = {
+  version: 0,
+  nodes: [],
+};
 
 function getWindowIcon(): string {
-  const iconFile = '512x512.png'
-  const prodPath = path.join(process.resourcesPath, 'icons', iconFile)
-  const devPath = path.join(__dirname, '..', '..', 'build', 'icons', iconFile)
-  const resolvedPath = app.isPackaged ? prodPath : devPath
+  const iconFile = '512x512.png';
+  const prodPath = path.join(process.resourcesPath, 'icons', iconFile);
+  const devPath = path.join(__dirname, '..', '..', 'build', 'icons', iconFile);
+  const resolvedPath = app.isPackaged ? prodPath : devPath;
 
   if (!fsSync.existsSync(resolvedPath)) {
-    logger.warn(`Window icon not found at ${resolvedPath}. Falling back to Electron default.`)
+    logger.warn(`Window icon not found at ${resolvedPath}. Falling back to Electron default.`);
   }
 
-  return resolvedPath
+  return resolvedPath;
 }
 
-/**
- * Create the main application window.
- */
-function createWindow() {
+function getRegistryFilePath(): string {
+  return path.join(app.getPath('userData'), NODE_REGISTRY_FILE_NAME);
+}
+
+function getStartUrl(): string {
+  return isDev
+    ? process.env.VITE_DEV_SERVER_URL || 'http://localhost:3000'
+    : `file://${path.join(__dirname, '../renderer/index.html')}`;
+}
+
+function nowIsoString(): string {
+  return new Date().toISOString();
+}
+
+function getEmbeddedNodeProfile(): NodeProfile {
+  const now = nowIsoString();
+  return {
+    id: EMBEDDED_NODE_ID,
+    name: 'Embedded Node',
+    baseUrl: `http://localhost:${INTERNAL_SERVER_PORT}`,
+    nodeType: 'embedded',
+    capabilities: {
+      terminal: true,
+      fileExplorerStreaming: true,
+    },
+    capabilityProbeState: 'ready',
+    isSystem: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function ensureEmbeddedNode(snapshot: NodeRegistrySnapshot): NodeRegistrySnapshot {
+  const existing = snapshot.nodes.find((node) => node.id === EMBEDDED_NODE_ID);
+  if (existing) {
+    return snapshot;
+  }
+
+  return {
+    version: snapshot.version + 1,
+    nodes: [getEmbeddedNodeProfile(), ...snapshot.nodes],
+  };
+}
+
+function loadNodeRegistrySnapshot(): NodeRegistrySnapshot {
+  const filePath = getRegistryFilePath();
+  if (!fsSync.existsSync(filePath)) {
+    return ensureEmbeddedNode({
+      version: 0,
+      nodes: [],
+    });
+  }
+
   try {
-    const userDataPath = app.getPath('userData')
-    logger.info(`user data path: ${userDataPath}`)
-
-    logger.info('Creating main window')
-    
-    mainWindow = new BrowserWindow({
-      width: 1200,
-      height: 800,
-      icon: getWindowIcon(),
-      webPreferences: {
-        preload: path.join(__dirname, 'preload.js'),
-        nodeIntegration: false,
-        contextIsolation: true,
-        sandbox: true, // Sandboxing is recommended for security
-      },
-      show: true,
-    })
-
-    // --- SECURITY ENHANCEMENTS ---
-    // Block unintended navigations (file/URL drop, window.location change, etc.)
-    mainWindow.webContents.on('will-navigate', (e) => {
-      logger.warn(`Blocked navigation attempt to: ${e.url}`)
-      e.preventDefault()
-    });
-
-    // Block all new windows (e.g., from target="_blank")
-    mainWindow.webContents.setWindowOpenHandler(() => {
-      logger.warn('Blocked attempt to open a new window.')
-      return { action: 'deny' }
-    });
-    // --- END SECURITY ENHANCEMENTS ---
-
-    // Intercept the close event
-    mainWindow.on('close', (event) => {
-      logger.info(`'close' event triggered. isQuitting: ${isQuitting}`)
-      if (!isQuitting) {
-        // Prevent the window from closing immediately
-        event.preventDefault()
-        isQuitting = true
-        // Notify the renderer to show the shutdown screen
-        logger.info('Sending app-quitting event to renderer.')
-        mainWindow?.webContents.send('app-quitting')
-
-        // Fallback: if renderer does not respond, force shutdown from main process.
-        shutdownTimer = setTimeout(async () => {
-          logger.warn('Renderer did not acknowledge shutdown. Forcing app quit.')
-          try {
-            await serverManager.stopServer()
-          } catch (error) {
-            logger.error('Error stopping server during forced shutdown:', error)
-          } finally {
-            app.quit()
-          }
-        }, shutdownTimeoutMs)
-      }
-      // If isQuitting is true, the app.quit() was called, so let it proceed.
-    })
-
-    const startURL = isDev
-      ? process.env.VITE_DEV_SERVER_URL || 'http://localhost:3000'
-      : `file://${path.join(__dirname, '../renderer/index.html')}`
-
-    logger.info('Environment:', isDev ? 'Development' : 'Production')
-    logger.info('Loading URL:', startURL)
-    logger.info('Current directory:', __dirname)
-    logger.info('Resolved index.html path:', path.resolve(__dirname, '../renderer/index.html'))
-    
-    mainWindow.loadURL(startURL)
-      .then(() => {
-        logger.info('URL loaded successfully')
-      })
-      .catch(err => {
-        logger.error('Failed to load URL:', startURL, err)
-      })
-
-    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
-      logger.error('Page failed to load:', {
-        errorCode,
-        errorDescription,
-        validatedURL,
-        startURL
-      })
-    })
-
-    mainWindow.webContents.on('did-finish-load', () => {
-      logger.info('Page finished loading')
-      const rendererPath = path.join(__dirname, '../renderer')
-      logger.info('Renderer directory:', rendererPath)
-      try {
-        const files = fsSync.readdirSync(rendererPath)
-        logger.info('Files in renderer directory:', files)
-      } catch (error) {
-        logger.error('Error listing renderer directory:', error)
-      }
-
-      if (!mainWindow) return
-      
-      mainWindow.webContents.send('server-status', serverStatusManager.getStatus())
-    })
-
-    mainWindow.on('closed', () => {
-      mainWindow = null
-    })
-    
-    serverStatusManager.on('status-change', (status) => {
-      if (mainWindow) {
-        mainWindow.webContents.send('server-status', status)
-      }
-    })
-    
+    const raw = fsSync.readFileSync(filePath, 'utf8');
+    const parsed = JSON.parse(raw) as NodeRegistrySnapshot;
+    if (!Array.isArray(parsed.nodes) || typeof parsed.version !== 'number') {
+      logger.warn('Node registry file is invalid; regenerating default registry.');
+      return ensureEmbeddedNode({
+        version: 0,
+        nodes: [],
+      });
+    }
+    return ensureEmbeddedNode(parsed);
   } catch (error) {
-    logger.error('Error in createWindow:', error)
+    logger.error('Failed to read node registry file:', error);
+    return ensureEmbeddedNode({
+      version: 0,
+      nodes: [],
+    });
   }
 }
 
-
-ipcMain.on('ping', (event, args) => {
-  logger.info('Received ping:', args)
-  event.reply('pong', 'Pong from main process!')
-})
-
-// Listen for the signal from the renderer to start the actual shutdown
-ipcMain.on('start-shutdown', () => {
-  logger.info('Received start-shutdown signal from renderer. Quitting app.')
-  if (shutdownTimer) {
-    clearTimeout(shutdownTimer)
-    shutdownTimer = null
-  }
-  app.quit()
-})
-
-ipcMain.handle('get-server-status', () => {
-  return serverStatusManager.getStatus()
-})
-
-ipcMain.handle('restart-server', async () => {
-  return await serverStatusManager.restartServer()
-})
-
-ipcMain.handle('check-server-health', async () => {
-  return await serverStatusManager.checkServerHealth()
-})
-
-ipcMain.handle('get-log-file-path', () => {
-  return logger.getLogPath()
-})
-
-ipcMain.handle('get-platform', () => {
-  return process.platform;
-});
-
-ipcMain.handle('reset-server-data', async () => {
+function saveNodeRegistrySnapshot(snapshot: NodeRegistrySnapshot): void {
   try {
-    await serverManager.stopServer();
+    fsSync.writeFileSync(getRegistryFilePath(), JSON.stringify(snapshot, null, 2), 'utf8');
   } catch (error) {
-    logger.error('Failed to stop server before resetting data:', error);
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
+    logger.error('Failed to persist node registry snapshot:', error);
   }
-  try {
-    await serverManager.resetAppDataDir();
-    return { success: true };
-  } catch (error) {
-    logger.error('Failed to reset app data directory:', error);
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
+}
+
+function broadcastNodeRegistrySnapshot(): void {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send('node-registry-updated', nodeRegistrySnapshot);
   }
-});
+}
 
-ipcMain.handle('open-log-file', async (event, filePath) => {
-  try {
-    logger.info(`Attempting to open log file: ${filePath}`)
-    if (!fsSync.existsSync(filePath)) {
-      logger.error(`Log file does not exist: ${filePath}`)
-      return { success: false, error: 'Log file does not exist' }
-    }
-    await shell.openPath(filePath)
-    logger.info(`Log file opened successfully: ${filePath}`)
-    return { success: true }
-  } catch (error) {
-    logger.error(`Failed to open log file: ${error instanceof Error ? error.message : String(error)}`)
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error opening log file'
-    }
+function getNodeProfileById(nodeId: string): NodeProfile | undefined {
+  return nodeRegistrySnapshot.nodes.find((node) => node.id === nodeId);
+}
+
+function sanitizeBaseUrl(baseUrl: string): string {
+  return baseUrl.trim().replace(/\/+$/, '');
+}
+
+function getWindowContextByWebContentsId(webContentsId: number): WindowNodeContext {
+  const nodeId = nodeIdByWindowId.get(webContentsId) || EMBEDDED_NODE_ID;
+  return {
+    windowId: webContentsId,
+    nodeId,
+  };
+}
+
+function mapWindowNodeBinding(window: BrowserWindow, nodeId: string): void {
+  const webContentsId = window.webContents.id;
+  nodeIdByWindowId.set(webContentsId, nodeId);
+  windowIdByNodeId.set(nodeId, webContentsId);
+}
+
+function clearWindowNodeBinding(window: BrowserWindow): void {
+  const webContentsId = window.webContents.id;
+  const nodeId = nodeIdByWindowId.get(webContentsId);
+  if (nodeId) {
+    windowIdByNodeId.delete(nodeId);
   }
-})
+  nodeIdByWindowId.delete(webContentsId);
+}
 
-ipcMain.handle('open-external-link', async (event, url: string) => {
-  try {
-    logger.info(`Attempting to open external link: ${url}`);
-    await shell.openExternal(url);
-    return { success: true };
-  } catch (error) {
-    logger.error(`Failed to open external link: ${error instanceof Error ? error.message : String(error)}`);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error opening external link'
-    };
+function focusWindowById(windowId: number): boolean {
+  const window = BrowserWindow.fromId(windowId);
+  if (!window || window.isDestroyed()) {
+    return false;
   }
-});
-
-ipcMain.handle('read-log-file', async (event, filePath) => {
-  try {
-    logger.info(`Reading log file content: ${filePath}`)
-    if (!fsSync.existsSync(filePath)) {
-      logger.error(`Log file does not exist: ${filePath}`)
-      return { success: false, error: 'Log file does not exist' }
-    }
-    const content = await fs.readFile(filePath, 'utf8')
-    const lines = content.split('\n')
-    const lastLines = lines.slice(Math.max(0, lines.length - 500)).join('\n')
-    logger.info(`Read ${lastLines.length} characters from log file`)
-    return { 
-      success: true, 
-      content: lastLines,
-      filePath: filePath
-    }
-  } catch (error) {
-    logger.error(`Failed to read log file: ${error instanceof Error ? error.message : String(error)}`)
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error reading log file'
-    }
+  if (window.isMinimized()) {
+    window.restore();
   }
-});
+  window.focus();
+  return true;
+}
 
-// **NEW** IPC handler for reading local text files securely.
-ipcMain.handle('read-local-text-file', async (event, filePath: string) => {
-  try {
-    logger.info(`Reading local text file: ${filePath}`);
-    if (!fsSync.existsSync(filePath)) {
-      logger.error(`Local file does not exist: ${filePath}`);
-      return { success: false, error: 'File does not exist' };
-    }
-    const content = await fs.readFile(filePath, 'utf-8');
-    return { success: true, content };
-  } catch (error) {
-    logger.error(`Failed to read local text file ${filePath}:`, error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error reading file'
-    };
-  }
-});
-
-// IPC handler for showing native folder picker dialog
-ipcMain.handle('show-folder-dialog', async () => {
-  try {
-    const result = await dialog.showOpenDialog({
-      properties: ['openDirectory']
-    });
-    if (result.canceled || result.filePaths.length === 0) {
-      return { canceled: true, path: null };
-    }
-    return { canceled: false, path: result.filePaths[0] };
-  } catch (error) {
-    logger.error('Failed to show folder dialog:', error);
-    return { canceled: true, path: null, error: error instanceof Error ? error.message : 'Unknown error' };
-  }
-});
-
-app.whenReady()
-  .then(async () => {
-    logger.info('App is ready, creating window...');
-    
-    // **NEW** Register a custom protocol to serve local files for media.
-    // This allows <video>, <audio>, and <img> tags to load local content securely.
-    protocol.handle('local-file', (request) => {
-      try {
-        const url = new URL(request.url);
-        const filePath = path.normalize(decodeURIComponent(url.pathname));
-        logger.info(`[local-file protocol] Serving file: ${filePath}`);
-        return net.fetch(`file://${filePath}`);
-      } catch (error) {
-        logger.error(`[local-file protocol] Error handling request ${request.url}:`, error);
-        return new Response(null, { status: 404 });
-      }
-    });
-
-    createWindow();
-
-    serverStatusManager.initializeServer().catch(err => {
-      logger.error('Server initialization failed in background:', err);
-    });
-  })
-  .catch(err => {
-    logger.error('Failed to initialize app:', err);
+function createNodeBoundWindow(nodeId: string): BrowserWindow {
+  const window = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    icon: getWindowIcon(),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+    },
+    show: true,
   });
 
-// Quit when all windows are closed.
-app.on('window-all-closed', () => {
-  // On macOS it is common for applications and their menu bar
-  // to stay active until the user quits explicitly with Cmd + Q.
-  // The 'will-quit' event will handle server shutdown.
-  if (process.platform !== 'darwin') {
+  mapWindowNodeBinding(window, nodeId);
+
+  window.webContents.on('will-navigate', (event) => {
+    logger.warn(`Blocked navigation attempt to: ${event.url}`);
+    event.preventDefault();
+  });
+
+  window.webContents.setWindowOpenHandler(() => {
+    logger.warn('Blocked attempt to open a new window.');
+    return { action: 'deny' };
+  });
+
+  const startURL = getStartUrl();
+  logger.info(`Creating node-bound window for nodeId=${nodeId}; url=${startURL}`);
+  window.loadURL(startURL).catch((error) => {
+    logger.error(`Failed to load URL (${startURL}) for node window ${nodeId}:`, error);
+  });
+
+  window.webContents.on('did-finish-load', () => {
+    window.webContents.send('server-status', serverStatusManager.getStatus());
+    window.webContents.send('node-registry-updated', nodeRegistrySnapshot);
+  });
+
+  window.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    logger.error('Page failed to load:', {
+      nodeId,
+      errorCode,
+      errorDescription,
+      validatedURL,
+      startURL,
+    });
+  });
+
+  window.on('closed', () => {
+    clearWindowNodeBinding(window);
+  });
+
+  return window;
+}
+
+function openNodeWindow(nodeId: string): { windowId: number; created: boolean } {
+  const existingWindowId = windowIdByNodeId.get(nodeId);
+  if (typeof existingWindowId === 'number') {
+    const focused = focusWindowById(existingWindowId);
+    if (focused) {
+      return {
+        windowId: existingWindowId,
+        created: false,
+      };
+    }
+    windowIdByNodeId.delete(nodeId);
+  }
+
+  const createdWindow = createNodeBoundWindow(nodeId);
+  return {
+    windowId: createdWindow.webContents.id,
+    created: true,
+  };
+}
+
+function closeNodeWindowIfOpen(nodeId: string): void {
+  const windowId = windowIdByNodeId.get(nodeId);
+  if (typeof windowId !== 'number') {
+    return;
+  }
+  const window = BrowserWindow.fromId(windowId);
+  if (window && !window.isDestroyed()) {
+    window.close();
+  }
+}
+
+function listNodeWindows(): Array<{ windowId: number; nodeId: string }> {
+  return Array.from(nodeIdByWindowId.entries()).map(([windowId, nodeId]) => ({
+    windowId,
+    nodeId,
+  }));
+}
+
+function ensureNodeExists(nodeId: string): void {
+  if (!getNodeProfileById(nodeId)) {
+    throw new Error(`Node does not exist: ${nodeId}`);
+  }
+}
+
+function applyNodeRegistryChange(change: NodeRegistryChange): NodeRegistrySnapshot {
+  const now = nowIsoString();
+  const existingNodes = [...nodeRegistrySnapshot.nodes];
+
+  if (change.type === 'add') {
+    const candidate = change.node;
+    if (!candidate.id.trim()) {
+      throw new Error('Node id is required');
+    }
+    if (!candidate.name.trim()) {
+      throw new Error('Node name is required');
+    }
+    if (!candidate.baseUrl.trim()) {
+      throw new Error('Node baseUrl is required');
+    }
+    if (candidate.nodeType !== 'remote') {
+      throw new Error('Only remote nodes can be added manually');
+    }
+    if (existingNodes.some((node) => node.id === candidate.id)) {
+      throw new Error(`Node id already exists: ${candidate.id}`);
+    }
+
+    const normalizedBaseUrl = sanitizeBaseUrl(candidate.baseUrl);
+    if (
+      existingNodes.some((node) => sanitizeBaseUrl(node.baseUrl).toLowerCase() === normalizedBaseUrl.toLowerCase())
+    ) {
+      throw new Error(`Node baseUrl already exists: ${candidate.baseUrl}`);
+    }
+
+    existingNodes.push({
+      ...candidate,
+      baseUrl: normalizedBaseUrl,
+      isSystem: false,
+      createdAt: candidate.createdAt || now,
+      updatedAt: now,
+    });
+  } else if (change.type === 'remove') {
+    if (change.nodeId === EMBEDDED_NODE_ID) {
+      throw new Error('Embedded node cannot be removed');
+    }
+    const removeIndex = existingNodes.findIndex((node) => node.id === change.nodeId);
+    if (removeIndex === -1) {
+      throw new Error(`Node does not exist: ${change.nodeId}`);
+    }
+    closeNodeWindowIfOpen(change.nodeId);
+    existingNodes.splice(removeIndex, 1);
+  } else if (change.type === 'rename') {
+    const target = existingNodes.find((node) => node.id === change.nodeId);
+    if (!target) {
+      throw new Error(`Node does not exist: ${change.nodeId}`);
+    }
+    if (!change.name.trim()) {
+      throw new Error('Node name is required');
+    }
+    target.name = change.name.trim();
+    target.updatedAt = now;
+  } else {
+    const neverChange: never = change;
+    throw new Error(`Unsupported registry change: ${JSON.stringify(neverChange)}`);
+  }
+
+  return {
+    version: nodeRegistrySnapshot.version + 1,
+    nodes: ensureEmbeddedNode({
+      version: nodeRegistrySnapshot.version,
+      nodes: existingNodes,
+    }).nodes,
+  };
+}
+
+function installServerStatusFanout(): void {
+  serverStatusManager.on('status-change', (status) => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      window.webContents.send('server-status', status);
+    }
+  });
+}
+
+function installIpcHandlers(): void {
+  ipcMain.on('ping', (event, args) => {
+    logger.info('Received ping:', args);
+    event.reply('pong', 'Pong from main process!');
+  });
+
+  ipcMain.on('start-shutdown', () => {
+    logger.info('Received start-shutdown signal from renderer. Quitting app.');
+    if (shutdownTimer) {
+      clearTimeout(shutdownTimer);
+      shutdownTimer = null;
+    }
     app.quit();
-  }
-});
+  });
 
-// Use 'will-quit' to robustly shut down the server.
-// This event is fired when the app is about to close.
-app.on('will-quit', async (event) => {
-  logger.info('App is about to quit. Shutting down server...');
-  if (shutdownTimer) {
-    clearTimeout(shutdownTimer)
-    shutdownTimer = null
-  }
-  try {
-    // Await the server shutdown to ensure it completes before the app exits.
-    await serverManager.stopServer();
-    logger.info('Server has been shut down successfully.');
-  } catch (error) {
-    logger.error('Error during server shutdown:', error);
-  } finally {
-    // Close the logger after all operations are done.
-    logger.close();
-  }
-});
+  ipcMain.handle('open-node-window', async (_event, nodeId: string) => {
+    ensureNodeExists(nodeId);
+    return openNodeWindow(nodeId);
+  });
 
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
+  ipcMain.handle('focus-node-window', async (_event, nodeId: string) => {
+    ensureNodeExists(nodeId);
+    const existingWindowId = windowIdByNodeId.get(nodeId);
+    if (typeof existingWindowId !== 'number') {
+      return { focused: false, reason: 'not-found' };
+    }
+    const focused = focusWindowById(existingWindowId);
+    return { focused };
+  });
+
+  ipcMain.handle('list-node-windows', async () => listNodeWindows());
+
+  ipcMain.handle('get-window-context', async (event): Promise<WindowNodeContext> => {
+    return getWindowContextByWebContentsId(event.sender.id);
+  });
+
+  ipcMain.handle('upsert-node-registry', async (_event, change: NodeRegistryChange) => {
+    nodeRegistrySnapshot = applyNodeRegistryChange(change);
+    saveNodeRegistrySnapshot(nodeRegistrySnapshot);
+    broadcastNodeRegistrySnapshot();
+    return nodeRegistrySnapshot;
+  });
+
+  ipcMain.handle('get-node-registry-snapshot', async () => nodeRegistrySnapshot);
+
+  ipcMain.handle('get-server-status', () => {
+    return serverStatusManager.getStatus();
+  });
+
+  ipcMain.handle('restart-server', async () => {
+    return await serverStatusManager.restartServer();
+  });
+
+  ipcMain.handle('check-server-health', async () => {
+    return await serverStatusManager.checkServerHealth();
+  });
+
+  ipcMain.handle('get-log-file-path', () => {
+    return logger.getLogPath();
+  });
+
+  ipcMain.handle('get-platform', () => {
+    return process.platform;
+  });
+
+  ipcMain.handle('reset-server-data', async () => {
+    try {
+      await serverManager.stopServer();
+    } catch (error) {
+      logger.error('Failed to stop server before resetting data:', error);
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+    try {
+      await serverManager.resetAppDataDir();
+      return { success: true };
+    } catch (error) {
+      logger.error('Failed to reset app data directory:', error);
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle('open-log-file', async (_event, filePath: string) => {
+    try {
+      if (!fsSync.existsSync(filePath)) {
+        return { success: false, error: 'Log file does not exist' };
+      }
+      await shell.openPath(filePath);
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error opening log file',
+      };
+    }
+  });
+
+  ipcMain.handle('open-external-link', async (_event, url: string) => {
+    try {
+      await shell.openExternal(url);
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error opening external link',
+      };
+    }
+  });
+
+  ipcMain.handle('read-log-file', async (_event, filePath: string) => {
+    try {
+      if (!fsSync.existsSync(filePath)) {
+        return { success: false, error: 'Log file does not exist' };
+      }
+      const content = await fs.readFile(filePath, 'utf8');
+      const lines = content.split('\n');
+      const lastLines = lines.slice(Math.max(0, lines.length - 500)).join('\n');
+      return {
+        success: true,
+        content: lastLines,
+        filePath,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error reading log file',
+      };
+    }
+  });
+
+  ipcMain.handle('read-local-text-file', async (_event, filePath: string) => {
+    try {
+      if (!fsSync.existsSync(filePath)) {
+        return { success: false, error: 'File does not exist' };
+      }
+      const content = await fs.readFile(filePath, 'utf-8');
+      return { success: true, content };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error reading file',
+      };
+    }
+  });
+
+  ipcMain.handle('show-folder-dialog', async () => {
+    try {
+      const result = await dialog.showOpenDialog({
+        properties: ['openDirectory'],
+      });
+      if (result.canceled || result.filePaths.length === 0) {
+        return { canceled: true, path: null };
+      }
+      return { canceled: false, path: result.filePaths[0] };
+    } catch (error) {
+      logger.error('Failed to show folder dialog:', error);
+      return {
+        canceled: true,
+        path: null,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  });
+}
+
+function installAppLifecycleHandlers(): void {
+  app.on('before-quit', () => {
+    isAppQuitting = true;
+    for (const window of BrowserWindow.getAllWindows()) {
+      window.webContents.send('app-quitting');
+    }
+    shutdownTimer = setTimeout(() => {
+      logger.warn('Renderer did not acknowledge shutdown in time. Forcing quit.');
+      app.quit();
+    }, shutdownTimeoutMs);
+  });
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
+  });
+
+  app.on('will-quit', async () => {
+    if (shutdownTimer) {
+      clearTimeout(shutdownTimer);
+      shutdownTimer = null;
+    }
+    if (hasShutdownRun) {
+      return;
+    }
+    hasShutdownRun = true;
+    try {
+      await serverManager.stopServer();
+    } catch (error) {
+      logger.error('Error during server shutdown:', error);
+    } finally {
+      logger.close();
+    }
+  });
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      openNodeWindow(EMBEDDED_NODE_ID);
+    }
+  });
+}
+
+function installProtocols(): void {
+  protocol.handle('local-file', (request) => {
+    try {
+      const requestUrl = new URL(request.url);
+      const filePath = path.normalize(decodeURIComponent(requestUrl.pathname));
+      return net.fetch(`file://${filePath}`);
+    } catch (error) {
+      logger.error(`[local-file protocol] Error handling request ${request.url}:`, error);
+      return new Response(null, { status: 404 });
+    }
+  });
+}
+
+async function bootstrap(): Promise<void> {
+  nodeRegistrySnapshot = loadNodeRegistrySnapshot();
+  saveNodeRegistrySnapshot(nodeRegistrySnapshot);
+
+  installIpcHandlers();
+  installServerStatusFanout();
+  installAppLifecycleHandlers();
+
+  await app.whenReady();
+  installProtocols();
+
+  openNodeWindow(EMBEDDED_NODE_ID);
+  serverStatusManager.initializeServer().catch((error) => {
+    logger.error('Server initialization failed in background:', error);
+  });
+}
+
+bootstrap().catch((error) => {
+  logger.error('Failed to initialize app:', error);
+  if (!isAppQuitting) {
+    app.quit();
   }
 });

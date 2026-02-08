@@ -11,8 +11,8 @@
  */
 
 import { ref, computed, type Ref } from 'vue';
-import { useRuntimeConfig } from '#app';
 import { v4 as uuidv4 } from 'uuid';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
@@ -63,8 +63,8 @@ export function useTerminalSession(options: TerminalSessionOptions): TerminalSes
       return;
     }
 
-    const config = useRuntimeConfig();
-    const wsBaseUrl = config.public.terminalWsEndpoint || 'ws://localhost:8000/ws/terminal';
+    const windowNodeContextStore = useWindowNodeContextStore();
+    const wsBaseUrl = windowNodeContextStore.getBoundEndpoints().terminalWs;
     const wsUrl = `${wsBaseUrl}/${workspaceId}/${sessionId.value}`;
 
     console.log('[useTerminalSession] Connecting to:', wsUrl);
