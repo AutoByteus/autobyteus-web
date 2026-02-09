@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import WorkspaceSelector from '../WorkspaceSelector.vue';
-import { useServerStore } from '~/stores/serverStore';
 
 // Mock the SearchableSelect component
 vi.mock('~/components/common/SearchableSelect.vue', () => ({
@@ -20,7 +19,7 @@ const flushPromises = async () => {
 }
 
 describe('WorkspaceSelector', () => {
-  const { workspaceStoreMock } = vi.hoisted(() => ({
+  const { workspaceStoreMock, windowNodeContextStoreMock } = vi.hoisted(() => ({
     workspaceStoreMock: {
       tempWorkspaceId: null as string | null,
       tempWorkspace: null as any,
@@ -28,10 +27,17 @@ describe('WorkspaceSelector', () => {
       allWorkspaces: [] as any[],
       fetchAllWorkspaces: vi.fn().mockResolvedValue([]),
     },
+    windowNodeContextStoreMock: {
+      isEmbeddedWindow: { __v_isRef: true, value: false },
+    },
   }));
 
   vi.mock('~/stores/workspace', () => ({
     useWorkspaceStore: () => workspaceStoreMock,
+  }));
+
+  vi.mock('~/stores/windowNodeContextStore', () => ({
+    useWindowNodeContextStore: () => windowNodeContextStoreMock,
   }));
 
   beforeEach(() => {
@@ -41,6 +47,7 @@ describe('WorkspaceSelector', () => {
     workspaceStoreMock.workspaces = {};
     workspaceStoreMock.allWorkspaces = [];
     workspaceStoreMock.fetchAllWorkspaces = vi.fn().mockResolvedValue([]);
+    windowNodeContextStoreMock.isEmbeddedWindow.value = false;
     
     // Reset window.electronAPI mock
     delete (window as any).electronAPI;
@@ -65,8 +72,7 @@ describe('WorkspaceSelector', () => {
   });
 
   it('hides Browse button when not in Electron environment', async () => {
-    const serverStore = useServerStore();
-    (serverStore as any).isElectron = false;
+    windowNodeContextStoreMock.isEmbeddedWindow.value = false;
 
     const wrapper = mount(WorkspaceSelector, {
       props: defaultProps,
@@ -79,8 +85,7 @@ describe('WorkspaceSelector', () => {
   });
 
   it('shows Browse button when in Electron environment', async () => {
-    const serverStore = useServerStore();
-    (serverStore as any).isElectron = true;
+    windowNodeContextStoreMock.isEmbeddedWindow.value = true;
 
     const wrapper = mount(WorkspaceSelector, {
       props: defaultProps,
@@ -93,8 +98,7 @@ describe('WorkspaceSelector', () => {
   });
 
   it('calls showFolderDialog when Browse button is clicked', async () => {
-    const serverStore = useServerStore();
-    (serverStore as any).isElectron = true;
+    windowNodeContextStoreMock.isEmbeddedWindow.value = true;
 
     const mockShowFolderDialog = vi.fn().mockResolvedValue({
       canceled: false,
@@ -119,8 +123,7 @@ describe('WorkspaceSelector', () => {
   });
 
   it('does not update path when dialog is canceled', async () => {
-    const serverStore = useServerStore();
-    (serverStore as any).isElectron = true;
+    windowNodeContextStoreMock.isEmbeddedWindow.value = true;
 
     const mockShowFolderDialog = vi.fn().mockResolvedValue({
       canceled: true,
@@ -150,8 +153,7 @@ describe('WorkspaceSelector', () => {
   });
 
   it('emits load-new when Load button is clicked with path', async () => {
-    const serverStore = useServerStore();
-    (serverStore as any).isElectron = false;
+    windowNodeContextStoreMock.isEmbeddedWindow.value = false;
 
     const wrapper = mount(WorkspaceSelector, {
       props: defaultProps,
@@ -180,8 +182,7 @@ describe('WorkspaceSelector', () => {
   });
 
   it('disables Browse button when isLoading is true', async () => {
-    const serverStore = useServerStore();
-    (serverStore as any).isElectron = true;
+    windowNodeContextStoreMock.isEmbeddedWindow.value = true;
 
     const wrapper = mount(WorkspaceSelector, {
       props: { ...defaultProps, isLoading: true },
@@ -193,8 +194,7 @@ describe('WorkspaceSelector', () => {
   });
 
   it('disables Browse button when disabled prop is true', async () => {
-    const serverStore = useServerStore();
-    (serverStore as any).isElectron = true;
+    windowNodeContextStoreMock.isEmbeddedWindow.value = true;
 
     const wrapper = mount(WorkspaceSelector, {
       props: { ...defaultProps, disabled: true },
@@ -206,8 +206,7 @@ describe('WorkspaceSelector', () => {
   });
 
   it('shows helper text for Electron mode', async () => {
-    const serverStore = useServerStore();
-    (serverStore as any).isElectron = true;
+    windowNodeContextStoreMock.isEmbeddedWindow.value = true;
 
     const wrapper = mount(WorkspaceSelector, {
       props: defaultProps,
@@ -218,8 +217,7 @@ describe('WorkspaceSelector', () => {
   });
 
   it('shows helper text for browser mode', async () => {
-    const serverStore = useServerStore();
-    (serverStore as any).isElectron = false;
+    windowNodeContextStoreMock.isEmbeddedWindow.value = false;
 
     const wrapper = mount(WorkspaceSelector, {
       props: defaultProps,

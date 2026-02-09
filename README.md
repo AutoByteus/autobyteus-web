@@ -23,6 +23,103 @@ NUXT_PUBLIC_WS_BASE_URL=ws://localhost:8000/graphql
 
 > **Note for Electron App**: When running as an Electron application with the integrated backend server, these endpoint URLs are automatically configured with the dynamically allocated port.
 
+### External Messaging Setup Variables (Personal Session)
+
+If you want to set up WhatsApp personal messaging from the web settings UI, add these variables to `.env.local`:
+
+```env
+MESSAGE_GATEWAY_BASE_URL=http://localhost:8010
+MESSAGE_GATEWAY_ADMIN_TOKEN=
+```
+
+- `MESSAGE_GATEWAY_BASE_URL`: URL of `autobyteus-message-gateway`
+- `MESSAGE_GATEWAY_ADMIN_TOKEN`: optional bearer token if you protect gateway admin endpoints
+
+## Personal WhatsApp Setup (Step-by-Step)
+
+1. Start `autobyteus-message-gateway` with personal mode enabled:
+
+```bash
+GATEWAY_WHATSAPP_PERSONAL_ENABLED=true \
+GATEWAY_PORT=8010 \
+node /Users/normy/autobyteus_org/autobyteus-message-gateway/dist/index.js
+```
+
+2. Ensure `autobyteus-web/.env.local` contains:
+   - `MESSAGE_GATEWAY_BASE_URL=http://localhost:8010`
+   - optional `MESSAGE_GATEWAY_ADMIN_TOKEN=...`
+
+3. Start web app:
+
+```bash
+pnpm dev
+```
+
+4. Open `Settings -> External Messaging`.
+
+5. In `Gateway Connection`:
+   - set gateway URL/token
+   - click `Validate Connection` and confirm status becomes `READY`
+
+6. In `WhatsApp Personal Session`:
+   - keep provider set to `WHATSAPP`
+   - click `Start Session`
+   - scan the QR image shown in the web UI using your real WhatsApp mobile app
+   - if a session is already running in gateway, the UI automatically attaches to it
+   - wait for status to become `ACTIVE` (or click `Refresh Status` if needed)
+
+7. In `Channel Binding Setup`:
+   - click `Refresh Peers` (after sending at least one WhatsApp message from another contact)
+   - select peer from dropdown (or toggle to manual mode for direct input)
+   - select active target from dropdown (or toggle to manual mode for direct input)
+   - save and confirm it appears in the bindings list
+
+8. In `Setup Verification`:
+   - click `Run Verification`
+   - ensure final status is `READY`
+
+## Personal WeChat Setup (Step-by-Step, Experimental)
+
+1. Run a Wechaty-compatible sidecar service that exposes:
+   - `POST /api/wechaty/v1/sessions/open`
+   - `GET /api/wechaty/v1/sessions/:sessionId/qr`
+   - `GET /api/wechaty/v1/sessions/:sessionId/status`
+   - `GET /api/wechaty/v1/sessions/:sessionId/peer-candidates`
+   - `DELETE /api/wechaty/v1/sessions/:sessionId`
+
+2. Start `autobyteus-message-gateway` with WeChat personal mode enabled:
+
+```bash
+GATEWAY_WECHAT_PERSONAL_ENABLED=true \
+GATEWAY_WECHAT_PERSONAL_SIDECAR_BASE_URL=http://localhost:8788 \
+GATEWAY_WECHAT_PERSONAL_STATE_ROOT=/Users/normy/autobyteus_org/autobyteus-message-gateway/memory/wechat-personal \
+GATEWAY_PORT=8010 \
+node /Users/normy/autobyteus_org/autobyteus-message-gateway/dist/index.js
+```
+
+3. Ensure `autobyteus-web/.env.local` contains:
+   - `MESSAGE_GATEWAY_BASE_URL=http://localhost:8010`
+   - optional `MESSAGE_GATEWAY_ADMIN_TOKEN=...`
+
+4. Start web app:
+
+```bash
+pnpm dev
+```
+
+5. Open `Settings -> External Messaging`.
+
+6. In `Personal Session`:
+   - change provider to `WECHAT`
+   - click `Start Session`
+   - scan/login using your Wechaty sidecar flow
+   - wait for status to become `ACTIVE` (or click `Refresh Status`)
+
+7. In `Channel Binding Setup`:
+   - set `provider=WECHAT`, `transport=PERSONAL_SESSION`
+   - click `Refresh Peers` after receiving at least one inbound WeChat message
+   - choose peer + target, then click `Save Binding`
+
 ## Server Modes
 
 AutoByteus supports two server operation modes: internal and external.

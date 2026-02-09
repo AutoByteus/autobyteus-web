@@ -1,5 +1,5 @@
 <template>
-  <div class="server-loading-container" v-if="serverStore.status === 'starting' || serverStore.status === 'error' || serverStore.status === 'restarting'">
+  <div class="server-loading-container" v-if="windowNodeContextStore.isEmbeddedWindow && (serverStore.status === 'starting' || serverStore.status === 'error' || serverStore.status === 'restarting')">
     <div class="server-loading-content">
       <div v-if="serverStore.status === 'starting'" class="loading-state">
         <div class="spinner"></div>
@@ -121,9 +121,11 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useServerStore } from '~/stores/serverStore'
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore'
 
 // Use the server store
 const serverStore = useServerStore()
+const windowNodeContextStore = useWindowNodeContextStore()
 
 // Toggle for showing technical details
 const showDetails = ref(false)
@@ -161,7 +163,7 @@ let healthInterval: NodeJS.Timeout | null = null
 onMounted(async () => {
   console.log('ServerLoading: Component mounted with status:', serverStore.status)
   
-  if (serverStore.isElectron && window.electronAPI?.getLogFilePath) {
+  if (windowNodeContextStore.isEmbeddedWindow && window.electronAPI?.getLogFilePath) {
     try {
       logFilePath.value = await window.electronAPI.getLogFilePath()
     } catch (e) {

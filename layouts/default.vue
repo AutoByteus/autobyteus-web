@@ -14,6 +14,9 @@
           </svg>
         </button>
         <span class="ml-3 text-white font-semibold flex-shrink-0">AutoByteus</span>
+        <span class="ml-2 px-2 py-0.5 text-[11px] font-medium rounded bg-gray-700 text-gray-200">
+          {{ currentNodeLabel }}
+        </span>
       </div>
     </header>
 
@@ -39,6 +42,11 @@
       
       <!-- Main Content -->
       <main class="flex-1 bg-blue-50 overflow-hidden relative z-0 w-full">
+        <div class="hidden md:flex absolute top-3 right-3 z-10">
+          <span class="px-3 py-1 text-xs font-medium rounded-full bg-white border border-gray-200 text-gray-700 shadow-sm">
+            {{ currentNodeLabel }}
+          </span>
+        </div>
         <slot></slot>
       </main>
     </div>
@@ -47,12 +55,21 @@
 
 <script setup lang="ts">
 import Sidebar from '@/components/Sidebar.vue';
+import { computed, watch } from 'vue';
 import { useAppLayoutStore } from '~/stores/appLayoutStore';
+import { useNodeStore } from '~/stores/nodeStore';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import { useRoute } from 'vue-router';
-import { watch } from 'vue';
 
 const appLayoutStore = useAppLayoutStore();
+const nodeStore = useNodeStore();
+const windowNodeContextStore = useWindowNodeContextStore();
 const route = useRoute();
+
+const currentNodeLabel = computed(() => {
+  const node = nodeStore.getNodeById(windowNodeContextStore.nodeId);
+  return node?.name || 'Node';
+});
 
 // Close sidebar on route change
 watch(

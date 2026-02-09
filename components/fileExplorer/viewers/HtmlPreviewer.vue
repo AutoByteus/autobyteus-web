@@ -16,7 +16,7 @@
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount, nextTick, computed } from 'vue'
 import { useWorkspaceStore } from '~/stores/workspace'
-import { getServerUrls } from '~/utils/serverConfig'
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore'
 
 const props = defineProps<{
   content: string
@@ -26,7 +26,7 @@ const props = defineProps<{
 const iframeSrc = ref<string | null>(null)
 
 const workspaceStore = useWorkspaceStore()
-const serverUrls = getServerUrls()
+const windowNodeContextStore = useWindowNodeContextStore()
 
 const encodePath = (path: string) => path.split('/').map(encodeURIComponent).join('/')
 
@@ -34,7 +34,7 @@ const staticUrl = computed(() => {
   const workspaceId = workspaceStore.activeWorkspace?.workspaceId
   if (!workspaceId || !props.path) return null
 
-  const restBase = serverUrls.rest.replace(/\/$/, '')
+  const restBase = windowNodeContextStore.getBoundEndpoints().rest.replace(/\/$/, '')
   return `${restBase}/workspaces/${workspaceId}/static/${encodePath(props.path)}`
 })
 

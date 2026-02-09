@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
 import { getApolloClient } from '~/utils/apolloClient'
-import { useRuntimeConfig } from '#app';
 import { SendAgentUserInput, TerminateAgentInstance } from '~/graphql/mutations/agentMutations';
 import type {
   SendAgentUserInputMutation,
@@ -10,6 +9,7 @@ import type {
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { AgentStreamingService } from '~/services/agentStreaming';
 import type { ToolInvocationLifecycle } from '~/types/segments';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 
 // Maintain a map of streaming services per agent
 const streamingServices = new Map<string, AgentStreamingService>();
@@ -148,9 +148,8 @@ export const useAgentRunStore = defineStore('agentRun', {
 
       if (!agent) return;
 
-      // Get the WebSocket endpoint from runtime config (like terminal and file explorer)
-      const config = useRuntimeConfig();
-      const wsEndpoint = config.public.agentWsEndpoint as string || 'ws://localhost:8000/ws/agent';
+      const windowNodeContextStore = useWindowNodeContextStore();
+      const wsEndpoint = windowNodeContextStore.getBoundEndpoints().agentWs;
 
       // Create streaming service for this agent
       const service = new AgentStreamingService(wsEndpoint);

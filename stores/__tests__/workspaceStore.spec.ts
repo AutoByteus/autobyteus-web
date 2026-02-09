@@ -9,6 +9,7 @@ import { TreeNode } from '~/utils/fileExplorer/TreeNode';
 // Mock dependencies
 const mockMutate = vi.fn();
 const mockQuery = vi.fn();
+const mockWaitForBoundBackendReady = vi.fn().mockResolvedValue(true);
 
 vi.mock('~/utils/apolloClient', () => ({
   getApolloClient: () => ({
@@ -28,13 +29,13 @@ vi.mock('~/graphql/queries/file_explorer_queries', () => ({
     GetFolderChildren: 'mock-query-children'
 }));
 
-// Mock Runtime Config
-vi.mock('#app', () => ({
-    useRuntimeConfig: () => ({
-        public: {
-            fileExplorerWsEndpoint: 'ws://mock'
-        }
-    })
+vi.mock('~/stores/windowNodeContextStore', () => ({
+    useWindowNodeContextStore: () => ({
+        waitForBoundBackendReady: mockWaitForBoundBackendReady,
+        getBoundEndpoints: () => ({
+            fileExplorerWs: 'ws://mock'
+        }),
+    }),
 }));
 
 // Mock FileExplorerStreamingService

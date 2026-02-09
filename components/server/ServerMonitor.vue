@@ -1,5 +1,8 @@
 <template>
-  <div class="server-monitor h-full flex flex-col overflow-hidden">
+  <div
+    v-if="windowNodeContextStore.isEmbeddedWindow"
+    class="server-monitor h-full flex flex-col overflow-hidden"
+  >
     <div class="flex items-center justify-between px-8 pt-8 pb-4 flex-shrink-0">
       <h2 class="text-xl font-semibold text-gray-900">Server Status</h2>
     </div>
@@ -77,7 +80,7 @@
           <p class="font-mono">{{ serverStore.healthCheckStatus || 'Not checked' }}</p>
         </div>
         
-        <div class="detail-item" v-if="serverStore.isElectron && logFilePath">
+        <div class="detail-item" v-if="logFilePath">
           <span class="text-sm text-gray-500">Log File:</span>
           <p class="font-mono">{{ logFilePath }}</p>
         </div>
@@ -85,26 +88,31 @@
       
       <!-- Server Logs Section - only show in Electron mode -->
       <ServerLogViewer 
-        v-if="serverStore.isElectron && logFilePath" 
+        v-if="logFilePath" 
         :logFilePath="logFilePath" 
       />
     </div>
     </div>
+  </div>
+  <div v-else class="h-full flex items-center justify-center text-gray-500 p-8">
+    Embedded server monitor is unavailable for remote node windows.
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useServerStore } from '~/stores/serverStore'
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore'
 import ServerLogViewer from '~/components/server/ServerLogViewer.vue'
 
 const serverStore = useServerStore()
+const windowNodeContextStore = useWindowNodeContextStore()
 const logFilePath = ref('')
 
 onMounted(async () => {
   console.log('ServerMonitor: Component mounted with status:', serverStore.status)
   
-  if (serverStore.isElectron && window.electronAPI?.getLogFilePath) {
+  if (windowNodeContextStore.isEmbeddedWindow && window.electronAPI?.getLogFilePath) {
     try {
       logFilePath.value = await window.electronAPI.getLogFilePath()
     } catch (e) {

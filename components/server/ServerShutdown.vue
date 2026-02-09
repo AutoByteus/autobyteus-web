@@ -1,5 +1,5 @@
 <template>
-  <div class="shutdown-container" v-if="serverStore.status === 'shutting-down'">
+  <div class="shutdown-container" v-if="windowNodeContextStore.isEmbeddedWindow && serverStore.status === 'shutting-down'">
     <div class="shutdown-content">
       <div class="spinner"></div>
       <h2 class="text-xl font-semibold mt-4">Shutting Down...</h2>
@@ -10,7 +10,9 @@
 
 <script setup lang="ts">
 import { useServerStore } from '~/stores/serverStore'
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore'
 const serverStore = useServerStore()
+const windowNodeContextStore = useWindowNodeContextStore()
 </script>
 
 <style scoped>
