@@ -5,7 +5,7 @@ A modern web application built with Nuxt.js, featuring both web and electron bui
 ## Prerequisites
 
 - Node.js (v16 or higher)
-- Yarn package manager
+- pnpm (via Corepack)
 - Git
 
 ## Environment Setup
@@ -81,6 +81,7 @@ cd autobyteus-web
 2. Install dependencies:
 
 ```bash
+corepack enable
 pnpm install
 ```
 
@@ -120,7 +121,15 @@ pnpm build:electron:windows
 pnpm build:electron:mac
 ```
 
-The built applications will be available in the `dist` directory. Use these commands when you want to create a standalone desktop application for distribution.
+The built applications will be available in the `electron-dist` directory. Use these commands when you want to create a standalone desktop application for distribution.
+
+#### macOS Build With Logs (No Notarization)
+
+For local macOS builds with verbose electron-builder logs and without notarization/timestamping:
+
+```bash
+NO_TIMESTAMP=1 APPLE_TEAM_ID= DEBUG=electron-builder,electron-builder:* DEBUG=app-builder-lib* DEBUG=builder-util* pnpm build:electron:mac
+```
 
 ### Desktop Application with Integrated Backend
 
