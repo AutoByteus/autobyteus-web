@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useAgentRunStore } from '../agentRunStore';
 import { useAgentContextsStore } from '../agentContextsStore';
-import { useConversationHistoryStore } from '../conversationHistory';
 import { AgentStreamingService } from '~/services/agentStreaming';
 
 // Mocks
@@ -32,13 +31,6 @@ vi.mock('~/services/agentStreaming', () => ({
 
 vi.mock('../agentContextsStore', () => ({
   useAgentContextsStore: vi.fn(),
-}));
-
-vi.mock('../conversationHistory', () => ({
-  useConversationHistoryStore: vi.fn(() => ({
-    agentDefinitionId: 'def-1',
-    fetchConversationHistory: vi.fn(),
-  })),
 }));
 
 describe('agentRunStore', () => {

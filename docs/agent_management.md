@@ -263,7 +263,7 @@ sequenceDiagram
 
     loop Real-time Events
         Backend-->>RunStore: Streaming response chunks (WebSocket)
-        RunStore-->>ContextsStore: Update conversation history
+        RunStore-->>ContextsStore: Update conversation state
         ContextsStore-->>User: Display in conversation
     end
 ```
