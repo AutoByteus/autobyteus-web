@@ -13,6 +13,7 @@ import type {
   ToolCallSegment,
   TerminalCommandSegment,
   PatchFileSegment,
+  MediaSegment,
 } from '~/types/segments';
 
 /**
@@ -42,6 +43,9 @@ export function createSegmentFromPayload(payload: SegmentStartPayload): AIRespon
 
     case 'reasoning':
       return createThinkSegment();
+
+    case 'media':
+      return createMediaSegment(metadata);
 
     default:
       // Fallback to text for unknown types
@@ -127,6 +131,20 @@ function createThinkSegment(): ThinkSegment {
   return {
     type: 'think',
     content: '',
+  };
+}
+
+function createMediaSegment(metadata?: Record<string, any>): MediaSegment {
+  const rawType = metadata?.media_type;
+  const mediaType =
+    rawType === 'audio' || rawType === 'video' || rawType === 'image' ? rawType : 'image';
+  const urls = Array.isArray(metadata?.urls)
+    ? metadata.urls.map((url: any) => String(url)).filter((url: string) => url.length > 0)
+    : [];
+  return {
+    type: 'media',
+    mediaType,
+    urls,
   };
 }
 
