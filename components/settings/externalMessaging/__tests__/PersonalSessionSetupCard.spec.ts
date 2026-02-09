@@ -1,0 +1,59 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import { flushPromises, mount } from '@vue/test-utils';
+import { createPinia, setActivePinia } from 'pinia';
+import PersonalSessionSetupCard from '../PersonalSessionSetupCard.vue';
+import { useExternalMessagingProviderScopeStore } from '~/stores/externalMessagingProviderScopeStore';
+import { useGatewaySessionSetupStore } from '~/stores/gatewaySessionSetupStore';
+
+describe('PersonalSessionSetupCard', () => {
+  let pinia: ReturnType<typeof createPinia>;
+
+  beforeEach(() => {
+    pinia = createPinia();
+    setActivePinia(pinia);
+  });
+
+  it('shows not-required state for WECOM scope', async () => {
+    const providerScopeStore = useExternalMessagingProviderScopeStore();
+    providerScopeStore.initialize({
+      wechatModes: ['WECOM_APP_BRIDGE'],
+      defaultWeChatMode: 'WECOM_APP_BRIDGE',
+      wechatPersonalEnabled: false,
+      wecomAppEnabled: true,
+    });
+    providerScopeStore.setSelectedProvider('WECOM');
+
+    const wrapper = mount(PersonalSessionSetupCard, {
+      global: {
+        plugins: [pinia],
+      },
+    });
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="personal-session-not-required"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="start-session-button"]').exists()).toBe(false);
+  });
+
+  it('renders WeChat session copy when session provider is WECHAT', async () => {
+    const providerScopeStore = useExternalMessagingProviderScopeStore();
+    const gatewayStore = useGatewaySessionSetupStore();
+
+    providerScopeStore.$patch({
+      availableProviders: ['WHATSAPP', 'WECHAT'],
+      selectedProvider: 'WECHAT',
+      initialized: true,
+    });
+
+    const wrapper = mount(PersonalSessionSetupCard, {
+      global: {
+        plugins: [pinia],
+      },
+    });
+    await flushPromises();
+
+    const accountInput = wrapper.get('[data-testid="session-account-label"]');
+    expect(accountInput.attributes('placeholder')).toBe('Account label (e.g. Home WeChat)');
+    expect(wrapper.text()).toContain('WeChat Personal Session');
+    expect(gatewayStore.sessionProvider).toBe('WECHAT');
+  });
+});

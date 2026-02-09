@@ -42,6 +42,18 @@
                 <span class="text-left">Nodes</span>
               </button>
             </li>
+            <li class="w-full">
+              <button
+                @click="activeSection = 'external-messaging'"
+                class="flex w-full items-center justify-start px-4 py-2 rounded-md transition-colors duration-200 text-gray-700 hover:bg-gray-100 hover:text-gray-900 group"
+                :class="{ 'bg-gray-100 text-gray-900': activeSection === 'external-messaging' }"
+              >
+                <div class="flex items-center min-w-[20px] mr-3">
+                  <span class="i-heroicons-chat-bubble-left-right-20-solid w-5 h-5"></span>
+                </div>
+                <span class="text-left">External Messaging</span>
+              </button>
+            </li>
             <li v-if="isEmbeddedWindow" class="w-full">
               <button 
                 @click="activeSection = 'server-settings'"
@@ -96,6 +108,7 @@
         <ProviderAPIKeyManager v-if="activeSection === 'api-keys'" />
         <TokenUsageStatistics v-if="activeSection === 'token-usage'" />
         <NodeManager v-if="activeSection === 'nodes'" />
+        <ExternalMessagingManager v-if="activeSection === 'external-messaging'" />
         <ServerSettingsManager v-if="isEmbeddedWindow && activeSection === 'server-settings'" />
         <ServerMonitor v-if="isEmbeddedWindow && activeSection === 'server-status'" />
         <div v-else-if="activeSection === ''" class="flex-1 flex flex-col items-center justify-center text-gray-400">
@@ -116,6 +129,7 @@ import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import ProviderAPIKeyManager from '~/components/settings/ProviderAPIKeyManager.vue';
 import TokenUsageStatistics from '~/components/settings/TokenUsageStatistics.vue';
 import NodeManager from '~/components/settings/NodeManager.vue';
+import ExternalMessagingManager from '~/components/settings/ExternalMessagingManager.vue';
 import ServerSettingsManager from '~/components/settings/ServerSettingsManager.vue';
 import ServerMonitor from '~/components/server/ServerMonitor.vue';
 

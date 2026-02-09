@@ -39,6 +39,7 @@ const mountSettings = () =>
         TokenUsageStatistics: { template: '<div data-testid="section-token-usage" />' },
         ConversationHistoryManager: { template: '<div data-testid="section-conversation-logs" />' },
         NodeManager: { template: '<div data-testid="section-nodes" />' },
+        ExternalMessagingManager: { template: '<div data-testid="section-external-messaging" />' },
         ServerSettingsManager: { template: '<div data-testid="section-server-settings" />' },
         ServerMonitor: { template: '<div data-testid="section-server-status" />' },
       },
@@ -81,5 +82,14 @@ describe('settings page', () => {
     const setupState = (wrapper.vm as any).$?.setupState;
 
     expect(setupState.activeSection).toBe('server-status');
+  });
+
+  it('routes to external messaging section when requested via query', async () => {
+    routeMock.query = { section: 'external-messaging' };
+    const wrapper = mountSettings();
+    await nextTick();
+    const setupState = (wrapper.vm as any).$?.setupState;
+
+    expect(setupState.activeSection).toBe('external-messaging');
   });
 });
