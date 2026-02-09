@@ -7,7 +7,6 @@ import type {
   ContextFileType,
 } from '~/generated/graphql';
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
-import { useConversationHistoryStore } from '~/stores/conversationHistory';
 import { AgentStreamingService } from '~/services/agentStreaming';
 import type { ToolInvocationLifecycle } from '~/types/segments';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
@@ -114,11 +113,6 @@ export const useAgentRunStore = defineStore('agentRun', {
 
         if (!finalAgent.isSubscribed) {
           this.connectToAgentStream(finalAgentId);
-        }
-
-        const conversationHistoryStore = useConversationHistoryStore();
-        if (state.conversation.agentDefinitionId && conversationHistoryStore.agentDefinitionId === state.conversation.agentDefinitionId) {
-          await conversationHistoryStore.fetchConversationHistory();
         }
       } catch (error: any) {
         console.error('Error sending user input:', error);

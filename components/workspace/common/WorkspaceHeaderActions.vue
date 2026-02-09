@@ -8,21 +8,13 @@
     >
       <Icon icon="heroicons:plus-circle-solid" class="w-6 h-6" />
     </button>
-    <button 
-      @click="$emit('openHistory')" 
-      class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 tooltip transition-colors"
-      aria-label="History"
-      data-tooltip="History"
-    >
-      <Icon icon="heroicons:clock-solid" class="w-6 h-6" />
-    </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { Icon } from '@iconify/vue';
 
-defineEmits(['newAgent', 'openHistory']);
+defineEmits(['newAgent']);
 </script>
 
 <style scoped>

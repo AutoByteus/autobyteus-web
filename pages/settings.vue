@@ -30,19 +30,6 @@
                 <span class="text-left">Token Usage Statistics</span>
               </button>
             </li>
-            <!-- Renamed History Section -->
-            <li class="w-full">
-              <button 
-                @click="activeSection = 'conversation-logs'"
-                class="flex w-full items-center justify-start px-4 py-2 rounded-md transition-colors duration-200 text-gray-700 hover:bg-gray-100 hover:text-gray-900 group"
-                :class="{ 'bg-gray-100 text-gray-900': activeSection === 'conversation-logs' }"
-              >
-                <div class="flex items-center min-w-[20px] mr-3">
-                  <span class="i-heroicons-clock-20-solid w-5 h-5"></span>
-                </div>
-                <span class="text-left">Conversation History</span>
-              </button>
-            </li>
             <li class="w-full">
               <button
                 @click="activeSection = 'nodes'"
@@ -108,7 +95,6 @@
       <div class="h-full w-full flex flex-col">
         <ProviderAPIKeyManager v-if="activeSection === 'api-keys'" />
         <TokenUsageStatistics v-if="activeSection === 'token-usage'" />
-        <ConversationHistoryManager v-if="activeSection === 'conversation-logs'" />
         <NodeManager v-if="activeSection === 'nodes'" />
         <ServerSettingsManager v-if="isEmbeddedWindow && activeSection === 'server-settings'" />
         <ServerMonitor v-if="isEmbeddedWindow && activeSection === 'server-status'" />
@@ -132,7 +118,6 @@ import TokenUsageStatistics from '~/components/settings/TokenUsageStatistics.vue
 import NodeManager from '~/components/settings/NodeManager.vue';
 import ServerSettingsManager from '~/components/settings/ServerSettingsManager.vue';
 import ServerMonitor from '~/components/server/ServerMonitor.vue';
-import ConversationHistoryManager from '~/components/settings/ConversationHistoryManager.vue';
 
 const route = useRoute();
 const serverStore = useServerStore();

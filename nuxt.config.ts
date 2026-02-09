@@ -106,6 +106,13 @@ const baseConfig = {
     '/': { middleware: ['workspace'] }
   },
 
+  // Prevent Nuxt dev watcher from traversing bundled server dependencies.
+  // These trees are large and can exhaust Linux inotify limits.
+  ignore: [
+    'resources/server/node_modules/**',
+    'electron-dist/**'
+  ],
+
   // In development, HTTP requests are proxied via vite.server.proxy.
   // Static output is only needed for production/electron builds.
   ...(isDevelopment ? {} : {

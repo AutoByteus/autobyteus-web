@@ -8,9 +8,8 @@ The Settings page is implemented in \`pages/settings.vue\` and serves as a conta
 
 1.  **API Keys**
 2.  **Token Usage Statistics**
-3.  **Conversation History**
-4.  **Server Settings**
-5.  **Server Status**
+3.  **Server Settings**
+4.  **Server Status**
 
 ## Sections Detail
 
@@ -38,16 +37,7 @@ Provides insights into the application's token consumption and associated costs.
   - Estimated Costs (based on model pricing)
 - **Visualization:** A bar chart visualizes the total cost per model.
 
-### 3. Conversation History
-
-**Component:** \`components/settings/ConversationHistoryManager.vue\`
-
-Allows users to browse the raw logs of past interactions.
-
-- **History List:** View a list of previous conversation sessions.
-- **Detailed View:** Inspect the raw messages and events of a specific conversation for debugging or review purposes.
-
-### 4. Server Settings
+### 3. Server Settings
 
 **Component:** \`components/settings/ServerSettingsManager.vue\`
 
@@ -56,7 +46,7 @@ A flexible key-value store for backend configurations.
 - **View & Edit:** precise control over server-side flags and parameters.
 - **Custom Settings:** Users can add new custom key-value pairs to configure plugins or experimental features.
 
-### 5. Server Status
+### 4. Server Status
 
 **Component:** \`components/server/ServerMonitor.vue\`
 

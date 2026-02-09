@@ -26,13 +26,13 @@
         @click="toggleContextList"
         class="flex items-center flex-grow cursor-pointer p-1 -m-1 rounded hover:bg-gray-100 transition-colors"
         role="button"
-        :aria-expanded="isContextListExpanded.toString()"
+        :aria-expanded="isContextListExpanded"
         aria-controls="context-file-list"
       >
         <div class="flex items-center">
           <!-- Chevron icon is now conditional -->
           <svg
-            vif="contextFilePaths.length > 0"
+            v-if="contextFilePaths.length > 0"
             class="w-5 h-5 transform transition-transform text-gray-600 mr-2 flex-shrink-0"
             :class="{ 'rotate-90': isContextListExpanded }"
             fill="none"
@@ -64,41 +64,85 @@
     </div>
 
     <!-- File List (conditionally rendered) -->
-    <ul
+    <div
       v-if="isContextListExpanded && contextFilePaths.length > 0"
       id="context-file-list"
       class="space-y-2"
     >
-      <li
-        v-for="(filePath, index) in contextFilePaths"
-        :key="filePath.path"
-        class="bg-gray-100 p-2 rounded transition-colors duration-300 flex items-center justify-between hover:bg-gray-200 group"
-      >
-        <div class="flex items-center space-x-2 flex-grow min-w-0">
-          <i :class="['fas', getIconForFileType(filePath.type), 'text-gray-500 w-4 flex-shrink-0']"></i>
-          <span
-            class="text-sm text-gray-600 truncate group-hover:underline cursor-pointer"
-            @click="handleContextFileClick(filePath)"
+      <div v-if="thumbnailContextFiles.length > 0" class="thumbnail-row-container">
+        <div class="thumbnail-row">
+          <div
+            v-for="item in thumbnailContextFiles"
+            :key="`${item.filePath.path}-${item.index}`"
+            class="thumbnail-card group"
           >
-            {{ filePath.path }}
-          </span>
-          <span v-if="uploadingFiles.includes(filePath.path)" class="text-xs text-blue-500 ml-auto flex-shrink-0">
-            <i class="fas fa-spinner fa-spin mr-1"></i>Uploading...
-          </span>
+            <button
+              type="button"
+              class="thumbnail-button"
+              @click="openImagePreview(item.filePath)"
+              :title="item.filePath.path"
+              aria-label="Open image preview"
+            >
+              <img
+                :src="getImagePreviewSrc(item.filePath)"
+                alt="Context image thumbnail"
+                class="context-image-thumbnail"
+                @error="markImagePreviewAsFailed(item.filePath.path)"
+              />
+            </button>
+            <button
+              @click.stop="removeContextFilePath(item.index)"
+              class="thumbnail-remove-button"
+              title="Remove this file"
+              aria-label="Remove file"
+              :disabled="uploadingFiles.includes(item.filePath.path)"
+            >
+              <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <div v-if="uploadingFiles.includes(item.filePath.path)" class="thumbnail-uploading">
+              <i class="fas fa-spinner fa-spin mr-1"></i>Uploading
+            </div>
+          </div>
         </div>
-        <button
-          @click.stop="removeContextFilePath(index)"
-          class="text-red-500 hover:text-white hover:bg-red-500 transition-colors duration-300 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 ml-2 flex-shrink-0"
-          title="Remove this file"
-          aria-label="Remove file"
-          :disabled="uploadingFiles.includes(filePath.path)"
+      </div>
+
+      <ul v-if="regularContextFiles.length > 0" class="space-y-2">
+        <li
+          v-for="item in regularContextFiles"
+          :key="`${item.filePath.path}-${item.index}`"
+          class="bg-gray-100 p-2 rounded transition-colors duration-300 flex items-start justify-between hover:bg-gray-200 group"
         >
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </li>
-    </ul>
+          <div class="flex items-start space-x-2 flex-grow min-w-0">
+            <i :class="['fas', getIconForFileType(item.filePath.type), 'text-gray-500 w-4 flex-shrink-0']"></i>
+            <div class="min-w-0 flex-grow">
+              <span
+                class="text-sm text-gray-600 truncate group-hover:underline cursor-pointer block"
+                @click="handleContextFileClick(item.filePath)"
+                :title="item.filePath.path"
+              >
+                {{ item.filePath.path }}
+              </span>
+            </div>
+            <span v-if="uploadingFiles.includes(item.filePath.path)" class="text-xs text-blue-500 ml-auto flex-shrink-0">
+              <i class="fas fa-spinner fa-spin mr-1"></i>Uploading...
+            </span>
+          </div>
+          <button
+            @click.stop="removeContextFilePath(item.index)"
+            class="text-red-500 hover:text-white hover:bg-red-500 transition-colors duration-300 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 ml-2 flex-shrink-0"
+            title="Remove this file"
+            aria-label="Remove file"
+            :disabled="uploadingFiles.includes(item.filePath.path)"
+          >
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </li>
+      </ul>
+    </div>
 
     <!-- "Clear All" Button Footer (conditionally rendered) -->
     <div v-if="contextFilePaths.length > 0" class="flex justify-end pt-2 mt-2">
@@ -111,6 +155,13 @@
       </button>
     </div>
   </div>
+  <FullScreenImageModal
+    v-if="selectedImageUrl"
+    :visible="isImageModalVisible"
+    :image-url="selectedImageUrl"
+    alt-text="Context image preview"
+    @close="closeImagePreview"
+  />
 </template>
 
 <script setup lang="ts">
@@ -120,8 +171,10 @@ import { useFileUploadStore } from '~/stores/fileUploadStore';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { getFilePathsFromFolder, determineFileType } from '~/utils/fileExplorer/fileUtils';
+import { getServerBaseUrl, getServerUrls } from '~/utils/serverConfig';
 import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
 import type { ContextFilePath } from '~/types/conversation';
+import FullScreenImageModal from '~/components/common/FullScreenImageModal.vue';
 
 const activeContextStore = useActiveContextStore();
 const fileUploadStore = useFileUploadStore();
@@ -134,6 +187,9 @@ const contextFilePaths = computed(() => activeContextStore.currentContextPaths);
 const uploadingFiles = ref<string[]>([]);
 const isContextListExpanded = ref(true);
 const fileInputRef = ref<HTMLInputElement | null>(null);
+const failedImagePreviewPaths = ref<Set<string>>(new Set());
+const isImageModalVisible = ref(false);
+const selectedImageUrl = ref<string | null>(null);
 
 const getIconForFileType = (type: ContextFilePath['type']) => {
   switch (type) {
@@ -154,6 +210,99 @@ const toggleContextList = () => {
   } else {
     isContextListExpanded.value = true;
   }
+};
+
+const isAbsoluteLocalPath = (path: string): boolean => path.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(path);
+
+const resolveImagePreviewUrl = (filePath: ContextFilePath): string | null => {
+  if (filePath.type !== 'Image' || failedImagePreviewPaths.value.has(filePath.path)) {
+    return null;
+  }
+
+  const path = filePath.path.trim();
+  if (!path) {
+    return null;
+  }
+
+  if (
+    path.startsWith('blob:') ||
+    path.startsWith('data:') ||
+    path.startsWith('local-file://') ||
+    path.startsWith('file://') ||
+    path.startsWith('http://') ||
+    path.startsWith('https://')
+  ) {
+    return path;
+  }
+
+  if (isElectron.value && isAbsoluteLocalPath(path)) {
+    return `local-file://${path}`;
+  }
+
+  if (path.startsWith('/')) {
+    const baseUrl = getServerBaseUrl().replace(/\/$/, '');
+    return `${baseUrl}${path}`;
+  }
+
+  if (path.startsWith('rest/')) {
+    const baseUrl = getServerBaseUrl().replace(/\/$/, '');
+    return `${baseUrl}/${path}`;
+  }
+
+  const workspaceId = workspaceStore.activeWorkspace?.workspaceId;
+  if (!workspaceId) {
+    return null;
+  }
+
+  const restBaseUrl = getServerUrls().rest.replace(/\/$/, '');
+  return `${restBaseUrl}/workspaces/${workspaceId}/content?path=${encodeURIComponent(path)}`;
+};
+
+const getImagePreviewSrc = (filePath: ContextFilePath): string => resolveImagePreviewUrl(filePath) || '';
+
+const isImagePreviewAvailable = (filePath: ContextFilePath): boolean => Boolean(resolveImagePreviewUrl(filePath));
+
+const indexedContextFilePaths = computed(() =>
+  contextFilePaths.value.map((filePath, index) => ({ filePath, index }))
+);
+
+const thumbnailContextFiles = computed(() =>
+  indexedContextFilePaths.value.filter(
+    ({ filePath }) => filePath.type === 'Image' && isImagePreviewAvailable(filePath)
+  )
+);
+
+const regularContextFiles = computed(() =>
+  indexedContextFilePaths.value.filter(
+    ({ filePath }) => filePath.type !== 'Image' || !isImagePreviewAvailable(filePath)
+  )
+);
+
+const markImagePreviewAsFailed = (path: string) => {
+  if (failedImagePreviewPaths.value.has(path)) {
+    return;
+  }
+  const updatedSet = new Set(failedImagePreviewPaths.value);
+  updatedSet.add(path);
+  failedImagePreviewPaths.value = updatedSet;
+};
+
+const openImagePreview = (filePath: ContextFilePath) => {
+  if (uploadingFiles.value.includes(filePath.path)) {
+    return;
+  }
+  const imageUrl = resolveImagePreviewUrl(filePath);
+  if (!imageUrl) {
+    handleContextFileClick(filePath);
+    return;
+  }
+  selectedImageUrl.value = imageUrl;
+  isImageModalVisible.value = true;
+};
+
+const closeImagePreview = () => {
+  isImageModalVisible.value = false;
+  selectedImageUrl.value = null;
 };
 
 const handleContextFileClick = (filePath: ContextFilePath) => {
@@ -315,9 +464,86 @@ watch(contextFilePaths, (newPaths) => {
     if (newPaths.length === 0 && !isContextListExpanded.value) {
         isContextListExpanded.value = true;
     }
+    const activePaths = new Set(newPaths.map(pathInfo => pathInfo.path));
+    failedImagePreviewPaths.value = new Set(
+      Array.from(failedImagePreviewPaths.value).filter(path => activePaths.has(path))
+    );
 }, { deep: true });
 </script>
 
 <style scoped>
-/* No specific styles needed here now */
+.thumbnail-button {
+  display: inline-flex;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  border: 1px solid #d1d5db;
+  transition: box-shadow 0.2s ease;
+  width: 42px;
+  height: 42px;
+}
+
+.thumbnail-button:hover {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+}
+
+.thumbnail-row-container {
+  overflow-x: auto;
+  padding: 0.125rem 0.125rem 0.375rem 0.125rem;
+}
+
+.thumbnail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+  min-width: max-content;
+}
+
+.thumbnail-card {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.thumbnail-remove-button {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background-color: #ef4444;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.thumbnail-card:hover .thumbnail-remove-button {
+  opacity: 1;
+}
+
+.thumbnail-remove-button:disabled {
+  opacity: 0.55;
+}
+
+.thumbnail-uploading {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  font-size: 10px;
+  line-height: 1;
+  color: #1d4ed8;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.context-image-thumbnail {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  display: block;
+  background: #f3f4f6;
+}
 </style>
