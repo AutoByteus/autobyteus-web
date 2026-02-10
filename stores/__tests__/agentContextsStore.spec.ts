@@ -11,6 +11,7 @@ const mockAgentDef: AgentDefinition = {
   name: 'TestAgent',
   role: 'assistant',
   description: 'Test Description',
+  avatarUrl: '/rest/files/images/test-agent.png',
   toolNames: [],
   inputProcessorNames: [],
   llmResponseProcessorNames: [],
@@ -59,6 +60,7 @@ describe('agentContextsStore', () => {
             // Verify config was copied
             expect(instance?.config.agentDefinitionId).toBe('def-1');
             expect(instance?.config.agentDefinitionName).toBe('TestAgent');
+            expect(instance?.config.agentAvatarUrl).toBe('/rest/files/images/test-agent.png');
             expect(instance?.config.llmModelIdentifier).toBe('gpt-4');
             expect(instance?.config.workspaceId).toBe('ws-1');
             expect(instance?.config.autoExecuteTools).toBe(true);

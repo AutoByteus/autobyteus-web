@@ -17,11 +17,14 @@
           <UserMessage
             v-if="message.type === 'user'"
             :message="message"
+            user-display-name="You"
           />
           <AIMessage
             v-else
             :message="message"
             :agent-id="agentId"
+            :agent-name="agentName"
+            :agent-avatar-url="agentAvatarUrl"
             :message-index="index"
           />
 
@@ -53,7 +56,10 @@ import UserMessage from '~/components/conversation/UserMessage.vue';
 import AIMessage from '~/components/conversation/AIMessage.vue';
 import AgentUserInputForm from '~/components/agentInput/AgentUserInputForm.vue';
 
-const props = defineProps<{  conversation: Conversation;
+const props = defineProps<{
+  conversation: Conversation;
+  agentName?: string;
+  agentAvatarUrl?: string | null;
 }>();
 
 const agentId = computed(() => props.conversation.id);

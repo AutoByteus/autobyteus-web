@@ -3,7 +3,18 @@
     <!-- Header Bar -->
     <div v-if="selectedAgent" class="flex items-center justify-between px-4 py-2 border-b border-gray-200 flex-shrink-0">
       <div class="flex items-center space-x-3 min-w-0">
-        <span class="text-xl">🤖</span>
+        <div class="h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-slate-100 flex items-center justify-center">
+          <img
+            v-if="showHeaderAvatarImage"
+            :src="selectedAgentAvatarUrl"
+            :alt="`${selectedAgent?.config.agentDefinitionName || 'Agent'} avatar`"
+            class="h-full w-full object-cover"
+            @error="headerAvatarLoadError = true"
+          />
+          <span v-else class="text-[10px] font-semibold tracking-wide text-slate-600">
+            {{ headerAvatarInitials }}
+          </span>
+        </div>
         <h4 class="text-base font-medium text-gray-800 truncate" :title="headerTitle">{{ headerTitle }}</h4>
         <AgentStatusDisplay v-if="selectedAgent" :status="selectedAgent.state.currentStatus" />
       </div>
@@ -28,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import AgentEventMonitorTabs from '~/components/workspace/agent/AgentEventMonitorTabs.vue';
 import WorkspaceHeaderActions from '~/components/workspace/common/WorkspaceHeaderActions.vue';
 import AgentStatusDisplay from '~/components/workspace/agent/AgentStatusDisplay.vue';
@@ -42,6 +53,7 @@ const runConfigStore = useAgentRunConfigStore();
 const selectionStore = useAgentSelectionStore();
 
 const selectedAgent = computed(() => agentContextsStore.activeInstance);
+const headerAvatarLoadError = ref(false);
 
 const headerTitle = computed(() => {
   if (selectedAgent.value) {
@@ -54,6 +66,30 @@ const headerTitle = computed(() => {
     return `${name} - ${idSuffix}`;
   }
   return 'Workspace'; // A generic fallback
+});
+
+const selectedAgentAvatarUrl = computed(() => selectedAgent.value?.config.agentAvatarUrl || '');
+const showHeaderAvatarImage = computed(
+  () => Boolean(selectedAgentAvatarUrl.value) && !headerAvatarLoadError.value
+);
+const headerAvatarInitials = computed(() => {
+  const name = selectedAgent.value?.config.agentDefinitionName?.trim() ?? '';
+  if (!name) {
+    return 'AI';
+  }
+
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? '')
+      .join('') || 'AI'
+  );
+});
+
+watch(selectedAgentAvatarUrl, () => {
+  headerAvatarLoadError.value = false;
 });
 
 const conversationText = computed(() => {

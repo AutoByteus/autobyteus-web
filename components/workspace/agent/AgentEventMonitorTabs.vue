@@ -39,6 +39,8 @@
       <AgentEventMonitor
         v-if="currentSelectedAgent"
         :conversation="currentSelectedAgent.state.conversation"
+        :agent-name="currentSelectedAgent.config.agentDefinitionName"
+        :agent-avatar-url="currentSelectedAgent.config.agentAvatarUrl"
         class="flex-grow" 
       />
       <div v-else class="p-4 text-center text-gray-500">

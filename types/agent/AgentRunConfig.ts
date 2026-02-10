@@ -11,6 +11,9 @@ export interface AgentRunConfig {
   
   /** Display name of the agent (from definition) */
   agentDefinitionName: string;
+
+  /** Optional avatar URL for the selected agent definition */
+  agentAvatarUrl?: string | null;
   
   /** LLM model identifier (e.g., 'gpt-4-turbo', 'claude-3-sonnet') */
   llmModelIdentifier: string;

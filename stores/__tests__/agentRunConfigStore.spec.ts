@@ -8,6 +8,7 @@ const mockAgentDef: AgentDefinition = {
   name: 'SuperAgent',
   role: 'assistant',
   description: 'A super helpful agent',
+  avatarUrl: '/rest/files/images/super-agent.png',
   toolNames: [],
   inputProcessorNames: [],
   llmResponseProcessorNames: [],
@@ -31,6 +32,7 @@ describe('agentRunConfigStore', () => {
 
       expect(store.config?.agentDefinitionId).toBe('agent-def-1');
       expect(store.config?.agentDefinitionName).toBe('SuperAgent');
+      expect(store.config?.agentAvatarUrl).toBe('/rest/files/images/super-agent.png');
       expect(store.config?.llmModelIdentifier).toBe('');
       expect(store.config?.workspaceId).toBeNull();
       expect(store.config?.autoExecuteTools).toBe(false);

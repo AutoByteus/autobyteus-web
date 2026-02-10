@@ -79,6 +79,7 @@ export const useAgentContextsStore = defineStore('agentContexts', {
       const config: AgentRunConfig = {
         agentDefinitionId: template.agentDefinitionId,
         agentDefinitionName: template.agentDefinitionName,
+        agentAvatarUrl: template.agentAvatarUrl ?? null,
         llmModelIdentifier: template.llmModelIdentifier,
         workspaceId: template.workspaceId,
         autoExecuteTools: template.autoExecuteTools,

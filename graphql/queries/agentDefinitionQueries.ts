@@ -8,6 +8,7 @@ export const GetAgentDefinitions = gql`
       name
       role
       description
+      avatarUrl
       toolNames
       inputProcessorNames
       llmResponseProcessorNames

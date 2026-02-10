@@ -72,6 +72,7 @@ export const useAgentRunConfigStore = defineStore('agentRunConfig', {
       this.config = {
         agentDefinitionId: agentDefinition.id,
         agentDefinitionName: agentDefinition.name,
+        agentAvatarUrl: agentDefinition.avatarUrl ?? null,
         llmModelIdentifier: '',
         workspaceId: null,
         autoExecuteTools: false,

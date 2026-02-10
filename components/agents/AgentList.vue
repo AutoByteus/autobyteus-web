@@ -89,7 +89,7 @@
       </div>
 
       <!-- Agent Grid -->
-      <div v-else-if="filteredAgentDefinitions.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div v-else-if="filteredAgentDefinitions.length > 0" class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
         <AgentCard
           v-for="agentDef in filteredAgentDefinitions"
           :key="agentDef.id"

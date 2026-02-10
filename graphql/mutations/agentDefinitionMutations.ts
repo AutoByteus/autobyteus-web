@@ -8,6 +8,7 @@ export const CreateAgentDefinition = gql`
       name
       role
       description
+      avatarUrl
       toolNames
       inputProcessorNames
       llmResponseProcessorNames
@@ -36,6 +37,7 @@ export const UpdateAgentDefinition = gql`
       name
       role
       description
+      avatarUrl
       toolNames
       inputProcessorNames
       llmResponseProcessorNames

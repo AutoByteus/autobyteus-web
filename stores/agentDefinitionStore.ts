@@ -13,6 +13,7 @@ export interface AgentDefinition {
   name: string;
   role: string;
   description: string;
+  avatarUrl?: string | null;
   toolNames: string[];
   inputProcessorNames: string[];
   llmResponseProcessorNames: string[];
@@ -37,6 +38,7 @@ export interface CreateAgentDefinitionInput {
   name: string;
   role: string;
   description: string;
+  avatarUrl?: string;
   systemPromptCategory: string;
   systemPromptName: string;
   toolNames?: string[];
@@ -54,6 +56,7 @@ export interface UpdateAgentDefinitionInput {
   name?: string;
   role?: string;
   description?: string;
+  avatarUrl?: string;
   systemPromptCategory?: string;
   systemPromptName?: string;
   toolNames?: string[];

@@ -6,6 +6,7 @@ describe('AgentRunConfig', () => {
     const config: AgentRunConfig = {
       agentDefinitionId: 'def-123',
       agentDefinitionName: 'SuperAgent',
+      agentAvatarUrl: '/rest/files/images/super-agent.png',
       llmModelIdentifier: 'gpt-4-turbo',
       workspaceId: 'ws-456',
       autoExecuteTools: true,
@@ -14,6 +15,7 @@ describe('AgentRunConfig', () => {
 
     expect(config.agentDefinitionId).toBe('def-123');
     expect(config.agentDefinitionName).toBe('SuperAgent');
+    expect(config.agentAvatarUrl).toBe('/rest/files/images/super-agent.png');
     expect(config.llmModelIdentifier).toBe('gpt-4-turbo');
     expect(config.workspaceId).toBe('ws-456');
     expect(config.autoExecuteTools).toBe(true);
