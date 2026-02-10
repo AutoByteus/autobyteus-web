@@ -25,6 +25,7 @@ export interface AgentTeamDefinition {
   description: string;
   role?: string | null;
   avatarUrl?: string | null;
+  updatedAt?: string | null;
   coordinatorMemberName: string;
   nodes: {
     __typename?: 'TeamMember';

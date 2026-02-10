@@ -40,13 +40,19 @@
     <div class="mt-4 flex flex-wrap items-center gap-2">
       <div
         v-for="node in previewNodes"
-        :key="node.memberName"
+        :key="`${node.memberName}-${node.referenceId}`"
         :title="`${node.memberName} (${node.referenceType})`"
-        class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium"
+        class="inline-flex max-w-[14rem] items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium"
         :class="node.referenceType === 'AGENT' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-violet-200 bg-violet-50 text-violet-700'"
       >
         <span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-white/80 text-[10px] font-semibold">{{ node.memberName.slice(0, 1).toUpperCase() }}</span>
-        <span>{{ node.referenceType === 'AGENT' ? 'AGENT' : 'TEAM' }}</span>
+        <span class="truncate">{{ node.memberName }}</span>
+        <span
+          v-if="node.referenceType === 'AGENT_TEAM'"
+          class="shrink-0 rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700"
+        >
+          TEAM
+        </span>
       </div>
       <span v-if="remainingNodesCount > 0" class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
         +{{ remainingNodesCount }} more
@@ -69,7 +75,7 @@
       </div>
       <div>
         <p class="font-medium text-slate-500">Updated</p>
-        <p class="mt-0.5 text-sm text-slate-800">Recently</p>
+        <p class="mt-0.5 text-sm text-slate-800">{{ updatedLabel }}</p>
       </div>
     </div>
   </div>
@@ -116,4 +122,47 @@ const avatarInitials = computed(() => {
 });
 
 const coordinatorLabel = computed(() => teamDef.value.coordinatorMemberName || 'Not assigned');
+
+const updatedLabel = computed(() => {
+  const value = teamDef.value.updatedAt?.trim();
+  if (!value) {
+    return 'Not tracked';
+  }
+
+  const updatedDate = new Date(value);
+  if (Number.isNaN(updatedDate.getTime())) {
+    return 'Not tracked';
+  }
+
+  const now = Date.now();
+  const diffMs = now - updatedDate.getTime();
+  if (diffMs < 0) {
+    return updatedDate.toLocaleDateString();
+  }
+
+  const minuteMs = 60 * 1000;
+  const hourMs = 60 * minuteMs;
+  const dayMs = 24 * hourMs;
+
+  if (diffMs < minuteMs) {
+    return 'Just now';
+  }
+  if (diffMs < hourMs) {
+    const minutes = Math.floor(diffMs / minuteMs);
+    return `${minutes}m ago`;
+  }
+  if (diffMs < dayMs) {
+    const hours = Math.floor(diffMs / hourMs);
+    return `${hours}h ago`;
+  }
+  if (diffMs < 2 * dayMs) {
+    return 'Yesterday';
+  }
+  if (diffMs < 7 * dayMs) {
+    const days = Math.floor(diffMs / dayMs);
+    return `${days}d ago`;
+  }
+
+  return updatedDate.toLocaleDateString();
+});
 </script>
