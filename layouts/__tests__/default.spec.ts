@@ -3,13 +3,12 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 describe('default layout source', () => {
-  it('renders current node label in both mobile and desktop chrome', () => {
+  it('does not render redundant current node labels in layout chrome', () => {
     const filePath = resolve(process.cwd(), 'layouts/default.vue');
     const content = readFileSync(filePath, 'utf-8');
 
-    expect(content).toContain('{{ currentNodeLabel }}');
-    expect(content).toContain('text-[11px]');
-    expect(content).toContain('rounded-full bg-white');
+    expect(content).not.toContain('{{ currentNodeLabel }}');
+    expect(content).not.toContain('rounded-full bg-white');
   });
 
   it('closes mobile menu on route changes via watcher', () => {
