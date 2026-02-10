@@ -14,6 +14,8 @@ export function useVncSession(options: VncSessionOptions) {
   const rfb = shallowRef<RFB | null>(null);
   const container = shallowRef<HTMLElement | null>(null);
   const viewOnly = ref(options.viewOnly ?? true);
+  const fullscreenFitEnabled = ref(false);
+  let restoreViewOnlyAfterFullscreen: boolean | null = null;
 
   const url = computed(() => String(unref(options.url) ?? '').trim());
   const password = computed(() => String(unref(options.password) ?? ''));
@@ -48,6 +50,15 @@ export function useVncSession(options: VncSessionOptions) {
     } else {
       console.log(`[vncSession${label}] container set: null`);
     }
+  };
+
+  const applyViewportStrategy = (session: RFB | null = rfb.value) => {
+    if (!session) return;
+    // Keep client-side fit as universal fallback; enable remote resize when fullscreen-fit mode is active.
+    session.scaleViewport = true;
+    session.clipViewport = false;
+    session.resizeSession = fullscreenFitEnabled.value;
+    session.viewOnly = viewOnly.value;
   };
 
   const connect = () => {
@@ -92,7 +103,7 @@ export function useVncSession(options: VncSessionOptions) {
         credentials: { password: password.value },
         shared: true,
         scaleViewport: true,
-        resizeSession: false,
+        resizeSession: fullscreenFitEnabled.value,
         viewOnly: viewOnly.value,
         qualityLevel: 6,
         compressionLevel: 0,
@@ -102,7 +113,7 @@ export function useVncSession(options: VncSessionOptions) {
       });
 
       rfb.value = sessionRfb;
-      sessionRfb.viewOnly = viewOnly.value;
+      applyViewportStrategy(sessionRfb);
 
       sessionRfb.addEventListener('connect', () => {
         if (rfb.value !== sessionRfb) return;
@@ -110,7 +121,7 @@ export function useVncSession(options: VncSessionOptions) {
         errorMessage.value = '';
         console.log(`[vncSession${label}] connected`);
         if (rfb.value) {
-          rfb.value.scaleViewport = true;
+          applyViewportStrategy(rfb.value);
           window.dispatchEvent(new Event('resize'));
         }
       });
@@ -176,14 +187,36 @@ export function useVncSession(options: VncSessionOptions) {
 
   const toggleViewOnly = () => {
     viewOnly.value = !viewOnly.value;
-    if (rfb.value) {
-      rfb.value.viewOnly = viewOnly.value;
+    if (fullscreenFitEnabled.value && restoreViewOnlyAfterFullscreen !== null) {
+      // User explicitly changed mode while maximized; do not restore stale value on exit.
+      restoreViewOnlyAfterFullscreen = null;
     }
+    applyViewportStrategy();
+  };
+
+  const enterFullscreenFitMode = () => {
+    fullscreenFitEnabled.value = true;
+    if (viewOnly.value) {
+      restoreViewOnlyAfterFullscreen = true;
+      viewOnly.value = false;
+    } else {
+      restoreViewOnlyAfterFullscreen = null;
+    }
+    refreshViewport();
+  };
+
+  const exitFullscreenFitMode = () => {
+    fullscreenFitEnabled.value = false;
+    if (restoreViewOnlyAfterFullscreen !== null) {
+      viewOnly.value = restoreViewOnlyAfterFullscreen;
+      restoreViewOnlyAfterFullscreen = null;
+    }
+    refreshViewport();
   };
 
   const refreshViewport = () => {
     if (!rfb.value) return;
-    rfb.value.scaleViewport = true;
+    applyViewportStrategy();
     window.dispatchEvent(new Event('resize'));
   };
 
@@ -198,6 +231,8 @@ export function useVncSession(options: VncSessionOptions) {
     connect,
     disconnect,
     toggleViewOnly,
+    enterFullscreenFitMode,
+    exitFullscreenFitMode,
     refreshViewport,
   };
 }

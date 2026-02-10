@@ -1,7 +1,15 @@
 <template>
   <Teleport to="body" :disabled="!isMaximized">
     <div class="vnc-tile flex flex-col" :class="{ 'vnc-maximized': isMaximized }">
-      <div class="connection-status py-2 px-3 bg-gray-100 border-b border-gray-200 flex justify-between items-center">
+      <div
+        class="connection-status py-2 px-3 bg-gray-100 border-b border-gray-200 flex justify-between items-center"
+        :class="{
+          'connection-status-overlay': isMaximized,
+          'connection-status-hidden': isMaximized && !toolbarVisible,
+        }"
+        @mouseenter="handleToolbarMouseEnter"
+        @mouseleave="handleToolbarMouseLeave"
+      >
         <div class="flex items-center min-w-0">
           <div
             class="status-indicator w-3 h-3 rounded-full mr-2"
@@ -49,7 +57,12 @@
           </button>
         </div>
       </div>
-      <div class="vnc-screen flex-grow relative">
+      <div class="vnc-screen flex-grow relative" :class="{ 'vnc-screen-maximized': isMaximized }">
+        <div
+          v-if="isMaximized && !toolbarVisible"
+          class="toolbar-reveal-zone"
+          @mouseenter="handleRevealZoneEnter"
+        ></div>
         <div ref="screen" class="vnc-display"></div>
         <div
           v-if="isConnecting"
@@ -96,6 +109,8 @@ const {
   statusMessage,
   viewOnly,
   toggleViewOnly,
+  enterFullscreenFitMode,
+  exitFullscreenFitMode,
   refreshViewport,
   connect,
   disconnect,
@@ -104,9 +119,55 @@ const {
 
 const screen = ref<HTMLElement | null>(null);
 const isMaximized = ref(false);
+const toolbarVisible = ref(true);
 const autoConnectEnabled = ref(props.autoConnect !== false);
 let resizeObserver: ResizeObserver | null = null;
 let pendingConnect = false;
+let revealToolbarTimer: ReturnType<typeof setTimeout> | null = null;
+let hideToolbarTimer: ReturnType<typeof setTimeout> | null = null;
+const REVEAL_DELAY_MS = 150;
+const HIDE_DELAY_MS = 1000;
+
+const clearRevealToolbarTimer = () => {
+  if (!revealToolbarTimer) return;
+  clearTimeout(revealToolbarTimer);
+  revealToolbarTimer = null;
+};
+
+const clearHideToolbarTimer = () => {
+  if (!hideToolbarTimer) return;
+  clearTimeout(hideToolbarTimer);
+  hideToolbarTimer = null;
+};
+
+const clearToolbarTimers = () => {
+  clearRevealToolbarTimer();
+  clearHideToolbarTimer();
+};
+
+const handleRevealZoneEnter = () => {
+  if (!isMaximized.value) return;
+  clearHideToolbarTimer();
+  clearRevealToolbarTimer();
+  revealToolbarTimer = setTimeout(() => {
+    toolbarVisible.value = true;
+    revealToolbarTimer = null;
+  }, REVEAL_DELAY_MS);
+};
+
+const handleToolbarMouseEnter = () => {
+  if (!isMaximized.value) return;
+  clearHideToolbarTimer();
+};
+
+const handleToolbarMouseLeave = () => {
+  if (!isMaximized.value) return;
+  clearHideToolbarTimer();
+  hideToolbarTimer = setTimeout(() => {
+    toolbarVisible.value = false;
+    hideToolbarTimer = null;
+  }, HIDE_DELAY_MS);
+};
 
 const connectIfReady = () => {
   if (!autoConnectEnabled.value) {
@@ -139,12 +200,23 @@ const handleDisconnectClick = () => {
 };
 
 const toggleMaximize = () => {
-  isMaximized.value = !isMaximized.value;
+  const nextMaximized = !isMaximized.value;
+  isMaximized.value = nextMaximized;
+  clearToolbarTimers();
+  toolbarVisible.value = !nextMaximized;
+  if (nextMaximized) {
+    enterFullscreenFitMode();
+  } else {
+    exitFullscreenFitMode();
+  }
 };
 
 const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape') {
+  if (event.key === 'Escape' && isMaximized.value) {
     isMaximized.value = false;
+    clearToolbarTimers();
+    toolbarVisible.value = true;
+    exitFullscreenFitMode();
   }
 };
 
@@ -182,6 +254,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown);
+  clearToolbarTimers();
+  exitFullscreenFitMode();
   resizeObserver?.disconnect();
   resizeObserver = null;
   disconnect();
@@ -200,6 +274,7 @@ watch(isConnected, (connected) => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  position: relative;
   min-height: 220px;
   border-radius: 8px;
   border: 1px solid #e5e7eb;
@@ -224,6 +299,12 @@ watch(isConnected, (connected) => {
   overflow: hidden;
 }
 
+.vnc-screen-maximized {
+  flex: 1 1 auto;
+  aspect-ratio: auto;
+  min-height: 0;
+}
+
 .vnc-display {
   position: absolute;
   top: 0;
@@ -244,5 +325,30 @@ watch(isConnected, (connected) => {
 
 .status-indicator {
   box-shadow: 0 0 4px currentColor;
+}
+
+.connection-status {
+  transition: transform 0.15s ease;
+}
+
+.connection-status-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+}
+
+.connection-status-hidden {
+  transform: translateY(-100%);
+}
+
+.toolbar-reveal-zone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  z-index: 30;
 }
 </style>
