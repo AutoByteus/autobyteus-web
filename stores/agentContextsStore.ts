@@ -31,13 +31,6 @@ export const useAgentContextsStore = defineStore('agentContexts', {
     },
 
     /**
-     * All instances as array.
-     */
-    allInstances(): AgentContext[] {
-      return Array.from(this.instances.values());
-    },
-
-    /**
      * Instances grouped by agent definition id.
      */
     instancesByDefinition(): Map<string, AgentContext[]> {

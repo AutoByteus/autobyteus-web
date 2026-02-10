@@ -20,13 +20,6 @@ export const useAgentSelectionStore = defineStore('agentSelection', {
   }),
 
   getters: {
-    /**
-     * Whether an instance is currently selected.
-     */
-    hasSelection(): boolean {
-      return this.selectedInstanceId !== null;
-    },
-    
     isAgentSelected(): boolean {
         return this.selectedType === 'agent';
     },

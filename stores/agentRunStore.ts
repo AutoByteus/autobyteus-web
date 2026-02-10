@@ -197,7 +197,7 @@ export const useAgentRunStore = defineStore('agentRun', {
 
     /**
      * @action closeAgent
-     * @description Closes an agent tab in the UI, disconnects WebSocket, and optionally terminates the backend instance.
+     * @description Closes an agent instance in the workspace, disconnects WebSocket, and optionally terminates the backend instance.
      */
     async closeAgent(agentIdToClose: string, options: { terminate: boolean }) {
       const agentContextsStore = useAgentContextsStore();

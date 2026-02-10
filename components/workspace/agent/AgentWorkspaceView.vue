@@ -30,9 +30,18 @@
       </div>
     </div>
     
-    <!-- Tabbed Agent Monitors -->
+    <!-- Active Agent Content -->
     <div class="flex-grow min-h-0">
-      <AgentEventMonitorTabs />
+      <AgentEventMonitor
+        v-if="selectedAgent"
+        :conversation="selectedAgent.state.conversation"
+        :agent-name="selectedAgent.config.agentDefinitionName"
+        :agent-avatar-url="selectedAgent.config.agentAvatarUrl"
+        class="h-full"
+      />
+      <div v-else class="p-4 text-center text-gray-500">
+        Select an agent or start a new one.
+      </div>
     </div>
 
   </div>
@@ -40,7 +49,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import AgentEventMonitorTabs from '~/components/workspace/agent/AgentEventMonitorTabs.vue';
+import AgentEventMonitor from '~/components/workspace/agent/AgentEventMonitor.vue';
 import WorkspaceHeaderActions from '~/components/workspace/common/WorkspaceHeaderActions.vue';
 import AgentStatusDisplay from '~/components/workspace/agent/AgentStatusDisplay.vue';
 import CopyButton from '~/components/common/CopyButton.vue';

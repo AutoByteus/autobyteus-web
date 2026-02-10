@@ -10,7 +10,7 @@
       <!-- Status Dot -->
       <span class="status-indicator h-2 w-2 rounded-full flex-shrink-0" :class="statusColor"></span>
       
-      <!-- Instance Label (consistent with tab format) -->
+      <!-- Instance Label -->
       <span class="text-sm text-gray-700 truncate">
         {{ instanceLabel }}
       </span>
@@ -42,7 +42,7 @@ defineEmits<{
   (e: 'delete', id: string): void;
 }>();
 
-// Label matches the tab format in AgentEventMonitorTabs.vue
+// Label format matches the running instance list style in the workspace.
 const instanceLabel = computed(() => {
   const name = props.instance.config.agentDefinitionName || 'Agent';
   const agentId = props.instance.state.agentId;
@@ -51,7 +51,7 @@ const instanceLabel = computed(() => {
     return `New - ${name}`;
   }
   
-  // Use last 4 characters of the ID (consistent with tabs)
+  // Use last 4 characters of the ID for a short, stable suffix.
   const idSuffix = agentId.slice(-4).toUpperCase();
   return `${name} - ${idSuffix}`;
 });
