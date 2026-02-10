@@ -25,7 +25,7 @@
       </div>
 
       <input
-        v-model="draft.accountId"
+        v-model="accountIdModel"
         type="text"
         placeholder="accountId"
         class="rounded-md border border-gray-300 px-3 py-2 text-sm"
@@ -114,6 +114,16 @@
           data-testid="peer-candidates-error"
         >
           {{ optionsStore.peerCandidatesError }}
+        </p>
+        <p
+          v-if="showDiscordIdentityHint"
+          class="mt-2 text-xs text-gray-600"
+          data-testid="discord-identity-hint"
+        >
+          For Discord, use <code>user:&lt;snowflake&gt;</code> for DMs or
+          <code>channel:&lt;snowflake&gt;</code> for guild channels. <code>threadId</code> is optional and only
+          valid with <code>channel:</code> peers.
+          <span v-if="discordAccountHint"> Account ID should be <code>{{ discordAccountHint }}</code>.</span>
         </p>
       </div>
 
@@ -219,6 +229,9 @@
     <p v-if="bindingStore.fieldErrors.peerId" class="mt-1 text-sm text-red-600">
       {{ bindingStore.fieldErrors.peerId }}
     </p>
+    <p v-if="bindingStore.fieldErrors.threadId" class="mt-1 text-sm text-red-600">
+      {{ bindingStore.fieldErrors.threadId }}
+    </p>
     <p v-if="bindingStore.fieldErrors.targetId" class="mt-1 text-sm text-red-600">
       {{ bindingStore.fieldErrors.targetId }}
     </p>
@@ -286,7 +299,10 @@ const selectedTargetId = ref('');
 const draft = reactive<ExternalChannelBindingDraft>({
   provider: providerScopeStore.selectedProvider,
   transport: providerScopeStore.resolvedTransport,
-  accountId: '',
+  accountId:
+    providerScopeStore.selectedProvider === 'DISCORD'
+      ? providerScopeStore.discordAccountId || ''
+      : '',
   peerId: '',
   threadId: null,
   targetType: 'AGENT',
@@ -299,10 +315,16 @@ const filteredTargetOptions = computed<ExternalChannelBindingTargetOption[]>(() 
 );
 
 const supportsPeerDiscovery = computed(
-  () =>
-    providerScopeStore.requiresPersonalSession &&
-    draft.transport === 'PERSONAL_SESSION' &&
-    (draft.provider === 'WHATSAPP' || draft.provider === 'WECHAT'),
+  () => {
+    if (draft.provider === 'DISCORD' && draft.transport === 'BUSINESS_API') {
+      return true;
+    }
+    return (
+      providerScopeStore.requiresPersonalSession &&
+      draft.transport === 'PERSONAL_SESSION' &&
+      (draft.provider === 'WHATSAPP' || draft.provider === 'WECHAT')
+    );
+  },
 );
 
 const effectiveManualPeerInput = computed(
@@ -310,17 +332,30 @@ const effectiveManualPeerInput = computed(
 );
 
 const canDiscoverPeers = computed(
-  () =>
-    supportsPeerDiscovery.value &&
-    gatewayStore.gatewayReady &&
-    gatewayStore.personalSessionReady &&
-    Boolean(gatewayStore.session?.sessionId) &&
-    gatewayStore.sessionProvider === draft.provider,
+  () => {
+    if (!supportsPeerDiscovery.value || !gatewayStore.gatewayReady) {
+      return false;
+    }
+    if (draft.provider === 'DISCORD') {
+      return true;
+    }
+    return (
+      gatewayStore.personalSessionReady &&
+      Boolean(gatewayStore.session?.sessionId) &&
+      gatewayStore.sessionProvider === draft.provider
+    );
+  },
 );
 
-const peerDiscoveryProviderLabel = computed(() =>
-  draft.provider === 'WECHAT' ? 'WeChat' : 'WhatsApp',
-);
+const peerDiscoveryProviderLabel = computed(() => {
+  if (draft.provider === 'WECHAT') {
+    return 'WeChat';
+  }
+  if (draft.provider === 'DISCORD') {
+    return 'Discord';
+  }
+  return 'WhatsApp';
+});
 
 const showPeerDiscoveryInstruction = computed(
   () =>
@@ -336,6 +371,20 @@ const showTargetOptionsInstruction = computed(
     !optionsStore.isTargetOptionsLoading &&
     filteredTargetOptions.value.length === 0,
 );
+
+const showDiscordIdentityHint = computed(() => draft.provider === 'DISCORD');
+const discordAccountHint = computed(() => providerScopeStore.discordAccountId || '');
+const accountIdModel = computed({
+  get: () => {
+    if (draft.provider === 'DISCORD' && !draft.accountId.trim()) {
+      return discordAccountHint.value;
+    }
+    return draft.accountId;
+  },
+  set: (value: string) => {
+    draft.accountId = value;
+  },
+});
 
 watch(
   () => gatewayStore.session?.accountLabel,
@@ -360,8 +409,24 @@ watch(
     if (provider === 'WHATSAPP' || provider === 'WECHAT') {
       gatewayStore.setSessionProvider(provider);
       useManualPeerInput.value = false;
+      if (gatewayStore.session?.accountLabel) {
+        draft.accountId = gatewayStore.session.accountLabel;
+      }
     } else {
-      useManualPeerInput.value = true;
+      useManualPeerInput.value = provider !== 'DISCORD';
+      if (provider === 'DISCORD' && providerScopeStore.discordAccountId) {
+        draft.accountId = providerScopeStore.discordAccountId;
+      }
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => providerScopeStore.discordAccountId,
+  (discordAccountId) => {
+    if (draft.provider === 'DISCORD' && discordAccountId && !draft.accountId.trim()) {
+      draft.accountId = discordAccountId;
     }
   },
   { immediate: true },
@@ -454,15 +519,20 @@ function onToggleTargetInputMode(): void {
 
 async function onRefreshPeerCandidates(): Promise<void> {
   if (!supportsPeerDiscovery.value) {
-    optionsStore.peerCandidatesError =
-      'Peer discovery is only available for personal session transports.';
+    optionsStore.peerCandidatesError = 'Peer discovery is not available for this provider/transport.';
     return;
   }
 
-  if (!canDiscoverPeers.value || !gatewayStore.session?.sessionId) {
+  if (!canDiscoverPeers.value) {
     if (!gatewayStore.gatewayReady) {
       optionsStore.peerCandidatesError =
         'Validate gateway connection first before loading peer candidates.';
+      return;
+    }
+
+    if (draft.provider === 'DISCORD') {
+      optionsStore.peerCandidatesError =
+        'Discord peer discovery is not ready. Verify gateway Discord setup and retry.';
       return;
     }
 
@@ -472,10 +542,25 @@ async function onRefreshPeerCandidates(): Promise<void> {
   }
 
   try {
-    await optionsStore.loadPeerCandidates(gatewayStore.session.sessionId, {
-      includeGroups: true,
-      limit: 50,
-    }, draft.provider);
+    if (draft.provider === 'DISCORD') {
+      await optionsStore.loadPeerCandidates(
+        draft.accountId || discordAccountHint.value || '',
+        {
+          includeGroups: true,
+          limit: 50,
+        },
+        draft.provider,
+      );
+    } else {
+      await optionsStore.loadPeerCandidates(
+        gatewayStore.session?.sessionId || '',
+        {
+          includeGroups: true,
+          limit: 50,
+        },
+        draft.provider,
+      );
+    }
 
     if (!effectiveManualPeerInput.value && selectedPeerKey.value) {
       const stillExists = optionsStore.peerCandidates.some(
@@ -512,6 +597,11 @@ async function onRefreshTargetOptions(): Promise<void> {
 
 async function onSaveBinding(): Promise<void> {
   try {
+    const resolvedAccountId =
+      draft.provider === 'DISCORD' && !draft.accountId.trim()
+        ? discordAccountHint.value
+        : draft.accountId;
+
     optionsStore.assertSelectionsFresh({
       draft,
       peerSelectionMode: effectiveManualPeerInput.value ? 'manual' : 'dropdown',
@@ -522,6 +612,7 @@ async function onSaveBinding(): Promise<void> {
 
     await bindingStore.upsertBinding({
       ...draft,
+      accountId: resolvedAccountId,
       threadId: draft.threadId?.trim() || null,
       // Hidden from setup UX; keep deterministic default until fallback is enabled as an explicit advanced mode.
       allowTransportFallback: false,

@@ -20,6 +20,8 @@ describe('PersonalSessionSetupCard', () => {
       defaultWeChatMode: 'WECOM_APP_BRIDGE',
       wechatPersonalEnabled: false,
       wecomAppEnabled: true,
+      discordEnabled: false,
+      discordAccountId: null,
     });
     providerScopeStore.setSelectedProvider('WECOM');
 
@@ -55,5 +57,31 @@ describe('PersonalSessionSetupCard', () => {
     expect(accountInput.attributes('placeholder')).toBe('Account label (e.g. Home WeChat)');
     expect(wrapper.text()).toContain('WeChat Personal Session');
     expect(gatewayStore.sessionProvider).toBe('WECHAT');
+  });
+
+  it('shows Discord business-mode copy when provider scope is DISCORD', async () => {
+    const providerScopeStore = useExternalMessagingProviderScopeStore();
+
+    providerScopeStore.initialize({
+      wechatModes: [],
+      defaultWeChatMode: null,
+      wechatPersonalEnabled: false,
+      wecomAppEnabled: false,
+      discordEnabled: true,
+      discordAccountId: 'discord-acct-1',
+    });
+    providerScopeStore.setSelectedProvider('DISCORD');
+
+    const wrapper = mount(PersonalSessionSetupCard, {
+      global: {
+        plugins: [pinia],
+      },
+    });
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="personal-session-not-required"]').text()).toContain(
+      'Discord Bot',
+    );
+    expect(wrapper.text()).toContain('Discord Bot Bridge');
   });
 });

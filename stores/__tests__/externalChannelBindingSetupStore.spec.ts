@@ -32,6 +32,7 @@ describe('externalChannelBindingSetupStore', () => {
             'WHATSAPP:PERSONAL_SESSION',
             'WECOM:BUSINESS_API',
             'WECHAT:PERSONAL_SESSION',
+            'DISCORD:BUSINESS_API',
           ],
         },
       },
@@ -141,9 +142,53 @@ describe('externalChannelBindingSetupStore', () => {
       targetId: 'agent-1',
       allowTransportFallback: false,
     });
+    const invalidDiscord = store.validateDraft({
+      provider: 'DISCORD',
+      transport: 'PERSONAL_SESSION',
+      accountId: 'discord-account',
+      peerId: 'user:123456',
+      threadId: null,
+      targetType: 'AGENT',
+      targetId: 'agent-1',
+      allowTransportFallback: false,
+    });
+    const validDiscord = store.validateDraft({
+      provider: 'DISCORD',
+      transport: 'BUSINESS_API',
+      accountId: 'discord-account',
+      peerId: 'user:123456',
+      threadId: null,
+      targetType: 'AGENT',
+      targetId: 'agent-1',
+      allowTransportFallback: false,
+    });
 
     expect(invalidWeCom.transport).toContain('is not supported');
     expect(validWeChat.transport).toBeUndefined();
+    expect(invalidDiscord.transport).toContain('is not supported');
+    expect(validDiscord.transport).toBeUndefined();
+  });
+
+  it('maps shared Discord validator issues to field errors during draft validation', () => {
+    const store = useExternalChannelBindingSetupStore();
+    store.capabilities = {
+      bindingCrudEnabled: true,
+      reason: null,
+      acceptedProviderTransportPairs: ['DISCORD:BUSINESS_API'],
+    };
+
+    const errors = store.validateDraft({
+      provider: 'DISCORD',
+      transport: 'BUSINESS_API',
+      accountId: 'discord-acct-1',
+      peerId: 'user:123456',
+      threadId: '999888777',
+      targetType: 'AGENT',
+      targetId: 'agent-1',
+      allowTransportFallback: false,
+    });
+
+    expect(errors.threadId).toContain('can only be used with channel');
   });
 
   it('upserts binding and updates list', async () => {
@@ -297,6 +342,49 @@ describe('externalChannelBindingSetupStore', () => {
     expect(store.capabilityBlocked).toBe(true);
     expect(store.rolloutGateError).toContain('Cannot query field');
     expect(store.capabilities.bindingCrudEnabled).toBe(false);
+  });
+
+  it('maps server typed Discord validation errors into fieldErrors', async () => {
+    const apolloMock = createApolloMock();
+    apolloMock.mutate.mockRejectedValue({
+      graphQLErrors: [
+        {
+          message: 'Discord threadId can only be used with channel:<snowflake> peerId targets.',
+          extensions: {
+            code: 'INVALID_DISCORD_THREAD_TARGET_COMBINATION',
+            field: 'threadId',
+            detail:
+              'Discord threadId can only be used with channel:<snowflake> peerId targets.',
+          },
+        },
+      ],
+    });
+    vi.mocked(getApolloClient).mockReturnValue(apolloMock as any);
+
+    const store = useExternalChannelBindingSetupStore();
+    store.capabilities = {
+      bindingCrudEnabled: true,
+      reason: null,
+      acceptedProviderTransportPairs: ['DISCORD:BUSINESS_API'],
+    };
+
+    await expect(
+      store.upsertBinding({
+        provider: 'DISCORD',
+        transport: 'BUSINESS_API',
+        accountId: 'discord-acct-1',
+        peerId: 'channel:123456',
+        threadId: '999888777',
+        targetType: 'AGENT',
+        targetId: 'agent-1',
+        allowTransportFallback: false,
+      }),
+    ).rejects.toThrow('Discord threadId can only be used with channel:<snowflake> peerId targets.');
+
+    expect(store.fieldErrors.threadId).toBe(
+      'Discord threadId can only be used with channel:<snowflake> peerId targets.',
+    );
+    expect(store.error).toBe('Discord threadId can only be used with channel:<snowflake> peerId targets.');
   });
 
   it('deletes binding from list', async () => {

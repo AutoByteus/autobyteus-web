@@ -210,6 +210,8 @@ describe('ExternalMessagingGatewayClient', () => {
           defaultWeChatMode: 'WECOM_APP_BRIDGE',
           wecomAppEnabled: true,
           wechatPersonalEnabled: false,
+          discordEnabled: true,
+          discordAccountId: 'discord-acct-1',
         },
       })
       .mockResolvedValueOnce({
@@ -233,6 +235,7 @@ describe('ExternalMessagingGatewayClient', () => {
     const accounts = await client.getWeComAccounts();
 
     expect(capabilities.defaultWeChatMode).toBe('WECOM_APP_BRIDGE');
+    expect(capabilities.discordEnabled).toBe(true);
     expect(accounts.items).toHaveLength(1);
     expect(httpClient.request).toHaveBeenNthCalledWith(
       1,
@@ -277,6 +280,36 @@ describe('ExternalMessagingGatewayClient', () => {
       expect.objectContaining({
         method: 'GET',
         url: 'https://gateway.example.com/api/channel-admin/v1/whatsapp/personal/sessions/session%2F1/peer-candidates?limit=50&includeGroups=false',
+      }),
+    );
+  });
+
+  it('requests Discord peer-candidates endpoint with query options', async () => {
+    const httpClient = createHttpClientMock();
+    httpClient.request.mockResolvedValue({
+      data: {
+        accountId: 'discord-acct-1',
+        updatedAt: '2026-02-10T10:00:00.000Z',
+        items: [],
+      },
+    });
+
+    const client = new ExternalMessagingGatewayClient({
+      baseUrl: 'https://gateway.example.com',
+      httpClient,
+    });
+
+    const result = await client.getDiscordPeerCandidates({
+      accountId: 'discord-acct-1',
+      limit: 50,
+      includeGroups: false,
+    });
+
+    expect(result.accountId).toBe('discord-acct-1');
+    expect(httpClient.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: 'GET',
+        url: 'https://gateway.example.com/api/channel-admin/v1/discord/peer-candidates?limit=50&includeGroups=false&accountId=discord-acct-1',
       }),
     );
   });

@@ -154,8 +154,7 @@ function mapWindowNodeBinding(window: BrowserWindow, nodeId: string): void {
   windowIdByNodeId.set(nodeId, webContentsId);
 }
 
-function clearWindowNodeBinding(window: BrowserWindow): void {
-  const webContentsId = window.webContents.id;
+function clearWindowNodeBindingByWebContentsId(webContentsId: number): void {
   const nodeId = nodeIdByWindowId.get(webContentsId);
   if (nodeId) {
     windowIdByNodeId.delete(nodeId);
@@ -189,6 +188,7 @@ function createNodeBoundWindow(nodeId: string): BrowserWindow {
     show: true,
   });
 
+  const webContentsId = window.webContents.id;
   mapWindowNodeBinding(window, nodeId);
 
   window.webContents.on('will-navigate', (event) => {
@@ -223,7 +223,7 @@ function createNodeBoundWindow(nodeId: string): BrowserWindow {
   });
 
   window.on('closed', () => {
-    clearWindowNodeBinding(window);
+    clearWindowNodeBindingByWebContentsId(webContentsId);
   });
 
   return window;

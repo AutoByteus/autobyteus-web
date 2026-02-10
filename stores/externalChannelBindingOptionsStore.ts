@@ -113,12 +113,12 @@ export const useExternalChannelBindingOptionsStore = defineStore(
       },
 
       async loadPeerCandidates(
-        sessionId: string,
+        contextId: string,
         options?: { includeGroups?: boolean; limit?: number },
         provider: ExternalMessagingProvider = 'WHATSAPP',
       ): Promise<GatewayPeerCandidate[]> {
-        const normalizedSessionId = sessionId.trim();
-        if (!normalizedSessionId) {
+        const normalizedContextId = contextId.trim();
+        if (provider !== 'DISCORD' && !normalizedContextId) {
           throw new Error('sessionId is required to load peer candidates.');
         }
 
@@ -129,18 +129,27 @@ export const useExternalChannelBindingOptionsStore = defineStore(
           const gatewayStore = useGatewaySessionSetupStore();
           const client = gatewayStore.createClient();
           const response =
-            provider === 'WECHAT'
-              ? await client.getWeChatPersonalPeerCandidates(normalizedSessionId, {
+            provider === 'DISCORD'
+              ? await client.getDiscordPeerCandidates({
+                  accountId: normalizedContextId || undefined,
                   includeGroups: options?.includeGroups,
                   limit: options?.limit,
                 })
-              : await client.getWhatsAppPersonalPeerCandidates(normalizedSessionId, {
+              : provider === 'WECHAT'
+              ? await client.getWeChatPersonalPeerCandidates(normalizedContextId, {
+                  includeGroups: options?.includeGroups,
+                  limit: options?.limit,
+                })
+              : await client.getWhatsAppPersonalPeerCandidates(normalizedContextId, {
                   includeGroups: options?.includeGroups,
                   limit: options?.limit,
                 });
 
           this.peerCandidates = response.items;
-          this.peerCandidatesSessionId = response.sessionId;
+          this.peerCandidatesSessionId =
+            provider === 'DISCORD'
+              ? null
+              : (response as { sessionId: string }).sessionId;
           return this.peerCandidates;
         } catch (error) {
           this.peerCandidatesError = normalizeErrorMessage(error);

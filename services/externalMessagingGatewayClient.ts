@@ -1,6 +1,7 @@
 import axios, { AxiosError, type AxiosInstance } from 'axios';
 import type {
   GatewayCapabilitiesModel,
+  GatewayDiscordPeerCandidatesModel,
   GatewayHealthModel,
   GatewayPeerCandidatesModel,
   GatewayPersonalSessionModel,
@@ -324,6 +325,30 @@ export class ExternalMessagingGatewayClient {
     return this.request<GatewayPeerCandidatesModel>(
       'GET',
       `/api/channel-admin/v1/wechat/personal/sessions/${encodeURIComponent(sessionId)}/peer-candidates${querySuffix}`,
+      undefined,
+      callOptions,
+    );
+  }
+
+  async getDiscordPeerCandidates(
+    options?: GatewayPeerCandidateQueryOptions & { accountId?: string },
+    callOptions?: GatewayCallOptions,
+  ): Promise<GatewayDiscordPeerCandidatesModel> {
+    const query = new URLSearchParams();
+    if (typeof options?.limit === 'number') {
+      query.set('limit', String(options.limit));
+    }
+    if (typeof options?.includeGroups === 'boolean') {
+      query.set('includeGroups', options.includeGroups ? 'true' : 'false');
+    }
+    if (typeof options?.accountId === 'string' && options.accountId.trim().length > 0) {
+      query.set('accountId', options.accountId.trim());
+    }
+    const querySuffix = query.toString() ? `?${query.toString()}` : '';
+
+    return this.request<GatewayDiscordPeerCandidatesModel>(
+      'GET',
+      `/api/channel-admin/v1/discord/peer-candidates${querySuffix}`,
       undefined,
       callOptions,
     );

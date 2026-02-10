@@ -14,6 +14,7 @@ export interface ProviderScopeOption {
 interface ExternalMessagingProviderScopeState {
   selectedProvider: ExternalMessagingProvider;
   availableProviders: ExternalMessagingProvider[];
+  discordAccountId: string | null;
   initialized: boolean;
 }
 
@@ -33,6 +34,11 @@ const PROVIDER_OPTIONS: Record<ExternalMessagingProvider, ProviderScopeOption> =
     label: 'WeCom App',
     description: 'Use WeCom business API bridge setup.',
   },
+  DISCORD: {
+    provider: 'DISCORD',
+    label: 'Discord Bot',
+    description: 'Use Discord business API bot integration.',
+  },
 };
 
 function resolveAvailableProviders(
@@ -45,6 +51,9 @@ function resolveAvailableProviders(
   if (capabilities?.wecomAppEnabled) {
     providers.push('WECOM');
   }
+  if (capabilities?.discordEnabled) {
+    providers.push('DISCORD');
+  }
   return providers;
 }
 
@@ -54,6 +63,7 @@ export const useExternalMessagingProviderScopeStore = defineStore(
     state: (): ExternalMessagingProviderScopeState => ({
       selectedProvider: 'WHATSAPP',
       availableProviders: ['WHATSAPP'],
+      discordAccountId: null,
       initialized: false,
     }),
 
@@ -71,7 +81,7 @@ export const useExternalMessagingProviderScopeStore = defineStore(
       },
 
       resolvedTransport(state): ExternalMessagingTransport {
-        if (state.selectedProvider === 'WECOM') {
+        if (state.selectedProvider === 'WECOM' || state.selectedProvider === 'DISCORD') {
           return 'BUSINESS_API';
         }
         return 'PERSONAL_SESSION';
@@ -82,6 +92,11 @@ export const useExternalMessagingProviderScopeStore = defineStore(
       initialize(capabilities: GatewayCapabilitiesModel | null | undefined): void {
         const nextAvailableProviders = resolveAvailableProviders(capabilities);
         this.availableProviders = nextAvailableProviders;
+        this.discordAccountId =
+          typeof capabilities?.discordAccountId === 'string' &&
+          capabilities.discordAccountId.trim().length > 0
+            ? capabilities.discordAccountId
+            : null;
 
         if (!nextAvailableProviders.includes(this.selectedProvider)) {
           this.selectedProvider = nextAvailableProviders[0] || 'WHATSAPP';

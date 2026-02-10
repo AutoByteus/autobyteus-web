@@ -61,6 +61,7 @@ describe('externalChannelBindingOptionsStore', () => {
         ],
       }),
       getWeChatPersonalPeerCandidates: vi.fn(),
+      getDiscordPeerCandidates: vi.fn(),
     };
     vi.spyOn(gatewayStore, 'createClient').mockReturnValue(gatewayClientMock as any);
 
@@ -96,6 +97,7 @@ describe('externalChannelBindingOptionsStore', () => {
           },
         ],
       }),
+      getDiscordPeerCandidates: vi.fn(),
     };
     vi.spyOn(gatewayStore, 'createClient').mockReturnValue(gatewayClientMock as any);
 
@@ -111,6 +113,40 @@ describe('externalChannelBindingOptionsStore', () => {
       },
     );
     expect(gatewayClientMock.getWhatsAppPersonalPeerCandidates).not.toHaveBeenCalled();
+  });
+
+  it('loads Discord peer candidates through gateway client boundary', async () => {
+    const gatewayStore = useGatewaySessionSetupStore();
+    const gatewayClientMock = {
+      getWhatsAppPersonalPeerCandidates: vi.fn(),
+      getWeChatPersonalPeerCandidates: vi.fn(),
+      getDiscordPeerCandidates: vi.fn().mockResolvedValue({
+        accountId: 'discord-acct-1',
+        updatedAt: '2026-02-09T10:00:00.000Z',
+        items: [
+          {
+            peerId: 'user:111222333',
+            peerType: 'USER',
+            threadId: null,
+            displayName: 'Alice',
+            lastMessageAt: '2026-02-09T09:59:00.000Z',
+          },
+        ],
+      }),
+    };
+    vi.spyOn(gatewayStore, 'createClient').mockReturnValue(gatewayClientMock as any);
+
+    const store = useExternalChannelBindingOptionsStore();
+    const result = await store.loadPeerCandidates('discord-acct-1', undefined, 'DISCORD');
+
+    expect(result).toHaveLength(1);
+    expect(gatewayClientMock.getDiscordPeerCandidates).toHaveBeenCalledWith({
+      accountId: 'discord-acct-1',
+      includeGroups: undefined,
+      limit: undefined,
+    });
+    expect(gatewayClientMock.getWhatsAppPersonalPeerCandidates).not.toHaveBeenCalled();
+    expect(gatewayClientMock.getWeChatPersonalPeerCandidates).not.toHaveBeenCalled();
   });
 
   it('asserts stale selections for dropdown-driven values', () => {

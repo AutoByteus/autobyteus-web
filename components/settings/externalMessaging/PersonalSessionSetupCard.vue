@@ -10,7 +10,7 @@
       class="mt-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700"
       data-testid="personal-session-not-required"
     >
-      Personal session setup is not required for WeCom App mode.
+      Personal session setup is not required for {{ businessModeLabel }} mode.
     </div>
 
     <div v-else class="mt-3 flex flex-col gap-3 md:flex-row md:items-center">
@@ -104,7 +104,7 @@ const accountLabel = ref('Home WhatsApp');
 const title = computed(() =>
   providerScopeStore.requiresPersonalSession
     ? `${gatewayStore.sessionProviderLabel} Personal Session`
-    : 'WeCom App Bridge',
+    : `${businessModeLabel.value} Bridge`,
 );
 
 const subtitle = computed(() =>
@@ -112,6 +112,13 @@ const subtitle = computed(() =>
     ? 'Start a personal session, scan QR, and verify that the session reaches ACTIVE state.'
     : 'Business API mode uses account-level setup and does not require QR session activation.',
 );
+
+const businessModeLabel = computed(() => {
+  if (providerScopeStore.selectedProvider === 'DISCORD') {
+    return 'Discord Bot';
+  }
+  return 'WeCom App';
+});
 
 const accountLabelPlaceholder = computed(() =>
   gatewayStore.sessionProvider === 'WECHAT'

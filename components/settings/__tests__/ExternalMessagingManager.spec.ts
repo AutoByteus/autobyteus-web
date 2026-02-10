@@ -28,6 +28,8 @@ describe('ExternalMessagingManager', () => {
       defaultWeChatMode: 'WECOM_APP_BRIDGE',
       wecomAppEnabled: true,
       wechatPersonalEnabled: false,
+      discordEnabled: false,
+      discordAccountId: null,
     });
     const loadWeComAccountsSpy = vi.spyOn(capabilityStore, 'loadWeComAccounts').mockResolvedValue([]);
     const loadCapabilitiesSpy = vi
@@ -63,6 +65,8 @@ describe('ExternalMessagingManager', () => {
       defaultWeChatMode: 'WECOM_APP_BRIDGE',
       wecomAppEnabled: true,
       wechatPersonalEnabled: false,
+      discordEnabled: false,
+      discordAccountId: null,
     });
     vi.spyOn(capabilityStore, 'loadWeComAccounts').mockResolvedValue([]);
     vi.spyOn(bindingStore, 'loadCapabilities').mockResolvedValue({

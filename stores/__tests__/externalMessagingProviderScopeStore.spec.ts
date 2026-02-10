@@ -15,13 +15,16 @@ describe('externalMessagingProviderScopeStore', () => {
       defaultWeChatMode: 'DIRECT_PERSONAL_SESSION',
       wechatPersonalEnabled: true,
       wecomAppEnabled: true,
+      discordEnabled: true,
+      discordAccountId: 'discord-acct-1',
     });
 
-    expect(store.availableProviders).toEqual(['WHATSAPP', 'WECHAT', 'WECOM']);
+    expect(store.availableProviders).toEqual(['WHATSAPP', 'WECHAT', 'WECOM', 'DISCORD']);
     expect(store.options.map((entry) => entry.provider)).toEqual([
       'WHATSAPP',
       'WECHAT',
       'WECOM',
+      'DISCORD',
     ]);
     expect(store.initialized).toBe(true);
   });
@@ -34,6 +37,8 @@ describe('externalMessagingProviderScopeStore', () => {
       defaultWeChatMode: 'DIRECT_PERSONAL_SESSION',
       wechatPersonalEnabled: true,
       wecomAppEnabled: false,
+      discordEnabled: false,
+      discordAccountId: null,
     });
     store.setSelectedProvider('WECHAT');
 
@@ -42,6 +47,8 @@ describe('externalMessagingProviderScopeStore', () => {
       defaultWeChatMode: 'WECOM_APP_BRIDGE',
       wechatPersonalEnabled: false,
       wecomAppEnabled: false,
+      discordEnabled: false,
+      discordAccountId: null,
     });
 
     expect(store.selectedProvider).toBe('WHATSAPP');
@@ -55,9 +62,29 @@ describe('externalMessagingProviderScopeStore', () => {
       defaultWeChatMode: 'WECOM_APP_BRIDGE',
       wechatPersonalEnabled: false,
       wecomAppEnabled: true,
+      discordEnabled: false,
+      discordAccountId: null,
     });
     store.setSelectedProvider('WECOM');
 
+    expect(store.requiresPersonalSession).toBe(false);
+    expect(store.resolvedTransport).toBe('BUSINESS_API');
+  });
+
+  it('adds DISCORD provider when capability is enabled', () => {
+    const store = useExternalMessagingProviderScopeStore();
+
+    store.initialize({
+      wechatModes: [],
+      defaultWeChatMode: null,
+      wechatPersonalEnabled: false,
+      wecomAppEnabled: false,
+      discordEnabled: true,
+      discordAccountId: 'discord-acct-1',
+    });
+    store.setSelectedProvider('DISCORD');
+
+    expect(store.availableProviders).toContain('DISCORD');
     expect(store.requiresPersonalSession).toBe(false);
     expect(store.resolvedTransport).toBe('BUSINESS_API');
   });

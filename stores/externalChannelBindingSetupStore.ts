@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { validateDiscordBindingIdentity } from '../../autobyteus-ts/dist/external-channel/discord-binding-identity.js';
 import { getApolloClient } from '~/utils/apolloClient';
 import {
   EXTERNAL_CHANNEL_CAPABILITIES,
@@ -14,6 +15,7 @@ import type {
   ExternalChannelBindingModel,
   ExternalChannelCapabilityModel,
 } from '~/types/externalMessaging';
+import { useGatewayCapabilityStore } from '~/stores/gatewayCapabilityStore';
 
 interface BindingSetupState {
   capabilities: ExternalChannelCapabilityModel;
@@ -27,6 +29,18 @@ interface BindingSetupState {
   isMutating: boolean;
   error: string | null;
   fieldErrors: Partial<Record<keyof ExternalChannelBindingDraft, string>>;
+}
+
+type BindingField = keyof ExternalChannelBindingDraft;
+
+class ServerFieldValidationError extends Error {
+  readonly field: BindingField;
+
+  constructor(field: BindingField, message: string) {
+    super(message);
+    this.name = 'ServerFieldValidationError';
+    this.field = field;
+  }
 }
 
 function normalizeErrorMessage(error: unknown): string {
@@ -76,10 +90,98 @@ function isProviderTransportSupported(
     if (draft.provider === 'WECHAT') {
       return draft.transport === 'PERSONAL_SESSION';
     }
+    if (draft.provider === 'DISCORD') {
+      return draft.transport === 'BUSINESS_API';
+    }
     return true;
   }
   const key = `${draft.provider}:${draft.transport}`.toUpperCase();
   return supportedPairs.has(key);
+}
+
+function isBindingField(value: unknown): value is BindingField {
+  return (
+    value === 'id' ||
+    value === 'provider' ||
+    value === 'transport' ||
+    value === 'accountId' ||
+    value === 'peerId' ||
+    value === 'threadId' ||
+    value === 'targetType' ||
+    value === 'targetId' ||
+    value === 'allowTransportFallback'
+  );
+}
+
+function issueCodeToField(code: string): BindingField | null {
+  if (code === 'INVALID_DISCORD_PEER_ID') {
+    return 'peerId';
+  }
+  if (code === 'INVALID_DISCORD_THREAD_ID') {
+    return 'threadId';
+  }
+  if (code === 'INVALID_DISCORD_ACCOUNT_ID') {
+    return 'accountId';
+  }
+  if (code === 'INVALID_DISCORD_THREAD_TARGET_COMBINATION') {
+    return 'threadId';
+  }
+  return null;
+}
+
+function toServerFieldValidationError(entry: {
+  message?: unknown;
+  extensions?: unknown;
+}): ServerFieldValidationError | null {
+  const extensions =
+    typeof entry.extensions === 'object' && entry.extensions !== null
+      ? (entry.extensions as Record<string, unknown>)
+      : null;
+  const extensionCode = typeof extensions?.code === 'string' ? extensions.code : null;
+  const extensionField =
+    typeof extensions?.field === 'string' && isBindingField(extensions.field)
+      ? extensions.field
+      : null;
+  const extensionDetail = typeof extensions?.detail === 'string' ? extensions.detail : null;
+
+  const resolvedField = extensionField ?? (extensionCode ? issueCodeToField(extensionCode) : null);
+  if (!resolvedField) {
+    return null;
+  }
+
+  const resolvedMessage =
+    extensionDetail ||
+    (typeof entry.message === 'string' ? entry.message : 'Binding validation failed.');
+  return new ServerFieldValidationError(resolvedField, resolvedMessage);
+}
+
+function extractServerFieldValidationError(error: unknown): ServerFieldValidationError | null {
+  if (error instanceof ServerFieldValidationError) {
+    return error;
+  }
+
+  if (typeof error !== 'object' || error === null) {
+    return null;
+  }
+
+  const graphQLErrors = (error as { graphQLErrors?: unknown }).graphQLErrors;
+  if (!Array.isArray(graphQLErrors)) {
+    return null;
+  }
+
+  for (const graphQLError of graphQLErrors) {
+    if (typeof graphQLError !== 'object' || graphQLError === null) {
+      continue;
+    }
+    const mapped = toServerFieldValidationError(
+      graphQLError as { message?: unknown; extensions?: unknown },
+    );
+    if (mapped) {
+      return mapped;
+    }
+  }
+
+  return null;
 }
 
 export const useExternalChannelBindingSetupStore = defineStore('externalChannelBindingSetupStore', {
@@ -190,6 +292,7 @@ export const useExternalChannelBindingSetupStore = defineStore('externalChannelB
       draft: ExternalChannelBindingDraft,
     ): Partial<Record<keyof ExternalChannelBindingDraft, string>> {
       const errors: Partial<Record<keyof ExternalChannelBindingDraft, string>> = {};
+      const gatewayCapabilityStore = useGatewayCapabilityStore();
 
       if (!draft.accountId.trim()) {
         errors.accountId = 'Account ID is required';
@@ -202,6 +305,21 @@ export const useExternalChannelBindingSetupStore = defineStore('externalChannelB
       }
       if (!isProviderTransportSupported(draft, this.capabilities)) {
         errors.transport = `Transport ${draft.transport} is not supported for provider ${draft.provider}.`;
+      }
+
+      if (draft.provider === 'DISCORD') {
+        const validationIssues = validateDiscordBindingIdentity({
+          accountId: draft.accountId,
+          peerId: draft.peerId,
+          threadId: draft.threadId,
+          expectedAccountId: gatewayCapabilityStore.capabilities?.discordAccountId || undefined,
+        });
+
+        for (const issue of validationIssues) {
+          if (!errors[issue.field]) {
+            errors[issue.field] = issue.detail;
+          }
+        }
       }
 
       return errors;
@@ -252,6 +370,10 @@ export const useExternalChannelBindingSetupStore = defineStore('externalChannelB
         });
 
         if (errors && errors.length > 0) {
+          const mappedError = toServerFieldValidationError(errors[0] as any);
+          if (mappedError) {
+            throw mappedError;
+          }
           throw new Error(errors.map((entry: { message: string }) => entry.message).join(', '));
         }
 
@@ -263,6 +385,16 @@ export const useExternalChannelBindingSetupStore = defineStore('externalChannelB
         this.applyUpsertResult(binding);
         return binding;
       } catch (error) {
+        const validationError = extractServerFieldValidationError(error);
+        if (validationError) {
+          this.fieldErrors = {
+            ...this.fieldErrors,
+            [validationError.field]: validationError.message,
+          };
+          this.error = validationError.message;
+          throw validationError;
+        }
+
         this.error = normalizeErrorMessage(error);
         if (hasSchemaFieldMissingError(error)) {
           this.capabilityBlocked = true;

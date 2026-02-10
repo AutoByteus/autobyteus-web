@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { shallowMount } from '@vue/test-utils';
+import { describe, expect, it, vi } from 'vitest';
+import { flushPromises, mount, shallowMount } from '@vue/test-utils';
 import AgentEventMonitor from '../AgentEventMonitor.vue';
 import type { Conversation } from '~/types/conversation';
 
@@ -81,5 +81,121 @@ describe('AgentEventMonitor.vue', () => {
     });
 
     expect(wrapper.text()).toContain('Total: 30 tokens / $0.3000');
+  });
+
+  it('auto-scrolls to bottom on streaming updates when user is near bottom', async () => {
+    const wrapper = mount(AgentEventMonitor, {
+      attachTo: document.body,
+      props: {
+        conversation: { ...conversation },
+      },
+      global: {
+        stubs: {
+          AgentUserInputForm: { template: '<div class="agent-input-stub" />' },
+          'agent-user-input-form': { template: '<div class="agent-input-stub" />' },
+          UserMessage: true,
+          AIMessage: true,
+        },
+      },
+    });
+
+    const scrollContainer = wrapper.find('.overflow-y-auto');
+    expect(scrollContainer.exists()).toBe(true);
+    const el = scrollContainer.element as HTMLElement;
+
+    let scrollTopValue = 590; // 10px from bottom
+    const scrollTopSetter = vi.fn((value: number) => {
+      scrollTopValue = value;
+    });
+    Object.defineProperty(el, 'scrollHeight', { value: 1000, configurable: true });
+    Object.defineProperty(el, 'clientHeight', { value: 400, configurable: true });
+    Object.defineProperty(el, 'scrollTop', {
+      configurable: true,
+      get: () => scrollTopValue,
+      set: scrollTopSetter,
+    });
+    await scrollContainer.trigger('scroll');
+    scrollTopSetter.mockClear();
+
+    await wrapper.setProps({
+      conversation: {
+        ...conversation,
+        messages: [
+          ...conversation.messages,
+          {
+            type: 'ai',
+            text: 'Streaming delta',
+            timestamp: new Date('2026-02-10T00:00:03.000Z'),
+            segments: [],
+            isComplete: false,
+          },
+        ],
+        updatedAt: '2026-02-10T00:00:31.000Z',
+      },
+    });
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+    await flushPromises();
+
+    expect(scrollTopSetter).toHaveBeenCalledWith(1000);
+    wrapper.unmount();
+  });
+
+  it('does not auto-scroll on streaming updates when user has scrolled away from bottom', async () => {
+    const wrapper = mount(AgentEventMonitor, {
+      attachTo: document.body,
+      props: {
+        conversation: { ...conversation },
+      },
+      global: {
+        stubs: {
+          AgentUserInputForm: { template: '<div class="agent-input-stub" />' },
+          'agent-user-input-form': { template: '<div class="agent-input-stub" />' },
+          UserMessage: true,
+          AIMessage: true,
+        },
+      },
+    });
+
+    const scrollContainer = wrapper.find('.overflow-y-auto');
+    expect(scrollContainer.exists()).toBe(true);
+    const el = scrollContainer.element as HTMLElement;
+
+    let scrollTopValue = 120; // far from bottom
+    const scrollTopSetter = vi.fn((value: number) => {
+      scrollTopValue = value;
+    });
+    Object.defineProperty(el, 'scrollHeight', { value: 1000, configurable: true });
+    Object.defineProperty(el, 'clientHeight', { value: 400, configurable: true });
+    Object.defineProperty(el, 'scrollTop', {
+      configurable: true,
+      get: () => scrollTopValue,
+      set: scrollTopSetter,
+    });
+    await scrollContainer.trigger('scroll');
+    scrollTopSetter.mockClear();
+
+    await wrapper.setProps({
+      conversation: {
+        ...conversation,
+        messages: [
+          ...conversation.messages,
+          {
+            type: 'ai',
+            text: 'Streaming delta',
+            timestamp: new Date('2026-02-10T00:00:04.000Z'),
+            segments: [],
+            isComplete: false,
+          },
+        ],
+        updatedAt: '2026-02-10T00:00:32.000Z',
+      },
+    });
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+    await flushPromises();
+
+    expect(scrollTopSetter).not.toHaveBeenCalled();
+    wrapper.unmount();
   });
 });

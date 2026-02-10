@@ -57,7 +57,7 @@ export const useExternalMessagingSetupStore = defineStore('externalMessagingSetu
           : 'READY',
         detail: providerScopeStore.requiresPersonalSession
           ? gatewaySnapshot.personalSessionBlockedReason || undefined
-          : 'Not required for WeCom App setup.',
+          : 'Not required for selected business API provider.',
       };
 
       const bindingStep: SetupStepState = {

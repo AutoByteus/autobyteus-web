@@ -1,12 +1,16 @@
 <template>
-  <div class="my-3">
-    <!-- Unified Tool Call Card -->
-    <div 
+  <div class="my-2">
+    <div
       class="rounded-lg border overflow-hidden transition-all duration-200"
-      :class="statusClasses"
+      :class="[statusClasses, isNavigable ? 'cursor-pointer hover:bg-gray-50' : 'cursor-default']"
+      :role="isNavigable ? 'button' : undefined"
+      :tabindex="isNavigable ? 0 : undefined"
+      @click="handleCardClick"
+      @keydown.enter.prevent="handleCardClick"
+      @keydown.space.prevent="handleCardClick"
     >
       <!-- Main Header Row (Non-clickable for expanding) -->
-      <div class="flex items-center justify-between px-3 py-2 cursor-default select-none">
+      <div class="flex items-center justify-between px-3 py-2 select-none">
         <!-- Left Section: Icon + Tool Info -->
         <div class="flex items-center gap-2 overflow-hidden">
           <!-- Status Icon -->
@@ -17,10 +21,23 @@
           <Icon v-else-if="status === 'denied'" icon="heroicons:x-circle-solid" class="w-5 h-5 text-gray-400 flex-shrink-0" />
           <Icon v-else icon="heroicons:wrench-screwdriver-solid" class="w-5 h-5 text-gray-500 flex-shrink-0" />
 
-          <!-- Tool Name -->
-          <div class="flex items-baseline gap-2 overflow-hidden">
+          <!-- Tool Name + lightweight context (single-row for fluid reading) -->
+          <div class="min-w-0 flex items-baseline gap-2 overflow-hidden">
             <span class="font-medium text-gray-700 text-sm truncate">{{ toolName }}</span>
-            <span class="font-mono text-[10px] text-gray-400 flex-shrink-0">#{{ invocationId.slice(0, 6) }}</span>
+            <span
+              v-if="contextSummary"
+              class="text-xs text-gray-500 truncate min-w-0"
+              :class="contextTextClasses"
+            >
+              · {{ contextSummary }}
+            </span>
+            <span
+              v-if="!isAwaiting"
+              class="text-[10px] font-semibold uppercase tracking-wide flex-shrink-0"
+              :class="statusTextClasses"
+            >
+              {{ statusLabel }}
+            </span>
           </div>
         </div>
 
@@ -44,27 +61,13 @@
             </button>
           </template>
 
-          <!-- External Link Button -->
-          <button 
+          <!-- Minimal affordance: card itself is clickable -->
+          <Icon
             v-if="!isAwaiting"
-            @click.stop="goToActivity"
-            class="p-1 rounded hover:bg-black/10 transition-colors"
-            title="View Details in Activity Tab"
-          >
-            <Icon icon="heroicons:arrow-top-right-on-square-solid" class="w-4 h-4 text-gray-400" />
-          </button>
-        </div>
-      </div>
-
-      <!-- Arguments Section (classic disclosure) -->
-      <div v-if="hasArgs" class="px-3 pb-3 pt-1">
-        <div class="bg-[#f2f2f2] dark:bg-gray-800 rounded px-3 py-2">
-          <details>
-            <summary class="cursor-pointer text-xs font-semibold text-gray-600 dark:text-gray-300 list-inside">
-              Arguments
-            </summary>
-            <pre class="mt-2 text-xs text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900 border border-[#e9ecef] dark:border-gray-700 rounded p-2 font-mono whitespace-pre-wrap overflow-x-auto"><code>{{ prettyArgs }}</code></pre>
-          </details>
+            icon="heroicons:chevron-right"
+            class="w-4 h-4 text-gray-400"
+            aria-hidden="true"
+          />
         </div>
       </div>
 
@@ -100,85 +103,138 @@ const activityStore = useAgentActivityStore();
 const isProcessing = ref(false);
 const isExecuting = computed(() => props.status === 'executing' || props.status === 'parsing');
 const isAwaiting = computed(() => props.status === 'awaiting-approval');
+const isNavigable = computed(() => !isAwaiting.value);
+const normalizedToolName = computed(() => (props.toolName || '').toLowerCase());
+
+const parsedArgs = computed<Record<string, any> | null>(() => {
+  if (props.args === undefined || props.args === null) return null;
+  if (typeof props.args === 'string') {
+    try {
+      const parsed = JSON.parse(props.args);
+      return (parsed && typeof parsed === 'object') ? parsed : null;
+    } catch {
+      return { raw: props.args };
+    }
+  }
+  return props.args;
+});
 
 const statusClasses = computed(() => {
   switch (props.status) {
     case 'executing':
     case 'parsing':
-      return 'bg-blue-50 border-blue-200';
+      return 'bg-white border-gray-200';
     case 'success':
-      return 'bg-green-50 border-green-200';
+      return 'bg-white border-gray-200';
     case 'error':
-      return 'bg-red-50 border-red-200';
+      return 'bg-white border-red-200';
     case 'awaiting-approval':
       return 'bg-amber-50 border-amber-200';
     case 'denied':
-      return 'bg-gray-100 border-gray-200 opacity-70';
+      return 'bg-white border-gray-200 opacity-75';
     default:
-      return 'bg-gray-50 border-gray-200';
+      return 'bg-white border-gray-200';
   }
 });
 
-const hasArgs = computed(() => {
-  if (props.args === undefined || props.args === null) return false;
-  if (typeof props.args === 'string') return props.args.trim().length > 0;
-  return Object.keys(props.args).length > 0;
+const statusLabel = computed(() => {
+  switch (props.status) {
+    case 'success':
+      return 'success';
+    case 'error':
+      return 'failed';
+    case 'executing':
+    case 'parsing':
+      return 'running';
+    case 'denied':
+      return 'denied';
+    default:
+      return '';
+  }
 });
 
-const prettyArgs = computed(() => {
-  const val = props.args;
-  if (val === undefined || val === null) return '';
-  
-  // If it's a string, try to parse it first
-  let obj = val;
-  if (typeof val === 'string') {
-    try {
-      obj = JSON.parse(val);
-    } catch {
-      return val; // Return raw string if not JSON
-    }
+const statusTextClasses = computed(() => {
+  switch (props.status) {
+    case 'success':
+      return 'text-green-600';
+    case 'error':
+      return 'text-red-600';
+    case 'executing':
+    case 'parsing':
+      return 'text-blue-600';
+    case 'denied':
+      return 'text-gray-500';
+    default:
+      return 'text-gray-500';
+  }
+});
+
+const isFileTool = computed(() => {
+  const name = normalizedToolName.value;
+  return (
+    name.includes('write_file') ||
+    name.includes('patch_file') ||
+    name.includes('read_file') ||
+    name.includes('apply_patch')
+  );
+});
+
+const isCommandTool = computed(() => {
+  const name = normalizedToolName.value;
+  return (
+    name.includes('bash') ||
+    name.includes('terminal') ||
+    name.includes('exec_command') ||
+    name.includes('run_command')
+  );
+});
+
+const contextSummary = computed(() => {
+  const args = parsedArgs.value;
+  if (!args) return '';
+
+  if (isFileTool.value) {
+    const path = pickFirstString(args, ['path', 'file_path', 'filepath', 'filename', 'target_path']);
+    if (path) return compactFileName(path);
   }
 
-  // Helper to format values specifically for display
-  const formatValue = (v: any, indentLevel: number): string => {
-    const indent = '  '.repeat(indentLevel);
-    
-    if (v === null) return 'null';
-    if (v === undefined) return 'undefined';
-    
-    if (typeof v === 'string') {
-      // Check if string has newlines - if so, format as block
-      if (v.includes('\n')) {
-        // Indent each line of the string content
-        const indentedContent = v.split('\n').join('\n' + indent + '  ');
-        return `"${indentedContent}"`;
-      }
-      return JSON.stringify(v);
-    }
-    
-    if (Array.isArray(v)) {
-      if (v.length === 0) return '[]';
-      const items = v.map(item => formatValue(item, indentLevel + 1));
-      return `[\n${indent}  ${items.join(',\n' + indent + '  ')}\n${indent}]`;
-    }
-    
-    if (typeof v === 'object') {
-      const keys = Object.keys(v);
-      if (keys.length === 0) return '{}';
-      
-      const props = keys.map(key => {
-        const value = formatValue(v[key], indentLevel + 1);
-        return `${indent}  "${key}": ${value}`;
-      });
-      
-      return `{\n${props.join(',\n')}\n${indent}}`;
-    }
-    
-    return JSON.stringify(v);
-  };
+  if (isCommandTool.value) {
+    const command = pickFirstString(args, ['command', 'cmd', 'script']);
+    if (command) return truncateText(redactSecrets(command), 56);
+  }
 
-  return formatValue(obj, 0);
+  return '';
 });
+
+const contextTextClasses = computed(() => isCommandTool.value ? 'font-mono' : '');
+
+const pickFirstString = (obj: Record<string, any>, keys: string[]): string => {
+  for (const key of keys) {
+    const val = obj[key];
+    if (typeof val === 'string' && val.trim().length > 0) return val.trim();
+  }
+  return '';
+};
+
+const compactFileName = (path: string): string => {
+  const normalized = path.replace(/\\/g, '/').trim();
+  if (!normalized) return '';
+  const segments = normalized.split('/').filter(Boolean);
+  if (segments.length === 0) return normalized;
+  return segments[segments.length - 1];
+};
+
+const redactSecrets = (text: string): string => {
+  let sanitized = text;
+  sanitized = sanitized.replace(/(api[_-]?key|token|password|passwd|secret)\s*=\s*([^\s]+)/gi, '$1=***');
+  sanitized = sanitized.replace(/(--?(?:api-key|token|password|passwd|secret)\s+)([^\s]+)/gi, '$1***');
+  return sanitized;
+};
+
+const truncateText = (text: string, maxLength: number): string => {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 1)}…`;
+};
 
 const approve = async () => {
   if (isProcessing.value) return;
@@ -205,6 +261,12 @@ const goToActivity = () => {
   const agentId = activeContextStore.activeAgentContext?.state.agentId;
   if (agentId) {
     activityStore.setHighlightedActivity(agentId, props.invocationId);
+  }
+};
+
+const handleCardClick = () => {
+  if (isNavigable.value) {
+    goToActivity();
   }
 };
 </script>

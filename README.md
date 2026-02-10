@@ -35,6 +35,8 @@ MESSAGE_GATEWAY_ADMIN_TOKEN=
 - `MESSAGE_GATEWAY_BASE_URL`: URL of `autobyteus-message-gateway`
 - `MESSAGE_GATEWAY_ADMIN_TOKEN`: optional bearer token if you protect gateway admin endpoints
 
+These same variables are also used for Discord and WeChat setup flows in `Settings -> External Messaging`.
+
 ## Personal WhatsApp Setup (Step-by-Step)
 
 1. Start `autobyteus-message-gateway` with personal mode enabled:
@@ -119,6 +121,50 @@ pnpm dev
    - set `provider=WECHAT`, `transport=PERSONAL_SESSION`
    - click `Refresh Peers` after receiving at least one inbound WeChat message
    - choose peer + target, then click `Save Binding`
+
+## Discord Bot Setup (Step-by-Step)
+
+1. Start `autobyteus-message-gateway` with Discord enabled:
+
+```bash
+GATEWAY_DISCORD_ENABLED=true \
+GATEWAY_DISCORD_BOT_TOKEN=<your-discord-bot-token> \
+GATEWAY_DISCORD_ACCOUNT_ID=discord-acct-1 \
+GATEWAY_PORT=8010 \
+node /Users/normy/autobyteus_org/autobyteus-message-gateway/dist/index.js
+```
+
+2. Ensure `autobyteus-web/.env.local` contains:
+   - `MESSAGE_GATEWAY_BASE_URL=http://localhost:8010`
+   - optional `MESSAGE_GATEWAY_ADMIN_TOKEN=...`
+
+3. Start web app:
+
+```bash
+pnpm dev
+```
+
+4. Open `Settings -> External Messaging`.
+
+5. In `Gateway Connection`:
+   - set gateway URL/token
+   - click `Validate Connection`
+   - confirm capability payload reports Discord enabled
+
+6. In `Channel Binding Setup`:
+   - set provider to `DISCORD` (transport auto-resolves to `BUSINESS_API`)
+   - `BUSINESS_API` here is AutoByteus terminology for Discord bot integration (Gateway + REST), not a separate Discord paid product
+   - `accountId` should match gateway `discordAccountId` (`GATEWAY_DISCORD_ACCOUNT_ID`)
+   - click `Refresh Peers` after a user sends at least one message to the bot (DM or guild channel)
+   - select peer from discovered candidates (recommended), or set `peerId` manually as:
+     - `user:<snowflake>` for DMs
+     - `channel:<snowflake>` for guild channels
+   - optional `threadId=<snowflake>` is allowed only with `channel:<snowflake>`
+   - select target and click `Save Binding`
+
+7. In `Setup Verification`:
+   - click `Run Verification`
+   - ensure final status is `READY`
 
 ## Server Modes
 

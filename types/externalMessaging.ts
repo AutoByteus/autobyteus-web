@@ -1,4 +1,4 @@
-export type ExternalMessagingProvider = 'WHATSAPP' | 'WECOM' | 'WECHAT';
+export type ExternalMessagingProvider = 'WHATSAPP' | 'WECOM' | 'WECHAT' | 'DISCORD';
 export type PersonalSessionProvider = 'WHATSAPP' | 'WECHAT';
 
 export type ExternalMessagingTransport = 'BUSINESS_API' | 'PERSONAL_SESSION';
@@ -60,6 +60,8 @@ export interface GatewayCapabilitiesModel {
   defaultWeChatMode: WeChatSetupMode | null;
   wecomAppEnabled: boolean;
   wechatPersonalEnabled: boolean;
+  discordEnabled: boolean;
+  discordAccountId: string | null;
 }
 
 export type GatewayWeComAccountMode = 'APP' | 'LEGACY';
@@ -106,6 +108,12 @@ export interface GatewayPeerCandidatesModel {
   sessionId: string;
   accountLabel: string;
   status: PersonalSessionStatus;
+  updatedAt: string;
+  items: GatewayPeerCandidate[];
+}
+
+export interface GatewayDiscordPeerCandidatesModel {
+  accountId: string;
   updatedAt: string;
   items: GatewayPeerCandidate[];
 }

@@ -157,6 +157,8 @@ describe('externalMessagingSetupStore', () => {
       defaultWeChatMode: 'WECOM_APP_BRIDGE',
       wechatPersonalEnabled: false,
       wecomAppEnabled: true,
+      discordEnabled: false,
+      discordAccountId: null,
     });
     providerScopeStore.setSelectedProvider('WECOM');
 

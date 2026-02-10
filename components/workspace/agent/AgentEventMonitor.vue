@@ -1,6 +1,10 @@
 <template>
   <div class="flex flex-col h-full p-4 gap-3">
-    <div class="flex-1 min-h-0 overflow-y-auto">
+    <div
+      :id="conversationScrollContainerId"
+      class="flex-1 min-h-0 overflow-y-auto"
+      @scroll="handleConversationScroll"
+    >
       <div class="rounded-xl bg-white">
         <div
           v-for="(message, index) in conversation.messages"
@@ -47,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, getCurrentInstance, onMounted, onUpdated, ref, watch } from 'vue';
 import type { Conversation, Message } from '~/types/conversation';
 import UserMessage from '~/components/conversation/UserMessage.vue';
 import AIMessage from '~/components/conversation/AIMessage.vue';
@@ -60,6 +64,58 @@ const props = defineProps<{
 }>();
 
 const agentId = computed(() => props.conversation.id);
+const instanceUid = getCurrentInstance()?.uid ?? Math.floor(Math.random() * 1_000_000);
+const conversationScrollContainerId = computed(() => `agent-conversation-scroll-${agentId.value}-${instanceUid}`);
+const shouldStickToBottom = ref(true);
+const NEAR_BOTTOM_THRESHOLD_PX = 40;
+
+const getConversationScrollContainer = (): HTMLElement | null => {
+  if (typeof document === 'undefined') return null;
+  return document.getElementById(conversationScrollContainerId.value);
+};
+
+const getDistanceFromBottom = (el: HTMLElement): number => {
+  return el.scrollHeight - el.scrollTop - el.clientHeight;
+};
+
+const isNearBottom = (el: HTMLElement): boolean => {
+  return getDistanceFromBottom(el) <= NEAR_BOTTOM_THRESHOLD_PX;
+};
+
+const updatePinnedStateFromScrollPosition = (el?: HTMLElement | null) => {
+  const target = el ?? getConversationScrollContainer();
+  if (!target) return;
+  shouldStickToBottom.value = isNearBottom(target);
+};
+
+const scrollToBottom = () => {
+  const el = getConversationScrollContainer();
+  if (!el) return;
+  el.scrollTop = el.scrollHeight;
+};
+
+const handleConversationScroll = (event: Event) => {
+  updatePinnedStateFromScrollPosition(event.currentTarget as HTMLElement | null);
+};
+
+const syncAutoScrollIfPinned = () => {
+  if (!shouldStickToBottom.value) return;
+  scrollToBottom();
+  updatePinnedStateFromScrollPosition();
+};
+
+onMounted(() => {
+  scrollToBottom();
+  updatePinnedStateFromScrollPosition();
+});
+
+onUpdated(() => {
+  syncAutoScrollIfPinned();
+});
+
+watch(() => props.conversation.id, () => {
+  shouldStickToBottom.value = true;
+});
 
 const formatTokenCost = (message: Message) => {
   if (message.type === 'user') {

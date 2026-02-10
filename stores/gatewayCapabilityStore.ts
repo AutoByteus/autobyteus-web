@@ -28,6 +28,20 @@ function normalizeErrorMessage(error: unknown): string {
   return 'Gateway request failed';
 }
 
+function normalizeCapabilities(capabilities: GatewayCapabilitiesModel): GatewayCapabilitiesModel {
+  return {
+    wechatModes: Array.isArray(capabilities.wechatModes) ? capabilities.wechatModes : [],
+    defaultWeChatMode: capabilities.defaultWeChatMode ?? null,
+    wecomAppEnabled: capabilities.wecomAppEnabled === true,
+    wechatPersonalEnabled: capabilities.wechatPersonalEnabled === true,
+    discordEnabled: capabilities.discordEnabled === true,
+    discordAccountId:
+      typeof capabilities.discordAccountId === 'string' && capabilities.discordAccountId.trim().length > 0
+        ? capabilities.discordAccountId
+        : null,
+  };
+}
+
 export const useGatewayCapabilityStore = defineStore('gatewayCapabilityStore', {
   state: (): GatewayCapabilityState => ({
     capabilities: null,
@@ -51,7 +65,7 @@ export const useGatewayCapabilityStore = defineStore('gatewayCapabilityStore', {
       this.isCapabilitiesLoading = true;
       this.capabilitiesError = null;
       try {
-        const capabilities = await this.createClient().getCapabilities();
+        const capabilities = normalizeCapabilities(await this.createClient().getCapabilities());
         this.capabilities = capabilities;
         return capabilities;
       } catch (error) {

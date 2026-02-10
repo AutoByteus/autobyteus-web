@@ -51,6 +51,8 @@ describe('gatewayCapabilityStore', () => {
       defaultWeChatMode: 'WECOM_APP_BRIDGE',
       wecomAppEnabled: true,
       wechatPersonalEnabled: false,
+      discordEnabled: true,
+      discordAccountId: 'discord-acct-1',
     });
 
     const sessionStore = useGatewaySessionSetupStore();
@@ -65,6 +67,8 @@ describe('gatewayCapabilityStore', () => {
       adminToken: 'admin-token',
     });
     expect(store.capabilities?.defaultWeChatMode).toBe('WECOM_APP_BRIDGE');
+    expect(store.capabilities?.discordEnabled).toBe(true);
+    expect(store.capabilities?.discordAccountId).toBe('discord-acct-1');
   });
 
   it('loads wecom accounts from gateway', async () => {
@@ -105,5 +109,23 @@ describe('gatewayCapabilityStore', () => {
 
     await expect(store.loadCapabilities()).rejects.toThrow('gateway unavailable');
     expect(store.capabilitiesError).toBe('gateway unavailable');
+  });
+
+  it('normalizes missing discord fields to safe defaults', async () => {
+    gatewayClientMock.getCapabilities.mockResolvedValue({
+      wechatModes: ['WECOM_APP_BRIDGE'],
+      defaultWeChatMode: 'WECOM_APP_BRIDGE',
+      wecomAppEnabled: true,
+      wechatPersonalEnabled: false,
+    });
+
+    const sessionStore = useGatewaySessionSetupStore();
+    sessionStore.gatewayBaseUrl = 'http://localhost:8010';
+
+    const store = useGatewayCapabilityStore();
+    const capabilities = await store.loadCapabilities();
+
+    expect(capabilities.discordEnabled).toBe(false);
+    expect(capabilities.discordAccountId).toBeNull();
   });
 });
