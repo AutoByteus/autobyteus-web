@@ -31,6 +31,13 @@ const mountComponent = async (storePatch: Record<string, any> = {}) => {
         providersWithModels: [],
         audioProvidersWithModels: [],
         imageProvidersWithModels: [],
+        geminiSetup: {
+          mode: 'AI_STUDIO',
+          geminiApiKeyConfigured: false,
+          vertexApiKeyConfigured: false,
+          vertexProject: null,
+          vertexLocation: null,
+        },
         providerConfigs: {},
         isLoadingModels: false,
         isReloadingModels: false,
@@ -46,6 +53,8 @@ const mountComponent = async (storePatch: Record<string, any> = {}) => {
 
   store.fetchProvidersWithModels = vi.fn().mockResolvedValue(store.providersWithModels)
   store.getLLMProviderApiKey = vi.fn().mockResolvedValue('')
+  store.fetchGeminiSetupConfig = vi.fn().mockResolvedValue(store.geminiSetup)
+  store.setGeminiSetupConfig = vi.fn().mockResolvedValue(true)
 
   const wrapper = mount(ProviderAPIKeyManager, {
     global: {
@@ -180,5 +189,198 @@ describe('ProviderAPIKeyManager', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('No models available. Configure at least one provider API key to see available models.')
+  })
+
+  it('renders Gemini setup controls and saves Gemini setup', async () => {
+    const { wrapper, store } = await mountComponent({
+      providersWithModels: [
+        {
+          provider: 'GEMINI',
+          models: [
+            {
+              modelIdentifier: 'gemini-3-flash-preview',
+              name: 'Gemini Flash',
+              value: 'gemini-3-flash-preview',
+              canonicalName: 'gemini-3-flash',
+              provider: 'GEMINI',
+              runtime: 'api',
+              hostUrl: null,
+            },
+          ],
+        },
+      ],
+    })
+
+    const vm = wrapper.vm as any
+    if (vm?.loading && typeof vm.loading === 'object' && 'value' in vm.loading) {
+      vm.loading.value = false
+    } else {
+      setMaybeRef(vm, 'loading', false)
+    }
+    const setupState = vm.$?.setupState
+    setMaybeRef(setupState, 'loading', false)
+    await wrapper.vm.$nextTick()
+    await flushPromises()
+
+    if (!store.providersWithModels.length) {
+      store.providersWithModels = [
+        {
+          provider: 'GEMINI',
+          models: [
+            {
+              modelIdentifier: 'gemini-3-flash-preview',
+              name: 'Gemini Flash',
+              value: 'gemini-3-flash-preview',
+              canonicalName: 'gemini-3-flash',
+              provider: 'GEMINI',
+              runtime: 'api',
+              hostUrl: null,
+            },
+          ],
+        },
+      ] as any
+      await wrapper.vm.$nextTick()
+      await flushPromises()
+    }
+
+    setMaybeRef(setupState, 'providersWithModels', store.providersWithModels)
+    setMaybeRef(setupState, 'selectedModelProvider', 'GEMINI')
+    if ((wrapper.vm as any).selectedModelProvider !== undefined) {
+      ;(wrapper.vm as any).selectedModelProvider = 'GEMINI'
+    }
+    await wrapper.vm.$nextTick()
+    await flushPromises()
+    if (typeof (wrapper.vm as any).$forceUpdate === 'function') {
+      ;(wrapper.vm as any).$forceUpdate()
+      await wrapper.vm.$nextTick()
+      await flushPromises()
+    }
+
+    expect(wrapper.text()).toContain('Gemini setup: choose a mode and fill only required fields.')
+    expect(wrapper.text()).toContain('Save Gemini Setup')
+
+    const geminiInput = wrapper.get('input[placeholder=\"Enter Gemini API key...\"]')
+    await geminiInput.setValue('test-gemini-key')
+    setMaybeRef(setupState, 'geminiApiKey', 'test-gemini-key')
+
+    if (typeof setupState?.saveApiKeyForSelectedProvider === 'function') {
+      await setupState.saveApiKeyForSelectedProvider()
+    } else {
+      const saveBtn = wrapper.findAll('button').find(btn => btn.text().includes('Save Gemini Setup'))
+      expect(saveBtn).toBeTruthy()
+      if (saveBtn) {
+        await saveBtn.trigger('click')
+      }
+    }
+    await wrapper.vm.$nextTick()
+    await flushPromises()
+
+    expect(store.setGeminiSetupConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'AI_STUDIO',
+        geminiApiKey: 'test-gemini-key',
+      })
+    )
+  })
+
+  it('saves Gemini Vertex Express setup with the expected payload', async () => {
+    const { wrapper, store } = await mountComponent({
+      providersWithModels: [
+        {
+          provider: 'GEMINI',
+          models: [
+            {
+              modelIdentifier: 'gemini-3-flash-preview',
+              name: 'Gemini Flash',
+              value: 'gemini-3-flash-preview',
+              canonicalName: 'gemini-3-flash',
+              provider: 'GEMINI',
+              runtime: 'api',
+              hostUrl: null,
+            },
+          ],
+        },
+      ],
+    })
+
+    const vm = wrapper.vm as any
+    if (vm?.loading && typeof vm.loading === 'object' && 'value' in vm.loading) {
+      vm.loading.value = false
+    } else {
+      setMaybeRef(vm, 'loading', false)
+    }
+    const setupState = vm.$?.setupState
+    setMaybeRef(setupState, 'loading', false)
+    setMaybeRef(setupState, 'providersWithModels', store.providersWithModels)
+    setMaybeRef(setupState, 'selectedModelProvider', 'GEMINI')
+    setMaybeRef(setupState, 'geminiSetupMode', 'VERTEX_EXPRESS')
+    setMaybeRef(setupState, 'vertexApiKey', 'vertex-express-test-key')
+    await wrapper.vm.$nextTick()
+    await flushPromises()
+
+    if (typeof setupState?.saveApiKeyForSelectedProvider === 'function') {
+      await setupState.saveApiKeyForSelectedProvider()
+    }
+    await wrapper.vm.$nextTick()
+    await flushPromises()
+
+    expect(store.setGeminiSetupConfig).toHaveBeenCalledWith({
+      mode: 'VERTEX_EXPRESS',
+      geminiApiKey: null,
+      vertexApiKey: 'vertex-express-test-key',
+      vertexProject: null,
+      vertexLocation: null,
+    })
+  })
+
+  it('saves Gemini Vertex Project setup with the expected payload', async () => {
+    const { wrapper, store } = await mountComponent({
+      providersWithModels: [
+        {
+          provider: 'GEMINI',
+          models: [
+            {
+              modelIdentifier: 'gemini-3-flash-preview',
+              name: 'Gemini Flash',
+              value: 'gemini-3-flash-preview',
+              canonicalName: 'gemini-3-flash',
+              provider: 'GEMINI',
+              runtime: 'api',
+              hostUrl: null,
+            },
+          ],
+        },
+      ],
+    })
+
+    const vm = wrapper.vm as any
+    if (vm?.loading && typeof vm.loading === 'object' && 'value' in vm.loading) {
+      vm.loading.value = false
+    } else {
+      setMaybeRef(vm, 'loading', false)
+    }
+    const setupState = vm.$?.setupState
+    setMaybeRef(setupState, 'loading', false)
+    setMaybeRef(setupState, 'providersWithModels', store.providersWithModels)
+    setMaybeRef(setupState, 'selectedModelProvider', 'GEMINI')
+    setMaybeRef(setupState, 'geminiSetupMode', 'VERTEX_PROJECT')
+    setMaybeRef(setupState, 'vertexProject', 'project-test')
+    setMaybeRef(setupState, 'vertexLocation', 'europe-west4')
+    await wrapper.vm.$nextTick()
+    await flushPromises()
+
+    if (typeof setupState?.saveApiKeyForSelectedProvider === 'function') {
+      await setupState.saveApiKeyForSelectedProvider()
+    }
+    await wrapper.vm.$nextTick()
+    await flushPromises()
+
+    expect(store.setGeminiSetupConfig).toHaveBeenCalledWith({
+      mode: 'VERTEX_PROJECT',
+      geminiApiKey: null,
+      vertexApiKey: null,
+      vertexProject: 'project-test',
+      vertexLocation: 'europe-west4',
+    })
   })
 })

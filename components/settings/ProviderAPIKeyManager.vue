@@ -138,7 +138,88 @@
 
               <!-- API Key Configuration Section -->
               <div class="px-5 py-4 border-b border-gray-100 bg-white">
-                <div class="flex gap-2">
+                <div v-if="selectedModelProvider === 'GEMINI'" class="space-y-3">
+                  <p class="text-xs text-gray-500">
+                    Gemini setup: choose a mode and fill only required fields.
+                  </p>
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      v-for="modeOption in geminiModeOptions"
+                      :key="modeOption.value"
+                      type="button"
+                      class="px-3 py-1.5 text-xs rounded-full border transition-colors"
+                      :class="geminiSetupMode === modeOption.value
+                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'"
+                      @click="geminiSetupMode = modeOption.value"
+                    >
+                      {{ modeOption.label }}
+                    </button>
+                  </div>
+
+                  <div v-if="geminiSetupMode === 'AI_STUDIO'" class="relative">
+                    <input
+                      v-model="geminiApiKey"
+                      :type="showApiKey ? 'text' : 'password'"
+                      class="w-full p-2.5 pr-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                      placeholder="Enter Gemini API key..."
+                    />
+                    <button
+                      @click="toggleApiKeyVisibility"
+                      class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      type="button"
+                    >
+                      <span v-if="showApiKey" class="i-heroicons-eye-slash-20-solid w-4 h-4"></span>
+                      <span v-else class="i-heroicons-eye-20-solid w-4 h-4"></span>
+                    </button>
+                  </div>
+
+                  <div v-if="geminiSetupMode === 'VERTEX_EXPRESS'" class="relative">
+                    <input
+                      v-model="vertexApiKey"
+                      :type="showApiKey ? 'text' : 'password'"
+                      class="w-full p-2.5 pr-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                      placeholder="Enter Vertex API key..."
+                    />
+                    <button
+                      @click="toggleApiKeyVisibility"
+                      class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      type="button"
+                    >
+                      <span v-if="showApiKey" class="i-heroicons-eye-slash-20-solid w-4 h-4"></span>
+                      <span v-else class="i-heroicons-eye-20-solid w-4 h-4"></span>
+                    </button>
+                  </div>
+
+                  <div v-if="geminiSetupMode === 'VERTEX_PROJECT'" class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <input
+                      v-model="vertexProject"
+                      type="text"
+                      class="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                      placeholder="Vertex project id"
+                    />
+                    <input
+                      v-model="vertexLocation"
+                      type="text"
+                      class="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                      placeholder="Vertex location (e.g. us-central1)"
+                    />
+                  </div>
+
+                  <button
+                    @click="saveApiKeyForSelectedProvider"
+                    :disabled="!canSaveGeminiSetup || saving"
+                    class="px-4 py-2.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center whitespace-nowrap"
+                  >
+                    <span
+                      v-if="saving"
+                      class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1.5"
+                    ></span>
+                    {{ saving ? 'Saving...' : 'Save Gemini Setup' }}
+                  </button>
+                </div>
+
+                <div v-else class="flex gap-2">
                   <div class="relative flex-1">
                     <input
                       v-model="apiKey"
@@ -271,7 +352,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import { storeToRefs } from "pinia";
-import { useLLMProviderConfigStore } from "~/stores/llmProviderConfig";
+import { useLLMProviderConfigStore, type GeminiSetupMode } from "~/stores/llmProviderConfig";
 
 const store = useLLMProviderConfigStore();
 // Use storeToRefs for reactive state properties
@@ -284,6 +365,7 @@ const {
   providersWithModels,
   audioProvidersWithModels,
   imageProvidersWithModels,
+  geminiSetup,
 } = storeToRefs(store);
 
 // Computed properties for provider groups with models (filter out empty ones)
@@ -326,10 +408,6 @@ const toggleProviderExpansion = (modelType: string, provider: string) => {
   expandedProviders.value[key] = !isProviderExpanded(modelType, provider);
 };
 
-const isProviderConfigured = (provider: string): boolean => {
-  return !!providerConfigs.value[provider]?.apiKey;
-};
-
 const loading = ref(import.meta.env.MODE === "test" ? false : true);
 const saving = ref(false);
 const apiKey = ref("");
@@ -339,6 +417,56 @@ const notification = ref<{ type: "success" | "error"; message: string } | null>(
 );
 
 const providerConfigs = ref<Record<string, { apiKey?: string }>>({});
+
+const geminiModeOptions: Array<{ value: GeminiSetupMode; label: string }> = [
+  { value: 'AI_STUDIO', label: 'AI Studio' },
+  { value: 'VERTEX_EXPRESS', label: 'Vertex Express' },
+  { value: 'VERTEX_PROJECT', label: 'Vertex Project' },
+];
+
+const geminiSetupMode = ref<GeminiSetupMode>('AI_STUDIO');
+const geminiApiKey = ref('');
+const vertexApiKey = ref('');
+const vertexProject = ref('');
+const vertexLocation = ref('');
+
+const applyGeminiSetupToForm = () => {
+  const setup = geminiSetup.value;
+  geminiSetupMode.value = setup.mode ?? 'AI_STUDIO';
+  vertexProject.value = setup.vertexProject ?? '';
+  vertexLocation.value = setup.vertexLocation ?? '';
+  geminiApiKey.value = '';
+  vertexApiKey.value = '';
+};
+
+const isGeminiConfigured = computed(() => {
+  const setup = geminiSetup.value;
+  if (!setup) return false;
+  if (setup.mode === 'VERTEX_EXPRESS') {
+    return setup.vertexApiKeyConfigured;
+  }
+  if (setup.mode === 'VERTEX_PROJECT') {
+    return Boolean((setup.vertexProject ?? '').trim() && (setup.vertexLocation ?? '').trim());
+  }
+  return setup.geminiApiKeyConfigured;
+});
+
+const isProviderConfigured = (provider: string): boolean => {
+  if (provider === 'GEMINI') {
+    return isGeminiConfigured.value;
+  }
+  return !!providerConfigs.value[provider]?.apiKey;
+};
+
+const canSaveGeminiSetup = computed(() => {
+  if (geminiSetupMode.value === 'VERTEX_PROJECT') {
+    return Boolean(vertexProject.value.trim() && vertexLocation.value.trim());
+  }
+  if (geminiSetupMode.value === 'VERTEX_EXPRESS') {
+    return Boolean(vertexApiKey.value.trim());
+  }
+  return Boolean(geminiApiKey.value.trim());
+});
 
 // Computed property to check if we have any models
 const hasAnyModels = computed(
@@ -428,8 +556,16 @@ const isReloadingSelectedProvider = computed(() => {
 });
 
 // Select a provider to view its models
-const selectProviderForModels = (providerName: string) => {
+const selectProviderForModels = async (providerName: string) => {
   selectedModelProvider.value = providerName;
+  if (providerName === 'GEMINI') {
+    try {
+      await store.fetchGeminiSetupConfig();
+      applyGeminiSetupToForm();
+    } catch (error) {
+      console.error('Failed to refresh Gemini setup config:', error);
+    }
+  }
 };
 
 // Auto-select first configured provider (or first provider if none configured)
@@ -481,9 +617,15 @@ const reloadSelectedProviderModels = async () => {
 onMounted(async () => {
   try {
     await store.fetchProvidersWithModels();
+    await store.fetchGeminiSetupConfig();
+    applyGeminiSetupToForm();
 
     // Load existing configurations in parallel
     const keyFetchPromises = providers.value.map(async (provider) => {
+      if (provider === 'GEMINI') {
+        providerConfigs.value[provider] = {};
+        return;
+      }
       try {
         const apiKey = await store.getLLMProviderApiKey(provider);
         // Check specifically for non-empty strings to determine if configured
@@ -524,10 +666,26 @@ const showNotification = (message: string, type: "success" | "error") => {
 };
 
 const saveApiKeyForSelectedProvider = async () => {
-  if (!selectedModelProvider.value || !apiKey.value) return;
+  if (!selectedModelProvider.value) return;
 
   saving.value = true;
   try {
+    if (selectedModelProvider.value === "GEMINI") {
+      const payload = {
+        mode: geminiSetupMode.value,
+        geminiApiKey: geminiSetupMode.value === 'AI_STUDIO' ? geminiApiKey.value : null,
+        vertexApiKey: geminiSetupMode.value === 'VERTEX_EXPRESS' ? vertexApiKey.value : null,
+        vertexProject: geminiSetupMode.value === 'VERTEX_PROJECT' ? vertexProject.value : null,
+        vertexLocation: geminiSetupMode.value === 'VERTEX_PROJECT' ? vertexLocation.value : null,
+      };
+
+      await store.setGeminiSetupConfig(payload);
+      applyGeminiSetupToForm();
+      showNotification("Gemini setup saved successfully", "success");
+      return;
+    }
+
+    if (!apiKey.value) return;
     await store.setLLMProviderApiKey(selectedModelProvider.value, apiKey.value);
     providerConfigs.value[selectedModelProvider.value] = { apiKey: "********" };
 

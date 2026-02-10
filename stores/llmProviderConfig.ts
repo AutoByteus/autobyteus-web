@@ -2,12 +2,14 @@ import { defineStore } from 'pinia'
 import { getApolloClient } from '~/utils/apolloClient'
 import { 
   GET_LLM_PROVIDER_API_KEY, 
-  GET_AVAILABLE_LLM_PROVIDERS_WITH_MODELS
+  GET_AVAILABLE_LLM_PROVIDERS_WITH_MODELS,
+  GET_GEMINI_SETUP_CONFIG
 } from '~/graphql/queries/llm_provider_queries'
 import { 
   SET_LLM_PROVIDER_API_KEY,
   RELOAD_LLM_MODELS,
-  RELOAD_LLM_PROVIDER_MODELS
+  RELOAD_LLM_PROVIDER_MODELS,
+  SET_GEMINI_SETUP_CONFIG
 } from '~/graphql/mutations/llm_provider_mutations'
 import type { LLMProvider } from '~/types/llm'
 import { LLMProvider as LLMProviderEnum } from '~/types/llm'
@@ -33,6 +35,32 @@ interface ProviderWithModels {
   models: ModelInfo[];
 }
 
+export type GeminiSetupMode = 'AI_STUDIO' | 'VERTEX_EXPRESS' | 'VERTEX_PROJECT';
+
+export interface GeminiSetupConfigState {
+  mode: GeminiSetupMode;
+  geminiApiKeyConfigured: boolean;
+  vertexApiKeyConfigured: boolean;
+  vertexProject: string | null;
+  vertexLocation: string | null;
+}
+
+export interface GeminiSetupConfigInput {
+  mode: GeminiSetupMode;
+  geminiApiKey?: string | null;
+  vertexApiKey?: string | null;
+  vertexProject?: string | null;
+  vertexLocation?: string | null;
+}
+
+const defaultGeminiSetup = (): GeminiSetupConfigState => ({
+  mode: 'AI_STUDIO',
+  geminiApiKeyConfigured: false,
+  vertexApiKeyConfigured: false,
+  vertexProject: null,
+  vertexLocation: null,
+});
+
 export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
   state: () => ({
     providersWithModels: [] as ProviderWithModels[],
@@ -44,6 +72,7 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
     isReloadingProviderModels: false,
     reloadingProvider: null as string | null,
     hasFetchedProviders: false,
+    geminiSetup: defaultGeminiSetup(),
   }),
   getters: {
     providers(state): string[] {
@@ -314,6 +343,56 @@ export const useLLMProviderConfigStore = defineStore('llmProviderConfig', {
         }
       } catch (error) {
         console.error(`Failed to get provider API key for ${provider}:`, error);
+        throw error;
+      }
+    },
+
+    async fetchGeminiSetupConfig() {
+      const client = getApolloClient()
+
+      try {
+        const { data } = await client.query({
+          query: GET_GEMINI_SETUP_CONFIG,
+          fetchPolicy: 'network-only',
+        });
+
+        this.geminiSetup = data?.getGeminiSetupConfig ?? defaultGeminiSetup();
+        return this.geminiSetup;
+      } catch (error) {
+        console.error('Failed to fetch Gemini setup config:', error);
+        this.geminiSetup = defaultGeminiSetup();
+        throw error;
+      }
+    },
+
+    async setGeminiSetupConfig(input: GeminiSetupConfigInput) {
+      const client = getApolloClient()
+
+      try {
+        const { data, errors } = await client.mutate({
+          mutation: SET_GEMINI_SETUP_CONFIG,
+          variables: {
+            mode: input.mode,
+            geminiApiKey: input.geminiApiKey ?? null,
+            vertexApiKey: input.vertexApiKey ?? null,
+            vertexProject: input.vertexProject ?? null,
+            vertexLocation: input.vertexLocation ?? null,
+          },
+        });
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map(e => e.message).join(', '));
+        }
+
+        const responseMessage = data?.setGeminiSetupConfig;
+        if (!responseMessage || !responseMessage.includes('successfully')) {
+          throw new Error(responseMessage || 'Failed to save Gemini setup');
+        }
+
+        await this.fetchGeminiSetupConfig();
+        return true;
+      } catch (error) {
+        console.error('Failed to set Gemini setup config:', error);
         throw error;
       }
     }

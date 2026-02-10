@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 import { useServerSettingsStore } from '~/stores/serverSettings'
 import { getApolloClient } from '~/utils/apolloClient'
 
@@ -7,11 +7,7 @@ vi.mock('~/utils/apolloClient', () => ({
   getApolloClient: vi.fn(),
 }))
 
-const buildQueryMock = (data: any) => {
-  return vi.fn().mockResolvedValue({ data })
-}
-
-describe('serverSettings store', () => {
+describe('serverSettings store search config', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
   })
@@ -20,47 +16,83 @@ describe('serverSettings store', () => {
     vi.restoreAllMocks()
   })
 
-  it('fetchServerSettings populates settings from the Apollo client query', async () => {
-    const queryResult = {
-      getServerSettings: [
-        { key: 'FOO', value: 'BAR', description: 'desc' }
-      ]
-    }
-    const queryMock = buildQueryMock(queryResult)
-    vi.mocked(getApolloClient).mockReturnValue({ query: queryMock } as any)
+  it('fetchSearchConfig populates state', async () => {
+    const queryMock = vi.fn().mockResolvedValue({
+      data: {
+        getSearchConfig: {
+          provider: 'google_cse',
+          serperApiKeyConfigured: false,
+          serpapiApiKeyConfigured: false,
+          googleCseApiKeyConfigured: true,
+          googleCseId: 'my-cse-id',
+          vertexAiSearchApiKeyConfigured: false,
+          vertexAiSearchServingConfig: null,
+        },
+      },
+    })
+
+    vi.mocked(getApolloClient).mockReturnValue({
+      query: queryMock,
+    } as any)
 
     const store = useServerSettingsStore()
-    const result = await store.fetchServerSettings()
+    const result = await store.fetchSearchConfig()
 
     expect(queryMock).toHaveBeenCalledTimes(1)
-    expect(store.settings).toEqual(queryResult.getServerSettings)
-    expect(result).toEqual(queryResult.getServerSettings)
-    expect(store.isLoading).toBe(false)
-    expect(store.error).toBeNull()
+    expect(result.provider).toBe('google_cse')
+    expect(store.searchConfig.googleCseId).toBe('my-cse-id')
   })
 
-  it('fetchServerSettings returns cached settings without querying again', async () => {
+  it('setSearchConfig saves and refreshes search and server settings', async () => {
+    const mutateMock = vi.fn().mockResolvedValue({
+      data: {
+        setSearchConfig: "Search configuration for provider 'serper' has been updated successfully.",
+      },
+      errors: undefined,
+    })
+    const queryMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          getSearchConfig: {
+            provider: 'serper',
+            serperApiKeyConfigured: true,
+            serpapiApiKeyConfigured: false,
+            googleCseApiKeyConfigured: false,
+            googleCseId: null,
+            vertexAiSearchApiKeyConfigured: false,
+            vertexAiSearchServingConfig: null,
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          getServerSettings: [
+            { key: 'DEFAULT_SEARCH_PROVIDER', value: 'serper', description: 'desc' },
+          ],
+        },
+      })
+
+    vi.mocked(getApolloClient).mockReturnValue({
+      mutate: mutateMock,
+      query: queryMock,
+    } as any)
+
     const store = useServerSettingsStore()
-    store.settings = [{ key: 'CACHED', value: '1', description: 'cached' }]
+    const success = await store.setSearchConfig({
+      provider: 'serper',
+      serperApiKey: 'serper-key',
+    })
 
-    const queryMock = vi.fn()
-    vi.mocked(getApolloClient).mockReturnValue({ query: queryMock } as any)
-
-    const result = await store.fetchServerSettings()
-
-    expect(result).toEqual(store.settings)
-    expect(queryMock).not.toHaveBeenCalled()
-  })
-
-  it('fetchServerSettings records errors when the query throws', async () => {
-    const queryMock = vi.fn().mockRejectedValue(new Error('boom'))
-    vi.mocked(getApolloClient).mockReturnValue({ query: queryMock } as any)
-
-    const store = useServerSettingsStore()
-
-    await expect(store.fetchServerSettings()).rejects.toThrow('boom')
-    expect(store.settings).toEqual([])
-    expect(store.error).toBe('boom')
-    expect(store.isLoading).toBe(false)
+    expect(success).toBe(true)
+    expect(mutateMock).toHaveBeenCalledWith(expect.objectContaining({
+      variables: expect.objectContaining({
+        provider: 'serper',
+        serperApiKey: 'serper-key',
+      }),
+    }))
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(store.searchConfig.provider).toBe('serper')
+    expect(store.settings.some(s => s.key === 'DEFAULT_SEARCH_PROVIDER')).toBe(true)
   })
 })

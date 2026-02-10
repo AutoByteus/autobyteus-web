@@ -17,3 +17,21 @@ export const RELOAD_LLM_PROVIDER_MODELS = gql`
     reloadLlmProviderModels(provider: $provider)
   }
 `;
+
+export const SET_GEMINI_SETUP_CONFIG = gql`
+  mutation SetGeminiSetupConfig(
+    $mode: String!
+    $geminiApiKey: String
+    $vertexApiKey: String
+    $vertexProject: String
+    $vertexLocation: String
+  ) {
+    setGeminiSetupConfig(
+      mode: $mode
+      geminiApiKey: $geminiApiKey
+      vertexApiKey: $vertexApiKey
+      vertexProject: $vertexProject
+      vertexLocation: $vertexLocation
+    )
+  }
+`;

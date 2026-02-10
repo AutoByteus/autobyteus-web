@@ -10,3 +10,17 @@ export const GET_SERVER_SETTINGS = gql`
     }
   }
 `
+
+export const GET_SEARCH_CONFIG = gql`
+  query GetSearchConfig {
+    getSearchConfig {
+      provider
+      serperApiKeyConfigured
+      serpapiApiKeyConfigured
+      googleCseApiKeyConfigured
+      googleCseId
+      vertexAiSearchApiKeyConfigured
+      vertexAiSearchServingConfig
+    }
+  }
+`

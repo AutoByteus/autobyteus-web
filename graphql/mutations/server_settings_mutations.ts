@@ -5,3 +5,25 @@ export const UPDATE_SERVER_SETTING = gql`
     updateServerSetting(key: $key, value: $value)
   }
 `
+
+export const SET_SEARCH_CONFIG = gql`
+  mutation SetSearchConfig(
+    $provider: String!
+    $serperApiKey: String
+    $serpapiApiKey: String
+    $googleCseApiKey: String
+    $googleCseId: String
+    $vertexAiSearchApiKey: String
+    $vertexAiSearchServingConfig: String
+  ) {
+    setSearchConfig(
+      provider: $provider
+      serperApiKey: $serperApiKey
+      serpapiApiKey: $serpapiApiKey
+      googleCseApiKey: $googleCseApiKey
+      googleCseId: $googleCseId
+      vertexAiSearchApiKey: $vertexAiSearchApiKey
+      vertexAiSearchServingConfig: $vertexAiSearchServingConfig
+    )
+  }
+`
