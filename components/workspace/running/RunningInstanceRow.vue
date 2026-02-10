@@ -17,12 +17,13 @@
     </div>
 
     <!-- Actions -->
-    <button 
+    <button
       @click.stop="$emit('delete', instance.state.agentId)"
-      class="delete-btn p-0.5 rounded text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+      class="delete-btn inline-flex h-6 w-6 items-center justify-center rounded-md text-gray-500 hover:text-red-600 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200 transition-colors"
       title="Stop and remove instance"
+      aria-label="Close agent instance"
     >
-      <span class="i-heroicons-x-mark-20-solid h-3.5 w-3.5"></span>
+      <span class="text-sm leading-none font-semibold" aria-hidden="true">×</span>
     </button>
   </div>
 </template>
