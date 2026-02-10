@@ -8,13 +8,13 @@ export const GetAgentTeamDefinitions = gql`
       name
       description
       role
+      avatarUrl
       coordinatorMemberName
       nodes {
         __typename
         memberName
         referenceId
         referenceType
-        dependencies
       }
     }
   }

@@ -44,6 +44,7 @@ export type AgentArtifact = {
 
 export type AgentDefinition = {
   __typename?: 'AgentDefinition';
+  avatarUrl?: Maybe<Scalars['String']['output']>;
   description: Scalars['String']['output'];
   id: Scalars['String']['output'];
   inputProcessorNames: Array<Scalars['String']['output']>;
@@ -83,6 +84,7 @@ export type AgentMemoryView = {
 
 export type AgentTeamDefinition = {
   __typename?: 'AgentTeamDefinition';
+  avatarUrl?: Maybe<Scalars['String']['output']>;
   coordinatorMemberName: Scalars['String']['output'];
   description: Scalars['String']['output'];
   id: Scalars['String']['output'];
@@ -159,6 +161,7 @@ export enum ContextFileType {
 }
 
 export type CreateAgentDefinitionInput = {
+  avatarUrl?: InputMaybe<Scalars['String']['input']>;
   description: Scalars['String']['input'];
   inputProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
   lifecycleProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -175,6 +178,7 @@ export type CreateAgentDefinitionInput = {
 };
 
 export type CreateAgentTeamDefinitionInput = {
+  avatarUrl?: InputMaybe<Scalars['String']['input']>;
   coordinatorMemberName: Scalars['String']['input'];
   description: Scalars['String']['input'];
   name: Scalars['String']['input'];
@@ -1046,7 +1050,6 @@ export enum TaskNotificationModeEnum {
 
 export type TeamMember = {
   __typename?: 'TeamMember';
-  dependencies: Array<Scalars['String']['output']>;
   memberName: Scalars['String']['output'];
   referenceId: Scalars['String']['output'];
   referenceType: TeamMemberType;
@@ -1062,7 +1065,6 @@ export type TeamMemberConfigInput = {
 };
 
 export type TeamMemberInput = {
-  dependencies?: InputMaybe<Array<Scalars['String']['input']>>;
   memberName: Scalars['String']['input'];
   referenceId: Scalars['String']['input'];
   referenceType: TeamMemberType;
@@ -1131,6 +1133,7 @@ export enum ToolParameterTypeEnum {
 }
 
 export type UpdateAgentDefinitionInput = {
+  avatarUrl?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   inputProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -1148,6 +1151,7 @@ export type UpdateAgentDefinitionInput = {
 };
 
 export type UpdateAgentTeamDefinitionInput = {
+  avatarUrl?: InputMaybe<Scalars['String']['input']>;
   coordinatorMemberName?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
@@ -1209,14 +1213,14 @@ export type CreateAgentDefinitionMutationVariables = Exact<{
 }>;
 
 
-export type CreateAgentDefinitionMutation = { __typename?: 'Mutation', createAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string }> } };
+export type CreateAgentDefinitionMutation = { __typename?: 'Mutation', createAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, avatarUrl?: string | null, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string }> } };
 
 export type UpdateAgentDefinitionMutationVariables = Exact<{
   input: UpdateAgentDefinitionInput;
 }>;
 
 
-export type UpdateAgentDefinitionMutation = { __typename?: 'Mutation', updateAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null } };
+export type UpdateAgentDefinitionMutation = { __typename?: 'Mutation', updateAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, avatarUrl?: string | null, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null } };
 
 export type DeleteAgentDefinitionMutationVariables = Exact<{
   id: Scalars['String']['input'];
@@ -1479,7 +1483,7 @@ export type GetAgentCustomizationOptionsQuery = { __typename?: 'Query', availabl
 export type GetAgentDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: string, updatedAt: string, parentPromptId?: string | null, isActive: boolean }> }> };
+export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, avatarUrl?: string | null, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: string, updatedAt: string, parentPromptId?: string | null, isActive: boolean }> }> };
 
 export type GetAgentInstancesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1512,7 +1516,7 @@ export type GetAgentMemoryViewQuery = { __typename?: 'Query', getAgentMemoryView
 export type GetAgentTeamDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentTeamDefinitionsQuery = { __typename?: 'Query', agentTeamDefinitions: Array<{ __typename: 'AgentTeamDefinition', id: string, name: string, description: string, role?: string | null, coordinatorMemberName: string, nodes: Array<{ __typename: 'TeamMember', memberName: string, referenceId: string, referenceType: TeamMemberType, dependencies: Array<string> }> }> };
+export type GetAgentTeamDefinitionsQuery = { __typename?: 'Query', agentTeamDefinitions: Array<{ __typename: 'AgentTeamDefinition', id: string, name: string, description: string, role?: string | null, avatarUrl?: string | null, coordinatorMemberName: string, nodes: Array<{ __typename: 'TeamMember', memberName: string, referenceId: string, referenceType: TeamMemberType }> }> };
 
 export type ListApplicationsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1774,6 +1778,7 @@ export const CreateAgentDefinitionDocument = gql`
     name
     role
     description
+    avatarUrl
     toolNames
     inputProcessorNames
     llmResponseProcessorNames
@@ -1823,6 +1828,7 @@ export const UpdateAgentDefinitionDocument = gql`
     name
     role
     description
+    avatarUrl
     toolNames
     inputProcessorNames
     llmResponseProcessorNames
@@ -3063,6 +3069,7 @@ export const GetAgentDefinitionsDocument = gql`
     name
     role
     description
+    avatarUrl
     toolNames
     inputProcessorNames
     llmResponseProcessorNames
@@ -3268,13 +3275,13 @@ export const GetAgentTeamDefinitionsDocument = gql`
     name
     description
     role
+    avatarUrl
     coordinatorMemberName
     nodes {
       __typename
       memberName
       referenceId
       referenceType
-      dependencies
     }
   }
 }

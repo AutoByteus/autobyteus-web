@@ -1,49 +1,119 @@
 <template>
-  <div class="bg-gray-50 rounded-lg border border-gray-200 p-5 flex flex-col justify-between transition-all duration-200 hover:shadow-md hover:border-gray-300">
-    <div>
-      <h3 class="font-semibold text-base text-gray-800">{{ teamDef.name }}</h3>
-      <p class="text-sm text-gray-600 mt-1 h-10 line-clamp-2">{{ teamDef.description }}</p>
-
-      <div class="mt-4">
-        <p class="text-xs font-bold text-gray-500 tracking-wider">Role</p>
-        <p class="text-sm text-gray-700 font-medium">{{ teamDef.role || 'Not specified' }}</p>
+  <div class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:border-slate-300 hover:shadow-md">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-[4rem_minmax(0,1fr)_auto] sm:items-start">
+      <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-slate-700">
+        <img
+          v-if="showAvatarImage"
+          :src="avatarUrl"
+          :alt="`${teamDef.name} avatar`"
+          class="h-full w-full object-cover"
+          @error="avatarLoadError = true"
+        />
+        <span v-else class="text-2xl font-semibold tracking-wide">{{ avatarInitials }}</span>
       </div>
 
-      <div class="mt-4">
-        <p class="text-xs font-bold text-gray-500 tracking-wider mb-2">Members</p>
-        <div class="flex items-center">
-          <div class="flex -space-x-2">
-            <div v-for="node in teamDef.nodes.slice(0, 5)" :key="node.memberName"
-                 :class="[
-                   'w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold',
-                   node.referenceType === 'AGENT' ? 'bg-blue-200 text-blue-800' : 'bg-purple-200 text-purple-800'
-                 ]"
-                 :title="`${node.memberName} (${node.referenceType})`">
-              {{ node.memberName.substring(0, 1).toUpperCase() }}
-            </div>
-          </div>
-          <span v-if="teamDef.nodes.length > 5" class="ml-3 text-sm text-gray-500">+{{ teamDef.nodes.length - 5 }} more</span>
-          <span v-if="teamDef.nodes.length === 0" class="text-sm text-gray-500 italic">No members defined</span>
-        </div>
+      <div class="min-w-0">
+        <h3 class="truncate text-xl font-semibold text-slate-900">{{ teamDef.name }}</h3>
+        <p class="mt-1 line-clamp-2 text-sm text-slate-600">{{ descriptionText }}</p>
+        <span class="mt-2 inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+          {{ teamDef.role || 'No role specified' }}
+        </span>
+      </div>
+
+      <div class="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+        <button
+          @click.stop="$emit('run-team', teamDef)"
+          class="inline-flex min-w-[104px] justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        >
+          Run Team
+        </button>
+        <button
+          @click.stop="$emit('view-details', teamDef.id)"
+          class="inline-flex items-center text-sm font-medium text-slate-500 transition-colors hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        >
+          View Details
+          <span class="ml-1" aria-hidden="true">&rarr;</span>
+        </button>
       </div>
     </div>
 
-    <div class="mt-6 flex items-center justify-end space-x-3 border-t border-gray-200 pt-4">
-      <button @click.stop="$emit('view-details', teamDef.id)" class="px-3 py-1.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors">
-        View Details
-      </button>
-      <button @click.stop="$emit('run-team', teamDef)" class="px-3 py-1.5 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors">
-        Run Team
-      </button>
+    <div class="mt-4 flex flex-wrap items-center gap-2">
+      <div
+        v-for="node in previewNodes"
+        :key="node.memberName"
+        :title="`${node.memberName} (${node.referenceType})`"
+        class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium"
+        :class="node.referenceType === 'AGENT' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-violet-200 bg-violet-50 text-violet-700'"
+      >
+        <span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-white/80 text-[10px] font-semibold">{{ node.memberName.slice(0, 1).toUpperCase() }}</span>
+        <span>{{ node.referenceType === 'AGENT' ? 'AGENT' : 'TEAM' }}</span>
+      </div>
+      <span v-if="remainingNodesCount > 0" class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
+        +{{ remainingNodesCount }} more
+      </span>
+      <span v-if="teamDef.nodes.length === 0" class="text-xs italic text-slate-500">No members defined</span>
+    </div>
+
+    <div class="mt-4 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs text-slate-600 sm:grid-cols-4">
+      <div>
+        <p class="font-medium text-slate-500">Coordinator</p>
+        <p class="mt-0.5 truncate text-sm text-slate-800">{{ coordinatorLabel }}</p>
+      </div>
+      <div>
+        <p class="font-medium text-slate-500">Members</p>
+        <p class="mt-0.5 text-sm font-semibold text-slate-800">{{ teamDef.nodes.length }}</p>
+      </div>
+      <div>
+        <p class="font-medium text-slate-500">Nested Teams</p>
+        <p class="mt-0.5 text-sm font-semibold text-slate-800">{{ nestedTeamCount }}</p>
+      </div>
+      <div>
+        <p class="font-medium text-slate-500">Updated</p>
+        <p class="mt-0.5 text-sm text-slate-800">Recently</p>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed, ref, toRefs, watch } from 'vue';
 import type { AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
 
-defineProps<{  teamDef: AgentTeamDefinition;
+const props = defineProps<{
+  teamDef: AgentTeamDefinition;
 }>();
 
 defineEmits(['view-details', 'run-team']);
+
+const { teamDef } = toRefs(props);
+const avatarLoadError = ref(false);
+
+const MAX_MEMBER_PREVIEW = 4;
+
+const previewNodes = computed(() => teamDef.value.nodes.slice(0, MAX_MEMBER_PREVIEW));
+const remainingNodesCount = computed(() => Math.max(0, teamDef.value.nodes.length - MAX_MEMBER_PREVIEW));
+const nestedTeamCount = computed(() => teamDef.value.nodes.filter((node) => node.referenceType === 'AGENT_TEAM').length);
+
+const avatarUrl = computed(() => (teamDef.value.avatarUrl || '').trim());
+const showAvatarImage = computed(() => Boolean(avatarUrl.value) && !avatarLoadError.value);
+
+watch(avatarUrl, () => {
+  avatarLoadError.value = false;
+});
+
+const descriptionText = computed(() => teamDef.value.description?.trim() || 'No description provided.');
+
+const avatarInitials = computed(() => {
+  const raw = teamDef.value.name?.trim() ?? '';
+  if (!raw) {
+    return 'AT';
+  }
+  const parts = raw.split(/\s+/).filter(Boolean).slice(0, 2);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return parts.map((part) => part[0]?.toUpperCase() ?? '').join('') || 'AT';
+});
+
+const coordinatorLabel = computed(() => teamDef.value.coordinatorMemberName || 'Not assigned');
 </script>

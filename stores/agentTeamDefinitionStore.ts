@@ -24,13 +24,13 @@ export interface AgentTeamDefinition {
   name: string;
   description: string;
   role?: string | null;
+  avatarUrl?: string | null;
   coordinatorMemberName: string;
   nodes: {
     __typename?: 'TeamMember';
     memberName: string;
     referenceId: string;
     referenceType: 'AGENT' | 'AGENT_TEAM';
-    dependencies: string[];
   }[];
 }
 
@@ -39,6 +39,7 @@ export interface CreateAgentTeamDefinitionInput {
   description: string;
   coordinatorMemberName: string;
   role?: string | null;
+  avatarUrl?: string | null;
   nodes: TeamMemberInput[];
 }
 
@@ -48,6 +49,7 @@ export interface UpdateAgentTeamDefinitionInput {
   description?: string | null;
   coordinatorMemberName?: string | null;
   role?: string | null;
+  avatarUrl?: string | null;
   nodes?: TeamMemberInput[] | null;
 }
 

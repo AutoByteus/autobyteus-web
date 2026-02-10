@@ -63,7 +63,7 @@
                 :disabled="fileUploadStore.isUploading"
                 @click="triggerAvatarPicker"
               >
-                {{ formData.avatar_url ? 'Replace Avatar' : 'Upload Avatar' }}
+                Upload Avatar
               </button>
               <button
                 v-if="formData.avatar_url"
