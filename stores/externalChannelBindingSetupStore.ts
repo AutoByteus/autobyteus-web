@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { validateDiscordBindingIdentity } from '../../autobyteus-ts/dist/external-channel/discord-binding-identity.js';
+import { validateDiscordBindingIdentity } from '~/utils/discordBindingIdentityValidation';
 import { getApolloClient } from '~/utils/apolloClient';
 import {
   EXTERNAL_CHANNEL_CAPABILITIES,
