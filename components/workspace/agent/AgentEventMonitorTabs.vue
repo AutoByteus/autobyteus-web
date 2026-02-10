@@ -2,7 +2,7 @@
   <div class="flex flex-col h-full">
     <!-- Tabs Header -->
     <div class="tabs-container flex-shrink-0">
-      <div class="flex space-x-1 bg-gray-100 px-1 rounded-t conversation-tabs whitespace-nowrap border-b border-gray-200">
+      <div class="flex items-center gap-1 bg-white px-2 conversation-tabs whitespace-nowrap border-b border-gray-100">
         <div
           v-for="agent in allOpenAgents"
           :key="agent.state.agentId"
@@ -10,10 +10,10 @@
         >
           <button
             :class="[
-              'px-4 py-2 rounded-t text-sm font-medium flex items-center',
+              'px-3 py-2 text-sm font-medium flex items-center transition-colors duration-150 border-b-2 -mb-px',
               agent.state.agentId === currentSelectedAgentId
-                ? 'bg-white text-blue-600 border border-gray-200'
-                : 'bg-gray-200 text-gray-600 hover:bg-gray-300',
+                ? 'text-blue-700 border-blue-500 bg-blue-50/60 rounded-t-md'
+                : 'text-gray-500 border-transparent hover:text-gray-700',
               agent.state.agentId.startsWith('temp-') && 'italic'
             ]"
             @click="handleSelectAgent(agent.state.agentId)"
@@ -23,7 +23,7 @@
             <span
               role="button"
               tabindex="0"
-              class="ml-2 text-gray-500 hover:text-gray-700 cursor-pointer"
+              class="ml-2 text-gray-400 hover:text-gray-600 cursor-pointer text-sm leading-none"
               @click.stop="handleCloseAgent(agent.state.agentId)"
               @keydown.enter.stop="handleCloseAgent(agent.state.agentId)"
               title="Close Agent"

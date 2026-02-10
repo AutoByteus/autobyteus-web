@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full bg-white">
     <!-- Header Bar -->
-    <div v-if="selectedAgent" class="flex items-center justify-between px-4 py-2 border-b border-gray-200 flex-shrink-0">
+    <div v-if="selectedAgent" class="flex items-center justify-between px-4 py-2 border-b border-gray-100 flex-shrink-0">
       <div class="flex items-center space-x-3 min-w-0">
         <div class="h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-slate-100 flex items-center justify-center">
           <img

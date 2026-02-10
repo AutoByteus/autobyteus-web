@@ -12,7 +12,6 @@ const baseMessage: AIMessageType = {
 };
 
 const globalStubs = {
-  CopyButton: true,
   TextSegment: true,
   WriteFileCommandSegment: true,
   PatchFileCommandSegment: true,
@@ -41,7 +40,7 @@ describe('AIMessage.vue', () => {
     const avatar = wrapper.find('img');
     expect(avatar.exists()).toBe(true);
     expect(avatar.attributes('src')).toBe('https://example.com/agent.png');
-    expect(wrapper.text()).toContain('Reflective Storyteller');
+    expect(avatar.attributes('alt')).toBe('Reflective Storyteller avatar');
   });
 
   it('renders initials fallback when avatar URL is missing', () => {

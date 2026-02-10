@@ -1,12 +1,7 @@
 <template>
-  <div class="relative group">
-    <!-- Copy Button: Visible on hover -->
-    <div class="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-      <CopyButton :text-to-copy="message.text" label="Copy message" />
-    </div>
-
+  <div>
     <div class="flex items-start gap-3 pr-8">
-      <div class="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white border border-sky-200 flex items-center justify-center">
+      <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-white border border-sky-200 flex items-center justify-center">
         <img
           v-if="showAvatarImage"
           :src="userAvatarUrl || ''"
@@ -27,23 +22,26 @@
         </svg>
       </div>
 
-      <div class="min-w-0 flex-1">
-        <p class="text-xs font-semibold uppercase tracking-wide text-blue-800">{{ displayUserName }}</p>
-        <div v-if="message.contextFilePaths && message.contextFilePaths.length > 0" class="mt-1">
-          <p class="font-semibold">Context Files:</p>
-          <ul class="list-disc list-inside">
-            <li v-for="file in message.contextFilePaths" :key="file.path" class="flex items-baseline">
-              <span
+      <div class="min-w-0 flex-1 pt-0.5">
+        <span class="sr-only">{{ displayUserName }}</span>
+
+        <div class="whitespace-pre-wrap break-words text-gray-900 leading-6">{{ message.text }}</div>
+
+        <div v-if="message.contextFilePaths && message.contextFilePaths.length > 0" class="mt-2">
+          <p class="text-xs font-medium text-gray-500">Context files</p>
+          <ul class="mt-1 flex flex-wrap gap-2">
+            <li v-for="file in message.contextFilePaths" :key="file.path">
+              <button
+                type="button"
                 @click="handleFileClick(file.path)"
-                class="cursor-pointer hover:underline truncate"
+                class="max-w-full text-xs px-2 py-1 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 truncate"
                 :title="`Open ${file.path}`"
               >
                 {{ file.path }}
-              </span>
+              </button>
             </li>
           </ul>
         </div>
-        <div class="mt-1 whitespace-pre-wrap">{{ message.text }}</div>
       </div>
     </div>
   </div>
@@ -53,7 +51,6 @@
 import { computed, ref, watch } from 'vue';
 import type { UserMessage } from '~/types/conversation';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
-import CopyButton from '~/components/common/CopyButton.vue';
 
 import { useWorkspaceStore } from '~/stores/workspace';
 const props = defineProps<{
@@ -80,6 +77,4 @@ const handleFileClick = (filePath: string) => {
 </script>
 
 <style scoped>
-/* Styles specific to UserMessage, if any, go here */
-/* The whitespace-pre-wrap class is provided by Tailwind CSS */
 </style>

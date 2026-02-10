@@ -1,12 +1,7 @@
 <template>
-  <div class="relative group">
-    <!-- Copy Button: Visible on hover -->
-    <div class="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-      <CopyButton :text-to-copy="message.text" label="Copy message" />
-    </div>
-
+  <div>
     <div class="flex items-start gap-3 pr-8">
-      <div class="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-slate-100 flex items-center justify-center">
+      <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center">
         <img
           v-if="showAvatarImage"
           :src="avatarUrl"
@@ -17,9 +12,9 @@
         <span v-else class="text-xs font-semibold tracking-wide text-slate-600">{{ avatarInitials }}</span>
       </div>
 
-      <div class="min-w-0 flex-1">
-        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-800">{{ displayAgentName }}</p>
-        <div class="mt-1">
+      <div class="min-w-0 flex-1 pt-0.5">
+        <span class="sr-only">{{ displayAgentName }}</span>
+        <div>
           <template v-for="(segment, segmentIndex) in message.segments" :key="segmentIndex">
             <TextSegment
               v-if="segment.type === 'text'"
@@ -85,7 +80,6 @@ import InterAgentMessageSegment from '~/components/conversation/segments/InterAg
 import MediaSegment from '~/components/conversation/segments/MediaSegment.vue';
 import ErrorSegment from '~/components/conversation/segments/ErrorSegment.vue';
 import PatchFileCommandSegment from '~/components/conversation/segments/PatchFileCommandSegment.vue';
-import CopyButton from '~/components/common/CopyButton.vue';
 
 const props = defineProps<{
   message: AIMessage;
