@@ -161,7 +161,6 @@ async function main(): Promise<void> {
     await generateIcons()
 
     const requiredServerFiles = [
-      '.env',
       'package.json',
       'dist/app.js',
       'prisma/schema.prisma'
@@ -171,6 +170,10 @@ async function main(): Promise<void> {
       if (!require('fs').existsSync(filePath)) {
         throw new Error(`Missing required server file for packaging: ${filePath}`)
       }
+    }
+    const optionalEnvPath = 'resources/server/.env'
+    if (!require('fs').existsSync(optionalEnvPath)) {
+      console.warn(`Optional server env file not found: ${optionalEnvPath}. Continuing without bundled .env.`)
     }
     const requiredServerDirs = ['dist', 'prisma', 'node_modules']
     for (const dir of requiredServerDirs) {
