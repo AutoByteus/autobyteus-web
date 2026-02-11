@@ -16,7 +16,8 @@ type PlatformType = 'LINUX' | 'WINDOWS' | 'MAC' | 'ALL'
 
 interface BuildConfig {
   config: Configuration,
-  targets?: Map<Platform, Map<Arch, string[]>>
+  targets?: Map<Platform, Map<Arch, string[]>>,
+  publish?: 'always' | 'never' | 'onTag' | 'onTagOrDraft'
 }
 
 function getPlatform(): PlatformType {
@@ -134,7 +135,9 @@ const sanitizeConfig = (config: Configuration): Configuration => ({
 })
 
 const buildConfig: BuildConfig = {
-  config: sanitizeConfig(options)
+  config: sanitizeConfig(options),
+  // Publishing is handled by the GitHub Actions release-upload step.
+  publish: 'never'
 }
 
 if (platform !== 'ALL') {
@@ -195,6 +198,7 @@ async function main(): Promise<void> {
       console.log('Building for Linux...')
       await build({
         config: sanitizeConfig(options),
+        publish: 'never',
         targets: new Map([[Platform.LINUX, new Map([[Arch.x64, ['AppImage']]])]])
       })
 
@@ -202,6 +206,7 @@ async function main(): Promise<void> {
       console.log('Building for Windows...')
       await build({
         config: sanitizeConfig(options),
+        publish: 'never',
         targets: new Map([[Platform.WINDOWS, new Map([[Arch.x64, ['nsis']]])]])
       })
 
@@ -221,6 +226,7 @@ async function main(): Promise<void> {
 
         await build({
           config: macConfig,
+          publish: 'never',
           targets: new Map([[Platform.MAC, new Map([[arch, ['dmg']]])]])
         });
       }
