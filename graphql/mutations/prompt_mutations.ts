@@ -65,19 +65,6 @@ export const MARK_ACTIVE_PROMPT = gql`
   }
 `;
 
-export const SYNC_PROMPTS = gql`
-  mutation SyncPrompts {
-    syncPrompts {
-      __typename
-      success
-      message
-      initialCount
-      finalCount
-      syncedCount
-    }
-  }
-`;
-
 export const DELETE_PROMPT = gql`
   mutation DeletePrompt($input: DeletePromptInput!) {
     deletePrompt(input: $input) {

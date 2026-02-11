@@ -10,7 +10,6 @@ The Prompt Engineering module enables users to:
 - Create new prompts with drafts support (auto-save to localStorage)
 - Edit and update existing prompts with metadata
 - Compare different versions of prompts side-by-side
-- Sync prompts with the backend repository
 - Mark prompts as active/inactive
 - Delete prompts
 
@@ -45,11 +44,11 @@ autobyteus-web/
 │   ├── CanonicalModelSelector.vue      # Multi-select model picker
 │   └── ModelBadge.vue                  # Model tag display
 ├── stores/
-│   ├── promptStore.ts                  # Prompt CRUD & sync operations
+│   ├── promptStore.ts                  # Prompt CRUD operations
 │   └── promptEngineeringViewStore.ts   # View navigation & drafts
 └── graphql/
     ├── queries/prompt_queries.ts       # GET_PROMPTS, GET_PROMPT_BY_ID
-    └── mutations/prompt_mutations.ts   # CREATE, UPDATE, DELETE, SYNC
+    └── mutations/prompt_mutations.ts   # CREATE, UPDATE, DELETE
 ```
 
 ## Architecture
@@ -137,7 +136,6 @@ interface Prompt {
 | `addNewPromptRevision(id, content)` | Create new version of existing prompt                   |
 | `setActivePrompt(id)`               | Mark a prompt version as active                         |
 | `deletePrompt(id)`                  | Delete a prompt                                         |
-| `syncPrompts()`                     | Sync prompts with backend repository                    |
 
 ### PromptEngineeringViewStore (promptEngineeringViewStore.ts)
 
@@ -185,7 +183,6 @@ Main listing view with filtering and search:
 - Full-text search across name, category, and content
 - Category and name dropdown filters
 - Grid/compact view toggle
-- Sync prompts from backend
 - Enter comparison mode for selected prompts
 
 ### PromptDetails.vue
@@ -274,11 +271,6 @@ mutation MarkActivePrompt($input: MarkActivePromptInput!) {
   markActivePrompt(input: $input) { ... }
 }
 
-# Sync prompts from backend repository
-mutation SyncPrompts {
-  syncPrompts { success, message, syncedCount }
-}
-
 # Delete prompt
 mutation DeletePrompt($input: DeletePromptInput!) {
   deletePrompt(input: $input) { success, message }
@@ -333,14 +325,6 @@ sequenceDiagram
 4. User selects two versions from dropdowns
 5. Diff is computed using diff-match-patch
 6. Additions (green) and removals (red) are highlighted
-
-### Sync Prompts
-
-1. User clicks "Sync Prompts" in marketplace
-2. `syncPrompts` mutation is called
-3. Backend scans repository for prompt files
-4. New/updated prompts are imported
-5. Sync result shows count of changes
 
 ## Related Documentation
 

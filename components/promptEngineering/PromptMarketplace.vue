@@ -9,7 +9,7 @@
       @close="exitComparisonMode"
     />
     
-    <!-- Header with title, sync button, and other controls -->
+    <!-- Header with title and controls -->
     <div class="flex flex-col gap-4 mb-4">
       <div class="flex justify-between items-center">
         <h2 class="text-xl font-bold text-gray-900 tracking-tight">Prompt Marketplace</h2>
@@ -20,25 +20,12 @@
             :class="[
               reloading ? 'opacity-75 cursor-not-allowed' : '',
             ]"
-            :disabled="reloading || syncing"
+            :disabled="reloading || loading"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" :class="{'animate-spin': reloading}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             {{ reloading ? 'Reloading...' : 'Reload' }}
-          </button>
-          <button
-            @click="syncPrompts"
-            class="flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 shadow-sm"
-            :class="[
-              syncing ? 'opacity-75 cursor-not-allowed' : '',
-            ]"
-            :disabled="syncing || loading"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" :class="{'animate-spin': syncing}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            {{ syncing ? 'Syncing...' : 'Sync Prompts' }}
           </button>
           <!-- Update: Pass 'marketplace' as origin -->
           <button
@@ -144,46 +131,6 @@
       </div>
     </div>
 
-    <!-- Sync Result Message -->
-    <div v-if="syncResult" class="mb-6">
-      <div 
-        class="p-4 rounded-lg" 
-        :class="syncResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'"
-      >
-        <div class="flex items-start">
-          <div class="flex-shrink-0">
-            <svg v-if="syncResult.success" class="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-            </svg>
-            <svg v-else class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-            </svg>
-          </div>
-          <div class="ml-3">
-            <p class="text-sm font-medium">{{ syncResult.message }}</p>
-            <p v-if="syncResult.success" class="mt-1 text-sm">
-              {{ syncResult.syncedCount }} prompts synchronized 
-              ({{ syncResult.initialCount }} → {{ syncResult.finalCount }})
-            </p>
-          </div>
-          <div class="ml-auto pl-3">
-            <div class="-mx-1.5 -my-1.5">
-              <button 
-                @click="clearSyncResult"
-                class="inline-flex bg-transparent rounded-md p-1.5"
-                :class="syncResult.success ? 'text-green-600 hover:bg-green-100' : 'text-red-600 hover:bg-red-100'"
-              >
-                <span class="sr-only">Dismiss</span>
-                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Delete Result Message -->
     <div v-if="deleteResult" class="mb-6">
       <div 
@@ -243,7 +190,7 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading || syncing" class="grid place-items-center h-64">
+    <div v-if="loading || reloading" class="grid place-items-center h-64">
       <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
     </div>
 
@@ -260,7 +207,7 @@
         </svg>
         <p class="text-lg font-medium mb-2">No prompts found</p>
         <p class="text-gray-400">
-          {{ prompts.length === 0 ? "Sync to fetch the latest prompts" : "Try changing your filter settings" }}
+          {{ prompts.length === 0 ? "No prompts available yet" : "Try changing your filter settings" }}
         </p>
       </div>
     </div>
@@ -387,7 +334,7 @@ defineEmits<{ (e: 'select-prompt', id: string): void }>();
 
 const promptStore = usePromptStore();
 const viewStore = usePromptEngineeringViewStore();
-const { prompts, loading, error, syncing, syncResult, deleteResult } = storeToRefs(promptStore);
+const { prompts, loading, error, deleteResult } = storeToRefs(promptStore);
 
 // Search and filter state - PERSISTED IN PINIA STORE
 const { 
@@ -412,7 +359,6 @@ const comparisonCategory = ref('');
 const comparisonName = ref('');
 
 // Timers for auto-dismissing notifications
-let syncNotificationTimer: number | null = null;
 let deleteNotificationTimer: number | null = null;
 
 // When category changes, reset the prompt name filter
@@ -542,19 +488,6 @@ const handleReload = async () => {
   finally { reloading.value = false; }
 };
 
-const syncPrompts = async () => {
-  await promptStore.syncPrompts();
-  if (syncResult.value) {
-    if (syncNotificationTimer) clearTimeout(syncNotificationTimer);
-    syncNotificationTimer = window.setTimeout(() => promptStore.clearSyncResult(), 5000);
-  }
-};
-
-const clearSyncResult = () => {
-  if (syncNotificationTimer) clearTimeout(syncNotificationTimer);
-  promptStore.clearSyncResult();
-};
-
 const openDeleteConfirm = (id: string) => {
   promptToDelete.value = id;
   showDeleteConfirm.value = true;
@@ -626,7 +559,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  if (syncNotificationTimer) clearTimeout(syncNotificationTimer);
   if (deleteNotificationTimer) clearTimeout(deleteNotificationTimer);
 });
 </script>

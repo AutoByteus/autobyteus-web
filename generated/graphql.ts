@@ -432,7 +432,6 @@ export type Mutation = {
   sendAgentUserInput: SendAgentUserInputResult;
   sendMessageToTeam: SendMessageToTeamResult;
   setLlmProviderApiKey: Scalars['String']['output'];
-  syncPrompts: SyncPromptsResult;
   terminateAgentInstance: TerminateAgentInstanceResult;
   terminateAgentTeamInstance: TerminateAgentTeamInstanceResult;
   updateAgentDefinition: AgentDefinition;
@@ -1041,15 +1040,6 @@ export type StreamableHttpMcpServerConfigInput = {
   url: Scalars['String']['input'];
 };
 
-export type SyncPromptsResult = {
-  __typename?: 'SyncPromptsResult';
-  finalCount: Scalars['Int']['output'];
-  initialCount: Scalars['Int']['output'];
-  message: Scalars['String']['output'];
-  success: Scalars['Boolean']['output'];
-  syncedCount: Scalars['Int']['output'];
-};
-
 export enum TaskNotificationModeEnum {
   AgentManualNotification = 'AGENT_MANUAL_NOTIFICATION',
   SystemEventDriven = 'SYSTEM_EVENT_DRIVEN'
@@ -1440,11 +1430,6 @@ export type MarkActivePromptMutationVariables = Exact<{
 
 
 export type MarkActivePromptMutation = { __typename?: 'Mutation', markActivePrompt: { __typename: 'Prompt', id: string, isActive: boolean } };
-
-export type SyncPromptsMutationVariables = Exact<{ [key: string]: never; }>;
-
-
-export type SyncPromptsMutation = { __typename?: 'Mutation', syncPrompts: { __typename: 'SyncPromptsResult', success: boolean, message: string, initialCount: number, finalCount: number, syncedCount: number } };
 
 export type DeletePromptMutationVariables = Exact<{
   input: DeletePromptInput;
@@ -2825,36 +2810,6 @@ export function useMarkActivePromptMutation(options: VueApolloComposable.UseMuta
   return VueApolloComposable.useMutation<MarkActivePromptMutation, MarkActivePromptMutationVariables>(MarkActivePromptDocument, options);
 }
 export type MarkActivePromptMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<MarkActivePromptMutation, MarkActivePromptMutationVariables>;
-export const SyncPromptsDocument = gql`
-    mutation SyncPrompts {
-  syncPrompts {
-    __typename
-    success
-    message
-    initialCount
-    finalCount
-    syncedCount
-  }
-}
-    `;
-
-/**
- * __useSyncPromptsMutation__
- *
- * To run a mutation, you first call `useSyncPromptsMutation` within a Vue component and pass it any options that fit your needs.
- * When your component renders, `useSyncPromptsMutation` returns an object that includes:
- * - A mutate function that you can call at any time to execute the mutation
- * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
- *
- * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
- *
- * @example
- * const { mutate, loading, error, onDone } = useSyncPromptsMutation();
- */
-export function useSyncPromptsMutation(options: VueApolloComposable.UseMutationOptions<SyncPromptsMutation, SyncPromptsMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<SyncPromptsMutation, SyncPromptsMutationVariables>> = {}) {
-  return VueApolloComposable.useMutation<SyncPromptsMutation, SyncPromptsMutationVariables>(SyncPromptsDocument, options);
-}
-export type SyncPromptsMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<SyncPromptsMutation, SyncPromptsMutationVariables>;
 export const DeletePromptDocument = gql`
     mutation DeletePrompt($input: DeletePromptInput!) {
   deletePrompt(input: $input) {

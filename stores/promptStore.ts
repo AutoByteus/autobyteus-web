@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { getApolloClient } from '~/utils/apolloClient';
 import { GET_PROMPTS, GET_PROMPT_BY_ID } from '~/graphql/queries/prompt_queries';
-import { CREATE_PROMPT, UPDATE_PROMPT, ADD_NEW_PROMPT_REVISION, SYNC_PROMPTS, DELETE_PROMPT, MARK_ACTIVE_PROMPT } from '~/graphql/mutations/prompt_mutations';
+import { CREATE_PROMPT, UPDATE_PROMPT, ADD_NEW_PROMPT_REVISION, DELETE_PROMPT, MARK_ACTIVE_PROMPT } from '~/graphql/mutations/prompt_mutations';
 import { GetAgentCustomizationOptions } from '~/graphql/queries/agentCustomizationOptionsQueries';
 
 interface Prompt {
@@ -20,15 +20,6 @@ interface Prompt {
   isActive: boolean;
 }
 
-interface SyncResult {
-  __typename?: 'SyncResult';
-  success: boolean;
-  message: string;
-  initialCount: number;
-  finalCount: number;
-  syncedCount: number;
-}
-
 interface DeleteResult {
   __typename?: 'DeleteResult';
   success: boolean;
@@ -42,8 +33,6 @@ export const usePromptStore = defineStore('prompt', () => {
   const loading = ref(false);
   const error = ref('');
   const selectedPrompt = ref<Prompt | null>(null);
-  const syncing = ref(false);
-  const syncResult = ref<SyncResult | null>(null);
   const deleteResult = ref<DeleteResult | null>(null);
 
   // Actions
@@ -253,38 +242,6 @@ export const usePromptStore = defineStore('prompt', () => {
     }
   }
 
-  async function syncPrompts() {
-    syncing.value = true;
-    error.value = '';
-    syncResult.value = null;
-
-    try {
-      const client = getApolloClient();
-      const { data, errors } = await client.mutate({
-        mutation: SYNC_PROMPTS,
-        refetchQueries: [
-          { query: GET_PROMPTS },
-          { query: GetAgentCustomizationOptions }
-        ]
-      });
-
-      if (errors && errors.length > 0) {
-        throw new Error(errors.map(e => e.message).join(', '));
-      }
-
-      if (data?.syncPrompts) {
-        syncResult.value = data.syncPrompts;
-        return syncResult.value;
-      }
-      throw new Error('Failed to sync prompts: No data returned');
-    } catch (e: any) {
-      error.value = e.message;
-      throw e;
-    } finally {
-      syncing.value = false;
-    }
-  }
-
   async function deletePrompt(id: string) {
     loading.value = true;
     error.value = '';
@@ -329,10 +286,6 @@ export const usePromptStore = defineStore('prompt', () => {
     error.value = '';
   }
 
-  function clearSyncResult() {
-    syncResult.value = null;
-  }
-
   function clearDeleteResult() {
     deleteResult.value = null;
   }
@@ -342,8 +295,6 @@ export const usePromptStore = defineStore('prompt', () => {
   const getLoading = computed(() => loading.value);
   const getError = computed(() => error.value);
   const getSelectedPrompt = computed(() => selectedPrompt.value);
-  const isSyncing = computed(() => syncing.value);
-  const getSyncResult = computed(() => syncResult.value);
   const getDeleteResult = computed(() => deleteResult.value);
 
   return {
@@ -352,8 +303,6 @@ export const usePromptStore = defineStore('prompt', () => {
     loading,
     error,
     selectedPrompt,
-    syncing,
-    syncResult,
     deleteResult,
     // Actions
     fetchPrompts,
@@ -363,19 +312,15 @@ export const usePromptStore = defineStore('prompt', () => {
     updatePrompt,
     addNewPromptRevision,
     setActivePrompt,
-    syncPrompts,
     deletePrompt,
     setSelectedPrompt,
     clearError,
-    clearSyncResult,
     clearDeleteResult,
     // Getters
     getPrompts,
     getLoading,
     getError,
     getSelectedPrompt,
-    isSyncing,
-    getSyncResult,
     getDeleteResult,
   };
 });
