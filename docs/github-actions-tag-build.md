@@ -25,6 +25,10 @@ git push origin v1.2.0
 This workflow is currently scoped to one platform first:
 
 - macOS Apple Silicon (`macos-15`) -> `pnpm build:electron:mac`
+- CI build currently forces:
+  - `NO_TIMESTAMP=1`
+  - `APPLE_TEAM_ID=""`
+  - This keeps notarization disabled for the initial release workflow validation.
 
 Linux, Windows, and macOS Intel can be added back later by expanding the matrix.
 
@@ -51,6 +55,7 @@ On each matching tag, the workflow:
 ## Optional Apple Signing/Notarization Secrets
 
 If omitted, macOS build can still run but will be unsigned and not notarized.
+Even if configured, the current workflow intentionally overrides `APPLE_TEAM_ID` to empty for initial stable rollout.
 
 - `APPLE_SIGNING_IDENTITY`
 - `APPLE_ID`

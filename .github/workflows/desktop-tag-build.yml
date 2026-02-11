@@ -116,10 +116,11 @@ jobs:
       - name: Build desktop artifact (macOS arm64)
         working-directory: autobyteus-web
         env:
+          NO_TIMESTAMP: "1"
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_TEAM_ID: ""
         run: pnpm build:electron:mac
 
       - name: List build output files
