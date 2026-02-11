@@ -137,6 +137,38 @@ jobs:
           fi
           echo "tag=${RELEASE_TAG}" >> "${GITHUB_OUTPUT}"
 
+      - name: Configure Python for node-gyp
+        run: |
+          set -euo pipefail
+
+          candidates=()
+          if [[ -x /usr/bin/python3 ]]; then
+            candidates+=(/usr/bin/python3)
+          fi
+          if command -v python3.11 >/dev/null 2>&1; then
+            candidates+=("$(command -v python3.11)")
+          fi
+          if command -v python3 >/dev/null 2>&1; then
+            candidates+=("$(command -v python3)")
+          fi
+
+          selected=""
+          for py in "${candidates[@]}"; do
+            if [[ -n "${py}" ]] && "${py}" -c "import distutils" >/dev/null 2>&1; then
+              selected="${py}"
+              break
+            fi
+          done
+
+          if [[ -z "${selected}" ]]; then
+            echo "::error::No python interpreter with distutils found for node-gyp."
+            exit 1
+          fi
+
+          echo "PYTHON=${selected}" >> "${GITHUB_ENV}"
+          echo "npm_config_python=${selected}" >> "${GITHUB_ENV}"
+          echo "Using python for node-gyp: ${selected}"
+
       - name: Build desktop artifact (macOS arm64)
         working-directory: autobyteus-web
         env:
