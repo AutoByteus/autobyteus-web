@@ -25,21 +25,22 @@ git push origin v1.2.0
 Manual trigger:
 
 1. Open `Actions` in `AutoByteus/autobyteus-web`
-2. Select workflow `Desktop Release Publish (macOS arm64)`
+2. Select workflow `Desktop Release Publish (macOS arm64 + Linux x64)`
 3. Click `Run workflow`
 4. Provide `release_tag` and run
 
-## Current Target
+## Current Targets
 
-This workflow is currently scoped to one platform first:
+This workflow currently builds and publishes two platforms:
 
 - macOS Apple Silicon (`macos-15`) -> `pnpm build:electron:mac`
+- Linux AMD64 (`ubuntu-24.04`) -> `pnpm build:electron:linux`
 - CI build currently forces:
   - `NO_TIMESTAMP=1`
   - `APPLE_TEAM_ID=""`
   - This keeps notarization disabled for the initial release workflow validation.
 
-Linux, Windows, and macOS Intel can be added back later by expanding the matrix.
+Windows and macOS Intel can be added later.
 
 ## Publish Behavior
 
@@ -84,6 +85,8 @@ Yes, this is possible.
 ```bash
 cd /Users/normy/autobyteus_org/autobyteus-web
 pnpm build:electron:mac
+# or
+pnpm build:electron:linux
 ```
 
 2. Create or reuse release tag in target repo:

@@ -112,10 +112,26 @@ if [ -f "$SERVER_REPO_DIR/.env" ]; then
   cp "$SERVER_REPO_DIR/.env" "$TARGET_DIR/.env"
 fi
 
-echo -e "\n${YELLOW}Pruning non-darwin native prebuilds...${NC}"
+echo -e "\n${YELLOW}Pruning native prebuilds for host platform...${NC}"
 if [ -d "${TARGET_DIR}/node_modules/node-pty/prebuilds" ]; then
-  find "${TARGET_DIR}/node_modules/node-pty/prebuilds" -maxdepth 1 -type d \
-    ! -name "darwin-*" ! -name "." -exec rm -rf {} +
+  HOST_OS="$(uname -s)"
+  KEEP_PREFIX=""
+  case "${HOST_OS}" in
+    Darwin)
+      KEEP_PREFIX="darwin-"
+      ;;
+    Linux)
+      KEEP_PREFIX="linux-"
+      ;;
+  esac
+
+  if [ -n "${KEEP_PREFIX}" ]; then
+    find "${TARGET_DIR}/node_modules/node-pty/prebuilds" -maxdepth 1 -type d \
+      ! -name "${KEEP_PREFIX}*" ! -name "." -exec rm -rf {} +
+    echo -e "${GREEN}✓${NC} Kept native prebuild folders matching ${KEEP_PREFIX}*"
+  else
+    echo -e "${YELLOW}Warning: Unknown host OS (${HOST_OS}); skipping prebuild pruning.${NC}"
+  fi
 fi
 
 if [ -d "$SERVER_REPO_DIR/download" ]; then
