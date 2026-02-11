@@ -4,7 +4,7 @@ import { getApolloClient } from '~/utils/apolloClient';
 import { GetAgentDefinitions } from '~/graphql/queries/agentDefinitionQueries';
 import { CreateAgentDefinition, UpdateAgentDefinition, DeleteAgentDefinition } from '~/graphql/mutations/agentDefinitionMutations';
 import type { GetAgentDefinitionsQuery } from '~/generated/graphql';
-import { useServerStore } from '~/stores/serverStore';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 
 // This interface should match the GraphQL AgentDefinition type
 export interface AgentDefinition {
@@ -13,6 +13,7 @@ export interface AgentDefinition {
   name: string;
   role: string;
   description: string;
+  avatarUrl?: string | null;
   toolNames: string[];
   inputProcessorNames: string[];
   llmResponseProcessorNames: string[];
@@ -37,6 +38,7 @@ export interface CreateAgentDefinitionInput {
   name: string;
   role: string;
   description: string;
+  avatarUrl?: string;
   systemPromptCategory: string;
   systemPromptName: string;
   toolNames?: string[];
@@ -54,6 +56,7 @@ export interface UpdateAgentDefinitionInput {
   name?: string;
   role?: string;
   description?: string;
+  avatarUrl?: string;
   systemPromptCategory?: string;
   systemPromptName?: string;
   toolNames?: string[];
@@ -89,10 +92,10 @@ export const useAgentDefinitionStore = defineStore('agentDefinition', () => {
   async function fetchAllAgentDefinitions() {
     if (agentDefinitions.value.length > 0) return; // Already fetched, rely on cache for updates.
 
-    const serverStore = useServerStore();
-    const isReady = await serverStore.waitForServerReady();
+    const windowNodeContextStore = useWindowNodeContextStore();
+    const isReady = await windowNodeContextStore.waitForBoundBackendReady();
     if (!isReady) {
-      error.value = new Error('Server is not ready');
+      error.value = new Error('Bound backend is not ready');
       return;
     }
 

@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useTerminalSession } from '../useTerminalSession';
 import { ref } from 'vue';
 
-vi.mock('#app', () => ({
-  useRuntimeConfig: () => ({
-    public: {
-      terminalWsEndpoint: 'ws://test-host:8000/ws/terminal'
-    }
+vi.mock('~/stores/windowNodeContextStore', () => ({
+  useWindowNodeContextStore: () => ({
+    getBoundEndpoints: () => ({
+      terminalWs: 'ws://test-host:8000/ws/terminal'
+    })
   })
 }));
 

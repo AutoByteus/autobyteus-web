@@ -1,76 +1,90 @@
-import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
-import { getServerUrls } from '~/utils/serverConfig'
+import axios, {
+  type AxiosInstance,
+  type AxiosRequestConfig,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+} from 'axios';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
+import { getServerUrls } from '~/utils/serverConfig';
 
 class ApiService {
-  private axiosInstance: AxiosInstance
+  private readonly clientsByBaseUrl = new Map<string, AxiosInstance>();
 
-  constructor() {
-    // Get server URLs from our centralized configuration
-    const serverUrls = getServerUrls()
-    const baseURL = serverUrls.rest
-    
-    // Log the configuration for debugging
-    console.log('API Service: Initializing with base URL:', baseURL)
-    
-    if (!baseURL) {
-      throw new Error('REST base URL is not configured')
+  private resolveRestBaseUrl(): string {
+    const contextStore = useWindowNodeContextStore();
+    if (contextStore.initialized) {
+      return contextStore.getBoundEndpoints().rest;
     }
 
-    this.axiosInstance = axios.create({
-      baseURL,
-      // Add other default configurations here
-    })
+    // In Electron runtime, this is a hard bootstrap ordering problem and must be explicit.
+    if (typeof window !== 'undefined' && window.electronAPI) {
+      throw new Error(
+        'Window node context is not initialized yet. API call attempted before node bootstrap.',
+      );
+    }
 
-    // Set up request interceptors if needed
-    this.axiosInstance.interceptors.request.use(
-      (config: AxiosRequestConfig) => {
-        // For example, attach auth tokens here
-        // const token = getAuthToken()
-        // if (token) {
-        //   config.headers.Authorization = `Bearer ${token}`
-        // }
-        return config
-      },
-      (error) => {
-        return Promise.reject(error)
-      }
-    )
+    // Non-electron/dev fallback keeps browser-mode compatibility.
+    return getServerUrls().rest;
+  }
 
-    // Set up response interceptors if needed
-    this.axiosInstance.interceptors.response.use(
+  private getOrCreateClient(baseURL: string): AxiosInstance {
+    const existing = this.clientsByBaseUrl.get(baseURL);
+    if (existing) {
+      return existing;
+    }
+
+    const nextClient = axios.create({ baseURL });
+
+    nextClient.interceptors.request.use(
+      (config: InternalAxiosRequestConfig) => config,
+      (error) => Promise.reject(error),
+    );
+
+    nextClient.interceptors.response.use(
       (response: AxiosResponse) => response,
-      (error) => {
-        // Handle global errors here
-        // For example, redirect to login on 401
-        // if (error.response.status === 401) {
-        //   redirectToLogin()
-        // }
-        return Promise.reject(error)
-      }
-    )
+      (error) => Promise.reject(error),
+    );
+
+    this.clientsByBaseUrl.set(baseURL, nextClient);
+    return nextClient;
   }
 
-  // Generic GET request
-  public get<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
-    return this.axiosInstance.get<T>(url, config)
+  private requestClient(): AxiosInstance {
+    const baseURL = this.resolveRestBaseUrl().replace(/\/+$/, '');
+    return this.getOrCreateClient(baseURL);
   }
 
-  // Generic POST request
-  public post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
-    return this.axiosInstance.post<T>(url, data, config)
+  public async get<T = unknown>(
+    url: string,
+    config?: AxiosRequestConfig,
+  ): Promise<AxiosResponse<T>> {
+    return this.requestClient().get<T>(url, config);
   }
 
-  // Generic PUT request
-  public put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
-    return this.axiosInstance.put<T>(url, data, config)
+  public async post<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig,
+  ): Promise<AxiosResponse<T>> {
+    return this.requestClient().post<T>(url, data, config);
   }
 
-  // Generic DELETE request
-  public delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
-    return this.axiosInstance.delete<T>(url, config)
+  public async put<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig,
+  ): Promise<AxiosResponse<T>> {
+    return this.requestClient().put<T>(url, data, config);
+  }
+
+  public async delete<T = unknown>(
+    url: string,
+    config?: AxiosRequestConfig,
+  ): Promise<AxiosResponse<T>> {
+    return this.requestClient().delete<T>(url, config);
   }
 }
 
-// Export a singleton instance
-const apiService = new ApiService()
-export default apiService
+const apiService = new ApiService();
+export default apiService;
+

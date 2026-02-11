@@ -8,6 +8,7 @@ const mockAgentDef: AgentDefinition = {
   name: 'SuperAgent',
   role: 'assistant',
   description: 'A super helpful agent',
+  avatarUrl: '/rest/files/images/super-agent.png',
   toolNames: [],
   inputProcessorNames: [],
   llmResponseProcessorNames: [],
@@ -31,9 +32,11 @@ describe('agentRunConfigStore', () => {
 
       expect(store.config?.agentDefinitionId).toBe('agent-def-1');
       expect(store.config?.agentDefinitionName).toBe('SuperAgent');
+      expect(store.config?.agentAvatarUrl).toBe('/rest/files/images/super-agent.png');
       expect(store.config?.llmModelIdentifier).toBe('');
       expect(store.config?.workspaceId).toBeNull();
       expect(store.config?.autoExecuteTools).toBe(false);
+      expect(store.config?.skillAccessMode).toBe('PRELOADED_ONLY');
       expect(store.config?.isLocked).toBe(false);
     });
 
@@ -63,10 +66,12 @@ describe('agentRunConfigStore', () => {
       store.updateAgentConfig({
         llmModelIdentifier: 'gpt-4-turbo',
         autoExecuteTools: true,
+        skillAccessMode: 'GLOBAL_DISCOVERY',
       });
 
       expect(store.config?.llmModelIdentifier).toBe('gpt-4-turbo');
       expect(store.config?.autoExecuteTools).toBe(true);
+      expect(store.config?.skillAccessMode).toBe('GLOBAL_DISCOVERY');
     });
   });
 

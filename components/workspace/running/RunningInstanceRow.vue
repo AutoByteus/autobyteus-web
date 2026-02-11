@@ -10,19 +10,20 @@
       <!-- Status Dot -->
       <span class="status-indicator h-2 w-2 rounded-full flex-shrink-0" :class="statusColor"></span>
       
-      <!-- Instance Label (consistent with tab format) -->
+      <!-- Instance Label -->
       <span class="text-sm text-gray-700 truncate">
         {{ instanceLabel }}
       </span>
     </div>
 
     <!-- Actions -->
-    <button 
+    <button
       @click.stop="$emit('delete', instance.state.agentId)"
-      class="delete-btn p-0.5 rounded text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+      class="delete-btn inline-flex h-6 w-6 items-center justify-center rounded-md text-gray-500 hover:text-red-600 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200 transition-colors"
       title="Stop and remove instance"
+      aria-label="Close agent instance"
     >
-      <span class="i-heroicons-x-mark-20-solid h-3.5 w-3.5"></span>
+      <span class="text-sm leading-none font-semibold" aria-hidden="true">×</span>
     </button>
   </div>
 </template>
@@ -42,7 +43,7 @@ defineEmits<{
   (e: 'delete', id: string): void;
 }>();
 
-// Label matches the tab format in AgentEventMonitorTabs.vue
+// Label format matches the running instance list style in the workspace.
 const instanceLabel = computed(() => {
   const name = props.instance.config.agentDefinitionName || 'Agent';
   const agentId = props.instance.state.agentId;
@@ -51,7 +52,7 @@ const instanceLabel = computed(() => {
     return `New - ${name}`;
   }
   
-  // Use last 4 characters of the ID (consistent with tabs)
+  // Use last 4 characters of the ID for a short, stable suffix.
   const idSuffix = agentId.slice(-4).toUpperCase();
   return `${name} - ${idSuffix}`;
 });

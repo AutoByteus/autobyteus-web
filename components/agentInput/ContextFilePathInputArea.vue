@@ -1,6 +1,6 @@
 <template>
   <div
-    class="bg-gray-50 hover:shadow-md transition-shadow duration-200 p-4 border border-gray-200"
+    class="bg-white px-3 py-2"
     @dragover.prevent
     @drop.prevent="onFileDrop"
     @paste="onPaste"
@@ -19,12 +19,12 @@
 
     <!-- Clickable Header Area -->
     <div
-      class="flex items-center justify-between p-2 -m-2 mb-1 rounded"
+      class="flex items-center justify-between"
       :class="{ 'mb-2': isContextListExpanded && contextFilePaths.length > 0 }"
     >
       <div
         @click="toggleContextList"
-        class="flex items-center flex-grow cursor-pointer p-1 -m-1 rounded hover:bg-gray-100 transition-colors"
+        class="flex items-center flex-grow cursor-pointer px-1 py-1 rounded hover:bg-gray-50 transition-colors"
         role="button"
         :aria-expanded="isContextListExpanded"
         aria-controls="context-file-list"
@@ -42,17 +42,17 @@
           >
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
           </svg>
-          <span class="font-medium text-sm text-gray-800" :class="{ 'ml-7': contextFilePaths.length === 0 }">
+          <span class="font-medium text-xs text-gray-700">
             Context Files ({{ contextFilePaths.length }})
           </span>
-          <span v-if="contextFilePaths.length === 0" class="text-xs text-gray-500 ml-1.5"> (drag, paste, or upload)</span>
+          <span v-if="contextFilePaths.length === 0" class="text-xs text-gray-400 ml-1.5">(drag, paste, or upload)</span>
         </div>
       </div>
       
       <!-- Upload Button -->
       <button
         @click.stop="triggerFileInput"
-        class="text-blue-500 hover:text-white hover:bg-blue-500 transition-colors duration-300 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 ml-2 flex-shrink-0"
+        class="text-blue-500 hover:text-white hover:bg-blue-500 transition-colors duration-200 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 ml-2 flex-shrink-0"
         title="Upload files"
         aria-label="Upload files"
         :disabled="!activeContextStore.activeAgentContext"
@@ -148,7 +148,7 @@
     <div v-if="contextFilePaths.length > 0" class="flex justify-end pt-2 mt-2">
       <button
         @click.stop="clearAllContextFilePaths"
-        class="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300 flex items-center text-xs"
+        class="px-2.5 py-1 border border-blue-100 text-blue-600 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-colors duration-200 flex items-center text-xs"
       >
         <i class="fas fa-trash-alt mr-2"></i>
         Clear All
@@ -166,10 +166,9 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { storeToRefs } from 'pinia';
 import { useActiveContextStore } from '~/stores/activeContextStore';
 import { useFileUploadStore } from '~/stores/fileUploadStore';
-import { useServerStore } from '~/stores/serverStore';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import { useFileExplorerStore } from '~/stores/fileExplorer';
 import { getFilePathsFromFolder, determineFileType } from '~/utils/fileExplorer/fileUtils';
 import { getServerBaseUrl, getServerUrls } from '~/utils/serverConfig';
@@ -179,11 +178,10 @@ import FullScreenImageModal from '~/components/common/FullScreenImageModal.vue';
 
 const activeContextStore = useActiveContextStore();
 const fileUploadStore = useFileUploadStore();
-const serverStore = useServerStore();
+const windowNodeContextStore = useWindowNodeContextStore();
 const fileExplorerStore = useFileExplorerStore();
 import { useWorkspaceStore } from '~/stores/workspace';
 const workspaceStore = useWorkspaceStore();
-const { isElectron } = storeToRefs(serverStore);
 
 const contextFilePaths = computed(() => activeContextStore.currentContextPaths);
 const uploadingFiles = ref<string[]>([]);
@@ -404,7 +402,7 @@ const onFileDrop = async (event: DragEvent) => {
     if (filePaths.length > 0 && !isContextListExpanded.value) {
       isContextListExpanded.value = true;
     }
-  } else if (isElectron.value && dataTransfer?.files?.length) {
+  } else if (windowNodeContextStore.isEmbeddedWindow && dataTransfer?.files?.length) {
     console.log('[INFO] Drop event from native OS in Electron.');
     const files = Array.from(dataTransfer.files);
     const pathPromises = files.map(f => window.electronAPI?.getPathForFile(f));
@@ -418,7 +416,7 @@ const onFileDrop = async (event: DragEvent) => {
     if (paths.length > 0 && !isContextListExpanded.value) {
       isContextListExpanded.value = true;
     }
-  } else if (!isElectron.value && dataTransfer?.files?.length) {
+  } else if (!windowNodeContextStore.isEmbeddedWindow && dataTransfer?.files?.length) {
     console.log('[INFO] Drop event from native OS in browser, uploading files.');
     await processAndUploadFiles(Array.from(dataTransfer.files));
   }

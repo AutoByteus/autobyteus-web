@@ -47,9 +47,9 @@
 
 <script setup lang="ts">
 import Sidebar from '@/components/Sidebar.vue';
+import { watch } from 'vue';
 import { useAppLayoutStore } from '~/stores/appLayoutStore';
 import { useRoute } from 'vue-router';
-import { watch } from 'vue';
 
 const appLayoutStore = useAppLayoutStore();
 const route = useRoute();

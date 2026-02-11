@@ -12,9 +12,6 @@
       <WorkspaceHeaderActions @new-agent="createNewTeamInstance" />
     </div>
 
-    <!-- Tabs for team instances -->
-    <AgentTeamEventMonitorTabs />
-    
     <!-- Main Content Area -->
     <div v-if="activeTeamContext" class="flex-grow min-h-0">
       <!-- The Event Monitor now takes up the full space -->
@@ -40,7 +37,6 @@ import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 import TeamStatusDisplay from '~/components/workspace/team/TeamStatusDisplay.vue';
-import AgentTeamEventMonitorTabs from '~/components/workspace/team/AgentTeamEventMonitorTabs.vue';
 import AgentTeamEventMonitor from '~/components/workspace/team/AgentTeamEventMonitor.vue';
 import WorkspaceHeaderActions from '~/components/workspace/common/WorkspaceHeaderActions.vue';
 

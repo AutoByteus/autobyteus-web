@@ -1,3 +1,5 @@
+export type SkillAccessMode = 'PRELOADED_ONLY' | 'GLOBAL_DISCOVERY' | 'NONE';
+
 /**
  * Configuration for a running agent instance.
  * 
@@ -11,6 +13,9 @@ export interface AgentRunConfig {
   
   /** Display name of the agent (from definition) */
   agentDefinitionName: string;
+
+  /** Optional avatar URL for the selected agent definition */
+  agentAvatarUrl?: string | null;
   
   /** LLM model identifier (e.g., 'gpt-4-turbo', 'claude-3-sonnet') */
   llmModelIdentifier: string;
@@ -20,6 +25,9 @@ export interface AgentRunConfig {
   
   /** Whether to auto-execute tool calls without user confirmation */
   autoExecuteTools: boolean;
+
+  /** Controls which skills this agent can use for this run */
+  skillAccessMode: SkillAccessMode;
   
   /** 
    * Whether this config is locked (read-only).

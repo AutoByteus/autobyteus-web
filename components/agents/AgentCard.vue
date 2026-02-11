@@ -1,58 +1,79 @@
 <template>
-  <div class="bg-gray-50 rounded-lg border border-gray-200 p-5 flex flex-col justify-between transition-all duration-200 hover:shadow-md hover:border-gray-300">
-    <div>
-      <h3 class="font-semibold text-base text-gray-800">{{ agentDef.name }}</h3>
-      <p class="text-sm text-gray-600 mt-1 h-10 line-clamp-2">{{ agentDef.description }}</p>
-
-      <div class="mt-4">
-        <p class="text-xs font-bold text-gray-500 tracking-wider">Role</p>
-        <p class="text-sm text-gray-700 font-medium">{{ agentDef.role }}</p>
+  <div class="group h-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:border-slate-300 hover:shadow-md">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-[4rem_minmax(0,1fr)_auto] sm:items-start">
+      <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100">
+        <img
+          v-if="showAvatarImage"
+          :src="avatarUrl"
+          :alt="`${agentDef.name} avatar`"
+          class="h-full w-full object-cover"
+          @error="avatarLoadError = true"
+        />
+        <span v-else class="text-2xl font-semibold tracking-wide text-slate-600">{{ avatarInitials }}</span>
       </div>
 
-      <div class="mt-4">
-        <p class="text-xs font-bold text-gray-500 tracking-wider mb-2">Tools</p>
-        <div class="flex flex-wrap gap-1.5">
-          <span v-for="tool in visibleTools" :key="tool" class="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-            {{ tool }}
-          </span>
-          <span v-if="remainingToolsCount > 0" class="px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-700 rounded-full">
-            +{{ remainingToolsCount }} more
-          </span>
-           <span v-if="visibleTools.length === 0" class="text-xs text-gray-500 italic">
-            None
-          </span>
+      <div class="min-w-0">
+        <h3 class="truncate text-2xl font-semibold text-slate-900">{{ agentDef.name }}</h3>
+        <p class="mt-1 text-sm text-slate-600">{{ descriptionText }}</p>
+
+        <div class="mt-3 space-y-2">
+          <div class="flex items-start gap-2">
+            <span class="min-w-[4rem] text-xs font-semibold text-slate-700">Tools {{ totalTools }}</span>
+            <div class="flex min-w-0 flex-wrap gap-1.5">
+              <span
+                v-for="(tool, index) in visibleTools"
+                :key="`${tool}-${index}`"
+                class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
+              >
+                {{ tool }}
+              </span>
+              <span v-if="remainingToolsCount > 0" class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                +{{ remainingToolsCount }}
+              </span>
+              <span v-if="totalTools === 0" class="text-xs italic text-slate-500">None</span>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-2">
+            <span class="min-w-[4rem] text-xs font-semibold text-slate-700">Skills {{ totalSkills }}</span>
+            <div class="flex min-w-0 flex-wrap gap-1.5">
+              <span
+                v-for="(skill, index) in visibleSkills"
+                :key="`${skill}-${index}`"
+                class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
+              >
+                {{ skill }}
+              </span>
+              <span v-if="remainingSkillsCount > 0" class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                +{{ remainingSkillsCount }}
+              </span>
+              <span v-if="totalSkills === 0" class="text-xs italic text-slate-500">None</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="mt-4">
-        <p class="text-xs font-bold text-gray-500 tracking-wider mb-2">Skills</p>
-        <div class="flex flex-wrap gap-1.5">
-          <span v-for="skill in visibleSkills" :key="skill" class="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-            {{ skill }}
-          </span>
-          <span v-if="remainingSkillsCount > 0" class="px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-700 rounded-full">
-            +{{ remainingSkillsCount }} more
-          </span>
-           <span v-if="visibleSkills.length === 0" class="text-xs text-gray-500 italic">
-            None
-          </span>
-        </div>
+      <div class="flex w-full flex-row gap-3 sm:w-auto sm:flex-col sm:items-end">
+        <button
+          @click.stop="$emit('run-agent', agentDef)"
+          class="inline-flex min-w-[84px] justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        >
+          Run
+        </button>
+        <button
+          @click.stop="$emit('view-details', agentDef.id)"
+          class="inline-flex items-center text-sm font-medium text-slate-500 transition-colors hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        >
+          View Details
+          <span class="ml-1" aria-hidden="true">&rarr;</span>
+        </button>
       </div>
-    </div>
-
-    <div class="mt-6 flex items-center justify-end space-x-3 border-t border-gray-200 pt-4">
-      <button @click.stop="$emit('view-details', agentDef.id)" class="px-3 py-1.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors">
-        View Details
-      </button>      
-      <button @click.stop="$emit('run-agent', agentDef)" class="px-3 py-1.5 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors">
-        Run Agent
-      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, toRefs } from 'vue';
+import { computed, ref, toRefs, watch } from 'vue';
 import type { AgentDefinition } from '~/stores/agentDefinitionStore';
 
 const props = defineProps<{
@@ -62,14 +83,41 @@ const props = defineProps<{
 const emit = defineEmits(['view-details', 'run-agent']);
 
 const { agentDef } = toRefs(props);
+const avatarLoadError = ref(false);
 
-const MAX_TAGS = 3;
+const MAX_TAG_PREVIEW = 3;
 
-const allSkills = computed(() => agentDef.value.skillNames || []);
+const toolNames = computed(() => agentDef.value.toolNames ?? []);
+const skillNames = computed(() => agentDef.value.skillNames ?? []);
 
-const visibleTools = computed(() => (agentDef.value.toolNames || []).slice(0, MAX_TAGS));
-const remainingToolsCount = computed(() => Math.max(0, (agentDef.value.toolNames || []).length - MAX_TAGS));
+const totalTools = computed(() => toolNames.value.length);
+const totalSkills = computed(() => skillNames.value.length);
 
-const visibleSkills = computed(() => allSkills.value.slice(0, MAX_TAGS));
-const remainingSkillsCount = computed(() => Math.max(0, allSkills.value.length - MAX_TAGS));
+const visibleTools = computed(() => toolNames.value.slice(0, MAX_TAG_PREVIEW));
+const visibleSkills = computed(() => skillNames.value.slice(0, MAX_TAG_PREVIEW));
+
+const remainingToolsCount = computed(() => Math.max(0, totalTools.value - MAX_TAG_PREVIEW));
+const remainingSkillsCount = computed(() => Math.max(0, totalSkills.value - MAX_TAG_PREVIEW));
+
+watch(() => agentDef.value.avatarUrl, () => {
+  avatarLoadError.value = false;
+});
+
+const showAvatarImage = computed(() => Boolean(agentDef.value.avatarUrl) && !avatarLoadError.value);
+const avatarUrl = computed(() => agentDef.value.avatarUrl || '');
+const descriptionText = computed(() => agentDef.value.description?.trim() || 'No description provided.');
+
+const avatarInitials = computed(() => {
+  const raw = agentDef.value.name?.trim() ?? '';
+  if (!raw) {
+    return 'AI';
+  }
+  const parts = raw.split(/\s+/).filter(Boolean).slice(0, 2);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  const initials = parts.map((part) => part[0]?.toUpperCase() ?? '').join('');
+  return initials || 'AI';
+});
+
 </script>

@@ -37,6 +37,56 @@
           placeholder="A detailed description of the agent's purpose and capabilities."
         ></textarea>
       </div>
+
+      <div>
+        <label class="block text-base font-medium text-gray-800">Avatar</label>
+        <p class="mt-1 text-sm text-gray-500">Upload an image to represent this agent in list and detail views.</p>
+        <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div class="h-24 w-24 rounded-2xl border border-gray-200 bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-500 p-0.5">
+            <div class="h-full w-full overflow-hidden rounded-2xl bg-slate-900 flex items-center justify-center">
+              <img
+                v-if="formData.avatar_url && !avatarPreviewBroken"
+                :src="formData.avatar_url"
+                alt="Agent avatar preview"
+                class="h-full w-full object-cover"
+                @error="avatarPreviewBroken = true"
+              />
+              <span v-else class="text-xl font-semibold tracking-wide text-white">{{ avatarInitials }}</span>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="inline-flex items-center rounded-md border border-indigo-300 px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="fileUploadStore.isUploading"
+                @click="triggerAvatarPicker"
+              >
+                Upload Avatar
+              </button>
+              <button
+                v-if="formData.avatar_url"
+                type="button"
+                class="inline-flex items-center rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white hover:bg-gray-100"
+                @click="clearAvatar"
+              >
+                Remove
+              </button>
+            </div>
+            <p v-if="fileUploadStore.isUploading" class="text-sm text-indigo-600">Uploading avatar...</p>
+            <p v-else-if="avatarUploadError" class="text-sm text-red-600">{{ avatarUploadError }}</p>
+            <p v-else class="text-sm text-gray-500">Supported: JPG, PNG, GIF, WEBP</p>
+          </div>
+        </div>
+        <input
+          ref="avatarFileInputRef"
+          type="file"
+          class="hidden"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          @change="handleAvatarFileSelected"
+        />
+      </div>
     </fieldset>
 
     <!-- System Prompt Selection -->
@@ -153,7 +203,7 @@
       </button>
       <button
         type="submit"
-        :disabled="isSubmitting"
+        :disabled="isSubmitting || fileUploadStore.isUploading"
         class="inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
       >
         <span v-if="isSubmitting" class="animate-spin h-5 w-5 mr-3 i-heroicons-arrow-path-20-solid" viewBox="0 0 24 24"></span>
@@ -164,10 +214,11 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch, toRefs, computed, onMounted } from 'vue';
+import { reactive, watch, toRefs, computed, onMounted, ref } from 'vue';
 import { useAgentDefinitionOptionsStore } from '~/stores/agentDefinitionOptionsStore';
 import { useToolManagementStore } from '~/stores/toolManagementStore';
 import { useSkillStore } from '~/stores/skillStore';
+import { useFileUploadStore } from '~/stores/fileUploadStore';
 import GroupableTagInput from '~/components/agents/GroupableTagInput.vue';
 import type { GroupedSource, FlatSource } from '~/components/agents/GroupableTagInput.vue';
 
@@ -185,6 +236,10 @@ const { initialData, isCreateMode } = toRefs(props);
 const optionsStore = useAgentDefinitionOptionsStore();
 const toolStore = useToolManagementStore();
 const skillStore = useSkillStore();
+const fileUploadStore = useFileUploadStore();
+const avatarFileInputRef = ref<HTMLInputElement | null>(null);
+const avatarUploadError = ref<string | null>(null);
+const avatarPreviewBroken = ref(false);
 
 // Fetch required data on mount
 onMounted(async () => {
@@ -279,6 +334,7 @@ const getInitialValue = (): { [key: string]: any } => ({
   name: '',
   role: '',
   description: '',
+  avatar_url: '',
   system_prompt_category: '',
   system_prompt_name: '',
   ...Object.fromEntries(componentFields.value.map(f => [f.name, [] as string[]]))
@@ -291,6 +347,7 @@ watch(initialData, (newData) => {
     formData.name = newData.name || '';
     formData.role = newData.role || '';
     formData.description = newData.description || '';
+    formData.avatar_url = newData.avatarUrl || newData.avatar_url || '';
     formData.system_prompt_category = newData.systemPromptCategory || '';
     formData.system_prompt_name = newData.systemPromptName || '';
     componentFields.value.forEach(field => {
@@ -301,6 +358,10 @@ watch(initialData, (newData) => {
     Object.assign(formData, getInitialValue());
   }
 }, { immediate: true, deep: true });
+
+watch(() => formData.avatar_url, () => {
+  avatarPreviewBroken.value = false;
+});
 
 const availablePromptNames = computed(() => {
   if (!formData.system_prompt_category) return [];
@@ -341,11 +402,52 @@ function clearSelection(fieldName: string) {
   (formData as any)[fieldName] = [];
 }
 
+const avatarInitials = computed(() => {
+  const raw = (formData.name || '').trim();
+  if (!raw) {
+    return 'AI';
+  }
+  const parts = raw.split(/\s+/).filter(Boolean).slice(0, 2);
+  const initials = parts.map(part => part[0]?.toUpperCase() || '').join('');
+  return initials || 'AI';
+});
+
+function triggerAvatarPicker() {
+  avatarFileInputRef.value?.click();
+}
+
+function clearAvatar() {
+  formData.avatar_url = '';
+  avatarUploadError.value = null;
+}
+
+async function handleAvatarFileSelected(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) {
+    return;
+  }
+  avatarUploadError.value = null;
+  try {
+    const uploadedUrl = await fileUploadStore.uploadFile(file);
+    formData.avatar_url = uploadedUrl;
+  } catch (error: any) {
+    avatarUploadError.value =
+      fileUploadStore.error ||
+      error?.response?.data?.detail ||
+      error?.message ||
+      'Failed to upload avatar image.';
+  } finally {
+    input.value = '';
+  }
+}
+
 const handleSubmit = () => {
   const submissionData = {
     name: formData.name,
     role: formData.role,
     description: formData.description,
+    avatarUrl: formData.avatar_url,
     systemPromptCategory: formData.system_prompt_category,
     systemPromptName: formData.system_prompt_name,
     skillNames: formData.skill_names,

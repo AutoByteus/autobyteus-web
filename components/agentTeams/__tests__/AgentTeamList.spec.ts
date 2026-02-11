@@ -1,10 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
-import { shallowMount } from '@vue/test-utils';
+import { describe, expect, it, vi } from 'vitest';
+import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import AgentTeamList from '../AgentTeamList.vue';
-import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
 import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
+import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
 
@@ -13,8 +13,8 @@ const { AgentTeamCardStub } = vi.hoisted(() => ({
     name: 'AgentTeamCard',
     template: '<div class="agent-team-card"></div>',
     props: ['teamDef'],
-    emits: ['run-team', 'view-details']
-  }
+    emits: ['run-team', 'view-details'],
+  },
 }));
 
 vi.mock('../AgentTeamCard.vue', () => ({
@@ -23,8 +23,26 @@ vi.mock('../AgentTeamCard.vue', () => ({
 
 describe('AgentTeamList', () => {
   const mockTeamDefs = [
-    { id: 't1', name: 'Team Alpha', description: 'Alpha', role: 'test', memberNames: ['A', 'B'] },
-    { id: 't2', name: 'Team Beta', description: 'Beta', role: 'test', memberNames: ['C'] }
+    {
+      id: 't1',
+      name: 'Team Alpha',
+      description: 'Alpha description',
+      role: 'Creative',
+      coordinatorMemberName: 'alpha_lead',
+      nodes: [
+        { memberName: 'alpha_lead', referenceType: 'AGENT', referenceId: 'a1' },
+      ],
+    },
+    {
+      id: 't2',
+      name: 'Team Beta',
+      description: 'Beta description',
+      role: 'Ops',
+      coordinatorMemberName: 'beta_lead',
+      nodes: [
+        { memberName: 'beta_lead', referenceType: 'AGENT', referenceId: 'a2' },
+      ],
+    },
   ];
 
   const mountComponent = async () => {
@@ -36,33 +54,39 @@ describe('AgentTeamList', () => {
 
     const store = useAgentTeamDefinitionStore();
     store.agentTeamDefinitions = mockTeamDefs as any;
-    store.loading = false;
-    store.error = null;
+    store.loading = false as any;
+    store.error = null as any;
 
-    const wrapper = shallowMount(AgentTeamList, {
+    const wrapper = mount(AgentTeamList, {
       global: {
-        plugins: [
-          pinia,
-        ],
+        plugins: [pinia],
         stubs: {
-          AgentTeamCard: AgentTeamCardStub
+          AgentTeamCard: AgentTeamCardStub,
         },
-        mocks: {
-          useRouter: () => ({ push: vi.fn() })
-        }
-      }
+      },
     });
+
     await wrapper.vm.$nextTick();
     return wrapper;
   };
 
-  it('should render list of teams', async () => {
+  it('renders list of teams', async () => {
     const wrapper = await mountComponent();
     const cards = wrapper.findAllComponents({ name: 'AgentTeamCard' });
     expect(cards).toHaveLength(2);
   });
 
-  it('should clear agent config and set team config when running a team', async () => {
+  it('filters teams by name search query', async () => {
+    const wrapper = await mountComponent();
+    (wrapper.vm as any).searchQuery = 'Beta';
+    await wrapper.vm.$nextTick();
+
+    const filteredTeams = (wrapper.vm as any).filteredTeamDefinitions as Array<{ name: string }>;
+    expect(filteredTeams).toHaveLength(1);
+    expect(filteredTeams[0]?.name).toBe('Team Beta');
+  });
+
+  it('clears agent config and sets team config when running a team', async () => {
     const wrapper = await mountComponent();
     const teamRunConfigStore = useTeamRunConfigStore();
     const agentRunConfigStore = useAgentRunConfigStore();

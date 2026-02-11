@@ -43,6 +43,7 @@ We follow a **colocated testing strategy** where tests live alongside the code i
     *   `pnpm test`: Run all tests (Nuxt + Electron).
     *   `pnpm test:nuxt`: Run only web/frontend tests (Recommended). **Always include `--run` to avoid watch mode timeouts**.
     *   `pnpm test:electron`: Run only Electron-specific tests.
+    *   `pnpm -C autobyteus-server-ts exec vitest run tests/unit/config/app-config.test.ts --no-watch`: Run a single server test file.
     *   *Note: Always use `--run` (e.g., `pnpm test:nuxt path/to/test --run`) to execute once without watch mode.*
 *   **Full Guide**: See **[Testing in README](./README.md#testing)**.
 

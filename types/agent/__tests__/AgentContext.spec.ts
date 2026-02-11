@@ -12,6 +12,7 @@ describe('AgentContext', () => {
             workspaceId: 'ws-1',
             llmModelIdentifier: 'gpt-4',
             autoExecuteTools: true,
+            skillAccessMode: 'PRELOADED_ONLY',
             isLocked: false,
         };
 
@@ -42,6 +43,7 @@ describe('AgentContext', () => {
             workspaceId: 'ws-1',
             llmModelIdentifier: 'gpt-4',
             autoExecuteTools: true,
+            skillAccessMode: 'PRELOADED_ONLY',
             isLocked: false,
         };
         const mockConversation: Conversation = {

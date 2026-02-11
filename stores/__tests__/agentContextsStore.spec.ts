@@ -11,6 +11,7 @@ const mockAgentDef: AgentDefinition = {
   name: 'TestAgent',
   role: 'assistant',
   description: 'Test Description',
+  avatarUrl: '/rest/files/images/test-agent.png',
   toolNames: [],
   inputProcessorNames: [],
   llmResponseProcessorNames: [],
@@ -45,6 +46,7 @@ describe('agentContextsStore', () => {
                 llmModelIdentifier: 'gpt-4',
                 workspaceId: 'ws-1',
                 autoExecuteTools: true,
+                skillAccessMode: 'GLOBAL_DISCOVERY',
                 llmConfig: { reasoning_effort: 'high' },
             });
 
@@ -59,9 +61,11 @@ describe('agentContextsStore', () => {
             // Verify config was copied
             expect(instance?.config.agentDefinitionId).toBe('def-1');
             expect(instance?.config.agentDefinitionName).toBe('TestAgent');
+            expect(instance?.config.agentAvatarUrl).toBe('/rest/files/images/test-agent.png');
             expect(instance?.config.llmModelIdentifier).toBe('gpt-4');
             expect(instance?.config.workspaceId).toBe('ws-1');
             expect(instance?.config.autoExecuteTools).toBe(true);
+            expect(instance?.config.skillAccessMode).toBe('GLOBAL_DISCOVERY');
             expect(instance?.config.llmConfig).toEqual({ reasoning_effort: 'high' });
             expect(instance?.config.isLocked).toBe(false);
 

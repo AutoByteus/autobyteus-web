@@ -14,7 +14,7 @@
     <!-- Network access for client connections -->
     <key>com.apple.security.network.client</key>
     <true/>
-    <!-- Network access for server (required for local Python server) -->
+    <!-- Network access for bundled server -->
     <key>com.apple.security.network.server</key>
     <true/>
 </dict>

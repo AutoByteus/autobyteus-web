@@ -14,9 +14,9 @@
             <button
               @click="handleNavigation({ view: 'list' })"
               class="flex items-center flex-shrink-0 lg:w-full px-3 py-2 text-sm font-semibold rounded-md text-left transition-colors whitespace-nowrap"
-              :class="isLocalAgentsActive ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-200'"
+              :class="isAgentsActive ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-200'"
             >
-              Local Agents
+              Agents
             </button>
             <button
               @click="handleNavigation({ view: 'team-list' })"
@@ -44,7 +44,7 @@
           </div>
         </div>
         <div v-else class="h-full w-full">
-          <!-- Local Agent Views -->
+          <!-- Agent Views -->
           <AgentList v-if="currentView === 'list'" @navigate="handleNavigation" />
           <AgentCreate v-else-if="currentView === 'create'" @navigate="handleNavigation" />
           <AgentDetail v-else-if="currentView === 'detail' && currentId" :agent-id="currentId" @navigate="handleNavigation" />
@@ -74,7 +74,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
 import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
-// Local Agent Components
+// Agent Components
 import AgentList from '~/components/agents/AgentList.vue';
 import AgentDetail from '~/components/agents/AgentDetail.vue';
 import AgentCreate from '~/components/agents/AgentCreate.vue';
@@ -130,7 +130,7 @@ const currentView = computed((): View => {
 
 const currentId = computed(() => route.query.id as string | undefined);
 
-const isLocalAgentsActive = computed(() => {
+const isAgentsActive = computed(() => {
   return ['list', 'detail', 'create', 'edit'].includes(currentView.value);
 });
 

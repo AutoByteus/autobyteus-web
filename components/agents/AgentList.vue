@@ -1,39 +1,43 @@
 <template>
-  <div class="flex-1 overflow-auto p-8">
-    <div class="max-w-full mx-auto">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
+  <div class="h-full flex-1 overflow-auto bg-slate-50">
+    <div class="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
+      <div class="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Local Agents</h1>
-          <p class="text-gray-500 mt-1">Access your installed local AI agents</p>
+          <h1 class="text-4xl font-semibold text-slate-900">Agents</h1>
+          <p class="mt-1 text-lg text-slate-600">Access your installed AI agents</p>
         </div>
-        <div class="flex items-center space-x-2">
+        <div class="flex items-center gap-2">
           <button
             @click="handleReload"
             :disabled="reloading"
-            class="flex items-center px-4 py-2 text-sm rounded-lg transition-colors"
+            class="inline-flex items-center rounded-lg border px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             :class="[
-              reloading ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+              reloading
+                ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100',
             ]"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" :class="{'animate-spin': reloading}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 h-4 w-4" :class="{'animate-spin': reloading}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             {{ reloading ? 'Reloading...' : 'Reload' }}
           </button>
-          <button @click="$emit('navigate', { view: 'create' })" class="px-4 py-2 bg-blue-600 text-white font-semibold text-sm rounded-md hover:bg-blue-700 transition-colors flex items-center">
-            Create New Agent
+          <button
+            @click="$emit('navigate', { view: 'create' })"
+            class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          >
+            Create Agent
           </button>
         </div>
       </div>
 
-      <!-- Delete Result Message -->
       <div v-if="deleteResult" class="mb-6">
         <div 
-          class="p-4 rounded-lg" 
-          :class="deleteResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'"
+          class="rounded-lg border-l-4 p-4 shadow-sm" 
+          :class="deleteResult.success ? 'border-green-500 bg-green-50 text-green-700' : 'border-red-500 bg-red-50 text-red-700'"
         >
-          <div class="flex items-start">
-            <div class="flex-shrink-0">
+          <div class="flex items-start gap-3">
+            <div class="shrink-0">
               <svg v-if="deleteResult.success" class="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
               </svg>
@@ -41,14 +45,14 @@
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
               </svg>
             </div>
-            <div class="ml-3">
+            <div class="min-w-0">
               <p class="text-sm font-medium">{{ deleteResult.message }}</p>
             </div>
             <div class="ml-auto pl-3">
               <div class="-mx-1.5 -my-1.5">
                 <button 
                   @click="clearDeleteResult"
-                  class="inline-flex bg-transparent rounded-md p-1.5"
+                  class="inline-flex rounded-md bg-transparent p-1.5"
                   :class="deleteResult.success ? 'text-green-600 hover:bg-green-100' : 'text-red-600 hover:bg-red-100'"
                 >
                   <span class="sr-only">Dismiss</span>
@@ -62,34 +66,34 @@
         </div>
       </div>
 
-      <!-- Single Box Search Filter -->
       <div class="mb-6">
-        <div class="relative">
-          <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <span class="i-heroicons-magnifying-glass-20-solid text-gray-500 w-5 h-5" aria-hidden="true" />
+        <div class="relative rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M9 3a6 6 0 104.472 10.001l2.763 2.764a1 1 0 001.414-1.414l-2.764-2.763A6 6 0 009 3zm-4 6a4 4 0 118 0 4 4 0 01-8 0z" clip-rule="evenodd" />
+            </svg>
           </div>
           <input
             type="text"
             v-model="searchQuery"
             name="agent-search"
             id="agent-search"
-            class="block w-full rounded-lg border-gray-200 pl-10 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2.5 bg-gray-50 focus:bg-white placeholder-gray-500"
+            class="block w-full rounded-lg border-transparent bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             placeholder="Search agents by name or description..."
           />
         </div>
       </div>
 
-      <div v-if="loading && !reloading" class="text-center py-20">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto mb-4"></div>
-        <p>Loading agent definitions...</p>
+      <div v-if="loading && !reloading" class="rounded-lg border border-slate-200 bg-white py-20 text-center shadow-sm">
+        <div class="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
+        <p class="text-slate-600">Loading agent definitions...</p>
       </div>
-      <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-700 rounded-md p-4">
+      <div v-else-if="error" class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
         <p class="font-bold">Error loading agent definitions:</p>
         <p>{{ error.message }}</p>
       </div>
 
-      <!-- Agent Grid -->
-      <div v-else-if="filteredAgentDefinitions.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div v-else-if="filteredAgentDefinitions.length > 0" class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <AgentCard
           v-for="agentDef in filteredAgentDefinitions"
           :key="agentDef.id"
@@ -99,20 +103,18 @@
         />
       </div>
 
-      <!-- Empty State for Search -->
-      <div v-else class="text-center py-16">
-        <div class="text-gray-500">
-          <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div v-else class="rounded-lg border border-slate-200 bg-white py-16 text-center shadow-sm">
+        <div class="text-slate-500">
+          <svg class="mx-auto mb-4 h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 7a4 4 0 014 4c0 1.37-.69 2.62-1.84 3.38-.42.28-.66.77-.66 1.28V17a1 1 0 01-1 1h-1.5a1 1 0 01-1-1v-1.34c0-.51-.25-1-.66-1.28A4 4 0 018 11a4 4 0 014-4zm-3 12h6M10 5.5a2 2 0 114 0" />
           </svg>
-          <p class="text-lg font-medium mb-2">No agents found</p>
-          <p class="text-gray-400">
+          <p class="mb-2 text-lg font-medium">No agents found</p>
+          <p class="text-slate-400">
             {{ searchQuery.trim() ? `No agents matched "${searchQuery}"` : 'Create a new agent to get started.' }}
           </p>
         </div>
       </div>
     </div>
-
   </div>
 </template>
 
@@ -157,10 +159,18 @@ const filteredAgentDefinitions = computed(() => {
     return agentDefinitions.value;
   }
   const lowerCaseQuery = searchQuery.value.toLowerCase();
-  return agentDefinitions.value.filter(agent =>
-    agent.name.toLowerCase().includes(lowerCaseQuery) ||
-    agent.description.toLowerCase().includes(lowerCaseQuery)
-  );
+  return agentDefinitions.value.filter((agent) => {
+    const name = agent.name?.toLowerCase() ?? '';
+    const description = agent.description?.toLowerCase() ?? '';
+    const tools = (agent.toolNames ?? []).join(' ').toLowerCase();
+    const skills = (agent.skillNames ?? []).join(' ').toLowerCase();
+    return (
+      name.includes(lowerCaseQuery)
+      || description.includes(lowerCaseQuery)
+      || tools.includes(lowerCaseQuery)
+      || skills.includes(lowerCaseQuery)
+    );
+  });
 });
 
 onMounted(() => {

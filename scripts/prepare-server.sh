@@ -35,14 +35,67 @@ mkdir -p "$TARGET_DIR"
 echo -e "${GREEN}✓${NC} Created target directory: $TARGET_DIR"
 
 echo -e "\n${YELLOW}Building server and dependencies...${NC}"
-pnpm -C "$WORKSPACE_ROOT" -r --filter autobyteus-ts --filter repository_prisma build
-pnpm -C "$SERVER_REPO_DIR" install --frozen-lockfile
+if [ -f "${WORKSPACE_ROOT}/pnpm-workspace.yaml" ]; then
+  pnpm -C "$WORKSPACE_ROOT" -r --filter autobyteus-ts --filter repository_prisma build
+else
+  if [ -d "${WORKSPACE_ROOT}/autobyteus-ts" ]; then
+    pnpm -C "${WORKSPACE_ROOT}/autobyteus-ts" install --no-frozen-lockfile
+    pnpm -C "${WORKSPACE_ROOT}/autobyteus-ts" build
+  else
+    echo -e "${RED}Error: autobyteus-ts not found at ${WORKSPACE_ROOT}/autobyteus-ts${NC}"
+    exit 1
+  fi
+
+  if [ -d "${WORKSPACE_ROOT}/repository_prisma" ]; then
+    pnpm -C "${WORKSPACE_ROOT}/repository_prisma" install --no-frozen-lockfile
+    pnpm -C "${WORKSPACE_ROOT}/repository_prisma" build
+  else
+    echo -e "${RED}Error: repository_prisma not found at ${WORKSPACE_ROOT}/repository_prisma${NC}"
+    exit 1
+  fi
+fi
+
+if [ -f "${SERVER_REPO_DIR}/pnpm-lock.yaml" ]; then
+  pnpm -C "$SERVER_REPO_DIR" install --frozen-lockfile
+else
+  pnpm -C "$SERVER_REPO_DIR" install --no-frozen-lockfile
+fi
 pnpm -C "$SERVER_REPO_DIR" build
 
 echo -e "\n${YELLOW}Deploying server package into Electron resources...${NC}"
 rm -rf "$TARGET_DIR"
 mkdir -p "$TARGET_DIR"
-pnpm --filter autobyteus-server-ts deploy "$TARGET_DIR" --legacy
+if [ -f "${WORKSPACE_ROOT}/pnpm-workspace.yaml" ]; then
+  pnpm -C "$WORKSPACE_ROOT" --filter autobyteus-server-ts deploy "$TARGET_DIR" --legacy
+else
+  pnpm -C "$SERVER_REPO_DIR" deploy "$TARGET_DIR" --legacy
+fi
+
+echo -e "\n${YELLOW}Cleaning workspace symlinks in deployment...${NC}"
+if [ -d "${TARGET_DIR}/node_modules/.pnpm/node_modules" ]; then
+  python3 - "$TARGET_DIR" <<'PY'
+import os
+import sys
+
+root = os.path.realpath(sys.argv[1])
+scan_root = os.path.join(root, "node_modules", ".pnpm", "node_modules")
+
+removed = 0
+for dirpath, dirnames, filenames in os.walk(scan_root, topdown=True, followlinks=False):
+    # Combine files and dir entries for symlink detection.
+    entries = list(dirnames) + list(filenames)
+    for name in entries:
+        path = os.path.join(dirpath, name)
+        if not os.path.islink(path):
+            continue
+        target = os.path.realpath(path)
+        if not target.startswith(root + os.sep):
+            os.unlink(path)
+            removed += 1
+
+print(f"Removed {removed} external symlinks from {scan_root}")
+PY
+fi
 
 echo -e "\n${YELLOW}Generating Prisma client (ensures engines are bundled)...${NC}"
 PRISMA_BIN="${TARGET_DIR}/node_modules/.bin/prisma"
@@ -59,6 +112,12 @@ if [ -f "$SERVER_REPO_DIR/.env" ]; then
   cp "$SERVER_REPO_DIR/.env" "$TARGET_DIR/.env"
 fi
 
+echo -e "\n${YELLOW}Pruning non-darwin native prebuilds...${NC}"
+if [ -d "${TARGET_DIR}/node_modules/node-pty/prebuilds" ]; then
+  find "${TARGET_DIR}/node_modules/node-pty/prebuilds" -maxdepth 1 -type d \
+    ! -name "darwin-*" ! -name "." -exec rm -rf {} +
+fi
+
 if [ -d "$SERVER_REPO_DIR/download" ]; then
   mkdir -p "$TARGET_DIR/download"
   cp -R "$SERVER_REPO_DIR/download/." "$TARGET_DIR/download/"
@@ -67,6 +126,30 @@ fi
 echo -e "\n${YELLOW}Rebuilding native modules for Electron...${NC}"
 ELECTRON_VERSION=$(node -p "require('${WEB_ROOT}/package.json').devDependencies.electron.replace(/^\\^/, '')")
 pnpm -C "$WEB_ROOT" exec electron-rebuild -v "$ELECTRON_VERSION" -m "$TARGET_DIR" -w node-pty
+
+echo -e "\n${YELLOW}Removing symlinks that point outside the bundle...${NC}"
+python3 - "$TARGET_DIR" <<'PY'
+import os
+import sys
+
+root = os.path.realpath(sys.argv[1])
+removed = 0
+
+for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+    for name in dirnames + filenames:
+        path = os.path.join(dirpath, name)
+        if not os.path.islink(path):
+            continue
+        target = os.path.realpath(path)
+        if not target.startswith(root + os.sep):
+            try:
+                os.unlink(path)
+                removed += 1
+            except FileNotFoundError:
+                pass
+
+print(f"Removed {removed} external symlinks from {root}")
+PY
 
 echo -e "\n${GREEN}=======================================${NC}"
 echo -e "${GREEN}   Server files prepared successfully!   ${NC}"

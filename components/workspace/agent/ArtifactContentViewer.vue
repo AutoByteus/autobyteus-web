@@ -83,8 +83,8 @@ import type { AgentArtifact } from '~/stores/agentArtifactsStore';
 import type { FileOpenMode } from '~/stores/fileExplorer';
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useWorkspaceStore } from '~/stores/workspace';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import { determineFileType } from '~/utils/fileExplorer/fileUtils';
-import { getServerUrls } from '~/utils/serverConfig';
 
 // Import Viewers
 import FileViewer from '~/components/fileExplorer/FileViewer.vue';
@@ -105,6 +105,7 @@ let fetchToken = 0;
 
 const agentContextsStore = useAgentContextsStore();
 const workspaceStore = useWorkspaceStore();
+const windowNodeContextStore = useWindowNodeContextStore();
 
 const isLoading = computed(() => isDeterminingType.value || isFetchingContent.value);
 
@@ -147,8 +148,7 @@ const artifactUrl = computed(() => {
     }
   }
 
-  const serverUrls = getServerUrls();
-  const restBaseUrl = serverUrls.rest.replace(/\/$/, '');
+  const restBaseUrl = windowNodeContextStore.getBoundEndpoints().rest.replace(/\/$/, '');
   return `${restBaseUrl}/workspaces/${workspaceId}/content?path=${encodeURIComponent(relativePath)}`;
 });
 

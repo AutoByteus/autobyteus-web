@@ -18,6 +18,7 @@ export type Scalars = {
   Float: { input: number; output: number; }
   DateTime: { input: any; output: any; }
   JSON: { input: any; output: any; }
+  JSONObject: { input: any; output: any; }
 };
 
 export type ActivateSkillVersionInput = {
@@ -30,8 +31,8 @@ export type AddNewPromptRevisionInput = {
   newPromptContent: Scalars['String']['input'];
 };
 
-export type AgentArtifactType = {
-  __typename?: 'AgentArtifactType';
+export type AgentArtifact = {
+  __typename?: 'AgentArtifact';
   agentId: Scalars['String']['output'];
   createdAt: Scalars['String']['output'];
   id: Scalars['String']['output'];
@@ -41,19 +42,9 @@ export type AgentArtifactType = {
   workspaceRoot?: Maybe<Scalars['String']['output']>;
 };
 
-export type AgentConversation = {
-  __typename?: 'AgentConversation';
-  agentDefinitionId: Scalars['String']['output'];
-  agentId: Scalars['String']['output'];
-  agentName?: Maybe<Scalars['String']['output']>;
-  createdAt: Scalars['String']['output'];
-  llmModel?: Maybe<Scalars['String']['output']>;
-  messages: Array<Message>;
-  useXmlToolFormat: Scalars['Boolean']['output'];
-};
-
 export type AgentDefinition = {
   __typename?: 'AgentDefinition';
+  avatarUrl?: Maybe<Scalars['String']['output']>;
   description: Scalars['String']['output'];
   id: Scalars['String']['output'];
   inputProcessorNames: Array<Scalars['String']['output']>;
@@ -93,6 +84,7 @@ export type AgentMemoryView = {
 
 export type AgentTeamDefinition = {
   __typename?: 'AgentTeamDefinition';
+  avatarUrl?: Maybe<Scalars['String']['output']>;
   coordinatorMemberName: Scalars['String']['output'];
   description: Scalars['String']['output'];
   id: Scalars['String']['output'];
@@ -116,8 +108,8 @@ export type AgentUserInput = {
 
 export type ApplicationManifest = {
   __typename?: 'ApplicationManifest';
-  description: Scalars['String']['output'];
-  icon: Scalars['String']['output'];
+  description?: Maybe<Scalars['String']['output']>;
+  icon?: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];
   name: Scalars['String']['output'];
   teamDefinitionName?: Maybe<Scalars['String']['output']>;
@@ -163,18 +155,13 @@ export enum ContextFileType {
   Unknown = 'UNKNOWN',
   Video = 'VIDEO',
   Xlsx = 'XLSX',
-  Xml = 'XML'
+  Xml = 'XML',
+  FromPath = 'fromPath',
+  GetReadableTextTypes = 'getReadableTextTypes'
 }
 
-export type ConversationHistory = {
-  __typename?: 'ConversationHistory';
-  conversations: Array<AgentConversation>;
-  currentPage: Scalars['Int']['output'];
-  totalConversations: Scalars['Int']['output'];
-  totalPages: Scalars['Int']['output'];
-};
-
 export type CreateAgentDefinitionInput = {
+  avatarUrl?: InputMaybe<Scalars['String']['input']>;
   description: Scalars['String']['input'];
   inputProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
   lifecycleProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -191,6 +178,7 @@ export type CreateAgentDefinitionInput = {
 };
 
 export type CreateAgentTeamDefinitionInput = {
+  avatarUrl?: InputMaybe<Scalars['String']['input']>;
   coordinatorMemberName: Scalars['String']['input'];
   description: Scalars['String']['input'];
   name: Scalars['String']['input'];
@@ -275,6 +263,41 @@ export type EnableSkillVersioningInput = {
   skillName: Scalars['String']['input'];
 };
 
+export type ExternalChannelBindingGql = {
+  __typename?: 'ExternalChannelBindingGql';
+  accountId: Scalars['String']['output'];
+  allowTransportFallback: Scalars['Boolean']['output'];
+  id: Scalars['String']['output'];
+  peerId: Scalars['String']['output'];
+  provider: Scalars['String']['output'];
+  targetId: Scalars['String']['output'];
+  targetType: Scalars['String']['output'];
+  threadId?: Maybe<Scalars['String']['output']>;
+  transport: Scalars['String']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+export type ExternalChannelBindingTargetOptionGql = {
+  __typename?: 'ExternalChannelBindingTargetOptionGql';
+  displayName: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+  targetId: Scalars['String']['output'];
+  targetType: Scalars['String']['output'];
+};
+
+export type ExternalChannelCapabilities = {
+  __typename?: 'ExternalChannelCapabilities';
+  acceptedProviderTransportPairs: Array<Scalars['String']['output']>;
+  bindingCrudEnabled: Scalars['Boolean']['output'];
+  reason?: Maybe<Scalars['String']['output']>;
+};
+
+export type HealthStatus = {
+  __typename?: 'HealthStatus';
+  message: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+};
+
 export type ImportMcpServerConfigsResult = {
   __typename?: 'ImportMcpServerConfigsResult';
   failedCount: Scalars['Int']['output'];
@@ -287,14 +310,6 @@ export type MarkActivePromptInput = {
   id: Scalars['String']['input'];
 };
 
-export type McpServerConfig = {
-  enabled: Scalars['Boolean']['output'];
-  serverId: Scalars['String']['output'];
-  toolNamePrefix?: Maybe<Scalars['String']['output']>;
-  transportType: McpTransportTypeEnum;
-};
-
-/** Represents one of the possible MCP server configurations. */
 export type McpServerConfigUnion = StdioMcpServerConfig | StreamableHttpMcpServerConfig;
 
 export type McpServerInput = {
@@ -367,28 +382,6 @@ export type MemoryTraceEvent = {
   turnId: Scalars['String']['output'];
 };
 
-export type Message = {
-  __typename?: 'Message';
-  audioUrls?: Maybe<Array<Scalars['String']['output']>>;
-  contextPaths?: Maybe<Array<Scalars['String']['output']>>;
-  cost?: Maybe<Scalars['Float']['output']>;
-  imageUrls?: Maybe<Array<Scalars['String']['output']>>;
-  message: Scalars['String']['output'];
-  messageId?: Maybe<Scalars['String']['output']>;
-  originalMessage?: Maybe<Scalars['String']['output']>;
-  reasoning?: Maybe<Scalars['String']['output']>;
-  role: Scalars['String']['output'];
-  timestamp: Scalars['String']['output'];
-  tokenCount?: Maybe<Scalars['Int']['output']>;
-  videoUrls?: Maybe<Array<Scalars['String']['output']>>;
-};
-
-export type Model = {
-  __typename?: 'Model';
-  name: Scalars['String']['output'];
-  value: Scalars['String']['output'];
-};
-
 export type ModelDetail = {
   __typename?: 'ModelDetail';
   canonicalName: Scalars['String']['output'];
@@ -417,6 +410,7 @@ export type Mutation = {
   createWorkspace: WorkspaceInfo;
   deleteAgentDefinition: DeleteAgentDefinitionResult;
   deleteAgentTeamDefinition: DeleteAgentTeamDefinitionResult;
+  deleteExternalChannelBinding: Scalars['Boolean']['output'];
   deleteFileOrFolder: Scalars['String']['output'];
   deleteMcpServer: DeleteMcpServerResult;
   deletePrompt: DeletePromptResult;
@@ -434,7 +428,7 @@ export type Mutation = {
   reloadToolSchema: ReloadToolSchemaResult;
   removeSkillSource: Array<SkillSource>;
   renameFileOrFolder: Scalars['String']['output'];
-  runApplication: Scalars['JSON']['output'];
+  runApplication: Scalars['JSONObject']['output'];
   sendAgentUserInput: SendAgentUserInputResult;
   sendMessageToTeam: SendMessageToTeamResult;
   setLlmProviderApiKey: Scalars['String']['output'];
@@ -447,6 +441,7 @@ export type Mutation = {
   updateServerSetting: Scalars['String']['output'];
   updateSkill: Skill;
   uploadSkillFile: Scalars['Boolean']['output'];
+  upsertExternalChannelBinding: ExternalChannelBindingGql;
   writeFileContent: Scalars['String']['output'];
 };
 
@@ -519,6 +514,11 @@ export type MutationDeleteAgentDefinitionArgs = {
 
 
 export type MutationDeleteAgentTeamDefinitionArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type MutationDeleteExternalChannelBindingArgs = {
   id: Scalars['String']['input'];
 };
 
@@ -611,7 +611,7 @@ export type MutationRenameFileOrFolderArgs = {
 
 export type MutationRunApplicationArgs = {
   appId: Scalars['String']['input'];
-  input: Scalars['JSON']['input'];
+  input: Scalars['JSONObject']['input'];
 };
 
 
@@ -674,6 +674,11 @@ export type MutationUploadSkillFileArgs = {
 };
 
 
+export type MutationUpsertExternalChannelBindingArgs = {
+  input: UpsertExternalChannelBindingInput;
+};
+
+
 export type MutationWriteFileContentArgs = {
   content: Scalars['String']['input'];
   filePath: Scalars['String']['input'];
@@ -683,7 +688,7 @@ export type MutationWriteFileContentArgs = {
 export type Prompt = {
   __typename?: 'Prompt';
   category: Scalars['String']['output'];
-  createdAt: Scalars['DateTime']['output'];
+  createdAt: Scalars['String']['output'];
   description?: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];
   isActive: Scalars['Boolean']['output'];
@@ -691,7 +696,7 @@ export type Prompt = {
   parentPromptId?: Maybe<Scalars['String']['output']>;
   promptContent: Scalars['String']['output'];
   suitableForModels?: Maybe<Scalars['String']['output']>;
-  updatedAt: Scalars['DateTime']['output'];
+  updatedAt: Scalars['String']['output'];
   version: Scalars['Int']['output'];
 };
 
@@ -707,12 +712,6 @@ export type PromptDetails = {
   promptContent: Scalars['String']['output'];
 };
 
-export type ProviderModels = {
-  __typename?: 'ProviderModels';
-  models: Array<Model>;
-  provider: Scalars['String']['output'];
-};
-
 export type ProviderWithModels = {
   __typename?: 'ProviderWithModels';
   models: Array<ModelDetail>;
@@ -721,7 +720,7 @@ export type ProviderWithModels = {
 
 export type Query = {
   __typename?: 'Query';
-  agentArtifacts: Array<AgentArtifactType>;
+  agentArtifacts: Array<AgentArtifact>;
   agentDefinition?: Maybe<AgentDefinition>;
   agentDefinitions: Array<AgentDefinition>;
   agentInstance?: Maybe<AgentInstance>;
@@ -741,14 +740,15 @@ export type Query = {
   availableOptionalToolInvocationPreprocessorNames: Array<Scalars['String']['output']>;
   availablePromptCategories: Array<PromptCategory>;
   availableToolNames: Array<Scalars['String']['output']>;
+  externalChannelBindingTargetOptions: Array<ExternalChannelBindingTargetOptionGql>;
+  externalChannelBindings: Array<ExternalChannelBindingGql>;
+  externalChannelCapabilities: ExternalChannelCapabilities;
   fileContent: Scalars['String']['output'];
   folderChildren: Scalars['String']['output'];
-  getAgentConversationHistory: ConversationHistory;
   getAgentMemoryView: AgentMemoryView;
   getLlmProviderApiKey?: Maybe<Scalars['String']['output']>;
-  getModelsByProvider: Array<ProviderModels>;
-  getRawConversationHistory: ConversationHistory;
   getServerSettings: Array<ServerSetting>;
+  health: HealthStatus;
   listAgentMemorySnapshots: MemorySnapshotPage;
   listApplications: Array<ApplicationManifest>;
   mcpServers: Array<McpServerConfigUnion>;
@@ -809,14 +809,6 @@ export type QueryFolderChildrenArgs = {
 };
 
 
-export type QueryGetAgentConversationHistoryArgs = {
-  agentDefinitionId: Scalars['String']['input'];
-  page?: Scalars['Int']['input'];
-  pageSize?: Scalars['Int']['input'];
-  searchQuery?: InputMaybe<Scalars['String']['input']>;
-};
-
-
 export type QueryGetAgentMemoryViewArgs = {
   agentId: Scalars['String']['input'];
   conversationLimit?: InputMaybe<Scalars['Int']['input']>;
@@ -832,14 +824,6 @@ export type QueryGetAgentMemoryViewArgs = {
 
 export type QueryGetLlmProviderApiKeyArgs = {
   provider: Scalars['String']['input'];
-};
-
-
-export type QueryGetRawConversationHistoryArgs = {
-  agentDefinitionId?: InputMaybe<Scalars['String']['input']>;
-  page?: Scalars['Int']['input'];
-  pageSize?: Scalars['Int']['input'];
-  searchQuery?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -940,6 +924,7 @@ export type SendAgentUserInputInput = {
   autoExecuteTools?: InputMaybe<Scalars['Boolean']['input']>;
   llmConfig?: InputMaybe<Scalars['JSON']['input']>;
   llmModelIdentifier?: InputMaybe<Scalars['String']['input']>;
+  skillAccessMode?: InputMaybe<SkillAccessModeEnum>;
   useXmlToolFormat?: InputMaybe<Scalars['Boolean']['input']>;
   userInput: AgentUserInput;
   workspaceId?: InputMaybe<Scalars['String']['input']>;
@@ -961,6 +946,12 @@ export type SendMessageToTeamInput = {
   useXmlToolFormat?: InputMaybe<Scalars['Boolean']['input']>;
   userInput: AgentUserInput;
 };
+
+export enum SkillAccessModeEnum {
+  GlobalDiscovery = 'GLOBAL_DISCOVERY',
+  None = 'NONE',
+  PreloadedOnly = 'PRELOADED_ONLY'
+}
 
 export type SendMessageToTeamResult = {
   __typename?: 'SendMessageToTeamResult';
@@ -1014,7 +1005,7 @@ export type SkillVersion = {
   tag: Scalars['String']['output'];
 };
 
-export type StdioMcpServerConfig = McpServerConfig & {
+export type StdioMcpServerConfig = {
   __typename?: 'StdioMcpServerConfig';
   args?: Maybe<Array<Scalars['String']['output']>>;
   command: Scalars['String']['output'];
@@ -1033,7 +1024,7 @@ export type StdioMcpServerConfigInput = {
   env?: InputMaybe<Scalars['JSON']['input']>;
 };
 
-export type StreamableHttpMcpServerConfig = McpServerConfig & {
+export type StreamableHttpMcpServerConfig = {
   __typename?: 'StreamableHttpMcpServerConfig';
   enabled: Scalars['Boolean']['output'];
   headers?: Maybe<Scalars['JSON']['output']>;
@@ -1066,7 +1057,6 @@ export enum TaskNotificationModeEnum {
 
 export type TeamMember = {
   __typename?: 'TeamMember';
-  dependencies: Array<Scalars['String']['output']>;
   memberName: Scalars['String']['output'];
   referenceId: Scalars['String']['output'];
   referenceType: TeamMemberType;
@@ -1082,7 +1072,6 @@ export type TeamMemberConfigInput = {
 };
 
 export type TeamMemberInput = {
-  dependencies?: InputMaybe<Array<Scalars['String']['input']>>;
   memberName: Scalars['String']['input'];
   referenceId: Scalars['String']['input'];
   referenceType: TeamMemberType;
@@ -1151,6 +1140,7 @@ export enum ToolParameterTypeEnum {
 }
 
 export type UpdateAgentDefinitionInput = {
+  avatarUrl?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   inputProcessorNames?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -1168,6 +1158,7 @@ export type UpdateAgentDefinitionInput = {
 };
 
 export type UpdateAgentTeamDefinitionInput = {
+  avatarUrl?: InputMaybe<Scalars['String']['input']>;
   coordinatorMemberName?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
@@ -1192,6 +1183,18 @@ export type UpdateSkillInput = {
   name: Scalars['String']['input'];
 };
 
+export type UpsertExternalChannelBindingInput = {
+  accountId: Scalars['String']['input'];
+  allowTransportFallback?: Scalars['Boolean']['input'];
+  id?: InputMaybe<Scalars['String']['input']>;
+  peerId: Scalars['String']['input'];
+  provider: Scalars['String']['input'];
+  targetId: Scalars['String']['input'];
+  targetType: Scalars['String']['input'];
+  threadId?: InputMaybe<Scalars['String']['input']>;
+  transport: Scalars['String']['input'];
+};
+
 export type UsageStatistics = {
   __typename?: 'UsageStatistics';
   assistantCost?: Maybe<Scalars['Float']['output']>;
@@ -1206,7 +1209,7 @@ export type WorkspaceInfo = {
   __typename?: 'WorkspaceInfo';
   absolutePath?: Maybe<Scalars['String']['output']>;
   config: Scalars['JSON']['output'];
-  fileExplorer?: Maybe<Scalars['JSON']['output']>;
+  fileExplorer?: Maybe<Scalars['String']['output']>;
   isTemp: Scalars['Boolean']['output'];
   name: Scalars['String']['output'];
   workspaceId: Scalars['String']['output'];
@@ -1217,14 +1220,14 @@ export type CreateAgentDefinitionMutationVariables = Exact<{
 }>;
 
 
-export type CreateAgentDefinitionMutation = { __typename?: 'Mutation', createAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string }> } };
+export type CreateAgentDefinitionMutation = { __typename?: 'Mutation', createAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, avatarUrl?: string | null, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string }> } };
 
 export type UpdateAgentDefinitionMutationVariables = Exact<{
   input: UpdateAgentDefinitionInput;
 }>;
 
 
-export type UpdateAgentDefinitionMutation = { __typename?: 'Mutation', updateAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null } };
+export type UpdateAgentDefinitionMutation = { __typename?: 'Mutation', updateAgentDefinition: { __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, avatarUrl?: string | null, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null } };
 
 export type DeleteAgentDefinitionMutationVariables = Exact<{
   id: Scalars['String']['input'];
@@ -1298,11 +1301,25 @@ export type SendMessageToTeamMutation = { __typename?: 'Mutation', sendMessageTo
 
 export type RunApplicationMutationVariables = Exact<{
   appId: Scalars['String']['input'];
-  input: Scalars['JSON']['input'];
+  input: Scalars['JSONObject']['input'];
 }>;
 
 
 export type RunApplicationMutation = { __typename?: 'Mutation', runApplication: any };
+
+export type UpsertExternalChannelBindingMutationVariables = Exact<{
+  input: UpsertExternalChannelBindingInput;
+}>;
+
+
+export type UpsertExternalChannelBindingMutation = { __typename?: 'Mutation', upsertExternalChannelBinding: { __typename: 'ExternalChannelBindingGql', id: string, provider: string, transport: string, accountId: string, peerId: string, threadId?: string | null, targetType: string, targetId: string, allowTransportFallback: boolean, updatedAt: any } };
+
+export type DeleteExternalChannelBindingMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+}>;
+
+
+export type DeleteExternalChannelBindingMutation = { __typename?: 'Mutation', deleteExternalChannelBinding: boolean };
 
 export type WriteFileContentMutationVariables = Exact<{
   workspaceId: Scalars['String']['input'];
@@ -1401,21 +1418,21 @@ export type CreatePromptMutationVariables = Exact<{
 }>;
 
 
-export type CreatePromptMutation = { __typename?: 'Mutation', createPrompt: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null, isActive: boolean } };
+export type CreatePromptMutation = { __typename?: 'Mutation', createPrompt: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: string, parentPromptId?: string | null, isActive: boolean } };
 
 export type UpdatePromptMutationVariables = Exact<{
   input: UpdatePromptInput;
 }>;
 
 
-export type UpdatePromptMutation = { __typename?: 'Mutation', updatePrompt: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean } };
+export type UpdatePromptMutation = { __typename?: 'Mutation', updatePrompt: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: string, updatedAt: string, parentPromptId?: string | null, isActive: boolean } };
 
 export type AddNewPromptRevisionMutationVariables = Exact<{
   input: AddNewPromptRevisionInput;
 }>;
 
 
-export type AddNewPromptRevisionMutation = { __typename?: 'Mutation', addNewPromptRevision: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, parentPromptId?: string | null, isActive: boolean } };
+export type AddNewPromptRevisionMutation = { __typename?: 'Mutation', addNewPromptRevision: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: string, parentPromptId?: string | null, isActive: boolean } };
 
 export type MarkActivePromptMutationVariables = Exact<{
   input: MarkActivePromptInput;
@@ -1456,14 +1473,14 @@ export type CreateWorkspaceMutationVariables = Exact<{
 }>;
 
 
-export type CreateWorkspaceMutation = { __typename?: 'Mutation', createWorkspace: { __typename: 'WorkspaceInfo', workspaceId: string, name: string, fileExplorer?: any | null, absolutePath?: string | null } };
+export type CreateWorkspaceMutation = { __typename?: 'Mutation', createWorkspace: { __typename: 'WorkspaceInfo', workspaceId: string, name: string, fileExplorer?: string | null, absolutePath?: string | null } };
 
 export type GetAgentArtifactsQueryVariables = Exact<{
   agentId: Scalars['String']['input'];
 }>;
 
 
-export type GetAgentArtifactsQuery = { __typename?: 'Query', agentArtifacts: Array<{ __typename?: 'AgentArtifactType', id: string, agentId: string, path: string, type: string, workspaceRoot?: string | null, createdAt: string, updatedAt: string }> };
+export type GetAgentArtifactsQuery = { __typename?: 'Query', agentArtifacts: Array<{ __typename?: 'AgentArtifact', id: string, agentId: string, path: string, type: string, workspaceRoot?: string | null, createdAt: string, updatedAt: string }> };
 
 export type GetAgentCustomizationOptionsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1473,7 +1490,7 @@ export type GetAgentCustomizationOptionsQuery = { __typename?: 'Query', availabl
 export type GetAgentDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean }> }> };
+export type GetAgentDefinitionsQuery = { __typename?: 'Query', agentDefinitions: Array<{ __typename: 'AgentDefinition', id: string, name: string, role: string, description: string, avatarUrl?: string | null, toolNames: Array<string>, inputProcessorNames: Array<string>, llmResponseProcessorNames: Array<string>, systemPromptProcessorNames: Array<string>, toolExecutionResultProcessorNames: Array<string>, toolInvocationPreprocessorNames: Array<string>, lifecycleProcessorNames: Array<string>, skillNames: Array<string>, systemPromptCategory?: string | null, systemPromptName?: string | null, prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: string, updatedAt: string, parentPromptId?: string | null, isActive: boolean }> }> };
 
 export type GetAgentInstancesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1506,32 +1523,27 @@ export type GetAgentMemoryViewQuery = { __typename?: 'Query', getAgentMemoryView
 export type GetAgentTeamDefinitionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentTeamDefinitionsQuery = { __typename?: 'Query', agentTeamDefinitions: Array<{ __typename: 'AgentTeamDefinition', id: string, name: string, description: string, role?: string | null, coordinatorMemberName: string, nodes: Array<{ __typename: 'TeamMember', memberName: string, referenceId: string, referenceType: TeamMemberType, dependencies: Array<string> }> }> };
+export type GetAgentTeamDefinitionsQuery = { __typename?: 'Query', agentTeamDefinitions: Array<{ __typename: 'AgentTeamDefinition', id: string, name: string, description: string, role?: string | null, avatarUrl?: string | null, coordinatorMemberName: string, nodes: Array<{ __typename: 'TeamMember', memberName: string, referenceId: string, referenceType: TeamMemberType }> }> };
 
 export type ListApplicationsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type ListApplicationsQuery = { __typename?: 'Query', listApplications: Array<{ __typename: 'ApplicationManifest', id: string, name: string, description: string, icon: string, type?: string | null, teamDefinitionName?: string | null }> };
+export type ListApplicationsQuery = { __typename?: 'Query', listApplications: Array<{ __typename: 'ApplicationManifest', id: string, name: string, description?: string | null, icon?: string | null, type?: string | null, teamDefinitionName?: string | null }> };
 
-export type GetAgentConversationHistoryQueryVariables = Exact<{
-  agentDefinitionId: Scalars['String']['input'];
-  page?: InputMaybe<Scalars['Int']['input']>;
-  pageSize?: InputMaybe<Scalars['Int']['input']>;
-  searchQuery?: InputMaybe<Scalars['String']['input']>;
-}>;
+export type ExternalChannelCapabilitiesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAgentConversationHistoryQuery = { __typename?: 'Query', getAgentConversationHistory: { __typename: 'ConversationHistory', totalPages: number, currentPage: number, conversations: Array<{ __typename: 'AgentConversation', agentId: string, agentDefinitionId: string, agentName?: string | null, createdAt: string, llmModel?: string | null, useXmlToolFormat: boolean, messages: Array<{ __typename: 'Message', messageId?: string | null, role: string, message: string, timestamp: string, contextPaths?: Array<string> | null, originalMessage?: string | null, tokenCount?: number | null, cost?: number | null, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null }> }> } };
+export type ExternalChannelCapabilitiesQuery = { __typename?: 'Query', externalChannelCapabilities: { __typename: 'ExternalChannelCapabilities', bindingCrudEnabled: boolean, reason?: string | null, acceptedProviderTransportPairs: Array<string> } };
 
-export type GetRawConversationHistoryQueryVariables = Exact<{
-  page?: InputMaybe<Scalars['Int']['input']>;
-  pageSize?: InputMaybe<Scalars['Int']['input']>;
-  searchQuery?: InputMaybe<Scalars['String']['input']>;
-  agentDefinitionId?: InputMaybe<Scalars['String']['input']>;
-}>;
+export type ExternalChannelBindingsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetRawConversationHistoryQuery = { __typename?: 'Query', getRawConversationHistory: { __typename: 'ConversationHistory', totalPages: number, currentPage: number, conversations: Array<{ __typename: 'AgentConversation', agentId: string, agentDefinitionId: string, agentName?: string | null, createdAt: string, llmModel?: string | null, useXmlToolFormat: boolean, messages: Array<{ __typename: 'Message', messageId?: string | null, role: string, message: string, timestamp: string, contextPaths?: Array<string> | null, originalMessage?: string | null, tokenCount?: number | null, cost?: number | null, reasoning?: string | null, imageUrls?: Array<string> | null, audioUrls?: Array<string> | null, videoUrls?: Array<string> | null }> }> } };
+export type ExternalChannelBindingsQuery = { __typename?: 'Query', externalChannelBindings: Array<{ __typename: 'ExternalChannelBindingGql', id: string, provider: string, transport: string, accountId: string, peerId: string, threadId?: string | null, targetType: string, targetId: string, allowTransportFallback: boolean, updatedAt: any }> };
+
+export type ExternalChannelBindingTargetOptionsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ExternalChannelBindingTargetOptionsQuery = { __typename?: 'Query', externalChannelBindingTargetOptions: Array<{ __typename: 'ExternalChannelBindingTargetOptionGql', targetType: string, targetId: string, displayName: string, status: string }> };
 
 export type GetFileContentQueryVariables = Exact<{
   workspaceId: Scalars['String']['input'];
@@ -1586,14 +1598,14 @@ export type GetPromptsQueryVariables = Exact<{
 }>;
 
 
-export type GetPromptsQuery = { __typename?: 'Query', prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean }> };
+export type GetPromptsQuery = { __typename?: 'Query', prompts: Array<{ __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: string, updatedAt: string, parentPromptId?: string | null, isActive: boolean }> };
 
 export type GetPromptByIdQueryVariables = Exact<{
   id: Scalars['String']['input'];
 }>;
 
 
-export type GetPromptByIdQuery = { __typename?: 'Query', promptDetails?: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: any, updatedAt: any, parentPromptId?: string | null, isActive: boolean } | null };
+export type GetPromptByIdQuery = { __typename?: 'Query', promptDetails?: { __typename: 'Prompt', id: string, name: string, category: string, promptContent: string, description?: string | null, suitableForModels?: string | null, version: number, createdAt: string, updatedAt: string, parentPromptId?: string | null, isActive: boolean } | null };
 
 export type GetPromptDetailsByNameAndCategoryQueryVariables = Exact<{
   category: Scalars['String']['input'];
@@ -1634,7 +1646,7 @@ export type GetToolsGroupedByCategoryQuery = { __typename?: 'Query', toolsGroupe
 export type GetAllWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAllWorkspacesQuery = { __typename?: 'Query', workspaces: Array<{ __typename: 'WorkspaceInfo', workspaceId: string, name: string, config: any, fileExplorer?: any | null, absolutePath?: string | null, isTemp: boolean }> };
+export type GetAllWorkspacesQuery = { __typename?: 'Query', workspaces: Array<{ __typename: 'WorkspaceInfo', workspaceId: string, name: string, config: any, fileExplorer?: string | null, absolutePath?: string | null, isTemp: boolean }> };
 
 export type GetSkillSourcesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1773,6 +1785,7 @@ export const CreateAgentDefinitionDocument = gql`
     name
     role
     description
+    avatarUrl
     toolNames
     inputProcessorNames
     llmResponseProcessorNames
@@ -1822,6 +1835,7 @@ export const UpdateAgentDefinitionDocument = gql`
     name
     role
     description
+    avatarUrl
     toolNames
     inputProcessorNames
     llmResponseProcessorNames
@@ -2171,7 +2185,7 @@ export function useSendMessageToTeamMutation(options: VueApolloComposable.UseMut
 }
 export type SendMessageToTeamMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<SendMessageToTeamMutation, SendMessageToTeamMutationVariables>;
 export const RunApplicationDocument = gql`
-    mutation RunApplication($appId: String!, $input: JSON!) {
+    mutation RunApplication($appId: String!, $input: JSONObject!) {
   runApplication(appId: $appId, input: $input)
 }
     `;
@@ -2198,6 +2212,72 @@ export function useRunApplicationMutation(options: VueApolloComposable.UseMutati
   return VueApolloComposable.useMutation<RunApplicationMutation, RunApplicationMutationVariables>(RunApplicationDocument, options);
 }
 export type RunApplicationMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<RunApplicationMutation, RunApplicationMutationVariables>;
+export const UpsertExternalChannelBindingDocument = gql`
+    mutation UpsertExternalChannelBinding($input: UpsertExternalChannelBindingInput!) {
+  upsertExternalChannelBinding(input: $input) {
+    __typename
+    id
+    provider
+    transport
+    accountId
+    peerId
+    threadId
+    targetType
+    targetId
+    allowTransportFallback
+    updatedAt
+  }
+}
+    `;
+
+/**
+ * __useUpsertExternalChannelBindingMutation__
+ *
+ * To run a mutation, you first call `useUpsertExternalChannelBindingMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useUpsertExternalChannelBindingMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useUpsertExternalChannelBindingMutation({
+ *   variables: {
+ *     input: // value for 'input'
+ *   },
+ * });
+ */
+export function useUpsertExternalChannelBindingMutation(options: VueApolloComposable.UseMutationOptions<UpsertExternalChannelBindingMutation, UpsertExternalChannelBindingMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<UpsertExternalChannelBindingMutation, UpsertExternalChannelBindingMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<UpsertExternalChannelBindingMutation, UpsertExternalChannelBindingMutationVariables>(UpsertExternalChannelBindingDocument, options);
+}
+export type UpsertExternalChannelBindingMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<UpsertExternalChannelBindingMutation, UpsertExternalChannelBindingMutationVariables>;
+export const DeleteExternalChannelBindingDocument = gql`
+    mutation DeleteExternalChannelBinding($id: String!) {
+  deleteExternalChannelBinding(id: $id)
+}
+    `;
+
+/**
+ * __useDeleteExternalChannelBindingMutation__
+ *
+ * To run a mutation, you first call `useDeleteExternalChannelBindingMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useDeleteExternalChannelBindingMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useDeleteExternalChannelBindingMutation({
+ *   variables: {
+ *     id: // value for 'id'
+ *   },
+ * });
+ */
+export function useDeleteExternalChannelBindingMutation(options: VueApolloComposable.UseMutationOptions<DeleteExternalChannelBindingMutation, DeleteExternalChannelBindingMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<DeleteExternalChannelBindingMutation, DeleteExternalChannelBindingMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<DeleteExternalChannelBindingMutation, DeleteExternalChannelBindingMutationVariables>(DeleteExternalChannelBindingDocument, options);
+}
+export type DeleteExternalChannelBindingMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<DeleteExternalChannelBindingMutation, DeleteExternalChannelBindingMutationVariables>;
 export const WriteFileContentDocument = gql`
     mutation WriteFileContent($workspaceId: String!, $filePath: String!, $content: String!) {
   writeFileContent(
@@ -2996,6 +3076,7 @@ export const GetAgentDefinitionsDocument = gql`
     name
     role
     description
+    avatarUrl
     toolNames
     inputProcessorNames
     llmResponseProcessorNames
@@ -3201,13 +3282,13 @@ export const GetAgentTeamDefinitionsDocument = gql`
     name
     description
     role
+    avatarUrl
     coordinatorMemberName
     nodes {
       __typename
       memberName
       referenceId
       referenceType
-      dependencies
     }
   }
 }
@@ -3265,134 +3346,104 @@ export function useListApplicationsLazyQuery(options: VueApolloComposable.UseQue
   return VueApolloComposable.useLazyQuery<ListApplicationsQuery, ListApplicationsQueryVariables>(ListApplicationsDocument, {}, options);
 }
 export type ListApplicationsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<ListApplicationsQuery, ListApplicationsQueryVariables>;
-export const GetAgentConversationHistoryDocument = gql`
-    query GetAgentConversationHistory($agentDefinitionId: String!, $page: Int, $pageSize: Int, $searchQuery: String) {
-  getAgentConversationHistory(
-    agentDefinitionId: $agentDefinitionId
-    page: $page
-    pageSize: $pageSize
-    searchQuery: $searchQuery
-  ) {
+export const ExternalChannelCapabilitiesDocument = gql`
+    query ExternalChannelCapabilities {
+  externalChannelCapabilities {
     __typename
-    conversations {
-      __typename
-      agentId
-      agentDefinitionId
-      agentName
-      createdAt
-      llmModel
-      useXmlToolFormat
-      messages {
-        __typename
-        messageId
-        role
-        message
-        timestamp
-        contextPaths
-        originalMessage
-        tokenCount
-        cost
-        reasoning
-        imageUrls
-        audioUrls
-        videoUrls
-      }
-    }
-    totalPages
-    currentPage
+    bindingCrudEnabled
+    reason
+    acceptedProviderTransportPairs
   }
 }
     `;
 
 /**
- * __useGetAgentConversationHistoryQuery__
+ * __useExternalChannelCapabilitiesQuery__
  *
- * To run a query within a Vue component, call `useGetAgentConversationHistoryQuery` and pass it any options that fit your needs.
- * When your component renders, `useGetAgentConversationHistoryQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * To run a query within a Vue component, call `useExternalChannelCapabilitiesQuery` and pass it any options that fit your needs.
+ * When your component renders, `useExternalChannelCapabilitiesQuery` returns an object from Apollo Client that contains result, loading and error properties
  * you can use to render your UI.
  *
- * @param variables that will be passed into the query
  * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
  *
  * @example
- * const { result, loading, error } = useGetAgentConversationHistoryQuery({
- *   agentDefinitionId: // value for 'agentDefinitionId'
- *   page: // value for 'page'
- *   pageSize: // value for 'pageSize'
- *   searchQuery: // value for 'searchQuery'
- * });
+ * const { result, loading, error } = useExternalChannelCapabilitiesQuery();
  */
-export function useGetAgentConversationHistoryQuery(variables: GetAgentConversationHistoryQueryVariables | VueCompositionApi.Ref<GetAgentConversationHistoryQueryVariables> | ReactiveFunction<GetAgentConversationHistoryQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables>> = {}) {
-  return VueApolloComposable.useQuery<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables>(GetAgentConversationHistoryDocument, variables, options);
+export function useExternalChannelCapabilitiesQuery(options: VueApolloComposable.UseQueryOptions<ExternalChannelCapabilitiesQuery, ExternalChannelCapabilitiesQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<ExternalChannelCapabilitiesQuery, ExternalChannelCapabilitiesQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<ExternalChannelCapabilitiesQuery, ExternalChannelCapabilitiesQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<ExternalChannelCapabilitiesQuery, ExternalChannelCapabilitiesQueryVariables>(ExternalChannelCapabilitiesDocument, {}, options);
 }
-export function useGetAgentConversationHistoryLazyQuery(variables?: GetAgentConversationHistoryQueryVariables | VueCompositionApi.Ref<GetAgentConversationHistoryQueryVariables> | ReactiveFunction<GetAgentConversationHistoryQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables>> = {}) {
-  return VueApolloComposable.useLazyQuery<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables>(GetAgentConversationHistoryDocument, variables, options);
+export function useExternalChannelCapabilitiesLazyQuery(options: VueApolloComposable.UseQueryOptions<ExternalChannelCapabilitiesQuery, ExternalChannelCapabilitiesQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<ExternalChannelCapabilitiesQuery, ExternalChannelCapabilitiesQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<ExternalChannelCapabilitiesQuery, ExternalChannelCapabilitiesQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<ExternalChannelCapabilitiesQuery, ExternalChannelCapabilitiesQueryVariables>(ExternalChannelCapabilitiesDocument, {}, options);
 }
-export type GetAgentConversationHistoryQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAgentConversationHistoryQuery, GetAgentConversationHistoryQueryVariables>;
-export const GetRawConversationHistoryDocument = gql`
-    query GetRawConversationHistory($page: Int, $pageSize: Int, $searchQuery: String, $agentDefinitionId: String) {
-  getRawConversationHistory(
-    page: $page
-    pageSize: $pageSize
-    searchQuery: $searchQuery
-    agentDefinitionId: $agentDefinitionId
-  ) {
+export type ExternalChannelCapabilitiesQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<ExternalChannelCapabilitiesQuery, ExternalChannelCapabilitiesQueryVariables>;
+export const ExternalChannelBindingsDocument = gql`
+    query ExternalChannelBindings {
+  externalChannelBindings {
     __typename
-    conversations {
-      __typename
-      agentId
-      agentDefinitionId
-      agentName
-      createdAt
-      llmModel
-      useXmlToolFormat
-      messages {
-        __typename
-        messageId
-        role
-        message
-        timestamp
-        contextPaths
-        originalMessage
-        tokenCount
-        cost
-        reasoning
-        imageUrls
-        audioUrls
-        videoUrls
-      }
-    }
-    totalPages
-    currentPage
+    id
+    provider
+    transport
+    accountId
+    peerId
+    threadId
+    targetType
+    targetId
+    allowTransportFallback
+    updatedAt
   }
 }
     `;
 
 /**
- * __useGetRawConversationHistoryQuery__
+ * __useExternalChannelBindingsQuery__
  *
- * To run a query within a Vue component, call `useGetRawConversationHistoryQuery` and pass it any options that fit your needs.
- * When your component renders, `useGetRawConversationHistoryQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * To run a query within a Vue component, call `useExternalChannelBindingsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useExternalChannelBindingsQuery` returns an object from Apollo Client that contains result, loading and error properties
  * you can use to render your UI.
  *
- * @param variables that will be passed into the query
  * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
  *
  * @example
- * const { result, loading, error } = useGetRawConversationHistoryQuery({
- *   page: // value for 'page'
- *   pageSize: // value for 'pageSize'
- *   searchQuery: // value for 'searchQuery'
- *   agentDefinitionId: // value for 'agentDefinitionId'
- * });
+ * const { result, loading, error } = useExternalChannelBindingsQuery();
  */
-export function useGetRawConversationHistoryQuery(variables: GetRawConversationHistoryQueryVariables | VueCompositionApi.Ref<GetRawConversationHistoryQueryVariables> | ReactiveFunction<GetRawConversationHistoryQueryVariables> = {}, options: VueApolloComposable.UseQueryOptions<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables>> = {}) {
-  return VueApolloComposable.useQuery<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables>(GetRawConversationHistoryDocument, variables, options);
+export function useExternalChannelBindingsQuery(options: VueApolloComposable.UseQueryOptions<ExternalChannelBindingsQuery, ExternalChannelBindingsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<ExternalChannelBindingsQuery, ExternalChannelBindingsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<ExternalChannelBindingsQuery, ExternalChannelBindingsQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<ExternalChannelBindingsQuery, ExternalChannelBindingsQueryVariables>(ExternalChannelBindingsDocument, {}, options);
 }
-export function useGetRawConversationHistoryLazyQuery(variables: GetRawConversationHistoryQueryVariables | VueCompositionApi.Ref<GetRawConversationHistoryQueryVariables> | ReactiveFunction<GetRawConversationHistoryQueryVariables> = {}, options: VueApolloComposable.UseQueryOptions<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables>> = {}) {
-  return VueApolloComposable.useLazyQuery<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables>(GetRawConversationHistoryDocument, variables, options);
+export function useExternalChannelBindingsLazyQuery(options: VueApolloComposable.UseQueryOptions<ExternalChannelBindingsQuery, ExternalChannelBindingsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<ExternalChannelBindingsQuery, ExternalChannelBindingsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<ExternalChannelBindingsQuery, ExternalChannelBindingsQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<ExternalChannelBindingsQuery, ExternalChannelBindingsQueryVariables>(ExternalChannelBindingsDocument, {}, options);
 }
-export type GetRawConversationHistoryQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetRawConversationHistoryQuery, GetRawConversationHistoryQueryVariables>;
+export type ExternalChannelBindingsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<ExternalChannelBindingsQuery, ExternalChannelBindingsQueryVariables>;
+export const ExternalChannelBindingTargetOptionsDocument = gql`
+    query ExternalChannelBindingTargetOptions {
+  externalChannelBindingTargetOptions {
+    __typename
+    targetType
+    targetId
+    displayName
+    status
+  }
+}
+    `;
+
+/**
+ * __useExternalChannelBindingTargetOptionsQuery__
+ *
+ * To run a query within a Vue component, call `useExternalChannelBindingTargetOptionsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useExternalChannelBindingTargetOptionsQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useExternalChannelBindingTargetOptionsQuery();
+ */
+export function useExternalChannelBindingTargetOptionsQuery(options: VueApolloComposable.UseQueryOptions<ExternalChannelBindingTargetOptionsQuery, ExternalChannelBindingTargetOptionsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<ExternalChannelBindingTargetOptionsQuery, ExternalChannelBindingTargetOptionsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<ExternalChannelBindingTargetOptionsQuery, ExternalChannelBindingTargetOptionsQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<ExternalChannelBindingTargetOptionsQuery, ExternalChannelBindingTargetOptionsQueryVariables>(ExternalChannelBindingTargetOptionsDocument, {}, options);
+}
+export function useExternalChannelBindingTargetOptionsLazyQuery(options: VueApolloComposable.UseQueryOptions<ExternalChannelBindingTargetOptionsQuery, ExternalChannelBindingTargetOptionsQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<ExternalChannelBindingTargetOptionsQuery, ExternalChannelBindingTargetOptionsQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<ExternalChannelBindingTargetOptionsQuery, ExternalChannelBindingTargetOptionsQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<ExternalChannelBindingTargetOptionsQuery, ExternalChannelBindingTargetOptionsQueryVariables>(ExternalChannelBindingTargetOptionsDocument, {}, options);
+}
+export type ExternalChannelBindingTargetOptionsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<ExternalChannelBindingTargetOptionsQuery, ExternalChannelBindingTargetOptionsQueryVariables>;
 export const GetFileContentDocument = gql`
     query GetFileContent($workspaceId: String!, $filePath: String!) {
   fileContent(workspaceId: $workspaceId, filePath: $filePath)

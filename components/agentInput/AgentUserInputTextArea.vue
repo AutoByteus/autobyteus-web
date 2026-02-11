@@ -1,14 +1,17 @@
 <template>
-  <div class="flex flex-col bg-white border border-gray-300 shadow-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
-    <!-- Textarea container with relative positioning for the send button -->
+  <div class="flex flex-col bg-white">
     <div class="relative flex-grow">
       <textarea
         :value="internalRequirement"
         @input="handleInput"
         ref="textarea"
-        class="w-full p-4 pb-14 border-0 focus:ring-0 focus:outline-none resize-none bg-transparent"
-        :style="{ height: textareaHeight + 'px', minHeight: '150px' }"
-        placeholder="Enter your requirement here..."
+        class="w-full px-3 py-2.5 pr-14 border-0 focus:ring-0 focus:outline-none resize-none bg-transparent text-[15px] leading-6"
+        :style="{
+          height: `${textareaHeight}px`,
+          minHeight: `${MIN_TEXTAREA_HEIGHT}px`,
+          maxHeight: `${MAX_TEXTAREA_HEIGHT}px`
+        }"
+        placeholder="Type a message..."
         @keydown="handleKeyDown"
         @blur="handleBlur"
         :disabled="!activeContextStore.activeAgentContext"
@@ -17,12 +20,11 @@
         data-file-drop-target="true"
       ></textarea>
 
-      <!-- Send button positioned at bottom-right inside the textarea container -->
       <button 
         @click="handleSend"
         :disabled="isSending || !internalRequirement.trim() || !activeContextStore.activeAgentContext"
         :title="isSending ? 'Sending...' : 'Send message'"
-        class="absolute bottom-3 right-3 flex items-center justify-center p-2.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+        class="absolute bottom-2 right-2 flex items-center justify-center p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <svg v-if="isSending" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -38,7 +40,7 @@
 import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useActiveContextStore } from '~/stores/activeContextStore';
-import { useServerStore } from '~/stores/serverStore';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { Icon } from '@iconify/vue';
 import { getFilePathsFromFolder } from '~/utils/fileExplorer/fileUtils';
@@ -46,17 +48,18 @@ import type { TreeNode } from '~/utils/fileExplorer/TreeNode';
 
 // Initialize stores
 const activeContextStore = useActiveContextStore();
-const serverStore = useServerStore();
+const windowNodeContextStore = useWindowNodeContextStore();
 const workspaceStore = useWorkspaceStore();
 
 // Store refs
 const { isSending, currentRequirement: storeCurrentRequirement } = storeToRefs(activeContextStore);
-const { isElectron } = storeToRefs(serverStore);
 
 // Local component state
 const internalRequirement = ref(''); // Local state for textarea
 const textarea = ref<HTMLTextAreaElement | null>(null);
-const textareaHeight = ref(150);
+const MIN_TEXTAREA_HEIGHT = 56;
+const MAX_TEXTAREA_HEIGHT = 220;
+const textareaHeight = ref(MIN_TEXTAREA_HEIGHT);
 
 // Enhanced Debounce function
 function debounce<T extends (...args: any[]) => any>(
@@ -104,11 +107,11 @@ function debounce<T extends (...args: any[]) => any>(
 
 const adjustTextareaHeight = () => {
   if (textarea.value) {
-    textarea.value.style.height = '150px'; 
+    textarea.value.style.height = 'auto';
     const scrollHeight = textarea.value.scrollHeight;
-    const maxHeight = window.innerHeight * 0.6; 
-    const newHeight = Math.min(Math.max(scrollHeight, 150), maxHeight - 40);
+    const newHeight = Math.min(Math.max(scrollHeight, MIN_TEXTAREA_HEIGHT), MAX_TEXTAREA_HEIGHT);
     textarea.value.style.height = `${newHeight}px`;
+    textarea.value.style.overflowY = scrollHeight > MAX_TEXTAREA_HEIGHT ? 'auto' : 'hidden';
     textareaHeight.value = newHeight;
   }
 };
@@ -203,14 +206,14 @@ const handleDrop = async (event: DragEvent) => {
     } catch (error) {
       console.error('Failed to parse dropped node data:', error);
     }
-  } else if (isElectron.value && dataTransfer.files.length > 0 && window.electronAPI) {
+  } else if (windowNodeContextStore.isEmbeddedWindow && dataTransfer.files.length > 0 && window.electronAPI) {
     console.log('[INFO] Drop event from native OS in Electron.');
     const files = Array.from(dataTransfer.files);
     const pathPromises = files.map(f => window.electronAPI.getPathForFile(f));
     const paths = (await Promise.all(pathPromises)).filter((p): p is string => Boolean(p));
     filePaths = paths;
     console.log('[INFO] Received native file paths from preload bridge:', filePaths);
-  } else if (!isElectron.value && dataTransfer.files.length > 0) {
+  } else if (!windowNodeContextStore.isEmbeddedWindow && dataTransfer.files.length > 0) {
     console.log('[INFO] Drop event from native OS in browser, using filenames as fallback.');
     filePaths = Array.from(dataTransfer.files).map(file => file.name);
   }
@@ -230,6 +233,8 @@ const handleResize = () => {
 };
 
 onMounted(async () => {
+  await nextTick();
+  adjustTextareaHeight();
   window.addEventListener('resize', handleResize);
 });
 
@@ -242,8 +247,17 @@ onUnmounted(() => {
 <style scoped>
 textarea {
   outline: none;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
-textarea::-webkit-scrollbar { display: none; }
-textarea { -ms-overflow-style: none; scrollbar-width: none; }
+textarea::-webkit-scrollbar {
+  width: 6px;
+}
+textarea::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.6);
+  border-radius: 9999px;
+}
+textarea {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.6) transparent;
+}
 </style>

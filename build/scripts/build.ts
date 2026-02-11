@@ -8,6 +8,9 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
 // Ensure we're in production mode
 process.env.NODE_ENV = 'production'
+if (process.env.NO_TIMESTAMP) {
+  process.env.CSC_DISABLE_TIMESTAMP = 'true'
+}
 
 type PlatformType = 'LINUX' | 'WINDOWS' | 'MAC' | 'ALL'
 
@@ -100,6 +103,9 @@ const options: Configuration = {
     gatekeeperAssess: false,
     entitlements: 'build/entitlements.mac.plist',
     entitlementsInherit: 'build/entitlements.mac.plist',
+    signIgnore: [
+      'node-pty/prebuilds/win32-.*'
+    ],
     // Notarization: set to true, it reads APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID from env
     notarize: !!process.env.APPLE_TEAM_ID,
     // Debugging: Allow disabling timestamp to isolate network issues

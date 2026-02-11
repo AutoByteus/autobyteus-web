@@ -17,8 +17,7 @@ import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
 import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
 import { useFileExplorerStore } from '~/stores/fileExplorer'
 import { FileExplorerStreamingService } from '~/services/fileExplorerStreaming/FileExplorerStreamingService'
-import { useServerStore } from '~/stores/serverStore'
-import { useRuntimeConfig } from '#app'
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore'
 
 export interface WorkspaceInfo {
   workspaceId: string;
@@ -100,10 +99,10 @@ export const useWorkspaceStore = defineStore('workspace', {
       this.loading = true;
       this.error = null;
       try {
-        const serverStore = useServerStore()
-        const isReady = await serverStore.waitForServerReady()
+        const windowNodeContextStore = useWindowNodeContextStore()
+        const isReady = await windowNodeContextStore.waitForBoundBackendReady()
         if (!isReady) {
-          throw new Error('Server is not ready')
+          throw new Error('Bound backend is not ready')
         }
         const client = getApolloClient()
         const { data, errors } = await client.query<GetAllWorkspacesQuery>({
@@ -185,10 +184,8 @@ export const useWorkspaceStore = defineStore('workspace', {
       }
 
       console.log(`[Workspace] Connecting to file system changes for workspace: ${workspaceId}`);
-      
-      // Get the WebSocket endpoint from runtime config (like terminal does)
-      const config = useRuntimeConfig();
-      const wsEndpoint = config.public.fileExplorerWsEndpoint as string || 'ws://localhost:8000/ws/file-explorer';
+      const windowNodeContextStore = useWindowNodeContextStore();
+      const wsEndpoint = windowNodeContextStore.getBoundEndpoints().fileExplorerWs;
 
       const service = new FileExplorerStreamingService(wsEndpoint, {
         onFileSystemChange: (event: FileSystemChangeEvent) => {

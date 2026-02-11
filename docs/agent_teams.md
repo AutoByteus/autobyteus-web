@@ -1,13 +1,12 @@
 # Agent Teams Module - Frontend
 
-This document describes the design and implementation of the **Agent Teams** module in the autobyteus-web frontend, which enables creating, configuring, and running multi-agent teams with dependencies and shared configurations.
+This document describes the design and implementation of the **Agent Teams** module in the autobyteus-web frontend, which enables creating, configuring, and running multi-agent teams with shared configurations.
 
 ## Overview
 
 The Agent Teams module enables users to:
 
 - Create team definitions with multiple agent members
-- Define dependencies between team members (execution order)
 - Designate a coordinator member for team orchestration
 - Support nested teams (teams containing other teams)
 - Configure global settings and per-member overrides via run configurations
@@ -115,7 +114,6 @@ interface TeamMember {
   memberName: string; // Unique identifier within team
   referenceId: string; // ID of agent or team
   referenceType: "AGENT" | "AGENT_TEAM";
-  dependencies: string[]; // Member names this depends on
 }
 ```
 
@@ -126,14 +124,6 @@ Each team has a **coordinator member** (`coordinatorMemberName`) that:
 - Orchestrates team execution
 - Receives initial user input
 - Coordinates responses between members
-
-### Dependencies
-
-Members can declare dependencies on other members:
-
-- Dependencies define execution order
-- A member only starts after its dependencies complete
-- Enables DAG-based (Directed Acyclic Graph) workflows
 
 ## Data Models
 
@@ -150,7 +140,6 @@ interface AgentTeamDefinition {
     memberName: string;
     referenceId: string;
     referenceType: "AGENT" | "AGENT_TEAM";
-    dependencies: string[];
   }[];
 }
 ```
@@ -264,7 +253,6 @@ sequenceDiagram
     User->>TeamCreate: Navigate to team-create
     TeamCreate->>Form: Render form
     User->>Form: Add members (agents/teams)
-    User->>Form: Set dependencies
     User->>Form: Designate coordinator
     User->>Form: Click "Create"
     Form->>Store: createAgentTeamDefinition(input)

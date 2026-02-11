@@ -1,4 +1,4 @@
-import { defineStore, storeToRefs } from 'pinia'
+import { defineStore } from 'pinia'
 import { getApolloClient } from '~/utils/apolloClient'
 import { GetFileContent, SearchFiles } from '~/graphql/queries/file_explorer_queries'
 import { 
@@ -25,11 +25,10 @@ import type {
   CreateFileOrFolderMutationVariables
 } from '~/generated/graphql'
 import { useWorkspaceStore } from '~/stores/workspace'
-import { useServerStore } from '~/stores/serverStore'
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore'
 import type { FileSystemChangeEvent } from '~/types/fileSystemChangeTypes'
 import { findFileByPath, determineFileType } from '~/utils/fileExplorer/fileUtils'
 import { TreeNode } from '~/utils/fileExplorer/TreeNode'
-import { getServerUrls } from '~/utils/serverConfig'
 
 // --- NEW TYPES FOR MULTI-CONTENT SUPPORT ---
 export type FileDataType = 'Text' | 'Image' | 'Audio' | 'Video' | 'Excel' | 'PDF' | 'Unsupported';
@@ -218,8 +217,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
     async _openFileWithMode(filePath: string, mode: FileOpenMode, workspaceId: string) {
       console.log(`[FileExplorer] Opening file: ${filePath}`);
       const wsState = this._getOrCreateWorkspaceState(workspaceId);
-      const serverStore = useServerStore();
-      const { isElectron } = storeToRefs(serverStore);
+      const windowNodeContextStore = useWindowNodeContextStore();
 
       const existingFile = wsState.openFiles.find(f => f.path === filePath);
 
@@ -240,7 +238,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
           console.log('[FileExplorer] Pushed new initial file state:', JSON.parse(JSON.stringify(newFileState)));
 
           // **NEW LOGIC: Handle local absolute paths in Electron**
-          if (isElectron.value && isAbsoluteLocalPath(filePath) && window.electronAPI) {
+          if (windowNodeContextStore.isEmbeddedWindow && isAbsoluteLocalPath(filePath) && window.electronAPI) {
               console.log(`[FileExplorer] Handling as a local absolute path in Electron.`);
               if (newFileState.type === 'Text') {
                   try {
@@ -276,8 +274,7 @@ export const useFileExplorerStore = defineStore('fileExplorer', {
                       this.fetchFileContent(filePath, workspaceId);
                   } else if (['Image', 'Audio', 'Video', 'Excel', 'PDF'].includes(newFileState.type)) {
                       if (workspaceId) {
-                          const serverUrls = getServerUrls();
-                          const restBaseUrl = serverUrls.rest.replace(/\/$/, '');
+                          const restBaseUrl = windowNodeContextStore.getBoundEndpoints().rest.replace(/\/$/, '');
                           const encodedFilePath = encodeURIComponent(filePath);
                           newFileState.url = `${restBaseUrl}/workspaces/${workspaceId}/content?path=${encodedFilePath}`;
                           newFileState.isLoading = false;

@@ -96,6 +96,7 @@ export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
           llmModelIdentifier: override?.llmModelIdentifier || template.llmModelIdentifier,
           workspaceId: template.workspaceId,
           autoExecuteTools: override?.autoExecuteTools ?? template.autoExecuteTools,
+          skillAccessMode: 'PRELOADED_ONLY',
           isLocked: false,
         };
 

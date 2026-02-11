@@ -1,62 +1,121 @@
 <template>
-  <!-- This root div is a flex column aiming to fill its parent's height (from AgentEventMonitorTabs) -->
-  <div class="flex flex-col h-full p-4"> <!-- Added p-4 for overall padding inside the monitor area -->
-    
-    <!-- Messages and Totals -->
-    <!-- This div will take its natural height. No flex-grow here, allow it to be short. -->
-    <div>
-      <div class="space-y-4 mb-4">
+  <div class="flex flex-col h-full p-4 gap-3">
+    <div
+      :id="conversationScrollContainerId"
+      class="flex-1 min-h-0 overflow-y-auto"
+      @scroll="handleConversationScroll"
+    >
+      <div class="rounded-xl bg-white">
         <div
           v-for="(message, index) in conversation.messages"
           :key="message.timestamp + '-' + message.type + '-' + index"
-          :class="[
-            'p-3 rounded-lg max-w-full relative shadow-sm hover:shadow-md transition-shadow duration-200 break-words',
-            message.type === 'user' ? 'ml-auto bg-blue-100 text-blue-800' : 'mr-auto bg-gray-100 text-gray-800'
-          ]"
+          class="px-2 py-3 break-words"
         >
-          <UserMessage
-            v-if="message.type === 'user'"
-            :message="message"
-          />
-          <AIMessage
-            v-else
-            :message="message"
-            :agent-id="agentId"
-            :message-index="index"
-          />
+          <div>
+            <UserMessage
+              v-if="message.type === 'user'"
+              :message="message"
+              user-display-name="You"
+            />
+            <AIMessage
+              v-else
+              :message="message"
+              :agent-id="agentId"
+              :agent-name="agentName"
+              :agent-avatar-url="agentAvatarUrl"
+              :message-index="index"
+            />
+          </div>
 
-          <span class="text-xs text-blue-700 font-medium absolute bottom-1 right-2">
+          <span
+            v-if="formatTokenCost(message)"
+            class="block mt-1 text-[11px] text-gray-400 font-medium text-right pr-8"
+          >
             {{ formatTokenCost(message) }}
           </span>
         </div>
       </div>
-      <!-- Display total tokens and total cost at the bottom of the conversation -->
+
       <div
         v-if="totalUsage.totalTokens > 0"
-        class="text-xs text-blue-700 font-medium mt-2 text-right mb-4"
+        class="text-xs text-gray-500 font-medium mt-2 text-right"
       >
         Total: {{ totalUsage.totalTokens }} tokens / ${{ totalUsage.totalCost.toFixed(4) }}
       </div>
     </div>
 
-    <!-- AgentUserInputForm wrapper -->
-    <div class="mt-auto pt-4"> 
+    <div>
       <AgentUserInputForm />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, getCurrentInstance, onMounted, onUpdated, ref, watch } from 'vue';
 import type { Conversation, Message } from '~/types/conversation';
 import UserMessage from '~/components/conversation/UserMessage.vue';
 import AIMessage from '~/components/conversation/AIMessage.vue';
 import AgentUserInputForm from '~/components/agentInput/AgentUserInputForm.vue';
 
-const props = defineProps<{  conversation: Conversation;
+const props = defineProps<{
+  conversation: Conversation;
+  agentName?: string;
+  agentAvatarUrl?: string | null;
 }>();
 
 const agentId = computed(() => props.conversation.id);
+const instanceUid = getCurrentInstance()?.uid ?? Math.floor(Math.random() * 1_000_000);
+const conversationScrollContainerId = computed(() => `agent-conversation-scroll-${agentId.value}-${instanceUid}`);
+const shouldStickToBottom = ref(true);
+const NEAR_BOTTOM_THRESHOLD_PX = 40;
+
+const getConversationScrollContainer = (): HTMLElement | null => {
+  if (typeof document === 'undefined') return null;
+  return document.getElementById(conversationScrollContainerId.value);
+};
+
+const getDistanceFromBottom = (el: HTMLElement): number => {
+  return el.scrollHeight - el.scrollTop - el.clientHeight;
+};
+
+const isNearBottom = (el: HTMLElement): boolean => {
+  return getDistanceFromBottom(el) <= NEAR_BOTTOM_THRESHOLD_PX;
+};
+
+const updatePinnedStateFromScrollPosition = (el?: HTMLElement | null) => {
+  const target = el ?? getConversationScrollContainer();
+  if (!target) return;
+  shouldStickToBottom.value = isNearBottom(target);
+};
+
+const scrollToBottom = () => {
+  const el = getConversationScrollContainer();
+  if (!el) return;
+  el.scrollTop = el.scrollHeight;
+};
+
+const handleConversationScroll = (event: Event) => {
+  updatePinnedStateFromScrollPosition(event.currentTarget as HTMLElement | null);
+};
+
+const syncAutoScrollIfPinned = () => {
+  if (!shouldStickToBottom.value) return;
+  scrollToBottom();
+  updatePinnedStateFromScrollPosition();
+};
+
+onMounted(() => {
+  scrollToBottom();
+  updatePinnedStateFromScrollPosition();
+});
+
+onUpdated(() => {
+  syncAutoScrollIfPinned();
+});
+
+watch(() => props.conversation.id, () => {
+  shouldStickToBottom.value = true;
+});
 
 const formatTokenCost = (message: Message) => {
   if (message.type === 'user') {
@@ -103,6 +162,4 @@ const totalUsage = computed(() => {
 </script>
 
 <style scoped>
-/* Ensure messages wrap properly on small screens */
-/* h-full and flex flex-col on the root div are crucial for the sticky footer effect */
 </style>

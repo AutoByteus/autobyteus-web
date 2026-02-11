@@ -13,7 +13,7 @@ import type {
   DeleteAgentTeamDefinitionMutationVariables,
   TeamMemberInput,
 } from '~/generated/graphql';
-import { useServerStore } from '~/stores/serverStore';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 
 // Re-exporting this for use in forms
 export type { TeamMemberInput };
@@ -24,13 +24,14 @@ export interface AgentTeamDefinition {
   name: string;
   description: string;
   role?: string | null;
+  avatarUrl?: string | null;
+  updatedAt?: string | null;
   coordinatorMemberName: string;
   nodes: {
     __typename?: 'TeamMember';
     memberName: string;
     referenceId: string;
     referenceType: 'AGENT' | 'AGENT_TEAM';
-    dependencies: string[];
   }[];
 }
 
@@ -39,6 +40,7 @@ export interface CreateAgentTeamDefinitionInput {
   description: string;
   coordinatorMemberName: string;
   role?: string | null;
+  avatarUrl?: string | null;
   nodes: TeamMemberInput[];
 }
 
@@ -48,6 +50,7 @@ export interface UpdateAgentTeamDefinitionInput {
   description?: string | null;
   coordinatorMemberName?: string | null;
   role?: string | null;
+  avatarUrl?: string | null;
   nodes?: TeamMemberInput[] | null;
 }
 
@@ -61,10 +64,10 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
   async function fetchAllAgentTeamDefinitions() {
     if (agentTeamDefinitions.value.length > 0) return;
 
-    const serverStore = useServerStore();
-    const isReady = await serverStore.waitForServerReady();
+    const windowNodeContextStore = useWindowNodeContextStore();
+    const isReady = await windowNodeContextStore.waitForBoundBackendReady();
     if (!isReady) {
-      error.value = new Error('Server is not ready');
+      error.value = new Error('Bound backend is not ready');
       return;
     }
 

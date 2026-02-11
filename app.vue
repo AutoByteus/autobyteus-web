@@ -1,7 +1,7 @@
 <template>
   <div id="app">
     <!-- Conditionally display server status overlays in Electron environment -->
-    <template v-if="serverStore.isElectron">
+    <template v-if="isEmbeddedWindow">
       <ServerLoading />
       <ServerShutdown />
     </template>
@@ -18,6 +18,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useServerStore } from '~/stores/serverStore'
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore'
 import ServerLoading from '~/components/server/ServerLoading.vue'
 import ServerShutdown from '~/components/server/ServerShutdown.vue'
 import UiErrorPanel from '~/components/ui/UiErrorPanel.vue'
@@ -26,8 +27,10 @@ import { ServerStatus } from '~/types/serverStatus'
 
 const config = useRuntimeConfig()
 const serverStore = useServerStore()
+const windowNodeContextStore = useWindowNodeContextStore()
+const isEmbeddedWindow = computed(() => windowNodeContextStore.isEmbeddedWindow)
 const isAppReady = computed(() =>
-  !serverStore.isElectron || serverStore.status === ServerStatus.RUNNING
+  !isEmbeddedWindow.value || serverStore.status === ServerStatus.RUNNING
 )
 </script>
 

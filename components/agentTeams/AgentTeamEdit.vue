@@ -1,34 +1,36 @@
 <template>
-  <div class="p-8">
-    <div class="max-w-6xl mx-auto">
+  <div class="h-full flex-1 overflow-auto bg-slate-50">
+    <div class="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
       <div v-if="teamDef">
-        <div class="mb-8">
-          <h1 class="text-3xl font-bold text-gray-900">Edit Agent Team Definition</h1>
-          <p class="text-lg text-gray-500 mt-2">Update the details for "{{ teamDef.name }}".</p>
+        <div class="mb-6">
+          <h1 class="text-4xl font-semibold text-slate-900">Edit Agent Team</h1>
+          <p class="mt-1 text-lg text-slate-600">Update details for "{{ teamDef.name }}".</p>
         </div>
 
         <AgentTeamDefinitionForm
-          :initial-data="teamDef"
+          :initial-data="initialFormData"
           :is-submitting="isSubmitting"
           submit-button-text="Save Changes"
           @submit="handleUpdate"
           @cancel="handleCancel"
         />
       </div>
-       <div v-else-if="loading" class="text-center py-10">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto mb-4"></div>
-        <p>Loading agent team definition...</p>
+      <div v-else-if="loading" class="rounded-lg border border-slate-200 bg-white py-16 text-center shadow-sm">
+        <div class="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
+        <p class="text-slate-600">Loading agent team definition...</p>
       </div>
-      <div v-else class="bg-red-50 border border-red-200 text-red-700 rounded-md p-4">
+      <div v-else class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
         <p class="font-bold">Error:</p>
         <p>Agent team definition not found.</p>
       </div>
 
-      <div v-if="notification"
-           :class="[
-             'fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white z-50',
-             notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-           ]">
+      <div
+        v-if="notification"
+        :class="[
+          'fixed bottom-5 right-5 z-50 rounded-lg p-4 text-white shadow-lg',
+          notification.type === 'success' ? 'bg-green-500' : 'bg-red-500',
+        ]"
+      >
         {{ notification.message }}
       </div>
     </div>
@@ -36,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, toRefs } from 'vue';
+import { computed, onMounted, ref, toRefs } from 'vue';
 import { useAgentTeamDefinitionStore, type UpdateAgentTeamDefinitionInput } from '~/stores/agentTeamDefinitionStore';
 import AgentTeamDefinitionForm from '~/components/agentTeams/AgentTeamDefinitionForm.vue';
 
@@ -46,7 +48,18 @@ const { teamId } = toRefs(props);
 const emit = defineEmits(['navigate']);
 
 const store = useAgentTeamDefinitionStore();
+
 const teamDef = computed(() => store.getAgentTeamDefinitionById(teamId.value));
+const initialFormData = computed(() => {
+  if (!teamDef.value) {
+    return null;
+  }
+  return {
+    ...teamDef.value,
+    avatarUrl: teamDef.value.avatarUrl || '',
+  };
+});
+
 const loading = ref(false);
 const isSubmitting = ref(false);
 const notification = ref<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -59,7 +72,7 @@ onMounted(async () => {
   }
 });
 
-const handleUpdate = async (formData: any) => {
+const handleUpdate = async (formData: UpdateAgentTeamDefinitionInput) => {
   isSubmitting.value = true;
   notification.value = null;
 
@@ -74,7 +87,7 @@ const handleUpdate = async (formData: any) => {
       showNotification('Agent team definition updated successfully!', 'success');
       setTimeout(() => {
         emit('navigate', { view: 'team-detail', id: updatedTeam.id });
-      }, 1500);
+      }, 1200);
     } else {
       throw new Error('Failed to update agent team definition. The result was empty.');
     }

@@ -31,13 +31,6 @@ export const useAgentContextsStore = defineStore('agentContexts', {
     },
 
     /**
-     * All instances as array.
-     */
-    allInstances(): AgentContext[] {
-      return Array.from(this.instances.values());
-    },
-
-    /**
      * Instances grouped by agent definition id.
      */
     instancesByDefinition(): Map<string, AgentContext[]> {
@@ -79,9 +72,11 @@ export const useAgentContextsStore = defineStore('agentContexts', {
       const config: AgentRunConfig = {
         agentDefinitionId: template.agentDefinitionId,
         agentDefinitionName: template.agentDefinitionName,
+        agentAvatarUrl: template.agentAvatarUrl ?? null,
         llmModelIdentifier: template.llmModelIdentifier,
         workspaceId: template.workspaceId,
         autoExecuteTools: template.autoExecuteTools,
+        skillAccessMode: template.skillAccessMode,
         llmConfig: template.llmConfig ?? null,
         isLocked: false,
       };

@@ -1,5 +1,8 @@
 <template>
-  <div class="server-settings-manager h-full flex flex-col overflow-hidden">
+  <div
+    v-if="windowNodeContextStore.isEmbeddedWindow"
+    class="server-settings-manager h-full flex flex-col overflow-hidden"
+  >
     <div class="flex items-center justify-between px-8 pt-8 pb-4 flex-shrink-0">
       <div>
         <h2 class="text-xl font-semibold text-gray-900">Server Settings</h2>
@@ -348,11 +351,15 @@
       </div>
     </div>
   </div>
+  <div v-else class="h-full flex items-center justify-center text-gray-500 p-8">
+    Embedded server settings are unavailable for remote node windows.
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useServerSettingsStore, type SearchProvider } from '~/stores/serverSettings'
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore'
 import ServerMonitor from '~/components/server/ServerMonitor.vue'
 
 type SettingsTab = 'quick' | 'advanced'
@@ -400,6 +407,7 @@ const searchProviderOptions: Array<{ value: SearchProvider; label: string }> = [
 ]
 
 const store = useServerSettingsStore()
+const windowNodeContextStore = useWindowNodeContextStore()
 const activeTab = ref<SettingsTab>('quick')
 const advancedPanel = ref<AdvancedPanel>('raw-settings')
 const notification = ref<{ type: 'success' | 'error'; message: string } | null>(null)
@@ -596,6 +604,10 @@ watch(
 )
 
 onMounted(async () => {
+  if (!windowNodeContextStore.isEmbeddedWindow) {
+    return
+  }
+
   try {
     await store.fetchServerSettings()
     await store.fetchSearchConfig()
