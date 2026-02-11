@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { handleToolApprovalRequested, handleToolAutoExecuting, handleToolLog } from '../toolLifecycleHandler';
 import { useAgentActivityStore } from '~/stores/agentActivityStore';
 import type { AgentContext } from '~/types/agent/AgentContext';
-import type { EditFileSegment } from '~/types/segments';
+import type { EditFileSegment, TerminalCommandSegment } from '~/types/segments';
 import type { ToolApprovalRequestedPayload, ToolAutoExecutingPayload, ToolLogPayload } from '../../protocol/messageTypes';
 
 vi.mock('~/stores/agentActivityStore', () => ({
@@ -44,6 +44,19 @@ describe('toolLifecycleHandler', () => {
       updatedAt: '',
     },
   }) as AgentContext;
+
+  const buildTerminalSegment = (invocationId: string): TerminalCommandSegment => ({
+    type: 'terminal_command',
+    invocationId,
+    toolName: 'run_bash',
+    arguments: { command: '' },
+    status: 'parsing',
+    logs: [],
+    result: null,
+    error: null,
+    command: '',
+    description: '',
+  });
 
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -109,6 +122,60 @@ describe('toolLifecycleHandler', () => {
     expect(mockActivityStore.updateActivityStatus).toHaveBeenCalledWith(agentId, invocationId, 'awaiting-approval');
     expect(mockActivityStore.updateActivityArguments).toHaveBeenCalledWith(agentId, invocationId, payload.arguments);
     expect(mockActivityStore.setHighlightedActivity).toHaveBeenCalledWith(agentId, invocationId);
+  });
+
+  it('merges terminal command metadata on TOOL_APPROVAL_REQUESTED', () => {
+    const invocationId = 'bash-approve-1';
+    const segment = buildTerminalSegment(invocationId);
+    mockContext = buildContextWithSegment(segment as any, invocationId);
+
+    const payload: ToolApprovalRequestedPayload = {
+      invocation_id: invocationId,
+      tool_name: 'run_bash',
+      arguments: {
+        command: 'npm run dev',
+        background: true,
+        timeout_seconds: 60,
+      },
+    };
+
+    handleToolApprovalRequested(payload, mockContext);
+
+    expect(segment.status).toBe('awaiting-approval');
+    expect(segment.arguments).toEqual({
+      command: 'npm run dev',
+      background: true,
+      timeout_seconds: 60,
+    });
+    expect(segment.command).toBe('npm run dev');
+    expect(mockActivityStore.updateActivityArguments).toHaveBeenCalledWith(agentId, invocationId, payload.arguments);
+  });
+
+  it('merges terminal command metadata on TOOL_AUTO_EXECUTING', () => {
+    const invocationId = 'bash-auto-1';
+    const segment = buildTerminalSegment(invocationId);
+    mockContext = buildContextWithSegment(segment as any, invocationId);
+
+    const payload: ToolAutoExecutingPayload = {
+      invocation_id: invocationId,
+      tool_name: 'run_bash',
+      arguments: {
+        command: 'python server.py',
+        background: true,
+        timeout_seconds: 10,
+      },
+    };
+
+    handleToolAutoExecuting(payload, mockContext);
+
+    expect(segment.status).toBe('executing');
+    expect(segment.arguments).toEqual({
+      command: 'python server.py',
+      background: true,
+      timeout_seconds: 10,
+    });
+    expect(segment.command).toBe('python server.py');
+    expect(mockActivityStore.updateActivityArguments).toHaveBeenCalledWith(agentId, invocationId, payload.arguments);
   });
 
   it('handles edit_file TOOL_LOG success updates', () => {

@@ -31,10 +31,8 @@ export function handleToolApprovalRequested(
   }
 
   segment.status = 'awaiting-approval';
-  // Update arguments if not already set
-  if (Object.keys(segment.arguments).length === 0) {
-    segment.arguments = payload.arguments;
-  }
+  // Merge latest arguments so terminal metadata (e.g. background/timeout) stays visible in UI.
+  segment.arguments = { ...segment.arguments, ...payload.arguments };
   if (!segment.toolName) {
     segment.toolName = payload.tool_name;
   }
@@ -63,9 +61,7 @@ export function handleToolAutoExecuting(
   }
 
   segment.status = 'executing';
-  if (Object.keys(segment.arguments).length === 0) {
-    segment.arguments = payload.arguments;
-  }
+  segment.arguments = { ...segment.arguments, ...payload.arguments };
   if (!segment.toolName) {
     segment.toolName = payload.tool_name;
   }
