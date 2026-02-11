@@ -55,6 +55,7 @@ describe('AgentRunConfigForm', () => {
     llmModelIdentifier: 'gpt-4',
     workspaceId: null,
     autoExecuteTools: false,
+    skillAccessMode: 'PRELOADED_ONLY',
     isLocked: false,
   };
 
@@ -116,10 +117,12 @@ describe('AgentRunConfigForm', () => {
     });
 
     const checkbox = wrapper.find('button#auto-execute');
+    const skillScopeSelect = wrapper.find('select#skill-access-mode');
 
     expect(wrapper.findComponent({ name: 'SearchableGroupedSelect' }).props('disabled')).toBe(true);
     expect(wrapper.findComponent({ name: 'WorkspaceSelector' }).props('disabled')).toBe(true);
     expect(checkbox.attributes('disabled')).toBeDefined();
+    expect(skillScopeSelect.attributes('disabled')).toBeDefined();
   });
 
   it('updates config when fields change', async () => {
@@ -148,6 +151,10 @@ describe('AgentRunConfigForm', () => {
     const checkbox = wrapper.find('button#auto-execute');
     await checkbox.trigger('click');
     expect(localConfig.autoExecuteTools).toBe(true);
+
+    const skillScopeSelect = wrapper.find('select#skill-access-mode');
+    await skillScopeSelect.setValue('GLOBAL_DISCOVERY');
+    expect(localConfig.skillAccessMode).toBe('GLOBAL_DISCOVERY');
     
     // Change Model
     // Change Model

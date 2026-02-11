@@ -76,6 +76,7 @@ export const useAgentRunConfigStore = defineStore('agentRunConfig', {
         llmModelIdentifier: '',
         workspaceId: null,
         autoExecuteTools: false,
+        skillAccessMode: 'PRELOADED_ONLY',
         isLocked: false,
       };
       this.isPanelExpanded = true;
@@ -87,7 +88,10 @@ export const useAgentRunConfigStore = defineStore('agentRunConfig', {
      * Load config from an existing instance (Edit Mode).
      */
     setAgentConfig(config: AgentRunConfig) {
-        this.config = config;
+        this.config = {
+          ...config,
+          skillAccessMode: config.skillAccessMode ?? 'PRELOADED_ONLY',
+        };
         this.isPanelExpanded = true;
         this.hasFirstMessageSent = false;
 

@@ -36,6 +36,7 @@ describe('agentRunConfigStore', () => {
       expect(store.config?.llmModelIdentifier).toBe('');
       expect(store.config?.workspaceId).toBeNull();
       expect(store.config?.autoExecuteTools).toBe(false);
+      expect(store.config?.skillAccessMode).toBe('PRELOADED_ONLY');
       expect(store.config?.isLocked).toBe(false);
     });
 
@@ -65,10 +66,12 @@ describe('agentRunConfigStore', () => {
       store.updateAgentConfig({
         llmModelIdentifier: 'gpt-4-turbo',
         autoExecuteTools: true,
+        skillAccessMode: 'GLOBAL_DISCOVERY',
       });
 
       expect(store.config?.llmModelIdentifier).toBe('gpt-4-turbo');
       expect(store.config?.autoExecuteTools).toBe(true);
+      expect(store.config?.skillAccessMode).toBe('GLOBAL_DISCOVERY');
     });
   });
 

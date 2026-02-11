@@ -64,6 +64,27 @@
         </button>
     </div>
 
+    <!-- Skill Access Mode -->
+    <div>
+      <label for="skill-access-mode" class="block text-sm font-medium text-gray-700 mb-1">
+        Skill Access
+      </label>
+      <select
+        id="skill-access-mode"
+        :value="config.skillAccessMode"
+        :disabled="config.isLocked"
+        class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
+        @change="updateSkillAccessMode(($event.target as HTMLSelectElement).value)"
+      >
+        <option value="PRELOADED_ONLY">Configured skills only (Recommended)</option>
+        <option value="GLOBAL_DISCOVERY">All installed skills</option>
+        <option value="NONE">No skills</option>
+      </select>
+      <p class="mt-1 text-xs text-gray-500">
+        Controls which skills this agent is allowed to use.
+      </p>
+    </div>
+
     <div v-if="config.isLocked" class="flex items-center text-xs text-amber-600 bg-amber-50 p-2 rounded">
         <span class="i-heroicons-lock-closed-20-solid w-4 h-4 mr-1"></span>
         <span>Configuration locked because execution has started.</span>
@@ -74,7 +95,7 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
-import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
+import type { AgentRunConfig, SkillAccessMode } from '~/types/agent/AgentRunConfig';
 import type { AgentDefinition } from '~/stores/agentDefinitionStore';
 import WorkspaceSelector from './WorkspaceSelector.vue';
 import SearchableGroupedSelect, { type GroupedOption } from '~/components/agentTeams/SearchableGroupedSelect.vue';
@@ -131,6 +152,10 @@ const updateModelConfig = (config: Record<string, unknown> | null) => {
 
 const updateAutoExecute = (checked: boolean) => {
     props.config.autoExecuteTools = checked;
+};
+
+const updateSkillAccessMode = (value: string) => {
+    props.config.skillAccessMode = value as SkillAccessMode;
 };
 
 const handleSelectExisting = (workspaceId: string) => {

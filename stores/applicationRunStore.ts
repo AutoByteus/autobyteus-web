@@ -131,6 +131,7 @@ export const useApplicationRunStore = defineStore('applicationRun', {
             workspaceId: null,
             llmModelIdentifier: resolvedLlmConfig[memberName],
             autoExecuteTools: true,
+            skillAccessMode: 'PRELOADED_ONLY',
             isLocked: true,
           };
           members.set(memberName, new AgentContext(agentConfig, agentState));

@@ -48,6 +48,7 @@ describe('agentRunStore', () => {
                 workspaceId: 'ws-1',
                 llmModelIdentifier: 'gpt-4',
                 autoExecuteTools: false,
+                skillAccessMode: 'PRELOADED_ONLY',
                 isLocked: false,
             },
             state: {

@@ -1,3 +1,5 @@
+export type SkillAccessMode = 'PRELOADED_ONLY' | 'GLOBAL_DISCOVERY' | 'NONE';
+
 /**
  * Configuration for a running agent instance.
  * 
@@ -23,6 +25,9 @@ export interface AgentRunConfig {
   
   /** Whether to auto-execute tool calls without user confirmation */
   autoExecuteTools: boolean;
+
+  /** Controls which skills this agent can use for this run */
+  skillAccessMode: SkillAccessMode;
   
   /** 
    * Whether this config is locked (read-only).

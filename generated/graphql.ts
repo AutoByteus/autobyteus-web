@@ -924,6 +924,7 @@ export type SendAgentUserInputInput = {
   autoExecuteTools?: InputMaybe<Scalars['Boolean']['input']>;
   llmConfig?: InputMaybe<Scalars['JSON']['input']>;
   llmModelIdentifier?: InputMaybe<Scalars['String']['input']>;
+  skillAccessMode?: InputMaybe<SkillAccessModeEnum>;
   useXmlToolFormat?: InputMaybe<Scalars['Boolean']['input']>;
   userInput: AgentUserInput;
   workspaceId?: InputMaybe<Scalars['String']['input']>;
@@ -945,6 +946,12 @@ export type SendMessageToTeamInput = {
   useXmlToolFormat?: InputMaybe<Scalars['Boolean']['input']>;
   userInput: AgentUserInput;
 };
+
+export enum SkillAccessModeEnum {
+  GlobalDiscovery = 'GLOBAL_DISCOVERY',
+  None = 'NONE',
+  PreloadedOnly = 'PRELOADED_ONLY'
+}
 
 export type SendMessageToTeamResult = {
   __typename?: 'SendMessageToTeamResult';

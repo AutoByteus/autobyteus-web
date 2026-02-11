@@ -46,6 +46,7 @@ describe('agentContextsStore', () => {
                 llmModelIdentifier: 'gpt-4',
                 workspaceId: 'ws-1',
                 autoExecuteTools: true,
+                skillAccessMode: 'GLOBAL_DISCOVERY',
                 llmConfig: { reasoning_effort: 'high' },
             });
 
@@ -64,6 +65,7 @@ describe('agentContextsStore', () => {
             expect(instance?.config.llmModelIdentifier).toBe('gpt-4');
             expect(instance?.config.workspaceId).toBe('ws-1');
             expect(instance?.config.autoExecuteTools).toBe(true);
+            expect(instance?.config.skillAccessMode).toBe('GLOBAL_DISCOVERY');
             expect(instance?.config.llmConfig).toEqual({ reasoning_effort: 'high' });
             expect(instance?.config.isLocked).toBe(false);
 
