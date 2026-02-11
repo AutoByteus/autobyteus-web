@@ -1,15 +1,6 @@
 <template>
   <div class="server-settings-manager h-full flex flex-col overflow-hidden">
-    <div class="flex items-center justify-between px-8 pt-8 pb-4 flex-shrink-0">
-      <div>
-        <h2 class="text-xl font-semibold text-gray-900">Server Settings</h2>
-        <p class="text-sm text-gray-500 mt-1">
-          Quick setup for common connections. Advanced mode contains raw developer controls.
-        </p>
-      </div>
-    </div>
-
-    <div class="flex-1 overflow-auto p-8">
+    <div class="flex-1 overflow-auto p-8 pt-6">
       <div v-if="store.isLoading" class="flex justify-center items-center py-8">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
@@ -19,90 +10,140 @@
       </div>
 
       <div v-else class="space-y-6">
-        <div class="inline-flex rounded-lg border border-gray-200 bg-white p-1">
-          <button
-            type="button"
-            class="px-3 py-1.5 text-sm rounded-md transition-colors"
-            :class="activeTab === 'quick' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'"
-            @click="activeTab = 'quick'"
-          >
-            Quick Setup
-          </button>
-          <button
-            type="button"
-            class="px-3 py-1.5 text-sm rounded-md transition-colors"
-            :class="activeTab === 'advanced' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'"
-            @click="activeTab = 'advanced'"
-          >
-            Advanced / Developer
-          </button>
-        </div>
-
-        <div v-if="activeTab === 'quick'" class="space-y-4">
-          <div class="border border-gray-200 rounded-xl bg-white p-5">
-            <div class="flex items-start justify-between gap-4 mb-4">
-              <div>
-                <h3 class="text-base font-semibold text-gray-900">Connection Setup</h3>
-                <p class="text-sm text-gray-500 mt-1">
-                  Configure only the endpoints most users need.
-                </p>
-              </div>
-              <button
-                type="button"
-                class="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                :disabled="!hasAnyQuickSettingChanged || isSavingAllQuick"
-                @click="saveAllQuickSettings"
-              >
-                <span
-                  v-if="isSavingAllQuick"
-                  class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1 inline-block"
-                ></span>
-                Save All Changes
-              </button>
-            </div>
-
-            <div class="space-y-4">
-              <div
-                v-for="field in quickSetupFields"
-                :key="field.key"
-                class="rounded-lg border border-gray-200 p-4 bg-gray-50/60"
-              >
-                <div class="flex items-center justify-between gap-3 mb-2">
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">{{ field.label }}</p>
-                    <p class="text-xs text-gray-500 mt-0.5">{{ field.description }}</p>
-                  </div>
-                  <button
-                    type="button"
-                    class="px-3 py-1.5 text-sm bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    :disabled="!isQuickSettingChanged(field.key) || isQuickSettingUpdating(field.key)"
-                    :data-testid="`quick-setting-save-${field.key}`"
-                    @click="saveQuickSetting(field.key)"
-                  >
-                    <span
-                      v-if="isQuickSettingUpdating(field.key)"
-                      class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1 inline-block"
-                    ></span>
-                    Save
-                  </button>
-                </div>
-
-                <input
-                  v-model="quickEditedSettings[field.key]"
-                  type="text"
-                  class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                  :placeholder="field.placeholder"
-                  :data-testid="`quick-setting-value-${field.key}`"
+        <div v-if="activeTab === 'quick'" class="space-y-5">
+          <div class="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-gray-100">
+            <section
+              v-for="field in quickSetupFields"
+              :key="field.key"
+              class="px-5 py-5 border-b border-gray-100 last:border-b-0"
+              :data-testid="`quick-setting-card-${field.key}`"
+            >
+              <div class="flex items-center justify-between gap-3 mb-3">
+                <p class="text-xl font-semibold text-gray-900">{{ field.label }}</p>
+                <button
+                  type="button"
+                  :class="saveButtonClass"
+                  :disabled="isQuickSettingSaveBlocked(field.key)"
+                  :data-testid="`quick-setting-save-${field.key}`"
+                  @click="saveQuickSetting(field.key)"
                 >
+                  <span
+                    v-if="isQuickSettingUpdating(field.key)"
+                    class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 inline-block"
+                  ></span>
+                  <span v-else class="i-heroicons-check-20-solid w-4 h-4"></span>
+                  <span>Save</span>
+                </button>
+              </div>
 
-                <p v-if="isQuickSettingChanged(field.key)" class="text-xs text-amber-700 mt-2">
+              <div class="space-y-2.5">
+                <div
+                  v-for="row in quickEndpointRows[field.key]"
+                  :key="row.id"
+                  class="grid gap-2"
+                >
+                  <div v-if="field.format === 'url'" class="grid grid-cols-12 gap-2 items-center">
+                    <select
+                      v-model="row.protocol"
+                      class="col-span-3 h-11 px-3 border border-gray-200 bg-white rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      :data-testid="`quick-row-protocol-${field.key}-${row.id}`"
+                      @change="onQuickEndpointRowChange(field.key)"
+                    >
+                      <option v-for="protocol in getProtocolOptions(field)" :key="protocol" :value="protocol">
+                        {{ protocol }}
+                      </option>
+                    </select>
+
+                    <input
+                      v-model="row.host"
+                      type="text"
+                      class="col-span-6 h-11 px-3 border border-gray-200 bg-white rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Host"
+                      :data-testid="`quick-row-host-${field.key}-${row.id}`"
+                      @input="onQuickEndpointRowChange(field.key)"
+                    >
+
+                    <input
+                      v-model="row.port"
+                      type="text"
+                      class="col-span-2 h-11 px-3 border border-gray-200 bg-white rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Port"
+                      :data-testid="`quick-row-port-${field.key}-${row.id}`"
+                      @input="onQuickEndpointRowChange(field.key)"
+                    >
+
+                    <button
+                      type="button"
+                      class="col-span-1 h-11 inline-flex items-center justify-center text-gray-400 hover:text-red-500"
+                      :data-testid="`quick-row-remove-${field.key}-${row.id}`"
+                      @click="removeQuickEndpointRow(field.key, row.id)"
+                    >
+                      <span class="i-heroicons-trash-20-solid w-4 h-4"></span>
+                    </button>
+                  </div>
+
+                  <div v-else class="grid grid-cols-12 gap-2 items-center">
+                    <input
+                      v-model="row.host"
+                      type="text"
+                      class="col-span-8 h-11 px-3 border border-gray-200 bg-white rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Host"
+                      :data-testid="`quick-row-host-${field.key}-${row.id}`"
+                      @input="onQuickEndpointRowChange(field.key)"
+                    >
+
+                    <input
+                      v-model="row.port"
+                      type="text"
+                      class="col-span-3 h-11 px-3 border border-gray-200 bg-white rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Port"
+                      :data-testid="`quick-row-port-${field.key}-${row.id}`"
+                      @input="onQuickEndpointRowChange(field.key)"
+                    >
+
+                    <button
+                      type="button"
+                      class="col-span-1 h-11 inline-flex items-center justify-center text-gray-400 hover:text-red-500"
+                      :data-testid="`quick-row-remove-${field.key}-${row.id}`"
+                      @click="removeQuickEndpointRow(field.key, row.id)"
+                    >
+                      <span class="i-heroicons-trash-20-solid w-4 h-4"></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-2.5 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  class="text-sm font-medium text-blue-700 hover:text-blue-800"
+                  :data-testid="`quick-setting-add-row-${field.key}`"
+                  @click="addQuickEndpointRow(field.key)"
+                >
+                  + Add endpoint
+                </button>
+
+                <p v-if="isQuickSettingChanged(field.key) && hasQuickSettingValidationErrors(field.key)" class="text-xs text-red-600">
+                  Complete host and use a valid port (1-65535).
+                </p>
+                <p v-else-if="isQuickSettingChanged(field.key)" class="text-xs text-amber-600">
                   Unsaved change
                 </p>
               </div>
-            </div>
+
+              <input
+                :value="quickEditedSettings[field.key]"
+                type="text"
+                class="sr-only"
+                :data-testid="`quick-setting-value-${field.key}`"
+                readonly
+                tabindex="-1"
+                aria-hidden="true"
+              >
+            </section>
           </div>
 
-          <div class="border border-gray-200 rounded-xl bg-white p-5">
+          <div class="rounded-3xl bg-white px-6 py-5 shadow-sm ring-1 ring-gray-100">
             <div class="flex items-start justify-between gap-4 mb-4">
               <div>
                 <h3 class="text-base font-semibold text-gray-900">Web Search Configuration</h3>
@@ -112,21 +153,21 @@
               </div>
               <button
                 type="button"
-                class="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                :class="saveButtonClass"
                 :disabled="!canSaveSearchConfig || isSavingSearchConfig"
                 @click="saveSearchConfig"
               >
                 <span
                   v-if="isSavingSearchConfig"
-                  class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1 inline-block"
+                  class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 inline-block"
                 ></span>
-                Save Search Config
+                <span v-else class="i-heroicons-check-20-solid w-4 h-4"></span>
+                <span>Save</span>
               </button>
             </div>
 
             <div class="space-y-3">
               <div>
-                <label class="block text-sm font-medium text-gray-900 mb-1">Search Provider</label>
                 <select
                   v-model="selectedSearchProvider"
                   class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
@@ -226,17 +267,12 @@
         </div>
 
         <div v-else class="space-y-4">
-          <div class="border border-gray-200 rounded-xl bg-white p-5">
-            <h3 class="text-base font-semibold text-gray-900">Developer Tools</h3>
-            <p class="text-sm text-gray-500 mt-1">
-              Raw environment settings and server diagnostics.
-            </p>
-
-            <div class="inline-flex rounded-lg border border-gray-200 bg-white p-1 mt-4">
+          <div class="px-1 pt-1 pb-2">
+            <div class="flex items-center gap-8">
               <button
                 type="button"
-                class="px-3 py-1.5 text-sm rounded-md transition-colors"
-                :class="advancedPanel === 'raw-settings' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'"
+                class="pb-2 text-lg border-b-2 transition-colors"
+                :class="advancedPanel === 'raw-settings' ? 'border-blue-500 text-blue-700 font-medium' : 'border-transparent text-gray-600 hover:text-gray-900'"
                 @click="advancedPanel = 'raw-settings'"
               >
                 All Settings
@@ -244,8 +280,8 @@
               <button
                 v-if="canAccessEmbeddedDiagnostics"
                 type="button"
-                class="px-3 py-1.5 text-sm rounded-md transition-colors"
-                :class="advancedPanel === 'server-status' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'"
+                class="pb-2 text-lg border-b-2 transition-colors"
+                :class="advancedPanel === 'server-status' ? 'border-blue-500 text-blue-700 font-medium' : 'border-transparent text-gray-600 hover:text-gray-900'"
                 @click="advancedPanel = 'server-status'"
               >
                 Server Status & Logs
@@ -290,10 +326,11 @@
                         @click="saveIndividualSetting(setting.key)"
                         :disabled="!isSettingChanged(setting.key) || store.isUpdating"
                         :data-testid="`server-setting-save-${setting.key}`"
-                        class="px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                        :class="saveButtonClass"
                       >
-                        <span v-if="isUpdating[setting.key]" class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1 inline-block"></span>
-                        Save
+                        <span v-if="isUpdating[setting.key]" class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 inline-block"></span>
+                        <span v-else class="i-heroicons-check-20-solid w-4 h-4"></span>
+                        <span>Save</span>
                       </button>
                     </td>
                   </tr>
@@ -322,10 +359,11 @@
                       <button
                         @click="addNewSetting"
                         :disabled="!isNewSettingValid || isAddingNewSetting"
-                        class="px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                        :class="saveButtonClass"
                       >
-                        <span v-if="isAddingNewSetting" class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1 inline-block"></span>
-                        Save
+                        <span v-if="isAddingNewSetting" class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 inline-block"></span>
+                        <span v-else class="i-heroicons-check-20-solid w-4 h-4"></span>
+                        <span>Save</span>
                       </button>
                     </td>
                   </tr>
@@ -359,12 +397,22 @@ import ServerMonitor from '~/components/server/ServerMonitor.vue'
 
 type SettingsTab = 'quick' | 'advanced'
 type AdvancedPanel = 'raw-settings' | 'server-status'
+type QuickFieldFormat = 'url' | 'hostPort'
 
 interface QuickSetupField {
   key: string
   label: string
   description: string
-  placeholder: string
+  format: QuickFieldFormat
+  defaultProtocol: string
+}
+
+interface QuickEndpointRow {
+  id: string
+  protocol: string
+  host: string
+  port: string
+  path: string
 }
 
 const VNC_HOSTS_KEY = 'AUTOBYTEUS_VNC_SERVER_HOSTS'
@@ -372,27 +420,31 @@ const VNC_HOSTS_KEY = 'AUTOBYTEUS_VNC_SERVER_HOSTS'
 const quickSetupFields: QuickSetupField[] = [
   {
     key: 'LMSTUDIO_HOSTS',
-    label: 'LM Studio Hosts',
-    description: 'Comma-separated LM Studio endpoints.',
-    placeholder: 'http://localhost:1234',
+    label: 'LM Studio',
+    description: 'Enter protocol, host, and port for your LM Studio server.',
+    format: 'url',
+    defaultProtocol: 'http',
   },
   {
     key: 'OLLAMA_HOSTS',
-    label: 'Ollama Hosts',
-    description: 'Comma-separated Ollama endpoints.',
-    placeholder: 'http://localhost:11434',
+    label: 'Ollama',
+    description: 'Enter protocol, host, and port for your Ollama server.',
+    format: 'url',
+    defaultProtocol: 'http',
   },
   {
     key: 'AUTOBYTEUS_LLM_SERVER_HOSTS',
     label: 'AutoByteus LLM Hosts',
-    description: 'Comma-separated AutoByteus LLM server endpoints.',
-    placeholder: 'http://localhost:5900,http://localhost:5901',
+    description: 'Configure AutoByteus LLM service endpoints.',
+    format: 'url',
+    defaultProtocol: 'https',
   },
   {
     key: VNC_HOSTS_KEY,
     label: 'AutoByteus VNC Hosts',
-    description: 'Comma-separated AutoByteus VNC host endpoints.',
-    placeholder: 'localhost:6080,localhost:6081',
+    description: 'Configure AutoByteus VNC host and port endpoints.',
+    format: 'hostPort',
+    defaultProtocol: 'ws',
   },
 ]
 
@@ -403,10 +455,17 @@ const searchProviderOptions: Array<{ value: SearchProvider; label: string }> = [
   { value: 'vertex_ai_search', label: 'Vertex AI Search' },
 ]
 
+const saveButtonClass =
+  'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-gray-200 bg-gray-50 text-gray-700 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150'
+
+const props = withDefaults(defineProps<{ sectionMode?: SettingsTab }>(), {
+  sectionMode: 'quick',
+})
+
 const store = useServerSettingsStore()
 const windowNodeContextStore = useWindowNodeContextStore()
 const canAccessEmbeddedDiagnostics = computed(() => windowNodeContextStore.isEmbeddedWindow)
-const activeTab = ref<SettingsTab>('quick')
+const activeTab = ref<SettingsTab>(props.sectionMode)
 const advancedPanel = ref<AdvancedPanel>('raw-settings')
 const notification = ref<{ type: 'success' | 'error'; message: string } | null>(null)
 
@@ -417,7 +476,7 @@ const isUpdating = reactive<Record<string, boolean>>({})
 const quickEditedSettings = reactive<Record<string, string>>({})
 const quickOriginalSettings = reactive<Record<string, string>>({})
 const quickIsUpdating = reactive<Record<string, boolean>>({})
-const isSavingAllQuick = ref(false)
+const quickEndpointRows = reactive<Record<string, QuickEndpointRow[]>>({})
 const isSavingSearchConfig = ref(false)
 const hasAttemptedSearchSave = ref(false)
 const isSearchFormTouched = ref(false)
@@ -439,6 +498,176 @@ const newSetting = reactive({
 const newSettingError = ref('')
 const isAddingNewSetting = ref(false)
 
+const quickFieldByKey = computed(() => {
+  const map = new Map<string, QuickSetupField>()
+  quickSetupFields.forEach(field => map.set(field.key, field))
+  return map
+})
+
+const protocolOptionsByFormat: Record<QuickFieldFormat, string[]> = {
+  url: ['http', 'https'],
+  hostPort: ['ws', 'wss'],
+}
+
+const getQuickField = (key: string): QuickSetupField => {
+  const field = quickFieldByKey.value.get(key)
+  if (!field) {
+    throw new Error(`Unknown quick setup field: ${key}`)
+  }
+  return field
+}
+
+const createEndpointRowId = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+
+const createQuickEndpointRow = (field: QuickSetupField): QuickEndpointRow => ({
+  id: createEndpointRowId(),
+  protocol: field.defaultProtocol,
+  host: '',
+  port: '',
+  path: '',
+})
+
+const splitEndpointTokens = (rawValue: string): string[] =>
+  rawValue
+    .split(',')
+    .map(token => token.trim())
+    .filter(Boolean)
+
+const normalizePath = (path: string): string => {
+  const trimmed = path.trim()
+  if (!trimmed) return ''
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+}
+
+const parseUrlTokenToRow = (field: QuickSetupField, token: string): QuickEndpointRow => {
+  const match = token.match(/^(?:(https?):\/\/)?([^/:]+)(?::(\d+))?(\/.*)?$/i)
+  if (!match) {
+    return {
+      ...createQuickEndpointRow(field),
+      host: token,
+    }
+  }
+
+  return {
+    ...createQuickEndpointRow(field),
+    protocol: (match[1] ?? field.defaultProtocol).toLowerCase(),
+    host: match[2] ?? '',
+    port: match[3] ?? '',
+    path: match[4] ?? '',
+  }
+}
+
+const parseHostPortTokenToRow = (field: QuickSetupField, token: string): QuickEndpointRow => {
+  const match = token.match(/^(?:(ws|wss):\/\/)?([^/:]+)(?::(\d+))?$/i)
+  if (!match) {
+    return {
+      ...createQuickEndpointRow(field),
+      host: token,
+    }
+  }
+
+  return {
+    ...createQuickEndpointRow(field),
+    protocol: (match[1] ?? field.defaultProtocol).toLowerCase(),
+    host: match[2] ?? '',
+    port: match[3] ?? '',
+  }
+}
+
+const parseQuickSettingValue = (key: string, rawValue: string): QuickEndpointRow[] => {
+  const field = getQuickField(key)
+  const tokens = splitEndpointTokens(rawValue)
+
+  if (tokens.length === 0) {
+    return [createQuickEndpointRow(field)]
+  }
+
+  const rows = tokens.map(token => (
+    field.format === 'url'
+      ? parseUrlTokenToRow(field, token)
+      : parseHostPortTokenToRow(field, token)
+  ))
+
+  return rows.length > 0 ? rows : [createQuickEndpointRow(field)]
+}
+
+const quickRowHasAnyValue = (_field: QuickSetupField, row: QuickEndpointRow): boolean => {
+  return Boolean(row.host.trim()) || Boolean(row.port.trim()) || Boolean(row.path.trim())
+}
+
+const isValidPort = (port: string): boolean => {
+  const trimmed = port.trim()
+  if (!/^\d+$/.test(trimmed)) return false
+  const numeric = Number(trimmed)
+  return numeric >= 1 && numeric <= 65535
+}
+
+const quickRowIsInvalid = (field: QuickSetupField, row: QuickEndpointRow): boolean => {
+  if (!quickRowHasAnyValue(field, row)) return false
+  if (!row.host.trim()) return true
+  if (!isValidPort(row.port)) return true
+  if (field.format === 'url' && !row.protocol.trim()) return true
+  return false
+}
+
+const serializeQuickRows = (key: string): string => {
+  const field = getQuickField(key)
+  const rows = quickEndpointRows[key] ?? []
+
+  const serializedRows = rows
+    .filter(row => quickRowHasAnyValue(field, row))
+    .map((row) => {
+      const protocol = row.protocol.trim() || field.defaultProtocol
+      const host = row.host.trim() || 'localhost'
+      const port = row.port.trim()
+
+      if (field.format === 'url') {
+        const path = normalizePath(row.path)
+        let endpoint = `${protocol}://${host}`
+        if (port) endpoint += `:${port}`
+        endpoint += path
+        return endpoint
+      }
+
+      return port ? `${host}:${port}` : host
+    })
+
+  return serializedRows.join(',')
+}
+
+const syncQuickRowsFromValue = (key: string, rawValue: string) => {
+  quickEndpointRows[key] = parseQuickSettingValue(key, rawValue)
+}
+
+const onQuickEndpointRowChange = (key: string) => {
+  quickEditedSettings[key] = serializeQuickRows(key)
+}
+
+const addQuickEndpointRow = (key: string) => {
+  const field = getQuickField(key)
+  if (!Array.isArray(quickEndpointRows[key])) {
+    quickEndpointRows[key] = []
+  }
+  quickEndpointRows[key].push(createQuickEndpointRow(field))
+  onQuickEndpointRowChange(key)
+}
+
+const removeQuickEndpointRow = (key: string, rowId: string) => {
+  const field = getQuickField(key)
+  const existingRows = quickEndpointRows[key] ?? []
+  const remainingRows = existingRows.filter(row => row.id !== rowId)
+  quickEndpointRows[key] = remainingRows.length > 0 ? remainingRows : [createQuickEndpointRow(field)]
+  onQuickEndpointRowChange(key)
+}
+
+const hasQuickSettingValidationErrors = (key: string): boolean => {
+  const field = getQuickField(key)
+  const rows = quickEndpointRows[key] ?? []
+  return rows.some(row => quickRowIsInvalid(field, row))
+}
+
+const getProtocolOptions = (field: QuickSetupField): string[] => protocolOptionsByFormat[field.format]
+
 const isNewSettingValid = computed(() => {
   newSettingError.value = ''
 
@@ -459,9 +688,8 @@ const isSettingChanged = (key: string) => editedSettings[key] !== originalSettin
 const isQuickSettingChanged = (key: string) => quickEditedSettings[key] !== quickOriginalSettings[key]
 const isQuickSettingUpdating = (key: string) => quickIsUpdating[key] === true
 
-const hasAnyQuickSettingChanged = computed(() =>
-  quickSetupFields.some(field => isQuickSettingChanged(field.key)),
-)
+const isQuickSettingSaveBlocked = (key: string) =>
+  !isQuickSettingChanged(key) || isQuickSettingUpdating(key) || hasQuickSettingValidationErrors(key)
 
 const searchConfigValidationError = computed(() => {
   const provider = selectedSearchProvider.value
@@ -535,6 +763,13 @@ const markSearchFormTouched = () => {
   isSearchFormTouched.value = true
 }
 
+watch(
+  () => props.sectionMode,
+  (newMode) => {
+    activeTab.value = newMode
+  },
+)
+
 const applySearchConfigToForm = () => {
   selectedSearchProvider.value = store.searchConfig.provider
   searchForm.serperApiKey = ''
@@ -589,6 +824,9 @@ watch(
 
       if (!hasEditedValue || currentEdited === currentOriginal) {
         quickEditedSettings[field.key] = currentValue
+        syncQuickRowsFromValue(field.key, currentValue)
+      } else if (!Array.isArray(quickEndpointRows[field.key]) || quickEndpointRows[field.key].length === 0) {
+        syncQuickRowsFromValue(field.key, currentEdited)
       }
 
       quickOriginalSettings[field.key] = currentValue
@@ -620,7 +858,7 @@ const showNotification = (message: string, type: 'success' | 'error') => {
 }
 
 const saveQuickSetting = async (key: string) => {
-  if (!isQuickSettingChanged(key)) return
+  if (!isQuickSettingChanged(key) || hasQuickSettingValidationErrors(key)) return
 
   quickIsUpdating[key] = true
   try {
@@ -631,33 +869,6 @@ const saveQuickSetting = async (key: string) => {
     showNotification(error.message || `Failed to save setting "${key}"`, 'error')
   } finally {
     quickIsUpdating[key] = false
-  }
-}
-
-const saveAllQuickSettings = async () => {
-  const keysToSave = quickSetupFields
-    .map(field => field.key)
-    .filter(key => isQuickSettingChanged(key))
-
-  if (keysToSave.length === 0) return
-
-  isSavingAllQuick.value = true
-
-  try {
-    for (const key of keysToSave) {
-      quickIsUpdating[key] = true
-      await store.updateServerSetting(key, quickEditedSettings[key])
-      quickOriginalSettings[key] = quickEditedSettings[key]
-      quickIsUpdating[key] = false
-    }
-    showNotification('Quick setup changes saved successfully', 'success')
-  } catch (error: any) {
-    keysToSave.forEach((key) => {
-      quickIsUpdating[key] = false
-    })
-    showNotification(error.message || 'Failed to save quick setup settings', 'error')
-  } finally {
-    isSavingAllQuick.value = false
   }
 }
 

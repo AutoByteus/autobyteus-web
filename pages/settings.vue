@@ -51,20 +51,41 @@
                 <div class="flex items-center min-w-[20px] mr-3">
                   <span class="i-heroicons-chat-bubble-left-right-20-solid w-5 h-5"></span>
                 </div>
-                <span class="text-left">External Messaging</span>
+                <span class="text-left">Messaging</span>
               </button>
             </li>
             <li class="w-full">
               <button 
-                @click="activeSection = 'server-settings'"
+                @click="selectServerSettings()"
+                data-testid="settings-nav-server-settings"
                 class="flex w-full items-center justify-start px-4 py-2 rounded-md transition-colors duration-200 text-gray-700 hover:bg-gray-100 hover:text-gray-900 group"
-                :class="{ 'bg-gray-100 text-gray-900': activeSection === 'server-settings' }"
+                :class="{ 'text-gray-900 font-medium': activeSection === 'server-settings' }"
               >
                 <div class="flex items-center min-w-[20px] mr-3">
                   <span class="i-heroicons-server-20-solid w-5 h-5"></span>
                 </div>
                 <span class="text-left">Server Settings</span>
               </button>
+              <div v-if="activeSection === 'server-settings'" class="ml-10 mt-1 pl-3 space-y-1">
+                <button
+                  type="button"
+                  data-testid="settings-nav-server-settings-quick"
+                  class="w-full text-left px-3 py-1.5 text-base rounded-md transition-colors duration-200"
+                  :class="serverSettingsMode === 'quick' ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'"
+                  @click="selectServerSettings('quick')"
+                >
+                  Basics
+                </button>
+                <button
+                  type="button"
+                  data-testid="settings-nav-server-settings-advanced"
+                  class="w-full text-left px-3 py-1.5 text-base rounded-md transition-colors duration-200"
+                  :class="serverSettingsMode === 'advanced' ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'"
+                  @click="selectServerSettings('advanced')"
+                >
+                  Advanced
+                </button>
+              </div>
             </li>
           </ul>
         </nav>
@@ -78,7 +99,10 @@
         <TokenUsageStatistics v-if="activeSection === 'token-usage'" />
         <NodeManager v-if="activeSection === 'nodes'" />
         <ExternalMessagingManager v-if="activeSection === 'external-messaging'" />
-        <ServerSettingsManager v-if="activeSection === 'server-settings'" />
+        <ServerSettingsManager
+          v-if="activeSection === 'server-settings'"
+          :section-mode="serverSettingsMode"
+        />
         <div v-else-if="activeSection === ''" class="flex-1 flex flex-col items-center justify-center text-gray-400">
           <span class="i-heroicons-cog-8-tooth-20-solid w-16 h-16 mb-6 opacity-20"></span>
           <h3 class="text-xl font-medium mb-2 text-gray-500">Settings</h3>
@@ -100,36 +124,51 @@ import NodeManager from '~/components/settings/NodeManager.vue';
 import ExternalMessagingManager from '~/components/settings/ExternalMessagingManager.vue';
 import ServerSettingsManager from '~/components/settings/ServerSettingsManager.vue';
 
+type SettingsSection = 'api-keys' | 'token-usage' | 'nodes' | 'external-messaging' | 'server-settings';
+type ServerSettingsMode = 'quick' | 'advanced';
+
 const route = useRoute();
 const serverStore = useServerStore();
 const windowNodeContextStore = useWindowNodeContextStore();
-const activeSection = ref('api-keys');
+const activeSection = ref<SettingsSection>('api-keys');
+const serverSettingsMode = ref<ServerSettingsMode>('quick');
 const isEmbeddedWindow = computed(() => windowNodeContextStore.isEmbeddedWindow);
-const validSections = new Set(['api-keys', 'token-usage', 'nodes', 'external-messaging', 'server-settings']);
+const validSections = new Set<SettingsSection>(['api-keys', 'token-usage', 'nodes', 'external-messaging', 'server-settings']);
 
-const normalizeSection = (section: string | undefined): string | null => {
+const normalizeSection = (section: string | undefined): SettingsSection | null => {
   if (!section) {
     return null;
   }
 
-  if (section === 'server-status') {
-    return 'server-settings';
-  }
+  return validSections.has(section as SettingsSection) ? section as SettingsSection : null;
+};
 
-  return validSections.has(section) ? section : null;
+const normalizeServerSettingsMode = (mode: string | undefined): ServerSettingsMode =>
+  mode === 'advanced' ? 'advanced' : 'quick';
+
+const selectServerSettings = (mode: ServerSettingsMode = 'quick') => {
+  activeSection.value = 'server-settings';
+  serverSettingsMode.value = mode;
 };
 
 onMounted(() => {
   // Check for section query parameter
   const sectionParam = route.query.section as string | undefined;
-  const normalizedSection = normalizeSection(sectionParam);
-  if (normalizedSection) {
-    activeSection.value = normalizedSection;
+  if (sectionParam === 'server-status') {
+    selectServerSettings('advanced');
+  } else {
+    const normalizedSection = normalizeSection(sectionParam);
+    if (normalizedSection) {
+      activeSection.value = normalizedSection;
+      if (normalizedSection === 'server-settings') {
+        serverSettingsMode.value = normalizeServerSettingsMode(route.query.mode as string | undefined);
+      }
+    }
   }
 
   // If server is not running and we are in Electron mode, default to server-settings section.
   if (isEmbeddedWindow.value && serverStore.status !== 'running') {
-    activeSection.value = 'server-settings';
+    selectServerSettings(serverSettingsMode.value);
   }
 });
 </script>

@@ -40,7 +40,7 @@ const mountSettings = () =>
         ConversationHistoryManager: { template: '<div data-testid="section-conversation-logs" />' },
         NodeManager: { template: '<div data-testid="section-nodes" />' },
         ExternalMessagingManager: { template: '<div data-testid="section-external-messaging" />' },
-        ServerSettingsManager: { template: '<div data-testid="section-server-settings" />' },
+        ServerSettingsManager: { props: ['sectionMode'], template: '<div data-testid="section-server-settings">mode={{ sectionMode }}</div>' },
       },
     },
   });
@@ -100,4 +100,5 @@ describe('settings page', () => {
 
     expect(setupState.activeSection).toBe('external-messaging');
   });
+
 });

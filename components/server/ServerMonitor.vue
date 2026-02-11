@@ -47,19 +47,23 @@
         </p>
       </div>
       
-      <div class="flex justify-end space-x-4">
+      <div class="flex justify-end items-center space-x-4">
         <button 
           @click="serverStore.checkServerHealth" 
+          data-testid="server-monitor-refresh-button"
           class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 focus:outline-none transition-colors duration-150"
         >
           Refresh Status
         </button>
-        <button 
-          @click="serverStore.restartServer"
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none transition-colors duration-150"
-        >
-          Restart Server
-        </button>
+        <template v-if="canRestartServerControl">
+          <button
+            @click="handleRestartServer"
+            data-testid="server-monitor-restart-button"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none transition-colors duration-150"
+          >
+            Restart Server
+          </button>
+        </template>
       </div>
     </div>
     
@@ -100,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useServerStore } from '~/stores/serverStore'
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore'
 import ServerLogViewer from '~/components/server/ServerLogViewer.vue'
@@ -108,6 +112,14 @@ import ServerLogViewer from '~/components/server/ServerLogViewer.vue'
 const serverStore = useServerStore()
 const windowNodeContextStore = useWindowNodeContextStore()
 const logFilePath = ref('')
+const canRestartServerControl = computed(
+  () => windowNodeContextStore.isEmbeddedWindow && serverStore.isElectron && Boolean(window.electronAPI?.restartServer),
+)
+
+const handleRestartServer = async () => {
+  if (!canRestartServerControl.value) return
+  await serverStore.restartServer()
+}
 
 onMounted(async () => {
   console.log('ServerMonitor: Component mounted with status:', serverStore.status)

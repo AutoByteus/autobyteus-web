@@ -39,14 +39,9 @@ const getMaybeRefValue = (target: any, key: string) => {
   return current
 }
 
-const clickButtonByText = async (wrapper: any, text: string) => {
-  const button = wrapper.findAll('button').find((item: any) => item.text().trim() === text)
-  expect(button).toBeTruthy()
-  await button!.trigger('click')
-}
-
 const mountComponent = async (
-  initialSettings: Array<{ key: string; value: string; description: string }> = []
+  initialSettings: Array<{ key: string; value: string; description: string }> = [],
+  options: { sectionMode?: 'quick' | 'advanced' } = {},
 ) => {
   const pinia = createTestingPinia({
     createSpy: vi.fn,
@@ -77,6 +72,9 @@ const mountComponent = async (
   store.updateServerSetting = vi.fn().mockResolvedValue(true)
 
   const wrapper = mount(ServerSettingsManager, {
+    props: {
+      sectionMode: options.sectionMode ?? 'quick',
+    },
     global: {
       plugins: [pinia],
       stubs: {
@@ -109,11 +107,13 @@ describe('ServerSettingsManager', () => {
     await wrapper.vm.$nextTick()
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Quick Setup')
-    expect(wrapper.text()).toContain('LM Studio Hosts')
-    expect(wrapper.text()).toContain('Ollama Hosts')
+    expect(wrapper.text()).not.toContain('Add one or more endpoints per provider. No commas needed.')
+    expect(wrapper.text()).toContain('LM Studio')
+    expect(wrapper.text()).toContain('Ollama')
     expect(wrapper.text()).toContain('Web Search Configuration')
-    expect(wrapper.find('[data-testid="quick-setting-value-LMSTUDIO_HOSTS"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="quick-setting-card-LMSTUDIO_HOSTS"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="quick-setting-add-row-LMSTUDIO_HOSTS"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid^="quick-row-host-LMSTUDIO_HOSTS-"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="search-provider-select"]').exists()).toBe(true)
   })
 
@@ -134,14 +134,12 @@ describe('ServerSettingsManager', () => {
     await wrapper.vm.$nextTick()
     await flushPromises()
 
-    const input = wrapper.get('[data-testid="quick-setting-value-LMSTUDIO_HOSTS"]')
-    await input.setValue('http://custom-host:1234')
-
     const setupState = (wrapper.vm as any).$?.setupState
-    if (setupState?.quickEditedSettings) {
-      setupState.quickEditedSettings['LMSTUDIO_HOSTS'] = 'http://custom-host:1234'
-      await wrapper.vm.$nextTick()
-    }
+    const firstRow = setupState.quickEndpointRows['LMSTUDIO_HOSTS'][0]
+    firstRow.host = 'custom-host'
+    firstRow.port = '1234'
+    setupState.onQuickEndpointRowChange('LMSTUDIO_HOSTS')
+    await wrapper.vm.$nextTick()
 
     store.$patch({
       settings: [
@@ -153,7 +151,7 @@ describe('ServerSettingsManager', () => {
     await flushPromises()
     await wrapper.vm.$nextTick()
 
-    expect(setupState.quickEditedSettings['LMSTUDIO_HOSTS']).toBe('http://custom-host:1234')
+    expect(setupState.quickEditedSettings['LMSTUDIO_HOSTS']).toContain('custom-host:1234')
   })
 
   it.each([
@@ -275,14 +273,14 @@ describe('ServerSettingsManager', () => {
   })
 
   it('shows server monitor panel in Advanced / Developer tab', async () => {
-    const { wrapper } = await mountComponent()
+    const { wrapper } = await mountComponent([], { sectionMode: 'advanced' })
     const setupState = (wrapper.vm as any).$?.setupState
 
-    await clickButtonByText(wrapper, 'Advanced / Developer')
     await wrapper.vm.$nextTick()
     await flushPromises()
 
     expect(getMaybeRefValue(setupState, 'activeTab')).toBe('advanced')
+    expect(wrapper.text()).not.toContain('Developer Tools')
 
     setMaybeRef(setupState, 'advancedPanel', 'raw-settings')
     await wrapper.vm.$nextTick()
@@ -303,7 +301,7 @@ describe('ServerSettingsManager', () => {
 
     expect(store.fetchServerSettings).toHaveBeenCalledTimes(1)
     expect(store.fetchSearchConfig).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('Quick Setup')
+    expect(wrapper.text()).not.toContain('Add one or more endpoints per provider. No commas needed.')
     expect(wrapper.text()).not.toContain('Embedded server settings are unavailable for remote node windows.')
     expect(wrapper.findAll('button').some((button) => button.text().trim() === 'Server Status & Logs')).toBe(false)
   })
