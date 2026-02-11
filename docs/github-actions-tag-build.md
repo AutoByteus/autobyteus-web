@@ -12,6 +12,8 @@ This workflow builds desktop artifacts from `autobyteus-web` and publishes them 
 - Patterns:
   - `v*.*.*` (recommended, example: `v1.2.0`)
   - `*.*.*` (example: `1.2.0`)
+- Also supports manual run via GitHub Actions `workflow_dispatch`
+  - Required input: `release_tag` (example: `v1.2.0`)
 
 Example trigger:
 
@@ -19,6 +21,13 @@ Example trigger:
 git tag v1.2.0
 git push origin v1.2.0
 ```
+
+Manual trigger:
+
+1. Open `Actions` in `AutoByteus/autobyteus-web`
+2. Select workflow `Desktop Release Publish (macOS arm64)`
+3. Click `Run workflow`
+4. Provide `release_tag` and run
 
 ## Current Target
 

@@ -5,6 +5,12 @@ on:
     tags:
       - "v*.*.*"
       - "*.*.*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to publish to AutoByteus/autobyteus-desktop-releases (example: v1.2.0)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -113,6 +119,22 @@ jobs:
           pnpm -C "${GITHUB_WORKSPACE}/autobyteus-ts" install --no-frozen-lockfile
           pnpm -C "${GITHUB_WORKSPACE}/repository_prisma" install --no-frozen-lockfile
 
+      - name: Resolve release tag
+        id: release
+        env:
+          INPUT_RELEASE_TAG: ${{ github.event.inputs.release_tag || '' }}
+        run: |
+          set -euo pipefail
+          RELEASE_TAG="${GITHUB_REF_NAME}"
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            RELEASE_TAG="${INPUT_RELEASE_TAG}"
+          fi
+          if [[ -z "${RELEASE_TAG}" ]]; then
+            echo "::error::Release tag cannot be empty."
+            exit 1
+          fi
+          echo "tag=${RELEASE_TAG}" >> "${GITHUB_OUTPUT}"
+
       - name: Build desktop artifact (macOS arm64)
         working-directory: autobyteus-web
         env:
@@ -129,7 +151,7 @@ jobs:
       - name: Upload workflow artifact copy
         uses: actions/upload-artifact@v4
         with:
-          name: autobyteus-desktop-macos-arm64-${{ github.ref_name }}
+          name: autobyteus-desktop-macos-arm64-${{ steps.release.outputs.tag }}
           path: |
             autobyteus-web/electron-dist/*.dmg
             autobyteus-web/electron-dist/*.zip
@@ -145,7 +167,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          RELEASE_TAG="${GITHUB_REF_NAME}"
+          RELEASE_TAG="${{ steps.release.outputs.tag }}"
           RELEASE_TITLE="AutoByteus Desktop ${RELEASE_TAG}"
           RELEASE_NOTES="Automated desktop build from AutoByteus/autobyteus-web tag ${RELEASE_TAG}."
 
@@ -180,7 +202,7 @@ jobs:
             echo "### Desktop Release Published"
             echo ""
             echo "- Source repo: \`AutoByteus/autobyteus-web\`"
-            echo "- Source tag: \`${GITHUB_REF_NAME}\`"
+            echo "- Release tag: \`${{ steps.release.outputs.tag }}\`"
             echo "- Target release repo: \`${TARGET_RELEASE_REPO}\`"
             echo "- Target platform: \`macOS arm64\`"
           } >> "${GITHUB_STEP_SUMMARY}"
