@@ -125,7 +125,12 @@ fi
 
 echo -e "\n${YELLOW}Rebuilding native modules for Electron...${NC}"
 ELECTRON_VERSION=$(node -p "require('${WEB_ROOT}/package.json').devDependencies.electron.replace(/^\\^/, '')")
-pnpm -C "$WEB_ROOT" exec electron-rebuild -v "$ELECTRON_VERSION" -m "$TARGET_DIR" -w node-pty
+if pnpm -C "$WEB_ROOT" exec electron-rebuild --version >/dev/null 2>&1; then
+  pnpm -C "$WEB_ROOT" exec electron-rebuild -v "$ELECTRON_VERSION" -m "$TARGET_DIR" -w node-pty
+else
+  echo -e "${YELLOW}electron-rebuild not found in project dependencies; using pnpm dlx fallback...${NC}"
+  pnpm -C "$WEB_ROOT" dlx electron-rebuild -v "$ELECTRON_VERSION" -m "$TARGET_DIR" -w node-pty
+fi
 
 echo -e "\n${YELLOW}Removing symlinks that point outside the bundle...${NC}"
 python3 - "$TARGET_DIR" <<'PY'
