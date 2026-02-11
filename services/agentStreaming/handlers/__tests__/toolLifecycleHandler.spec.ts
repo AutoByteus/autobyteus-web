@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { handleToolApprovalRequested, handleToolAutoExecuting, handleToolLog } from '../toolLifecycleHandler';
 import { useAgentActivityStore } from '~/stores/agentActivityStore';
 import type { AgentContext } from '~/types/agent/AgentContext';
-import type { PatchFileSegment } from '~/types/segments';
+import type { EditFileSegment } from '~/types/segments';
 import type { ToolApprovalRequestedPayload, ToolAutoExecutingPayload, ToolLogPayload } from '../../protocol/messageTypes';
 
 vi.mock('~/stores/agentActivityStore', () => ({
@@ -15,10 +15,10 @@ describe('toolLifecycleHandler', () => {
   let mockContext: AgentContext;
   let mockActivityStore: any;
 
-  const buildPatchFileSegment = (invocationId: string): PatchFileSegment => ({
-    type: 'patch_file',
+  const buildEditFileSegment = (invocationId: string): EditFileSegment => ({
+    type: 'edit_file',
     invocationId,
-    toolName: 'patch_file',
+    toolName: 'edit_file',
     arguments: {},
     status: 'parsing',
     logs: [],
@@ -29,7 +29,7 @@ describe('toolLifecycleHandler', () => {
     language: 'diff',
   });
 
-  const buildContextWithSegment = (segment: PatchFileSegment, segmentId: string): AgentContext => ({
+  const buildContextWithSegment = (segment: EditFileSegment, segmentId: string): AgentContext => ({
     state: { agentId },
     conversation: {
       messages: [
@@ -59,14 +59,14 @@ describe('toolLifecycleHandler', () => {
     (useAgentActivityStore as any).mockReturnValue(mockActivityStore);
   });
 
-  it('hydrates patch_file on TOOL_AUTO_EXECUTING', () => {
+  it('hydrates edit_file on TOOL_AUTO_EXECUTING', () => {
     const invocationId = 'patch-1';
-    const segment = buildPatchFileSegment(invocationId);
+    const segment = buildEditFileSegment(invocationId);
     mockContext = buildContextWithSegment(segment, invocationId);
 
     const payload: ToolAutoExecutingPayload = {
       invocation_id: invocationId,
-      tool_name: 'patch_file',
+      tool_name: 'edit_file',
       arguments: {
         path: '/tmp/example.txt',
         patch: '--- a\n+++ b\n@@\n+line\n',
@@ -76,7 +76,7 @@ describe('toolLifecycleHandler', () => {
     handleToolAutoExecuting(payload, mockContext);
 
     expect(segment.status).toBe('executing');
-    expect(segment.toolName).toBe('patch_file');
+    expect(segment.toolName).toBe('edit_file');
     expect(segment.arguments).toEqual(payload.arguments);
     expect(segment.path).toBe('/tmp/example.txt');
     expect(segment.originalContent).toBe('--- a\n+++ b\n@@\n+line\n');
@@ -85,14 +85,14 @@ describe('toolLifecycleHandler', () => {
     expect(mockActivityStore.setHighlightedActivity).toHaveBeenCalledWith(agentId, invocationId);
   });
 
-  it('hydrates patch_file on TOOL_APPROVAL_REQUESTED', () => {
+  it('hydrates edit_file on TOOL_APPROVAL_REQUESTED', () => {
     const invocationId = 'patch-approve-1';
-    const segment = buildPatchFileSegment(invocationId);
+    const segment = buildEditFileSegment(invocationId);
     mockContext = buildContextWithSegment(segment, invocationId);
 
     const payload: ToolApprovalRequestedPayload = {
       invocation_id: invocationId,
-      tool_name: 'patch_file',
+      tool_name: 'edit_file',
       arguments: {
         path: '/tmp/approved.txt',
         patch: '--- a\n+++ b\n@@\n+approved\n',
@@ -102,7 +102,7 @@ describe('toolLifecycleHandler', () => {
     handleToolApprovalRequested(payload, mockContext);
 
     expect(segment.status).toBe('awaiting-approval');
-    expect(segment.toolName).toBe('patch_file');
+    expect(segment.toolName).toBe('edit_file');
     expect(segment.arguments).toEqual(payload.arguments);
     expect(segment.path).toBe('/tmp/approved.txt');
     expect(segment.originalContent).toBe('--- a\n+++ b\n@@\n+approved\n');
@@ -111,16 +111,16 @@ describe('toolLifecycleHandler', () => {
     expect(mockActivityStore.setHighlightedActivity).toHaveBeenCalledWith(agentId, invocationId);
   });
 
-  it('handles patch_file TOOL_LOG success updates', () => {
+  it('handles edit_file TOOL_LOG success updates', () => {
     const invocationId = 'patch-log-1';
-    const segment = buildPatchFileSegment(invocationId);
+    const segment = buildEditFileSegment(invocationId);
     mockContext = buildContextWithSegment(segment, invocationId);
 
     const payload: ToolLogPayload = {
       tool_invocation_id: invocationId,
-      tool_name: 'patch_file',
+      tool_name: 'edit_file',
       log_entry:
-        '[TOOL_RESULT_SUCCESS_PROCESSED] Agent_ID: test, Tool: patch_file, Invocation_ID: patch-log-1, Result: {"ok": true}',
+        '[TOOL_RESULT_SUCCESS_PROCESSED] Agent_ID: test, Tool: edit_file, Invocation_ID: patch-log-1, Result: {"ok": true}',
     };
 
     handleToolLog(payload, mockContext);

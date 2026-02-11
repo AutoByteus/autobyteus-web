@@ -158,7 +158,7 @@ export const useAgentArtifactsStore = defineStore('agentArtifacts', {
     },
 
     /**
-     * Touch an existing artifact to trigger refreshes (e.g., patch_file updates).
+     * Touch an existing artifact to trigger refreshes (e.g., edit_file updates).
      * Creates a persisted artifact if none exists yet.
      */
     touchArtifact(

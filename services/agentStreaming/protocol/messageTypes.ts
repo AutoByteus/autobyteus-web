@@ -35,7 +35,7 @@ export type SegmentType =
   | 'write_file'
   | 'run_bash'
   | 'reasoning'
-  | 'patch_file'
+  | 'edit_file'
   | 'media';
 
 // --- Payload Types ---

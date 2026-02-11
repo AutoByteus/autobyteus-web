@@ -4,7 +4,7 @@ import type { ToolInvocationStatus } from '~/types/segments';
 export interface ToolActivity {
   invocationId: string;
   toolName: string;
-  type: 'tool_call' | 'write_file' | 'terminal_command' | 'patch_file';
+  type: 'tool_call' | 'write_file' | 'terminal_command' | 'edit_file';
   status: ToolInvocationStatus;
   contextText: string; // e.g. "file.py" or "npm install"
   arguments: Record<string, any>;

@@ -101,10 +101,10 @@ describe('segmentHandler', () => {
       );
     });
 
-    it('should correctly handle patch_file segments', () => {
+    it('should correctly handle edit_file segments', () => {
       const payload: SegmentStartPayload = {
         id: 'test-id-pf',
-        segment_type: 'patch_file',
+        segment_type: 'edit_file',
         metadata: { path: '/tmp/bar.txt' },
       };
 
@@ -115,8 +115,8 @@ describe('segmentHandler', () => {
       expect(mockActivityStore.addActivity).toHaveBeenCalledWith(
         'test-agent-id',
         expect.objectContaining({
-          toolName: 'patch_file',
-          type: 'patch_file',
+          toolName: 'edit_file',
+          type: 'edit_file',
           arguments: { path: '/tmp/bar.txt' },
         })
       );

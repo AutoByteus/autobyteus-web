@@ -6,7 +6,7 @@
  */
 
 import type { AgentContext } from '~/types/agent/AgentContext';
-import type { ToolCallSegment, WriteFileSegment, TerminalCommandSegment, PatchFileSegment } from '~/types/segments';
+import type { ToolCallSegment, WriteFileSegment, TerminalCommandSegment, EditFileSegment } from '~/types/segments';
 import type { 
   ToolApprovalRequestedPayload, 
   ToolAutoExecutingPayload, 
@@ -138,15 +138,15 @@ export function handleToolLog(
 function findToolLifecycleSegment(
   context: AgentContext,
   invocationId: string
-): ToolCallSegment | WriteFileSegment | TerminalCommandSegment | PatchFileSegment | null {
+): ToolCallSegment | WriteFileSegment | TerminalCommandSegment | EditFileSegment | null {
   const segment = findSegmentById(context, invocationId);
   if (
     segment?.type === 'tool_call' ||
     segment?.type === 'write_file' ||
     segment?.type === 'terminal_command' ||
-    segment?.type === 'patch_file'
+    segment?.type === 'edit_file'
   ) {
-    return segment as ToolCallSegment | WriteFileSegment | TerminalCommandSegment | PatchFileSegment;
+    return segment as ToolCallSegment | WriteFileSegment | TerminalCommandSegment | EditFileSegment;
   }
   return null;
 }
@@ -203,7 +203,7 @@ function parseErrorFromLog(logEntry: string): string | null {
 }
 
 function hydrateSegmentContentFromArguments(
-  segment: ToolCallSegment | WriteFileSegment | TerminalCommandSegment | PatchFileSegment,
+  segment: ToolCallSegment | WriteFileSegment | TerminalCommandSegment | EditFileSegment,
   argumentsPayload: Record<string, any>
 ): void {
   if (segment.type === 'terminal_command' && !segment.command && argumentsPayload?.command) {
@@ -215,10 +215,10 @@ function hydrateSegmentContentFromArguments(
   if (segment.type === 'write_file' && !segment.path && argumentsPayload?.path) {
     segment.path = String(argumentsPayload.path);
   }
-  if (segment.type === 'patch_file' && !segment.originalContent && argumentsPayload?.patch) {
+  if (segment.type === 'edit_file' && !segment.originalContent && argumentsPayload?.patch) {
     segment.originalContent = String(argumentsPayload.patch);
   }
-  if (segment.type === 'patch_file' && !segment.path && argumentsPayload?.path) {
+  if (segment.type === 'edit_file' && !segment.path && argumentsPayload?.path) {
     segment.path = String(argumentsPayload.path);
   }
 }

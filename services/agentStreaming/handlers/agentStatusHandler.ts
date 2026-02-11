@@ -117,7 +117,7 @@ function applyToolError(info: ToolErrorInfo, context: AgentContext): boolean {
   const segment = findSegmentById(context, info.invocationId);
   if (
     !segment ||
-    !['tool_call', 'write_file', 'terminal_command', 'patch_file'].includes(segment.type)
+    !['tool_call', 'write_file', 'terminal_command', 'edit_file'].includes(segment.type)
   ) {
     return false;
   }

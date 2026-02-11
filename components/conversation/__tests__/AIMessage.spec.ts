@@ -14,7 +14,7 @@ const baseMessage: AIMessageType = {
 const globalStubs = {
   TextSegment: true,
   WriteFileCommandSegment: true,
-  PatchFileCommandSegment: true,
+  EditFileCommandSegment: true,
   TerminalCommandSegment: true,
   ThinkSegment: true,
   ToolCallSegment: true,

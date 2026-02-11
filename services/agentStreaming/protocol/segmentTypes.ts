@@ -12,7 +12,7 @@ import type {
   ThinkSegment,
   ToolCallSegment,
   TerminalCommandSegment,
-  PatchFileSegment,
+  EditFileSegment,
   MediaSegment,
 } from '~/types/segments';
 
@@ -38,8 +38,8 @@ export function createSegmentFromPayload(payload: SegmentStartPayload): AIRespon
     case 'run_bash':
       return createTerminalCommandSegment(id);
 
-    case 'patch_file':
-      return createPatchFileSegment(id, metadata);
+    case 'edit_file':
+      return createEditFileSegment(id, metadata);
 
     case 'reasoning':
       return createThinkSegment();
@@ -110,12 +110,12 @@ function createTerminalCommandSegment(invocationId: string): TerminalCommandSegm
   };
 }
 
-function createPatchFileSegment(invocationId: string, metadata?: Record<string, any>): PatchFileSegment {
+function createEditFileSegment(invocationId: string, metadata?: Record<string, any>): EditFileSegment {
   const path = metadata?.path || '';
   return {
-    type: 'patch_file',
+    type: 'edit_file',
     invocationId,
-    toolName: 'patch_file',
+    toolName: 'edit_file',
     arguments: {},
     status: 'parsing',
     logs: [],

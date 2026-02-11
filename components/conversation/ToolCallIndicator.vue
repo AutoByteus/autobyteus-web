@@ -173,7 +173,7 @@ const isFileTool = computed(() => {
   const name = normalizedToolName.value;
   return (
     name.includes('write_file') ||
-    name.includes('patch_file') ||
+    name.includes('edit_file') ||
     name.includes('read_file') ||
     name.includes('apply_patch')
   );
