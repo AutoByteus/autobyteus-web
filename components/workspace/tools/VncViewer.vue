@@ -9,9 +9,8 @@
       <div v-else-if="hosts.length === 0" class="text-sm text-gray-500 space-y-2">
         <p>No VNC hosts configured.</p>
         <p class="text-xs text-gray-400">
-          Add <span class="font-mono">AUTOBYTEUS_VNC_SERVER_URLS</span> as a comma-separated list (for example
-          <span class="font-mono">localhost:5900,localhost:5901</span>). If not set, we fall back to
-          <span class="font-mono">AUTOBYTEUS_VNC_SERVER_URL</span>.
+          Add <span class="font-mono">AUTOBYTEUS_VNC_SERVER_HOSTS</span> as a comma-separated list (for example
+          <span class="font-mono">localhost:6088,localhost:6089</span>).
         </p>
       </div>
       <div v-else class="vnc-stack">
@@ -37,8 +36,7 @@ import { parseCommaSeparatedHosts } from '~/utils/vncHosts';
 const serverSettingsStore = useServerSettingsStore();
 const config = useRuntimeConfig();
 
-const VNC_URLS_KEY = 'AUTOBYTEUS_VNC_SERVER_URLS';
-const VNC_URL_KEY = 'AUTOBYTEUS_VNC_SERVER_URL';
+const VNC_HOSTS_KEY = 'AUTOBYTEUS_VNC_SERVER_HOSTS';
 const VNC_PASSWORD_KEYS = ['AUTOBYTEUS_VNC_SERVER_PASSWORD', 'AUTOBYTEUS_VNC_PASSWORD'];
 
 const getSettingValue = (key: string) => {
@@ -48,14 +46,9 @@ const getSettingValue = (key: string) => {
 const parseHosts = (value: string): VncHostConfig[] => parseCommaSeparatedHosts(value);
 
 const hosts = computed(() => {
-  const multiValue = getSettingValue(VNC_URLS_KEY);
-  if (multiValue) {
-    return parseHosts(multiValue);
-  }
-
-  const singleValue = getSettingValue(VNC_URL_KEY);
-  if (!singleValue) return [];
-  return parseHosts(singleValue);
+  const configuredHosts = getSettingValue(VNC_HOSTS_KEY);
+  if (!configuredHosts) return [];
+  return parseHosts(configuredHosts);
 });
 
 const vncPassword = computed(() => {

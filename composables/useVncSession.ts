@@ -111,7 +111,7 @@ export function useVncSession(options: VncSessionOptions) {
     }
 
     if (!url.value) {
-      errorMessage.value = 'VNC URL not configured.';
+      errorMessage.value = 'VNC host not configured.';
       console.warn(`[vncSession${label}] connect skipped: url not configured.`);
       return;
     }

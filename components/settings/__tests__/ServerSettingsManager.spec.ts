@@ -97,7 +97,7 @@ describe('ServerSettingsManager', () => {
       { key: 'LMSTUDIO_HOSTS', value: 'http://localhost:1234', description: 'desc' },
       { key: 'OLLAMA_HOSTS', value: 'http://localhost:11434', description: 'desc' },
       { key: 'AUTOBYTEUS_LLM_SERVER_HOSTS', value: 'http://localhost:5900', description: 'desc' },
-      { key: 'AUTOBYTEUS_VNC_SERVER_URLS', value: 'localhost:5900', description: 'desc' },
+      { key: 'AUTOBYTEUS_VNC_SERVER_HOSTS', value: 'localhost:5900', description: 'desc' },
       { key: 'LOG_LEVEL', value: 'INFO', description: 'internal' },
     ])
 

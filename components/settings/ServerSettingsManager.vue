@@ -372,6 +372,8 @@ interface QuickSetupField {
   placeholder: string
 }
 
+const VNC_HOSTS_KEY = 'AUTOBYTEUS_VNC_SERVER_HOSTS'
+
 const quickSetupFields: QuickSetupField[] = [
   {
     key: 'LMSTUDIO_HOSTS',
@@ -392,10 +394,10 @@ const quickSetupFields: QuickSetupField[] = [
     placeholder: 'http://localhost:5900,http://localhost:5901',
   },
   {
-    key: 'AUTOBYTEUS_VNC_SERVER_URLS',
-    label: 'AutoByteus VNC URLs',
-    description: 'Comma-separated VNC server URLs.',
-    placeholder: 'localhost:5900,localhost:5901',
+    key: VNC_HOSTS_KEY,
+    label: 'AutoByteus VNC Hosts',
+    description: 'Comma-separated AutoByteus VNC host endpoints.',
+    placeholder: 'localhost:6088,localhost:6089',
   },
 ]
 
