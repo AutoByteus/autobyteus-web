@@ -82,7 +82,7 @@ jobs:
       - name: Checkout repository_prisma
         uses: actions/checkout@v4
         with:
-          repository: AutoByteus/repository_prisma
+          repository: ryan-zheng-teki/repository_prisma
           path: repository_prisma
           fetch-depth: 1
 
