@@ -2,7 +2,7 @@
   <div class="p-8">
     <div class="max-w-6xl mx-auto">
       <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">Create New Agent Definition</h1>
+        <h1 class="text-3xl font-bold text-gray-900">Create Agent Definition</h1>
         <p class="text-lg text-gray-500 mt-2">Define a new agent by providing its core attributes and components.</p>
       </div>
 

@@ -26,7 +26,7 @@
             @click="$emit('navigate', { view: 'team-create' })"
             class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           >
-            Create New Team
+            Create Team
           </button>
         </div>
       </div>

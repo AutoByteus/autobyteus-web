@@ -3,7 +3,7 @@
     <div class="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
       <div class="mb-6 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 class="text-4xl font-semibold text-slate-900">Create New Agent Team</h1>
+          <h1 class="text-4xl font-semibold text-slate-900">Create Agent Team</h1>
           <p class="mt-1 text-lg text-slate-600">Drag from library to canvas, then assign a coordinator.</p>
         </div>
         <button

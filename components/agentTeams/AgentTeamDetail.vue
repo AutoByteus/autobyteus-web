@@ -67,7 +67,7 @@
                 @click="runTeam"
                 class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
               >
-                Run Team
+                Run
               </button>
               <button
                 @click="$emit('navigate', { view: 'team-edit', id: teamDef.id })"
