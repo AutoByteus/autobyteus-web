@@ -115,11 +115,11 @@ jobs:
           pnpm -C "${GITHUB_WORKSPACE}/autobyteus-ts" install --no-frozen-lockfile
           pnpm -C "${GITHUB_WORKSPACE}/repository_prisma" install --no-frozen-lockfile
 
-      - name: Generate Prisma client for repository_prisma
-        working-directory: repository_prisma
+      - name: Generate Prisma client for autobyteus-server-ts schema
+        working-directory: autobyteus-server-ts
         env:
           DATABASE_URL: file:./dev.db
-        run: pnpm exec prisma generate
+        run: pnpm exec prisma generate --schema prisma/schema.prisma
 
       - name: Resolve release tag
         id: release
