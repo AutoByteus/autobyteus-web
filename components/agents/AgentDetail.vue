@@ -13,7 +13,7 @@
             clip-rule="evenodd"
           />
         </svg>
-        Back to Local Agents
+        Back to Agents
       </button>
 
       <div v-if="viewState === 'loading'" class="text-center py-20">

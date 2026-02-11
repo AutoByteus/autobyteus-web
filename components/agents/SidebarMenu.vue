@@ -18,13 +18,13 @@
           </li>
           <li>
             <button 
-              @click="$emit('change-page', 'local-agents')"
+              @click="$emit('change-page', 'agents')"
               class="flex w-full items-center justify-start px-4 py-3 rounded-md transition-colors duration-150 ease-in-out"
-              :class="activePage === 'local-agents' 
+              :class="activePage === 'agents' 
                 ? 'bg-indigo-600 text-white shadow-sm' 
                 : 'text-gray-700 hover:bg-indigo-100 hover:text-indigo-700'"
             >
-              <span class="text-left font-medium">Local Agents</span>
+              <span class="text-left font-medium">Agents</span>
             </button>
           </li>
           <li>

@@ -3,8 +3,8 @@
     <div class="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
       <div class="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 class="text-4xl font-semibold text-slate-900">Local Agents</h1>
-          <p class="mt-1 text-lg text-slate-600">Access your installed local AI agents</p>
+          <h1 class="text-4xl font-semibold text-slate-900">Agents</h1>
+          <p class="mt-1 text-lg text-slate-600">Access your installed AI agents</p>
         </div>
         <div class="flex items-center gap-2">
           <button
