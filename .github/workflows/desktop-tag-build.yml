@@ -111,7 +111,7 @@ jobs:
       - name: Install dependencies required by build chain
         run: |
           set -euo pipefail
-          pnpm -C "${GITHUB_WORKSPACE}/autobyteus-web" install --frozen-lockfile
+          pnpm -C "${GITHUB_WORKSPACE}/autobyteus-web" install --no-frozen-lockfile
           pnpm -C "${GITHUB_WORKSPACE}/autobyteus-ts" install --no-frozen-lockfile
           pnpm -C "${GITHUB_WORKSPACE}/repository_prisma" install --no-frozen-lockfile
 
