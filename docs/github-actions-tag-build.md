@@ -49,7 +49,7 @@ On each matching tag, the workflow:
 1. Builds desktop files into `autobyteus-web/electron-dist`
 2. Uploads those files as an Actions artifact
 3. Creates (or reuses) release tag `<tag>` in `AutoByteus/autobyteus-desktop-releases`
-4. Uploads build files to that release with `--clobber`
+4. Uploads final installer artifacts only (`.dmg` and `.AppImage`) with `--clobber`
 
 ## Required Secrets (`autobyteus-web` repo)
 

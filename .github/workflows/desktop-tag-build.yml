@@ -188,10 +188,6 @@ jobs:
           name: autobyteus-desktop-macos-arm64-${{ steps.release.outputs.tag }}
           path: |
             autobyteus-web/electron-dist/*.dmg
-            autobyteus-web/electron-dist/*.zip
-            autobyteus-web/electron-dist/*.yml
-            autobyteus-web/electron-dist/*.yaml
-            autobyteus-web/electron-dist/*.blockmap
           if-no-files-found: error
           retention-days: 14
 
@@ -218,10 +214,6 @@ jobs:
           shopt -s nullglob
           files=(
             autobyteus-web/electron-dist/*.dmg
-            autobyteus-web/electron-dist/*.zip
-            autobyteus-web/electron-dist/*.yml
-            autobyteus-web/electron-dist/*.yaml
-            autobyteus-web/electron-dist/*.blockmap
           )
 
           if (( ${#files[@]} == 0 )); then
@@ -410,9 +402,6 @@ jobs:
           path: |
             autobyteus-web/electron-dist/*.AppImage
             autobyteus-web/electron-dist/*.appimage
-            autobyteus-web/electron-dist/*.yml
-            autobyteus-web/electron-dist/*.yaml
-            autobyteus-web/electron-dist/*.blockmap
           if-no-files-found: error
           retention-days: 14
 
@@ -440,9 +429,6 @@ jobs:
           files=(
             autobyteus-web/electron-dist/*.AppImage
             autobyteus-web/electron-dist/*.appimage
-            autobyteus-web/electron-dist/*.yml
-            autobyteus-web/electron-dist/*.yaml
-            autobyteus-web/electron-dist/*.blockmap
           )
 
           if (( ${#files[@]} == 0 )); then
