@@ -10,7 +10,7 @@
         <p>No VNC hosts configured.</p>
         <p class="text-xs text-gray-400">
           Add <span class="font-mono">AUTOBYTEUS_VNC_SERVER_HOSTS</span> as a comma-separated list (for example
-          <span class="font-mono">localhost:6088,localhost:6089</span>).
+          <span class="font-mono">localhost:6080,localhost:6081</span>).
         </p>
       </div>
       <div v-else class="vnc-stack">

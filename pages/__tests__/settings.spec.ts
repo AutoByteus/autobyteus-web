@@ -41,7 +41,6 @@ const mountSettings = () =>
         NodeManager: { template: '<div data-testid="section-nodes" />' },
         ExternalMessagingManager: { template: '<div data-testid="section-external-messaging" />' },
         ServerSettingsManager: { template: '<div data-testid="section-server-settings" />' },
-        ServerMonitor: { template: '<div data-testid="section-server-status" />' },
       },
     },
   });
@@ -54,34 +53,43 @@ describe('settings page', () => {
     vi.clearAllMocks();
   });
 
-  it('hides embedded-only server sections in remote windows', () => {
+  it('shows server settings section in remote windows', () => {
     windowNodeContextStoreMock.isEmbeddedWindow = false;
     const wrapper = mountSettings();
 
     expect(wrapper.text()).toContain('API Keys');
     expect(wrapper.text()).toContain('Nodes');
-    expect(wrapper.text()).not.toContain('Server Settings');
-    expect(wrapper.text()).not.toContain('Server Status');
+    expect(wrapper.text()).toContain('Server Settings');
   });
 
-  it('falls back to API keys when a remote window is routed to server-status section', async () => {
+  it('normalizes legacy server-status route query to server-settings in remote windows', async () => {
     windowNodeContextStoreMock.isEmbeddedWindow = false;
     routeMock.query = { section: 'server-status' };
     const wrapper = mountSettings();
     await nextTick();
     const setupState = (wrapper.vm as any).$?.setupState;
 
-    expect(setupState.activeSection).toBe('api-keys');
+    expect(setupState.activeSection).toBe('server-settings');
   });
 
-  it('defaults to server-status when embedded server is not running', async () => {
+  it('defaults to server-settings when embedded server is not running', async () => {
     windowNodeContextStoreMock.isEmbeddedWindow = true;
     serverStoreMock.status = 'starting';
     const wrapper = mountSettings();
     await nextTick();
     const setupState = (wrapper.vm as any).$?.setupState;
 
-    expect(setupState.activeSection).toBe('server-status');
+    expect(setupState.activeSection).toBe('server-settings');
+  });
+
+  it('normalizes legacy server-status route query to server-settings in embedded windows', async () => {
+    windowNodeContextStoreMock.isEmbeddedWindow = true;
+    routeMock.query = { section: 'server-status' };
+    const wrapper = mountSettings();
+    await nextTick();
+    const setupState = (wrapper.vm as any).$?.setupState;
+
+    expect(setupState.activeSection).toBe('server-settings');
   });
 
   it('routes to external messaging section when requested via query', async () => {

@@ -5,10 +5,14 @@ import { setActivePinia } from 'pinia'
 import ServerSettingsManager from '../ServerSettingsManager.vue'
 import { useServerSettingsStore } from '~/stores/serverSettings'
 
-vi.mock('~/stores/windowNodeContextStore', () => ({
-  useWindowNodeContextStore: () => ({
+const { windowNodeContextStoreMock } = vi.hoisted(() => ({
+  windowNodeContextStoreMock: {
     isEmbeddedWindow: true,
-  }),
+  },
+}))
+
+vi.mock('~/stores/windowNodeContextStore', () => ({
+  useWindowNodeContextStore: () => windowNodeContextStoreMock,
 }))
 
 const flushPromises = async () => {
@@ -89,6 +93,7 @@ const mountComponent = async (
 
 describe('ServerSettingsManager', () => {
   beforeEach(() => {
+    windowNodeContextStoreMock.isEmbeddedWindow = true
     vi.clearAllMocks()
   })
 
@@ -288,5 +293,18 @@ describe('ServerSettingsManager', () => {
     await wrapper.vm.$nextTick()
     await flushPromises()
     expect(getMaybeRefValue(setupState, 'advancedPanel')).toBe('server-status')
+  })
+
+  it('loads settings in remote windows and hides embedded-only diagnostics toggle', async () => {
+    windowNodeContextStoreMock.isEmbeddedWindow = false
+    const { wrapper, store } = await mountComponent([
+      { key: 'LMSTUDIO_HOSTS', value: 'http://remote-host:1234', description: 'desc' },
+    ])
+
+    expect(store.fetchServerSettings).toHaveBeenCalledTimes(1)
+    expect(store.fetchSearchConfig).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('Quick Setup')
+    expect(wrapper.text()).not.toContain('Embedded server settings are unavailable for remote node windows.')
+    expect(wrapper.findAll('button').some((button) => button.text().trim() === 'Server Status & Logs')).toBe(false)
   })
 })

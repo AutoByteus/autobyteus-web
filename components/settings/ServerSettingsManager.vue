@@ -1,8 +1,5 @@
 <template>
-  <div
-    v-if="windowNodeContextStore.isEmbeddedWindow"
-    class="server-settings-manager h-full flex flex-col overflow-hidden"
-  >
+  <div class="server-settings-manager h-full flex flex-col overflow-hidden">
     <div class="flex items-center justify-between px-8 pt-8 pb-4 flex-shrink-0">
       <div>
         <h2 class="text-xl font-semibold text-gray-900">Server Settings</h2>
@@ -245,6 +242,7 @@
                 All Settings
               </button>
               <button
+                v-if="canAccessEmbeddedDiagnostics"
                 type="button"
                 class="px-3 py-1.5 text-sm rounded-md transition-colors"
                 :class="advancedPanel === 'server-status' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'"
@@ -255,7 +253,7 @@
             </div>
           </div>
 
-          <div v-if="advancedPanel === 'server-status'" class="border border-gray-200 rounded-xl bg-white overflow-hidden">
+          <div v-if="canAccessEmbeddedDiagnostics && advancedPanel === 'server-status'" class="border border-gray-200 rounded-xl bg-white overflow-hidden">
             <ServerMonitor />
           </div>
 
@@ -351,9 +349,6 @@
       </div>
     </div>
   </div>
-  <div v-else class="h-full flex items-center justify-center text-gray-500 p-8">
-    Embedded server settings are unavailable for remote node windows.
-  </div>
 </template>
 
 <script setup lang="ts">
@@ -397,7 +392,7 @@ const quickSetupFields: QuickSetupField[] = [
     key: VNC_HOSTS_KEY,
     label: 'AutoByteus VNC Hosts',
     description: 'Comma-separated AutoByteus VNC host endpoints.',
-    placeholder: 'localhost:6088,localhost:6089',
+    placeholder: 'localhost:6080,localhost:6081',
   },
 ]
 
@@ -410,6 +405,7 @@ const searchProviderOptions: Array<{ value: SearchProvider; label: string }> = [
 
 const store = useServerSettingsStore()
 const windowNodeContextStore = useWindowNodeContextStore()
+const canAccessEmbeddedDiagnostics = computed(() => windowNodeContextStore.isEmbeddedWindow)
 const activeTab = ref<SettingsTab>('quick')
 const advancedPanel = ref<AdvancedPanel>('raw-settings')
 const notification = ref<{ type: 'success' | 'error'; message: string } | null>(null)
@@ -606,10 +602,6 @@ watch(
 )
 
 onMounted(async () => {
-  if (!windowNodeContextStore.isEmbeddedWindow) {
-    return
-  }
-
   try {
     await store.fetchServerSettings()
     await store.fetchSearchConfig()

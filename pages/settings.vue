@@ -54,7 +54,7 @@
                 <span class="text-left">External Messaging</span>
               </button>
             </li>
-            <li v-if="isEmbeddedWindow" class="w-full">
+            <li class="w-full">
               <button 
                 @click="activeSection = 'server-settings'"
                 class="flex w-full items-center justify-start px-4 py-2 rounded-md transition-colors duration-200 text-gray-700 hover:bg-gray-100 hover:text-gray-900 group"
@@ -64,37 +64,6 @@
                   <span class="i-heroicons-server-20-solid w-5 h-5"></span>
                 </div>
                 <span class="text-left">Server Settings</span>
-              </button>
-            </li>
-            <!-- New Server Status Button -->
-            <li v-if="isEmbeddedWindow" class="w-full">
-              <button 
-                @click="activeSection = 'server-status'"
-                class="flex w-full items-center justify-start px-4 py-2 rounded-md transition-colors duration-200 text-gray-700 hover:bg-gray-100 hover:text-gray-900 group"
-                :class="{ 'bg-gray-100 text-gray-900': activeSection === 'server-status' }"
-              >
-                <div class="flex items-center min-w-[20px] mr-3">
-                  <span 
-                    :class="{
-                      'i-heroicons-check-circle-20-solid': serverStore.status === 'running',
-                      'i-heroicons-clock-20-solid': serverStore.status === 'starting',
-                      'i-heroicons-exclamation-circle-20-solid': serverStore.status === 'error'
-                    }"
-                    class="w-5 h-5"
-                    :style="{
-                      color: serverStore.status === 'running' ? '#10B981' : 
-                             serverStore.status === 'starting' ? '#F59E0B' : 
-                             '#EF4444'
-                    }"
-                  ></span>
-                </div>
-                <span class="text-left">Server Status</span>
-                <div v-if="serverStore.status !== 'running'" class="ml-2 w-2 h-2 rounded-full"
-                     :class="{
-                       'bg-yellow-500': serverStore.status === 'starting',
-                       'bg-red-500': serverStore.status === 'error'
-                     }">
-                </div>
               </button>
             </li>
           </ul>
@@ -109,8 +78,7 @@
         <TokenUsageStatistics v-if="activeSection === 'token-usage'" />
         <NodeManager v-if="activeSection === 'nodes'" />
         <ExternalMessagingManager v-if="activeSection === 'external-messaging'" />
-        <ServerSettingsManager v-if="isEmbeddedWindow && activeSection === 'server-settings'" />
-        <ServerMonitor v-if="isEmbeddedWindow && activeSection === 'server-status'" />
+        <ServerSettingsManager v-if="activeSection === 'server-settings'" />
         <div v-else-if="activeSection === ''" class="flex-1 flex flex-col items-center justify-center text-gray-400">
           <span class="i-heroicons-cog-8-tooth-20-solid w-16 h-16 mb-6 opacity-20"></span>
           <h3 class="text-xl font-medium mb-2 text-gray-500">Settings</h3>
@@ -131,28 +99,37 @@ import TokenUsageStatistics from '~/components/settings/TokenUsageStatistics.vue
 import NodeManager from '~/components/settings/NodeManager.vue';
 import ExternalMessagingManager from '~/components/settings/ExternalMessagingManager.vue';
 import ServerSettingsManager from '~/components/settings/ServerSettingsManager.vue';
-import ServerMonitor from '~/components/server/ServerMonitor.vue';
 
 const route = useRoute();
 const serverStore = useServerStore();
 const windowNodeContextStore = useWindowNodeContextStore();
 const activeSection = ref('api-keys');
 const isEmbeddedWindow = computed(() => windowNodeContextStore.isEmbeddedWindow);
+const validSections = new Set(['api-keys', 'token-usage', 'nodes', 'external-messaging', 'server-settings']);
+
+const normalizeSection = (section: string | undefined): string | null => {
+  if (!section) {
+    return null;
+  }
+
+  if (section === 'server-status') {
+    return 'server-settings';
+  }
+
+  return validSections.has(section) ? section : null;
+};
 
 onMounted(() => {
   // Check for section query parameter
-  const sectionParam = route.query.section as string;
-  if (sectionParam) {
-    activeSection.value = sectionParam;
+  const sectionParam = route.query.section as string | undefined;
+  const normalizedSection = normalizeSection(sectionParam);
+  if (normalizedSection) {
+    activeSection.value = normalizedSection;
   }
 
-  if (!isEmbeddedWindow.value && (activeSection.value === 'server-settings' || activeSection.value === 'server-status')) {
-    activeSection.value = 'api-keys';
-  }
-  
-  // If server is not running and we are in Electron mode, default to server-status section
+  // If server is not running and we are in Electron mode, default to server-settings section.
   if (isEmbeddedWindow.value && serverStore.status !== 'running') {
-    activeSection.value = 'server-status';
+    activeSection.value = 'server-settings';
   }
 });
 </script>
