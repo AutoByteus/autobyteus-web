@@ -1,12 +1,24 @@
 <template>
   <div class="h-full flex-1 overflow-auto bg-slate-50">
     <div class="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
-      <div class="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 class="text-4xl font-semibold text-slate-900">Agents</h1>
-          <p class="mt-1 text-lg text-slate-600">Access your installed AI agents</p>
+      <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div class="relative flex-1 rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M9 3a6 6 0 104.472 10.001l2.763 2.764a1 1 0 001.414-1.414l-2.764-2.763A6 6 0 009 3zm-4 6a4 4 0 118 0 4 4 0 01-8 0z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            v-model="searchQuery"
+            name="agent-search"
+            id="agent-search"
+            class="block w-full rounded-lg border-transparent bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            placeholder="Search agents by name or description..."
+          />
         </div>
-        <div class="flex items-center gap-2">
+
+        <div class="flex items-center justify-end gap-2">
           <button
             @click="handleReload"
             :disabled="reloading"
@@ -30,6 +42,19 @@
           </button>
         </div>
       </div>
+
+      <div v-if="syncError" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        {{ syncError }}
+      </div>
+      <div v-if="syncInfo" class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+        {{ syncInfo }}
+      </div>
+      <NodeSyncReportPanel
+        v-if="lastAgentSyncReport"
+        :report="lastAgentSyncReport"
+        title="Agent Sync Report"
+        data-testid="agent-sync-report"
+      />
 
       <div v-if="deleteResult" class="mb-6">
         <div 
@@ -66,24 +91,6 @@
         </div>
       </div>
 
-      <div class="mb-6">
-        <div class="relative rounded-lg border border-slate-200 bg-white shadow-sm">
-          <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fill-rule="evenodd" d="M9 3a6 6 0 104.472 10.001l2.763 2.764a1 1 0 001.414-1.414l-2.764-2.763A6 6 0 009 3zm-4 6a4 4 0 118 0 4 4 0 01-8 0z" clip-rule="evenodd" />
-            </svg>
-          </div>
-          <input
-            type="text"
-            v-model="searchQuery"
-            name="agent-search"
-            id="agent-search"
-            class="block w-full rounded-lg border-transparent bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            placeholder="Search agents by name or description..."
-          />
-        </div>
-      </div>
-
       <div v-if="loading && !reloading" class="rounded-lg border border-slate-200 bg-white py-20 text-center shadow-sm">
         <div class="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
         <p class="text-slate-600">Loading agent definitions...</p>
@@ -100,6 +107,7 @@
           :agent-def="agentDef"
           @view-details="viewDetails"
           @run-agent="runAgent"
+          @sync-agent="syncAgent"
         />
       </div>
 
@@ -115,6 +123,17 @@
         </div>
       </div>
     </div>
+
+    <NodeSyncTargetPickerModal
+      v-model="isTargetPickerOpen"
+      title="Sync Agent"
+      :description="pendingSyncAgent ? `Select target node(s) for '${pendingSyncAgent.name}'.` : null"
+      :source-node-name="sourceNodeName"
+      :targets="availableSyncTargets"
+      :busy="nodeSyncStore.isRunning"
+      confirm-label="Sync Agent"
+      @confirm="confirmAgentSync"
+    />
   </div>
 </template>
 
@@ -124,12 +143,22 @@ import { storeToRefs } from 'pinia';
 import { useAgentDefinitionStore, type AgentDefinition } from '~/stores/agentDefinitionStore';
 import AgentCard from '~/components/agents/AgentCard.vue';
 import { useRunActions } from '~/composables/useRunActions';
+import { useNodeStore } from '~/stores/nodeStore';
+import { useNodeSyncStore } from '~/stores/nodeSyncStore';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
+import { EMBEDDED_NODE_ID } from '~/types/node';
+import NodeSyncTargetPickerModal from '~/components/sync/NodeSyncTargetPickerModal.vue';
+import NodeSyncReportPanel from '~/components/sync/NodeSyncReportPanel.vue';
+import type { NodeSyncRunReport } from '~/types/nodeSync';
 
 const emit = defineEmits(['navigate']);
 
 const agentDefinitionStore = useAgentDefinitionStore();
 const { prepareAgentRun } = useRunActions();
 const { deleteResult } = storeToRefs(agentDefinitionStore);
+const nodeStore = useNodeStore();
+const nodeSyncStore = useNodeSyncStore();
+const windowNodeContextStore = useWindowNodeContextStore();
 
 const agentDefinitions = computed(() => agentDefinitionStore.agentDefinitions);
 const loading = computed(() => agentDefinitionStore.loading);
@@ -137,6 +166,15 @@ const error = computed(() => agentDefinitionStore.error);
 
 const searchQuery = ref('');
 const reloading = ref(false);
+const syncInfo = ref<string | null>(null);
+const syncError = ref<string | null>(null);
+const pendingSyncAgent = ref<AgentDefinition | null>(null);
+const isTargetPickerOpen = ref(false);
+const availableSyncTargets = ref<Array<{ id: string; name: string; baseUrl: string }>>([]);
+const lastAgentSyncReport = ref<NodeSyncRunReport | null>(null);
+
+const sourceNodeId = computed(() => windowNodeContextStore.nodeId || EMBEDDED_NODE_ID);
+const sourceNodeName = computed(() => nodeStore.getNodeById(sourceNodeId.value)?.name || 'Current Node');
 
 // Timer for auto-dismissing delete notification
 let deleteNotificationTimer: number | null = null;
@@ -178,6 +216,13 @@ onMounted(() => {
   if (agentDefinitions.value.length === 0) {
     agentDefinitionStore.fetchAllAgentDefinitions();
   }
+
+  nodeStore.initializeRegistry().catch((error) => {
+    syncError.value = error instanceof Error ? error.message : String(error);
+  });
+  nodeSyncStore.initialize().catch((error) => {
+    syncError.value = error instanceof Error ? error.message : String(error);
+  });
 });
 
 const handleReload = async () => {
@@ -199,6 +244,55 @@ const viewDetails = (agentId: string) => {
 const runAgent = (agentDef: AgentDefinition) => {
   prepareAgentRun(agentDef);
   navigateTo('/workspace');
+};
+
+const syncAgent = async (agentDef: AgentDefinition): Promise<void> => {
+  syncInfo.value = null;
+  syncError.value = null;
+  lastAgentSyncReport.value = null;
+
+  const targetNodes = nodeStore.nodes.filter((node) => node.id !== sourceNodeId.value);
+  if (targetNodes.length === 0) {
+    syncError.value = 'No target nodes available for sync.';
+    return;
+  }
+
+  pendingSyncAgent.value = agentDef;
+  availableSyncTargets.value = targetNodes.map((node) => ({
+    id: node.id,
+    name: node.name,
+    baseUrl: node.baseUrl,
+  }));
+  isTargetPickerOpen.value = true;
+};
+
+const confirmAgentSync = async (targetNodeIds: string[]): Promise<void> => {
+  if (!pendingSyncAgent.value) {
+    return;
+  }
+
+  try {
+    const result = await nodeSyncStore.runSelectiveAgentSync({
+      sourceNodeId: sourceNodeId.value,
+      targetNodeIds,
+      agentDefinitionIds: [pendingSyncAgent.value.id],
+      includeDependencies: true,
+      includeDeletes: false,
+    });
+
+    lastAgentSyncReport.value = result.report ?? null;
+    const successCount = result.targetResults.filter((target) => target.status === 'success').length;
+    if (result.status === 'failed') {
+      syncError.value = result.error || 'Agent sync failed.';
+      return;
+    }
+
+    syncInfo.value = `Agent sync ${result.status}. ${successCount}/${result.targetResults.length} target(s) succeeded.`;
+  } catch (error) {
+    syncError.value = error instanceof Error ? error.message : String(error);
+  } finally {
+    pendingSyncAgent.value = null;
+  }
 };
 
 onBeforeUnmount(() => {

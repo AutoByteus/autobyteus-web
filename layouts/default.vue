@@ -27,15 +27,27 @@
         @click="appLayoutStore.closeMobileMenu()"
       ></div>
 
-      <!-- Sidebar Wrapper -->
+      <!-- Left Panel Wrapper -->
       <aside 
         class="flex-shrink-0 absolute inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 h-full"
         :class="[
-          appLayoutStore.isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          appLayoutStore.isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
+          isLeftPanelVisible ? '' : 'md:hidden',
         ]"
+        :style="leftPanelStyle"
       >
-        <Sidebar />
+        <AppLeftPanel />
       </aside>
+
+      <div
+        v-if="isLeftPanelVisible"
+        class="hidden md:block left-panel-drag-handle"
+        @mousedown="initDragLeftPanel"
+      ></div>
+
+      <div v-else class="hidden md:flex">
+        <LeftSidebarStrip />
+      </div>
       
       <!-- Main Content -->
       <main class="flex-1 bg-blue-50 overflow-hidden relative z-0 w-full">
@@ -46,13 +58,21 @@
 </template>
 
 <script setup lang="ts">
-import Sidebar from '@/components/Sidebar.vue';
-import { watch } from 'vue';
+import AppLeftPanel from '@/components/AppLeftPanel.vue';
+import LeftSidebarStrip from '~/components/layout/LeftSidebarStrip.vue';
+import { computed, watch } from 'vue';
 import { useAppLayoutStore } from '~/stores/appLayoutStore';
 import { useRoute } from 'vue-router';
+import { useLeftPanel } from '~/composables/useLeftPanel';
 
 const appLayoutStore = useAppLayoutStore();
 const route = useRoute();
+const { isLeftPanelVisible, leftPanelWidth, initDragLeftPanel } = useLeftPanel();
+const leftPanelStyle = computed(() => (
+  isLeftPanelVisible.value
+    ? { width: `${leftPanelWidth.value}px` }
+    : undefined
+));
 
 // Close sidebar on route change
 watch(
@@ -67,4 +87,18 @@ watch(
 html, body, #__nuxt {
   height: 100%;
 }
+
+.left-panel-drag-handle {
+  width: 4px;
+  background-color: transparent;
+  cursor: col-resize;
+  position: relative;
+  z-index: 20;
+  transition: background-color 0.2s ease;
+}
+
+.left-panel-drag-handle:hover {
+  background-color: #9ca3af;
+}
+
 </style>
