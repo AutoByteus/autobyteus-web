@@ -111,10 +111,17 @@
             >
               <div class="flex items-start justify-between gap-3">
                 <div class="flex min-w-0 items-start gap-3">
-                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                  <div class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold"
                     :class="node.referenceType === 'AGENT' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'"
                   >
-                    {{ memberInitials(node.memberName) }}
+                    <img
+                      v-if="showMemberAvatarImage(node)"
+                      :src="getMemberAvatarUrl(node)"
+                      :alt="`${node.memberName} avatar`"
+                      class="h-full w-full object-cover"
+                      @error="handleMemberAvatarError(node)"
+                    />
+                    <span v-else>{{ memberInitials(node.memberName) }}</span>
                   </div>
                   <div class="min-w-0">
                     <p class="truncate text-sm font-semibold text-slate-900">{{ node.memberName }}</p>
@@ -166,7 +173,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, toRefs, watch } from 'vue';
-import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
+import { useAgentTeamDefinitionStore, type AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
 import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
 import { useRunActions } from '~/composables/useRunActions';
 import AgentDeleteConfirmDialog from '~/components/agents/AgentDeleteConfirmDialog.vue';
@@ -195,6 +202,13 @@ watch(avatarUrl, () => {
 const notification = ref<{ type: 'success' | 'error'; message: string } | null>(null);
 const showDeleteConfirm = ref(false);
 const teamIdToDelete = ref<string | null>(null);
+const memberAvatarLoadErrors = ref<Record<string, boolean>>({});
+
+type TeamMemberNode = AgentTeamDefinition['nodes'][number];
+
+watch(teamId, () => {
+  memberAvatarLoadErrors.value = {};
+});
 
 const teamInitials = computed(() => {
   const raw = teamDef.value?.name?.trim() ?? '';
@@ -230,6 +244,31 @@ const memberInitials = (memberName: string): string => {
     return parts[0].slice(0, 2).toUpperCase();
   }
   return parts.map((part) => part[0]?.toUpperCase() ?? '').join('');
+};
+
+const getMemberAvatarErrorKey = (node: TeamMemberNode): string =>
+  `${node.referenceType}:${node.referenceId}:${node.memberName}`;
+
+const getMemberAvatarUrl = (node: TeamMemberNode): string => {
+  if (node.referenceType === 'AGENT') {
+    return (agentDefStore.getAgentDefinitionById(node.referenceId)?.avatarUrl || '').trim();
+  }
+  return (teamStore.getAgentTeamDefinitionById(node.referenceId)?.avatarUrl || '').trim();
+};
+
+const showMemberAvatarImage = (node: TeamMemberNode): boolean => {
+  const url = getMemberAvatarUrl(node);
+  if (!url) {
+    return false;
+  }
+  return !memberAvatarLoadErrors.value[getMemberAvatarErrorKey(node)];
+};
+
+const handleMemberAvatarError = (node: TeamMemberNode): void => {
+  memberAvatarLoadErrors.value = {
+    ...memberAvatarLoadErrors.value,
+    [getMemberAvatarErrorKey(node)]: true,
+  };
 };
 
 const getBlueprintName = (type: 'AGENT' | 'AGENT_TEAM', id: string): string => {
