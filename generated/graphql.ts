@@ -263,6 +263,26 @@ export type EnableSkillVersioningInput = {
   skillName: Scalars['String']['input'];
 };
 
+export type ExportNodeSyncBundleInput = {
+  scope: Array<SyncEntityTypeEnum>;
+  selection?: InputMaybe<ExportNodeSyncSelectionInput>;
+  watermarkByEntity?: InputMaybe<Scalars['JSON']['input']>;
+};
+
+export type ExportNodeSyncBundleResult = {
+  __typename?: 'ExportNodeSyncBundleResult';
+  entities: Scalars['JSON']['output'];
+  tombstones: Scalars['JSON']['output'];
+  watermark: Scalars['String']['output'];
+};
+
+export type ExportNodeSyncSelectionInput = {
+  agentDefinitionIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  agentTeamDefinitionIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  includeDeletes?: InputMaybe<Scalars['Boolean']['input']>;
+  includeDependencies?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
 export type ExternalChannelBindingGql = {
   __typename?: 'ExternalChannelBindingGql';
   accountId: Scalars['String']['output'];
@@ -292,6 +312,15 @@ export type ExternalChannelCapabilities = {
   reason?: Maybe<Scalars['String']['output']>;
 };
 
+export type GeminiSetupConfig = {
+  __typename?: 'GeminiSetupConfig';
+  geminiApiKeyConfigured: Scalars['Boolean']['output'];
+  mode: Scalars['String']['output'];
+  vertexApiKeyConfigured: Scalars['Boolean']['output'];
+  vertexLocation?: Maybe<Scalars['String']['output']>;
+  vertexProject?: Maybe<Scalars['String']['output']>;
+};
+
 export type HealthStatus = {
   __typename?: 'HealthStatus';
   message: Scalars['String']['output'];
@@ -304,6 +333,37 @@ export type ImportMcpServerConfigsResult = {
   importedCount: Scalars['Int']['output'];
   message: Scalars['String']['output'];
   success: Scalars['Boolean']['output'];
+};
+
+export type ImportNodeSyncBundleInput = {
+  bundle: Scalars['JSON']['input'];
+  conflictPolicy: SyncConflictPolicyEnum;
+  scope: Array<SyncEntityTypeEnum>;
+  tombstonePolicy: SyncTombstonePolicyEnum;
+};
+
+export type ImportNodeSyncBundleResult = {
+  __typename?: 'ImportNodeSyncBundleResult';
+  appliedWatermark?: Maybe<Scalars['String']['output']>;
+  failures: Array<ImportNodeSyncFailure>;
+  success: Scalars['Boolean']['output'];
+  summary: ImportNodeSyncSummary;
+};
+
+export type ImportNodeSyncFailure = {
+  __typename?: 'ImportNodeSyncFailure';
+  entityType: SyncEntityTypeEnum;
+  key: Scalars['String']['output'];
+  message: Scalars['String']['output'];
+};
+
+export type ImportNodeSyncSummary = {
+  __typename?: 'ImportNodeSyncSummary';
+  created: Scalars['Float']['output'];
+  deleted: Scalars['Float']['output'];
+  processed: Scalars['Float']['output'];
+  skipped: Scalars['Float']['output'];
+  updated: Scalars['Float']['output'];
 };
 
 export type MarkActivePromptInput = {
@@ -421,6 +481,7 @@ export type Mutation = {
   enableSkill: Skill;
   enableSkillVersioning: SkillVersion;
   importMcpServerConfigs: ImportMcpServerConfigsResult;
+  importSyncBundle: ImportNodeSyncBundleResult;
   markActivePrompt: Prompt;
   moveFileOrFolder: Scalars['String']['output'];
   reloadLlmModels: Scalars['String']['output'];
@@ -429,9 +490,12 @@ export type Mutation = {
   removeSkillSource: Array<SkillSource>;
   renameFileOrFolder: Scalars['String']['output'];
   runApplication: Scalars['JSONObject']['output'];
+  runNodeSync: RunNodeSyncResult;
   sendAgentUserInput: SendAgentUserInputResult;
   sendMessageToTeam: SendMessageToTeamResult;
+  setGeminiSetupConfig: Scalars['String']['output'];
   setLlmProviderApiKey: Scalars['String']['output'];
+  setSearchConfig: Scalars['String']['output'];
   terminateAgentInstance: TerminateAgentInstanceResult;
   terminateAgentTeamInstance: TerminateAgentTeamInstanceResult;
   updateAgentDefinition: AgentDefinition;
@@ -574,6 +638,11 @@ export type MutationImportMcpServerConfigsArgs = {
 };
 
 
+export type MutationImportSyncBundleArgs = {
+  input: ImportNodeSyncBundleInput;
+};
+
+
 export type MutationMarkActivePromptArgs = {
   input: MarkActivePromptInput;
 };
@@ -614,6 +683,11 @@ export type MutationRunApplicationArgs = {
 };
 
 
+export type MutationRunNodeSyncArgs = {
+  input: RunNodeSyncInput;
+};
+
+
 export type MutationSendAgentUserInputArgs = {
   input: SendAgentUserInputInput;
 };
@@ -624,9 +698,29 @@ export type MutationSendMessageToTeamArgs = {
 };
 
 
+export type MutationSetGeminiSetupConfigArgs = {
+  geminiApiKey?: InputMaybe<Scalars['String']['input']>;
+  mode: Scalars['String']['input'];
+  vertexApiKey?: InputMaybe<Scalars['String']['input']>;
+  vertexLocation?: InputMaybe<Scalars['String']['input']>;
+  vertexProject?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationSetLlmProviderApiKeyArgs = {
   apiKey: Scalars['String']['input'];
   provider: Scalars['String']['input'];
+};
+
+
+export type MutationSetSearchConfigArgs = {
+  googleCseApiKey?: InputMaybe<Scalars['String']['input']>;
+  googleCseId?: InputMaybe<Scalars['String']['input']>;
+  provider: Scalars['String']['input'];
+  serpapiApiKey?: InputMaybe<Scalars['String']['input']>;
+  serperApiKey?: InputMaybe<Scalars['String']['input']>;
+  vertexAiSearchApiKey?: InputMaybe<Scalars['String']['input']>;
+  vertexAiSearchServingConfig?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -684,6 +778,19 @@ export type MutationWriteFileContentArgs = {
   workspaceId: Scalars['String']['input'];
 };
 
+export type NodeSyncEndpointInput = {
+  baseUrl: Scalars['String']['input'];
+  nodeId: Scalars['String']['input'];
+};
+
+export type NodeSyncTargetRunResult = {
+  __typename?: 'NodeSyncTargetRunResult';
+  message?: Maybe<Scalars['String']['output']>;
+  status: Scalars['String']['output'];
+  summary?: Maybe<ImportNodeSyncSummary>;
+  targetNodeId: Scalars['String']['output'];
+};
+
 export type Prompt = {
   __typename?: 'Prompt';
   category: Scalars['String']['output'];
@@ -739,13 +846,16 @@ export type Query = {
   availableOptionalToolInvocationPreprocessorNames: Array<Scalars['String']['output']>;
   availablePromptCategories: Array<PromptCategory>;
   availableToolNames: Array<Scalars['String']['output']>;
+  exportSyncBundle: ExportNodeSyncBundleResult;
   externalChannelBindingTargetOptions: Array<ExternalChannelBindingTargetOptionGql>;
   externalChannelBindings: Array<ExternalChannelBindingGql>;
   externalChannelCapabilities: ExternalChannelCapabilities;
   fileContent: Scalars['String']['output'];
   folderChildren: Scalars['String']['output'];
   getAgentMemoryView: AgentMemoryView;
+  getGeminiSetupConfig: GeminiSetupConfig;
   getLlmProviderApiKey?: Maybe<Scalars['String']['output']>;
+  getSearchConfig: SearchConfig;
   getServerSettings: Array<ServerSetting>;
   health: HealthStatus;
   listAgentMemorySnapshots: MemorySnapshotPage;
@@ -793,6 +903,11 @@ export type QueryAgentTeamDefinitionArgs = {
 
 export type QueryAgentTeamInstanceArgs = {
   id: Scalars['String']['input'];
+};
+
+
+export type QueryExportSyncBundleArgs = {
+  input: ExportNodeSyncBundleInput;
 };
 
 
@@ -917,6 +1032,35 @@ export type ReloadToolSchemaResult = {
   tool?: Maybe<ToolDefinitionDetail>;
 };
 
+export type RunNodeSyncInput = {
+  conflictPolicy: SyncConflictPolicyEnum;
+  scope: Array<SyncEntityTypeEnum>;
+  selection?: InputMaybe<ExportNodeSyncSelectionInput>;
+  source: NodeSyncEndpointInput;
+  targets: Array<NodeSyncEndpointInput>;
+  tombstonePolicy: SyncTombstonePolicyEnum;
+};
+
+export type RunNodeSyncResult = {
+  __typename?: 'RunNodeSyncResult';
+  error?: Maybe<Scalars['String']['output']>;
+  metadata?: Maybe<Scalars['JSON']['output']>;
+  sourceNodeId: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+  targetResults: Array<NodeSyncTargetRunResult>;
+};
+
+export type SearchConfig = {
+  __typename?: 'SearchConfig';
+  googleCseApiKeyConfigured: Scalars['Boolean']['output'];
+  googleCseId?: Maybe<Scalars['String']['output']>;
+  provider: Scalars['String']['output'];
+  serpapiApiKeyConfigured: Scalars['Boolean']['output'];
+  serperApiKeyConfigured: Scalars['Boolean']['output'];
+  vertexAiSearchApiKeyConfigured: Scalars['Boolean']['output'];
+  vertexAiSearchServingConfig?: Maybe<Scalars['String']['output']>;
+};
+
 export type SendAgentUserInputInput = {
   agentDefinitionId?: InputMaybe<Scalars['String']['input']>;
   agentId?: InputMaybe<Scalars['String']['input']>;
@@ -946,12 +1090,6 @@ export type SendMessageToTeamInput = {
   userInput: AgentUserInput;
 };
 
-export enum SkillAccessModeEnum {
-  GlobalDiscovery = 'GLOBAL_DISCOVERY',
-  None = 'NONE',
-  PreloadedOnly = 'PRELOADED_ONLY'
-}
-
 export type SendMessageToTeamResult = {
   __typename?: 'SendMessageToTeamResult';
   message: Scalars['String']['output'];
@@ -980,6 +1118,12 @@ export type Skill = {
   rootPath: Scalars['String']['output'];
   updatedAt?: Maybe<Scalars['String']['output']>;
 };
+
+export enum SkillAccessModeEnum {
+  GlobalDiscovery = 'GLOBAL_DISCOVERY',
+  None = 'NONE',
+  PreloadedOnly = 'PRELOADED_ONLY'
+}
 
 export type SkillDiff = {
   __typename?: 'SkillDiff';
@@ -1039,6 +1183,22 @@ export type StreamableHttpMcpServerConfigInput = {
   token?: InputMaybe<Scalars['String']['input']>;
   url: Scalars['String']['input'];
 };
+
+export enum SyncConflictPolicyEnum {
+  SourceWins = 'SOURCE_WINS',
+  TargetWins = 'TARGET_WINS'
+}
+
+export enum SyncEntityTypeEnum {
+  AgentDefinition = 'AGENT_DEFINITION',
+  AgentTeamDefinition = 'AGENT_TEAM_DEFINITION',
+  McpServerConfiguration = 'MCP_SERVER_CONFIGURATION',
+  Prompt = 'PROMPT'
+}
+
+export enum SyncTombstonePolicyEnum {
+  SourceDeleteWins = 'SOURCE_DELETE_WINS'
+}
 
 export enum TaskNotificationModeEnum {
   AgentManualNotification = 'AGENT_MANUAL_NOTIFICATION',
@@ -1375,6 +1535,17 @@ export type ReloadLlmProviderModelsMutationVariables = Exact<{
 
 export type ReloadLlmProviderModelsMutation = { __typename?: 'Mutation', reloadLlmProviderModels: string };
 
+export type SetGeminiSetupConfigMutationVariables = Exact<{
+  mode: Scalars['String']['input'];
+  geminiApiKey?: InputMaybe<Scalars['String']['input']>;
+  vertexApiKey?: InputMaybe<Scalars['String']['input']>;
+  vertexProject?: InputMaybe<Scalars['String']['input']>;
+  vertexLocation?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type SetGeminiSetupConfigMutation = { __typename?: 'Mutation', setGeminiSetupConfig: string };
+
 export type ConfigureMcpServerMutationVariables = Exact<{
   input: McpServerInput;
 }>;
@@ -1402,6 +1573,13 @@ export type ImportMcpServerConfigsMutationVariables = Exact<{
 
 
 export type ImportMcpServerConfigsMutation = { __typename?: 'Mutation', importMcpServerConfigs: { __typename: 'ImportMcpServerConfigsResult', success: boolean, message: string, importedCount: number, failedCount: number } };
+
+export type RunNodeSyncMutationVariables = Exact<{
+  input: RunNodeSyncInput;
+}>;
+
+
+export type RunNodeSyncMutation = { __typename?: 'Mutation', runNodeSync: { __typename?: 'RunNodeSyncResult', status: string, sourceNodeId: string, error?: string | null, targetResults: Array<{ __typename?: 'NodeSyncTargetRunResult', targetNodeId: string, status: string, message?: string | null, summary?: { __typename?: 'ImportNodeSyncSummary', processed: number, created: number, updated: number, deleted: number, skipped: number } | null }> } };
 
 export type CreatePromptMutationVariables = Exact<{
   input: CreatePromptInput;
@@ -1445,6 +1623,19 @@ export type UpdateServerSettingMutationVariables = Exact<{
 
 
 export type UpdateServerSettingMutation = { __typename?: 'Mutation', updateServerSetting: string };
+
+export type SetSearchConfigMutationVariables = Exact<{
+  provider: Scalars['String']['input'];
+  serperApiKey?: InputMaybe<Scalars['String']['input']>;
+  serpapiApiKey?: InputMaybe<Scalars['String']['input']>;
+  googleCseApiKey?: InputMaybe<Scalars['String']['input']>;
+  googleCseId?: InputMaybe<Scalars['String']['input']>;
+  vertexAiSearchApiKey?: InputMaybe<Scalars['String']['input']>;
+  vertexAiSearchServingConfig?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type SetSearchConfigMutation = { __typename?: 'Mutation', setSearchConfig: string };
 
 export type ReloadToolSchemaMutationVariables = Exact<{
   name: Scalars['String']['input'];
@@ -1566,6 +1757,11 @@ export type GetAvailableLlmProvidersWithModelsQueryVariables = Exact<{ [key: str
 
 export type GetAvailableLlmProvidersWithModelsQuery = { __typename?: 'Query', availableLlmProvidersWithModels: Array<{ __typename: 'ProviderWithModels', provider: string, models: Array<{ __typename: 'ModelDetail', modelIdentifier: string, name: string, value: string, canonicalName: string, provider: string, runtime: string, hostUrl?: string | null, configSchema?: any | null }> }>, availableAudioProvidersWithModels: Array<{ __typename: 'ProviderWithModels', provider: string, models: Array<{ __typename: 'ModelDetail', modelIdentifier: string, name: string, value: string, canonicalName: string, provider: string, runtime: string, hostUrl?: string | null }> }>, availableImageProvidersWithModels: Array<{ __typename: 'ProviderWithModels', provider: string, models: Array<{ __typename: 'ModelDetail', modelIdentifier: string, name: string, value: string, canonicalName: string, provider: string, runtime: string, hostUrl?: string | null }> }> };
 
+export type GetGeminiSetupConfigQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetGeminiSetupConfigQuery = { __typename?: 'Query', getGeminiSetupConfig: { __typename?: 'GeminiSetupConfig', mode: string, geminiApiKeyConfigured: boolean, vertexApiKeyConfigured: boolean, vertexProject?: string | null, vertexLocation?: string | null } };
+
 export type GetMcpServersQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -1604,6 +1800,11 @@ export type GetServerSettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type GetServerSettingsQuery = { __typename?: 'Query', getServerSettings: Array<{ __typename: 'ServerSetting', key: string, value: string, description: string }> };
+
+export type GetSearchConfigQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetSearchConfigQuery = { __typename?: 'Query', getSearchConfig: { __typename?: 'SearchConfig', provider: string, serperApiKeyConfigured: boolean, serpapiApiKeyConfigured: boolean, googleCseApiKeyConfigured: boolean, googleCseId?: string | null, vertexAiSearchApiKeyConfigured: boolean, vertexAiSearchServingConfig?: string | null } };
 
 export type GetUsageStatisticsInPeriodQueryVariables = Exact<{
   startTime: Scalars['DateTime']['input'];
@@ -2497,6 +2698,43 @@ export function useReloadLlmProviderModelsMutation(options: VueApolloComposable.
   return VueApolloComposable.useMutation<ReloadLlmProviderModelsMutation, ReloadLlmProviderModelsMutationVariables>(ReloadLlmProviderModelsDocument, options);
 }
 export type ReloadLlmProviderModelsMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<ReloadLlmProviderModelsMutation, ReloadLlmProviderModelsMutationVariables>;
+export const SetGeminiSetupConfigDocument = gql`
+    mutation SetGeminiSetupConfig($mode: String!, $geminiApiKey: String, $vertexApiKey: String, $vertexProject: String, $vertexLocation: String) {
+  setGeminiSetupConfig(
+    mode: $mode
+    geminiApiKey: $geminiApiKey
+    vertexApiKey: $vertexApiKey
+    vertexProject: $vertexProject
+    vertexLocation: $vertexLocation
+  )
+}
+    `;
+
+/**
+ * __useSetGeminiSetupConfigMutation__
+ *
+ * To run a mutation, you first call `useSetGeminiSetupConfigMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useSetGeminiSetupConfigMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useSetGeminiSetupConfigMutation({
+ *   variables: {
+ *     mode: // value for 'mode'
+ *     geminiApiKey: // value for 'geminiApiKey'
+ *     vertexApiKey: // value for 'vertexApiKey'
+ *     vertexProject: // value for 'vertexProject'
+ *     vertexLocation: // value for 'vertexLocation'
+ *   },
+ * });
+ */
+export function useSetGeminiSetupConfigMutation(options: VueApolloComposable.UseMutationOptions<SetGeminiSetupConfigMutation, SetGeminiSetupConfigMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<SetGeminiSetupConfigMutation, SetGeminiSetupConfigMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<SetGeminiSetupConfigMutation, SetGeminiSetupConfigMutationVariables>(SetGeminiSetupConfigDocument, options);
+}
+export type SetGeminiSetupConfigMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<SetGeminiSetupConfigMutation, SetGeminiSetupConfigMutationVariables>;
 export const ConfigureMcpServerDocument = gql`
     mutation ConfigureMcpServer($input: McpServerInput!) {
   configureMcpServer(input: $input) {
@@ -2661,6 +2899,49 @@ export function useImportMcpServerConfigsMutation(options: VueApolloComposable.U
   return VueApolloComposable.useMutation<ImportMcpServerConfigsMutation, ImportMcpServerConfigsMutationVariables>(ImportMcpServerConfigsDocument, options);
 }
 export type ImportMcpServerConfigsMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<ImportMcpServerConfigsMutation, ImportMcpServerConfigsMutationVariables>;
+export const RunNodeSyncDocument = gql`
+    mutation RunNodeSync($input: RunNodeSyncInput!) {
+  runNodeSync(input: $input) {
+    status
+    sourceNodeId
+    error
+    targetResults {
+      targetNodeId
+      status
+      message
+      summary {
+        processed
+        created
+        updated
+        deleted
+        skipped
+      }
+    }
+  }
+}
+    `;
+
+/**
+ * __useRunNodeSyncMutation__
+ *
+ * To run a mutation, you first call `useRunNodeSyncMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useRunNodeSyncMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useRunNodeSyncMutation({
+ *   variables: {
+ *     input: // value for 'input'
+ *   },
+ * });
+ */
+export function useRunNodeSyncMutation(options: VueApolloComposable.UseMutationOptions<RunNodeSyncMutation, RunNodeSyncMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<RunNodeSyncMutation, RunNodeSyncMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<RunNodeSyncMutation, RunNodeSyncMutationVariables>(RunNodeSyncDocument, options);
+}
+export type RunNodeSyncMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<RunNodeSyncMutation, RunNodeSyncMutationVariables>;
 export const CreatePromptDocument = gql`
     mutation CreatePrompt($input: CreatePromptInput!) {
   createPrompt(input: $input) {
@@ -2869,6 +3150,47 @@ export function useUpdateServerSettingMutation(options: VueApolloComposable.UseM
   return VueApolloComposable.useMutation<UpdateServerSettingMutation, UpdateServerSettingMutationVariables>(UpdateServerSettingDocument, options);
 }
 export type UpdateServerSettingMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<UpdateServerSettingMutation, UpdateServerSettingMutationVariables>;
+export const SetSearchConfigDocument = gql`
+    mutation SetSearchConfig($provider: String!, $serperApiKey: String, $serpapiApiKey: String, $googleCseApiKey: String, $googleCseId: String, $vertexAiSearchApiKey: String, $vertexAiSearchServingConfig: String) {
+  setSearchConfig(
+    provider: $provider
+    serperApiKey: $serperApiKey
+    serpapiApiKey: $serpapiApiKey
+    googleCseApiKey: $googleCseApiKey
+    googleCseId: $googleCseId
+    vertexAiSearchApiKey: $vertexAiSearchApiKey
+    vertexAiSearchServingConfig: $vertexAiSearchServingConfig
+  )
+}
+    `;
+
+/**
+ * __useSetSearchConfigMutation__
+ *
+ * To run a mutation, you first call `useSetSearchConfigMutation` within a Vue component and pass it any options that fit your needs.
+ * When your component renders, `useSetSearchConfigMutation` returns an object that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - Several other properties: https://v4.apollo.vuejs.org/api/use-mutation.html#return
+ *
+ * @param options that will be passed into the mutation, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/mutation.html#options;
+ *
+ * @example
+ * const { mutate, loading, error, onDone } = useSetSearchConfigMutation({
+ *   variables: {
+ *     provider: // value for 'provider'
+ *     serperApiKey: // value for 'serperApiKey'
+ *     serpapiApiKey: // value for 'serpapiApiKey'
+ *     googleCseApiKey: // value for 'googleCseApiKey'
+ *     googleCseId: // value for 'googleCseId'
+ *     vertexAiSearchApiKey: // value for 'vertexAiSearchApiKey'
+ *     vertexAiSearchServingConfig: // value for 'vertexAiSearchServingConfig'
+ *   },
+ * });
+ */
+export function useSetSearchConfigMutation(options: VueApolloComposable.UseMutationOptions<SetSearchConfigMutation, SetSearchConfigMutationVariables> | ReactiveFunction<VueApolloComposable.UseMutationOptions<SetSearchConfigMutation, SetSearchConfigMutationVariables>> = {}) {
+  return VueApolloComposable.useMutation<SetSearchConfigMutation, SetSearchConfigMutationVariables>(SetSearchConfigDocument, options);
+}
+export type SetSearchConfigMutationCompositionFunctionResult = VueApolloComposable.UseMutationReturn<SetSearchConfigMutation, SetSearchConfigMutationVariables>;
 export const ReloadToolSchemaDocument = gql`
     mutation ReloadToolSchema($name: String!) {
   reloadToolSchema(name: $name) {
@@ -3581,6 +3903,37 @@ export function useGetAvailableLlmProvidersWithModelsLazyQuery(options: VueApoll
   return VueApolloComposable.useLazyQuery<GetAvailableLlmProvidersWithModelsQuery, GetAvailableLlmProvidersWithModelsQueryVariables>(GetAvailableLlmProvidersWithModelsDocument, {}, options);
 }
 export type GetAvailableLlmProvidersWithModelsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetAvailableLlmProvidersWithModelsQuery, GetAvailableLlmProvidersWithModelsQueryVariables>;
+export const GetGeminiSetupConfigDocument = gql`
+    query GetGeminiSetupConfig {
+  getGeminiSetupConfig {
+    mode
+    geminiApiKeyConfigured
+    vertexApiKeyConfigured
+    vertexProject
+    vertexLocation
+  }
+}
+    `;
+
+/**
+ * __useGetGeminiSetupConfigQuery__
+ *
+ * To run a query within a Vue component, call `useGetGeminiSetupConfigQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetGeminiSetupConfigQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetGeminiSetupConfigQuery();
+ */
+export function useGetGeminiSetupConfigQuery(options: VueApolloComposable.UseQueryOptions<GetGeminiSetupConfigQuery, GetGeminiSetupConfigQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetGeminiSetupConfigQuery, GetGeminiSetupConfigQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetGeminiSetupConfigQuery, GetGeminiSetupConfigQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetGeminiSetupConfigQuery, GetGeminiSetupConfigQueryVariables>(GetGeminiSetupConfigDocument, {}, options);
+}
+export function useGetGeminiSetupConfigLazyQuery(options: VueApolloComposable.UseQueryOptions<GetGeminiSetupConfigQuery, GetGeminiSetupConfigQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetGeminiSetupConfigQuery, GetGeminiSetupConfigQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetGeminiSetupConfigQuery, GetGeminiSetupConfigQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetGeminiSetupConfigQuery, GetGeminiSetupConfigQueryVariables>(GetGeminiSetupConfigDocument, {}, options);
+}
+export type GetGeminiSetupConfigQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetGeminiSetupConfigQuery, GetGeminiSetupConfigQueryVariables>;
 export const GetMcpServersDocument = gql`
     query GetMcpServers {
   mcpServers {
@@ -3804,6 +4157,39 @@ export function useGetServerSettingsLazyQuery(options: VueApolloComposable.UseQu
   return VueApolloComposable.useLazyQuery<GetServerSettingsQuery, GetServerSettingsQueryVariables>(GetServerSettingsDocument, {}, options);
 }
 export type GetServerSettingsQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetServerSettingsQuery, GetServerSettingsQueryVariables>;
+export const GetSearchConfigDocument = gql`
+    query GetSearchConfig {
+  getSearchConfig {
+    provider
+    serperApiKeyConfigured
+    serpapiApiKeyConfigured
+    googleCseApiKeyConfigured
+    googleCseId
+    vertexAiSearchApiKeyConfigured
+    vertexAiSearchServingConfig
+  }
+}
+    `;
+
+/**
+ * __useGetSearchConfigQuery__
+ *
+ * To run a query within a Vue component, call `useGetSearchConfigQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetSearchConfigQuery` returns an object from Apollo Client that contains result, loading and error properties
+ * you can use to render your UI.
+ *
+ * @param options that will be passed into the query, supported options are listed on: https://v4.apollo.vuejs.org/guide-composable/query.html#options;
+ *
+ * @example
+ * const { result, loading, error } = useGetSearchConfigQuery();
+ */
+export function useGetSearchConfigQuery(options: VueApolloComposable.UseQueryOptions<GetSearchConfigQuery, GetSearchConfigQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetSearchConfigQuery, GetSearchConfigQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetSearchConfigQuery, GetSearchConfigQueryVariables>> = {}) {
+  return VueApolloComposable.useQuery<GetSearchConfigQuery, GetSearchConfigQueryVariables>(GetSearchConfigDocument, {}, options);
+}
+export function useGetSearchConfigLazyQuery(options: VueApolloComposable.UseQueryOptions<GetSearchConfigQuery, GetSearchConfigQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetSearchConfigQuery, GetSearchConfigQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetSearchConfigQuery, GetSearchConfigQueryVariables>> = {}) {
+  return VueApolloComposable.useLazyQuery<GetSearchConfigQuery, GetSearchConfigQueryVariables>(GetSearchConfigDocument, {}, options);
+}
+export type GetSearchConfigQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetSearchConfigQuery, GetSearchConfigQueryVariables>;
 export const GetUsageStatisticsInPeriodDocument = gql`
     query GetUsageStatisticsInPeriod($startTime: DateTime!, $endTime: DateTime!) {
   usageStatisticsInPeriod(startTime: $startTime, endTime: $endTime) {

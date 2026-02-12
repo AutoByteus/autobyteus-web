@@ -1,4 +1,4 @@
-import type { PersonalSessionStatus } from '~/types/externalMessaging';
+import type { PersonalSessionStatus } from '~/types/messaging';
 
 export interface PersonalSessionStatusSyncPolicy {
   baseIntervalMs: number;

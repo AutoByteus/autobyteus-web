@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import {
   EMBEDDED_NODE_ID,
+  NODE_REGISTRY_STORAGE_KEY,
   type NodeProfile,
   type NodeRegistryChange,
   type NodeRegistrySnapshot,
@@ -62,6 +63,30 @@ function generateRemoteNodeId(): string {
   return randomId ? `remote-${randomId}` : `remote-${Date.now()}`;
 }
 
+function canUseLocalStorage(): boolean {
+  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+}
+
+function readLocalRegistrySnapshot(): NodeRegistrySnapshot | null {
+  if (!canUseLocalStorage()) {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(NODE_REGISTRY_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as NodeRegistrySnapshot;
+    if (!Array.isArray(parsed?.nodes) || typeof parsed?.version !== 'number') {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export const useNodeStore = defineStore('nodeStore', () => {
   const registryVersion = ref<number>(0);
   const nodes = ref<NodeProfile[]>([]);
@@ -84,6 +109,24 @@ export const useNodeStore = defineStore('nodeStore', () => {
     nodes.value = snapshot.nodes;
   }
 
+  function persistSnapshotToLocalStorage(snapshot: NodeRegistrySnapshot): void {
+    if (!canUseLocalStorage()) {
+      return;
+    }
+    try {
+      window.localStorage.setItem(NODE_REGISTRY_STORAGE_KEY, JSON.stringify(snapshot));
+    } catch {
+      // Best-effort persistence only.
+    }
+  }
+
+  function persistCurrentSnapshotToLocalStorage(): void {
+    persistSnapshotToLocalStorage({
+      version: registryVersion.value,
+      nodes: nodes.value,
+    });
+  }
+
   function applyRegistrySnapshot(snapshot: NodeRegistrySnapshot): boolean {
     if (!initialized.value) {
       replaceSnapshot(snapshot);
@@ -104,6 +147,9 @@ export const useNodeStore = defineStore('nodeStore', () => {
       const embedded = createEmbeddedNode(resolveDefaultEmbeddedBaseUrl());
       nodes.value = [embedded, ...nodes.value];
       registryVersion.value += 1;
+      if (!window.electronAPI?.getNodeRegistrySnapshot) {
+        persistCurrentSnapshotToLocalStorage();
+      }
     }
   }
 
@@ -115,7 +161,10 @@ export const useNodeStore = defineStore('nodeStore', () => {
     lastError.value = null;
 
     if (!window.electronAPI?.getNodeRegistrySnapshot) {
-      replaceSnapshot(createDefaultSnapshot(resolveDefaultEmbeddedBaseUrl()));
+      const fallbackSnapshot = readLocalRegistrySnapshot() ?? createDefaultSnapshot(resolveDefaultEmbeddedBaseUrl());
+      replaceSnapshot(fallbackSnapshot);
+      ensureEmbeddedNodePresent();
+      persistCurrentSnapshotToLocalStorage();
       initialized.value = true;
       return;
     }
@@ -188,7 +237,7 @@ export const useNodeStore = defineStore('nodeStore', () => {
       capabilities: input.capabilities,
     };
 
-    if (window.electronAPI?.upsertNodeRegistry) {
+    if (window.electronAPI) {
       await upsertRegistry({ type: 'add', node });
       await window.electronAPI.openNodeWindow?.(node.id);
       return getNodeById(node.id) || node;
@@ -196,6 +245,7 @@ export const useNodeStore = defineStore('nodeStore', () => {
 
     nodes.value = [...nodes.value, node];
     registryVersion.value += 1;
+    persistCurrentSnapshotToLocalStorage();
     return node;
   }
 
@@ -204,7 +254,7 @@ export const useNodeStore = defineStore('nodeStore', () => {
       throw new Error('Embedded node cannot be removed');
     }
 
-    if (window.electronAPI?.upsertNodeRegistry) {
+    if (window.electronAPI) {
       await upsertRegistry({
         type: 'remove',
         nodeId,
@@ -214,6 +264,7 @@ export const useNodeStore = defineStore('nodeStore', () => {
 
     nodes.value = nodes.value.filter((node) => node.id !== nodeId);
     registryVersion.value += 1;
+    persistCurrentSnapshotToLocalStorage();
   }
 
   async function renameNode(nodeId: string, nextName: string): Promise<void> {
@@ -222,7 +273,7 @@ export const useNodeStore = defineStore('nodeStore', () => {
       throw new Error('Node name is required');
     }
 
-    if (window.electronAPI?.upsertNodeRegistry) {
+    if (window.electronAPI) {
       await upsertRegistry({
         type: 'rename',
         nodeId,
@@ -242,6 +293,7 @@ export const useNodeStore = defineStore('nodeStore', () => {
       };
     });
     registryVersion.value += 1;
+    persistCurrentSnapshotToLocalStorage();
   }
 
   function teardownRegistryListener(): void {

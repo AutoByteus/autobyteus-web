@@ -2,6 +2,12 @@
 
 A modern web application built with Nuxt.js, featuring both web and electron builds.
 
+## CI Build (Tag Trigger)
+
+Desktop CI build setup instructions are documented in:
+
+- `docs/github-actions-tag-build.md`
+
 ## Prerequisites
 
 - Node.js (v16 or higher)

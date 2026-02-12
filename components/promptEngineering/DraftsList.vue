@@ -1,7 +1,7 @@
 <template>
   <div class="drafts-list bg-white rounded-lg border p-6 h-full flex flex-col">
     <div class="flex justify-between items-center mb-6 pb-4 border-b">
-      <h1 class="text-xl font-semibold text-gray-800">My Drafts</h1>
+      <h1 class="text-xl font-semibold text-gray-800">Drafts</h1>
       <span class="text-sm text-gray-500">{{ viewStore.nonEmptyDrafts.length }} {{ viewStore.nonEmptyDrafts.length === 1 ? 'draft' : 'drafts' }}</span>
     </div>
 

@@ -40,8 +40,7 @@ autobyteus-web/
 │       └── index.ts                         # Exports
 ├── stores/
 │   ├── workspace.ts                  # Workspace & tree state
-│   ├── fileExplorer.ts               # File explorer UI state
-│   └── workspaceLeftPanelLayoutStore.ts  # Layout state
+│   └── fileExplorer.ts               # File explorer UI state
 ├── graphql/
 │   ├── queries/file_explorer_queries.ts
 │   └── mutations/file_explorer_mutations.ts

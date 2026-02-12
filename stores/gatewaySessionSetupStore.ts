@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import {
   GatewayClientError,
-} from '~/services/externalMessagingGatewayClient';
+} from '~/services/messagingGatewayClient';
 import { createGatewayClient } from '~/services/gatewayClientFactory';
 import {
   createPersonalSessionSyncPolicy,
@@ -15,7 +15,7 @@ import type {
   GatewayReadinessSnapshot,
   SessionStatusAutoSyncState,
   GatewayStepStatus,
-} from '~/types/externalMessaging';
+} from '~/types/messaging';
 
 interface GatewaySessionSetupState {
   gatewayBaseUrl: string;
@@ -90,7 +90,7 @@ function nextAutoSyncStateForReason(reason: string): SessionStatusAutoSyncState 
   return 'stopped';
 }
 
-const GATEWAY_CONFIG_STORAGE_KEY = 'external_messaging_gateway_config_v1';
+const GATEWAY_CONFIG_STORAGE_KEY = 'messaging_gateway_config_v1';
 
 interface PersistedGatewayConfig {
   baseUrl: string;

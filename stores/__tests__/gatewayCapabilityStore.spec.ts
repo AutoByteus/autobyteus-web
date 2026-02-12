@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useGatewayCapabilityStore } from '~/stores/gatewayCapabilityStore';
 import { useGatewaySessionSetupStore } from '~/stores/gatewaySessionSetupStore';
-import { GatewayClientError } from '~/services/externalMessagingGatewayClient';
+import { GatewayClientError } from '~/services/messagingGatewayClient';
 
 const { gatewayClientMock, createGatewayClientMock } = vi.hoisted(() => {
   const client = {
@@ -15,8 +15,8 @@ const { gatewayClientMock, createGatewayClientMock } = vi.hoisted(() => {
   };
 });
 
-vi.mock('~/services/externalMessagingGatewayClient', () => ({
-  createExternalMessagingGatewayClient: createGatewayClientMock,
+vi.mock('~/services/messagingGatewayClient', () => ({
+  createMessagingGatewayClient: createGatewayClientMock,
   GatewayClientError: class GatewayClientError extends Error {
     statusCode: number | null;
 

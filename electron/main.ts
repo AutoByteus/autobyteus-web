@@ -3,7 +3,7 @@ import * as fsSync from 'fs';
 import * as fs from 'fs/promises';
 import isDev from 'electron-is-dev';
 import * as path from 'path';
-import { URL } from 'url';
+import { pathToFileURL, URL } from 'url';
 import type {
   NodeProfile,
   NodeRegistryChange,
@@ -50,9 +50,26 @@ function getRegistryFilePath(): string {
 }
 
 function getStartUrl(): string {
-  return isDev
-    ? process.env.VITE_DEV_SERVER_URL || 'http://localhost:3000'
-    : `file://${path.join(__dirname, '../renderer/index.html')}`;
+  if (isDev) {
+    return process.env.VITE_DEV_SERVER_URL || 'http://localhost:3000';
+  }
+
+  const rendererIndexCandidates = [
+    path.join(__dirname, '../../renderer/index.html'),
+    path.join(__dirname, '../renderer/index.html'),
+  ];
+
+  for (const candidate of rendererIndexCandidates) {
+    if (fsSync.existsSync(candidate)) {
+      return pathToFileURL(candidate).toString();
+    }
+  }
+
+  logger.error('Renderer index.html not found for packaged app', {
+    dirname: __dirname,
+    candidates: rendererIndexCandidates,
+  });
+  return pathToFileURL(rendererIndexCandidates[0]).toString();
 }
 
 function nowIsoString(): string {
@@ -563,7 +580,7 @@ function installProtocols(): void {
     try {
       const requestUrl = new URL(request.url);
       const filePath = path.normalize(decodeURIComponent(requestUrl.pathname));
-      return net.fetch(`file://${filePath}`);
+      return net.fetch(pathToFileURL(filePath).toString());
     } catch (error) {
       logger.error(`[local-file protocol] Error handling request ${request.url}:`, error);
       return new Response(null, { status: 404 });

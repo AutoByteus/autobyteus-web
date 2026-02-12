@@ -1,15 +1,11 @@
 <template>
   <div class="flex flex-col h-full bg-white">
-    <div class="flex-1 overflow-y-auto">
+    <div class="flex-1 overflow-y-auto border-t border-gray-200">
       <div v-if="agentGroups.length === 0 && teamGroups.length === 0" class="p-6 text-center text-sm text-gray-500">
         No agents or teams running.
       </div>
 
-      <!-- AGENTS Section -->
       <div v-if="agentGroups.length > 0">
-        <div class="flex items-center pl-3 py-2 bg-gray-50/50 border-b border-gray-100">
-          <span class="text-sm font-medium text-indigo-900">Agents</span>
-        </div>
         <div>
           <RunningAgentGroup
             v-for="group in agentGroups"
@@ -25,15 +21,8 @@
         </div>
       </div>
 
-      <!-- Section Divider (only when both sections have content) -->
-      <div v-if="agentGroups.length > 0 && teamGroups.length > 0"
-           class="my-3" />
-
-      <!-- TEAMS Section -->
       <div v-if="teamGroups.length > 0">
-        <div class="flex items-center pl-3 py-2 bg-gray-50/50 border-b border-gray-100">
-          <span class="text-sm font-medium text-indigo-900">Teams</span>
-        </div>
+        <div v-if="agentGroups.length > 0" class="mx-3 border-t border-gray-100"></div>
         <div>
           <RunningTeamGroup
             v-for="group in teamGroups"
@@ -68,8 +57,11 @@ import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import RunningAgentGroup from './RunningAgentGroup.vue';
 import RunningTeamGroup from './RunningTeamGroup.vue';
-// Dropdown removed
-import { useRouter } from 'vue-router';
+
+const emit = defineEmits<{
+  (e: 'instance-selected', payload: { type: 'agent' | 'team'; instanceId: string }): void;
+  (e: 'instance-created', payload: { type: 'agent' | 'team'; definitionId: string }): void;
+}>();
 
 const agentContextsStore = useAgentContextsStore();
 const teamContextsStore = useAgentTeamContextsStore();
@@ -132,6 +124,7 @@ const createAgentInstance = (definitionId: string) => {
   teamRunConfigStore.clearConfig();
   selectionStore.clearSelection();
   agentContextsStore.createInstanceFromTemplate();
+  emit('instance-created', { type: 'agent', definitionId });
 };
 
 const createTeamInstance = (definitionId: string) => {
@@ -150,14 +143,17 @@ const createTeamInstance = (definitionId: string) => {
   agentRunConfigStore.clearConfig();
   selectionStore.clearSelection();
   teamContextsStore.createInstanceFromTemplate();
+  emit('instance-created', { type: 'team', definitionId });
 };
 
 const selectAgentInstance = (instanceId: string) => {
   selectionStore.selectInstance(instanceId, 'agent');
+  emit('instance-selected', { type: 'agent', instanceId });
 };
 
 const selectTeamInstance = (instanceId: string) => {
   selectionStore.selectInstance(instanceId, 'team');
+  emit('instance-selected', { type: 'team', instanceId });
 };
 
 const selectTeamMember = (teamId: string, memberName: string) => {
@@ -165,6 +161,7 @@ const selectTeamMember = (teamId: string, memberName: string) => {
   selectionStore.selectInstance(teamId, 'team');
   // Then focus the member
   teamContextsStore.setFocusedMember(memberName);
+  emit('instance-selected', { type: 'team', instanceId: teamId });
 };
 
 const getCoordinatorName = (definitionId: string): string | undefined => {

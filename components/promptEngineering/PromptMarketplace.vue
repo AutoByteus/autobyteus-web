@@ -12,7 +12,7 @@
     <!-- Header with title and controls -->
     <div class="flex flex-col gap-4 mb-4">
       <div class="flex justify-between items-center">
-        <h2 class="text-xl font-bold text-gray-900 tracking-tight">Prompt Marketplace</h2>
+        <h2 class="text-xl font-bold text-gray-900 tracking-tight">Prompts</h2>
         <div class="flex items-center gap-2">
           <button
             @click="handleReload"

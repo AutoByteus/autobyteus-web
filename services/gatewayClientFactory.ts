@@ -1,4 +1,4 @@
-import { createExternalMessagingGatewayClient } from '~/services/externalMessagingGatewayClient';
+import { createMessagingGatewayClient } from '~/services/messagingGatewayClient';
 
 export interface GatewayClientFactoryInput {
   baseUrl: string;
@@ -6,7 +6,7 @@ export interface GatewayClientFactoryInput {
 }
 
 export function createGatewayClient(input: GatewayClientFactoryInput) {
-  return createExternalMessagingGatewayClient({
+  return createMessagingGatewayClient({
     baseUrl: input.baseUrl,
     adminToken: input.adminToken,
   });

@@ -1,27 +1,88 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import AgentList from '../AgentList.vue';
-import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
-import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
+import { useNodeStore } from '~/stores/nodeStore';
+import { useNodeSyncStore } from '~/stores/nodeSyncStore';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 
-// Mock AgentCard since we only need to test the list logic
 const AgentCardStub = {
   name: 'AgentCard',
   template: '<div class="agent-card"></div>',
   props: ['agentDef'],
-  emits: ['run-agent', 'view-details']
+  emits: ['run-agent', 'view-details', 'sync-agent'],
 };
 
-describe('AgentList', () => {
-    const mockAgentDefs = [
-        { id: '1', name: 'Agent Alpha', description: 'Alpha Desc' },
-        { id: '2', name: 'Agent Beta', description: 'Beta Desc' }
-    ];
+const NodeSyncTargetPickerModalStub = {
+  name: 'NodeSyncTargetPickerModal',
+  template: '<div class="sync-target-picker-stub"></div>',
+  props: ['modelValue'],
+  emits: ['update:modelValue', 'confirm'],
+};
 
-  const mountComponent = async () => {
+const NodeSyncReportPanelStub = {
+  name: 'NodeSyncReportPanel',
+  template: '<div class="sync-report-panel-stub"></div>',
+  props: ['report', 'title'],
+};
+
+function setElectronApiMock(mock: Partial<Window['electronAPI']> | null): void {
+  Object.defineProperty(window, 'electronAPI', {
+    configurable: true,
+    writable: true,
+    value: mock,
+  });
+}
+
+async function flushAsyncUi(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
+function readSetupRef<T>(wrapper: ReturnType<typeof mount>, key: string): T | undefined {
+  const setupState = (wrapper.vm as any).$?.setupState;
+  const value = setupState?.[key];
+  if (value && typeof value === 'object' && 'value' in value) {
+    return value.value as T;
+  }
+  return value as T | undefined;
+}
+
+describe('AgentList', () => {
+  const mockAgentDefs = [
+    { id: '1', name: 'Agent Alpha', description: 'Alpha Desc' },
+    { id: '2', name: 'Agent Beta', description: 'Beta Desc' },
+  ];
+
+  const defaultNodes = [
+    {
+      id: 'embedded-local',
+      name: 'Embedded Node',
+      baseUrl: 'http://localhost:29695',
+      nodeType: 'embedded',
+      isSystem: true,
+      createdAt: '2026-02-11T00:00:00.000Z',
+      updatedAt: '2026-02-11T00:00:00.000Z',
+    },
+    {
+      id: 'remote-1',
+      name: 'Remote One',
+      baseUrl: 'http://localhost:8001',
+      nodeType: 'remote',
+      isSystem: false,
+      createdAt: '2026-02-11T00:00:00.000Z',
+      updatedAt: '2026-02-11T00:00:00.000Z',
+    },
+  ];
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    setElectronApiMock(null);
+  });
+
+  const mountComponent = async (options?: { nodes?: any[]; sourceNodeId?: string }) => {
     const pinia = createTestingPinia({
       createSpy: vi.fn,
       stubActions: true,
@@ -33,57 +94,106 @@ describe('AgentList', () => {
     store.loading = false;
     store.error = null;
 
+    const nodeStore = useNodeStore();
+    nodeStore.nodes = (options?.nodes ?? defaultNodes) as any;
+    (nodeStore.initializeRegistry as any).mockResolvedValue(undefined);
+
+    const nodeSyncStore = useNodeSyncStore();
+    (nodeSyncStore.initialize as any).mockResolvedValue(undefined);
+
+    const windowNodeContextStore = useWindowNodeContextStore();
+    windowNodeContextStore.nodeId = options?.sourceNodeId ?? 'embedded-local';
+
     const wrapper = mount(AgentList, {
       global: {
-        plugins: [
-          pinia,
-        ],
+        plugins: [pinia],
         stubs: {
           AgentCard: AgentCardStub,
-          // router mock
-          navigateTo: vi.fn()
+          NodeSyncTargetPickerModal: NodeSyncTargetPickerModalStub,
+          NodeSyncReportPanel: NodeSyncReportPanelStub,
+          navigateTo: vi.fn(),
         },
         mocks: {
-            navigateTo: vi.fn() // Mock navigateTo globally
-        }
-      }
+          navigateTo: vi.fn(),
+        },
+      },
     });
+
     await wrapper.vm.$nextTick();
+    await Promise.resolve();
     return wrapper;
   };
 
-  it('should render list of agents', async () => {
+  it('renders list of agents', async () => {
     const wrapper = await mountComponent();
     const cards = wrapper.findAllComponents({ name: 'AgentCard' });
     expect(cards).toHaveLength(2);
   });
 
-  it('should filter agents by search query', async () => {
-    const wrapper = await mountComponent();
-    const searchInput = wrapper.find('input#agent-search');
-    
-    await searchInput.setValue('Beta');
-    await wrapper.vm.$nextTick();
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  it('shows error when no target nodes are available for sync', async () => {
+    const wrapper = await mountComponent({
+      nodes: [defaultNodes[0]],
+    });
 
     const setupState = (wrapper.vm as any).$?.setupState;
-    if (setupState?.searchQuery) {
-      setupState.searchQuery.value = 'Beta';
-      await wrapper.vm.$nextTick();
-    }
-    
-    expect((searchInput.element as HTMLInputElement).value).toBe('Beta');
+    await setupState.syncAgent(mockAgentDefs[0]);
+    await flushAsyncUi();
+    await wrapper.vm.$nextTick();
+
+    expect(readSetupRef<string | null>(wrapper, 'syncError')).toBe('No target nodes available for sync.');
   });
 
-  it('should prepare run config and navigate when agent run requested', async () => {
+  it('opens target picker and runs selective sync after confirmation', async () => {
     const wrapper = await mountComponent();
-    const configStore = useAgentRunConfigStore();
-    const selectionStore = useAgentSelectionStore();
+    const nodeSyncStore = useNodeSyncStore();
+    (nodeSyncStore.runSelectiveAgentSync as any).mockResolvedValue({
+      status: 'success',
+      sourceNodeId: 'embedded-local',
+      targetResults: [{ targetNodeId: 'remote-1', status: 'success' }],
+      error: null,
+      report: {
+        sourceNodeId: 'embedded-local',
+        scope: ['prompt', 'agent_definition'],
+        exportByEntity: [],
+        targets: [],
+      },
+    });
 
-    // Trigger run-agent on first card
-    await wrapper.findComponent({ name: 'AgentCard' }).vm.$emit('run-agent', mockAgentDefs[0]);
+    const setupState = (wrapper.vm as any).$?.setupState;
+    await setupState.syncAgent(mockAgentDefs[0]);
+    expect(readSetupRef<boolean>(wrapper, 'isTargetPickerOpen')).toBe(true);
 
-    expect(configStore.setTemplate).toHaveBeenCalledWith(mockAgentDefs[0]);
-    expect(selectionStore.clearSelection).toHaveBeenCalled();
+    await setupState.confirmAgentSync(['remote-1']);
+    await flushAsyncUi();
+    await wrapper.vm.$nextTick();
+
+    expect(nodeSyncStore.runSelectiveAgentSync).toHaveBeenCalledWith({
+      sourceNodeId: 'embedded-local',
+      targetNodeIds: ['remote-1'],
+      agentDefinitionIds: ['1'],
+      includeDependencies: true,
+      includeDeletes: false,
+    });
+    expect(readSetupRef(wrapper, 'lastAgentSyncReport')).toEqual({
+      sourceNodeId: 'embedded-local',
+      scope: ['prompt', 'agent_definition'],
+      exportByEntity: [],
+      targets: [],
+    });
+    expect(readSetupRef<string | null>(wrapper, 'syncInfo')).toBe('Agent sync success. 1/1 target(s) succeeded.');
+  });
+
+  it('renders sync failure message when selective sync action rejects', async () => {
+    const wrapper = await mountComponent();
+    const nodeSyncStore = useNodeSyncStore();
+    (nodeSyncStore.runSelectiveAgentSync as any).mockRejectedValue(new Error('sync failed for remote node'));
+
+    const setupState = (wrapper.vm as any).$?.setupState;
+    await setupState.syncAgent(mockAgentDefs[0]);
+    await setupState.confirmAgentSync(['remote-1']);
+    await flushAsyncUi();
+    await wrapper.vm.$nextTick();
+
+    expect(readSetupRef<string | null>(wrapper, 'syncError')).toBe('sync failed for remote node');
   });
 });

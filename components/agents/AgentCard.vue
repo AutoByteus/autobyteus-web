@@ -55,6 +55,12 @@
 
       <div class="flex w-full flex-row gap-3 sm:w-auto sm:flex-col sm:items-end">
         <button
+          @click.stop="$emit('sync-agent', agentDef)"
+          class="inline-flex min-w-[84px] justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        >
+          Sync
+        </button>
+        <button
           @click.stop="$emit('run-agent', agentDef)"
           class="inline-flex min-w-[84px] justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
         >
@@ -80,7 +86,7 @@ const props = defineProps<{
   agentDef: AgentDefinition;
 }>();
 
-const emit = defineEmits(['view-details', 'run-agent']);
+const emit = defineEmits(['view-details', 'run-agent', 'sync-agent']);
 
 const { agentDef } = toRefs(props);
 const avatarLoadError = ref(false);

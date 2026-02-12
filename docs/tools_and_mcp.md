@@ -21,7 +21,6 @@ autobyteus-web/
 ├── pages/
 │   └── tools.vue                       # Main tools page with view routing
 ├── components/tools/
-│   ├── ToolsSidebar.vue                # Navigation sidebar
 │   ├── ToolsFilter.vue                 # Search and category filter
 │   ├── ToolList.vue                    # Tool listing by category
 │   ├── ToolCard.vue                    # Individual tool display

@@ -29,7 +29,7 @@
 
       <!-- Left Panel Wrapper -->
       <aside 
-        class="flex-shrink-0 absolute inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 h-full"
+        class="flex-shrink-0 absolute inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 h-full md:shadow"
         :class="[
           appLayoutStore.isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
           isLeftPanelVisible ? '' : 'md:hidden',
@@ -89,16 +89,21 @@ html, body, #__nuxt {
 }
 
 .left-panel-drag-handle {
-  width: 4px;
-  background-color: transparent;
+  width: 6px;
+  background-color: #d1d5db;
   cursor: col-resize;
-  position: relative;
-  z-index: 20;
   transition: background-color 0.2s ease;
+  position: relative;
+  z-index: 10;
+  margin-left: -3px;
 }
 
 .left-panel-drag-handle:hover {
   background-color: #9ca3af;
+}
+
+.left-panel-drag-handle:active {
+  background-color: #6b7280;
 }
 
 </style>

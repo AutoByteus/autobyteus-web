@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia';
 import { v4 as uuidv4 } from 'uuid';
 
-type ViewMode = 'marketplace' | 'create' | 'details' | 'drafts' | 'skills';
+type ViewMode = 'marketplace' | 'create' | 'details' | 'drafts';
 type MarketplaceViewMode = 'grid' | 'compact';
-type SidebarContext = 'marketplace' | 'drafts' | 'skills';
+type SectionContext = 'marketplace' | 'drafts';
 
 export interface PromptDraft {
   id: string;
@@ -18,13 +18,13 @@ export interface PromptDraft {
 interface PromptEngineeringViewState {
   currentView: ViewMode;
   selectedPromptId: string | null;
-  sidebarContext: SidebarContext;
-  
+  sectionContext: SectionContext;
+
   marketplaceSearchQuery: string;
   marketplaceCategoryFilter: string;
   marketplaceNameFilter: string;
   marketplaceViewMode: MarketplaceViewMode;
-  
+
   drafts: PromptDraft[];
   activeDraftId: string | null;
 }
@@ -37,8 +37,8 @@ export const usePromptEngineeringViewStore = defineStore('promptEngineeringView'
       if (stored) {
         try {
           savedDrafts = JSON.parse(stored);
-        } catch (e) {
-          console.error('Failed to parse drafts from localStorage', e);
+        } catch (error) {
+          console.error('Failed to parse drafts from localStorage', error);
         }
       }
     }
@@ -46,36 +46,29 @@ export const usePromptEngineeringViewStore = defineStore('promptEngineeringView'
     return {
       currentView: 'marketplace',
       selectedPromptId: null,
-      sidebarContext: 'marketplace',
-      
+      sectionContext: 'marketplace',
+
       marketplaceSearchQuery: '',
       marketplaceCategoryFilter: '',
       marketplaceNameFilter: '',
       marketplaceViewMode: 'grid',
-      
+
       drafts: savedDrafts,
       activeDraftId: null,
     };
   },
+
   actions: {
-    // --- Navigation ---
     showMarketplace() {
       this.currentView = 'marketplace';
-      this.sidebarContext = 'marketplace';
+      this.sectionContext = 'marketplace';
       this.selectedPromptId = null;
       this.activeDraftId = null;
     },
-    
+
     showDraftsList() {
       this.currentView = 'drafts';
-      this.sidebarContext = 'drafts';
-      this.selectedPromptId = null;
-      this.activeDraftId = null;
-    },
-    
-    showSkillsList() {
-      this.currentView = 'skills';
-      this.sidebarContext = 'skills';
+      this.sectionContext = 'drafts';
       this.selectedPromptId = null;
       this.activeDraftId = null;
     },
@@ -88,19 +81,18 @@ export const usePromptEngineeringViewStore = defineStore('promptEngineeringView'
       this.selectedPromptId = promptId;
       this.activeDraftId = null;
       this.currentView = 'details';
-      if (!this.sidebarContext) {
-        this.sidebarContext = 'marketplace';
+      if (!this.sectionContext) {
+        this.sectionContext = 'marketplace';
       }
     },
 
     closePromptDetails() {
       this.selectedPromptId = null;
       this.currentView = 'marketplace';
-      this.sidebarContext = 'marketplace';
+      this.sectionContext = 'marketplace';
     },
 
-    // --- Draft Management ---
-    startNewDraft(origin: SidebarContext = 'marketplace') {
+    startNewDraft(origin: SectionContext = 'marketplace') {
       const newDraft: PromptDraft = {
         id: uuidv4(),
         name: '',
@@ -112,119 +104,118 @@ export const usePromptEngineeringViewStore = defineStore('promptEngineeringView'
       };
       this.drafts.unshift(newDraft);
       this.activeDraftId = newDraft.id;
-      
       this.currentView = 'create';
-      this.sidebarContext = origin;
-      
+      this.sectionContext = origin;
       this.persistDrafts();
     },
 
-    duplicateDraft(prompt: { 
-      name: string; 
-      category: string; 
-      description?: string | null; 
-      promptContent: string; 
-      suitableForModels?: string | null; 
+    duplicateDraft(prompt: {
+      name: string;
+      category: string;
+      description?: string | null;
+      promptContent: string;
+      suitableForModels?: string | null;
     }) {
       const newDraft: PromptDraft = {
         id: uuidv4(),
-        name: prompt.name, // CHANGED: Removed " (Copy)" suffix to allow versioning
+        name: prompt.name,
         category: prompt.category,
         description: prompt.description || '',
         promptContent: prompt.promptContent,
-        suitableForModels: prompt.suitableForModels 
-          ? prompt.suitableForModels.split(',').map(s => s.trim()).filter(Boolean) 
+        suitableForModels: prompt.suitableForModels
+          ? prompt.suitableForModels
+              .split(',')
+              .map((value) => value.trim())
+              .filter(Boolean)
           : [],
         updatedAt: Date.now(),
       };
-      
+
       this.drafts.unshift(newDraft);
       this.activeDraftId = newDraft.id;
-      
       this.currentView = 'create';
-      // Preserve context
-      
       this.persistDrafts();
     },
 
     openDraft(id: string) {
-      const draft = this.drafts.find(d => d.id === id);
-      if (draft) {
-        this.activeDraftId = id;
-        this.currentView = 'create';
-        this.sidebarContext = 'drafts';
-      }
+      const draft = this.drafts.find((item) => item.id === id);
+      if (!draft) return;
+      this.activeDraftId = id;
+      this.currentView = 'create';
+      this.sectionContext = 'drafts';
     },
 
     updateActiveDraft(updates: Partial<Omit<PromptDraft, 'id' | 'updatedAt'>>) {
       if (!this.activeDraftId) return;
-      
-      const index = this.drafts.findIndex(d => d.id === this.activeDraftId);
-      if (index !== -1) {
-        this.drafts[index] = {
-          ...this.drafts[index],
-          ...updates,
-          updatedAt: Date.now(),
-        };
-        this.persistDrafts();
-      }
+
+      const index = this.drafts.findIndex((item) => item.id === this.activeDraftId);
+      if (index === -1) return;
+
+      this.drafts[index] = {
+        ...this.drafts[index],
+        ...updates,
+        updatedAt: Date.now(),
+      };
+      this.persistDrafts();
     },
 
     deleteDraft(id: string) {
-      this.drafts = this.drafts.filter(d => d.id !== id);
+      this.drafts = this.drafts.filter((draft) => draft.id !== id);
       this.persistDrafts();
-      
-      if (this.activeDraftId === id) {
-        this.activeDraftId = null;
-        if (this.currentView === 'create') {
-           if (this.sidebarContext === 'drafts') {
-             this.showDraftsList();
-           } else {
-             this.showMarketplace();
-           }
-        }
+
+      if (this.activeDraftId !== id) return;
+
+      this.activeDraftId = null;
+      if (this.currentView !== 'create') return;
+
+      if (this.sectionContext === 'drafts') {
+        this.showDraftsList();
+        return;
       }
+      this.showMarketplace();
     },
 
     persistDrafts() {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('prompt_drafts', JSON.stringify(this.drafts));
-      }
+      if (typeof localStorage === 'undefined') return;
+      localStorage.setItem('prompt_drafts', JSON.stringify(this.drafts));
     },
 
-    // --- Filters ---
     resetMarketplaceFilters() {
       this.marketplaceSearchQuery = '';
       this.marketplaceCategoryFilter = '';
       this.marketplaceNameFilter = '';
       this.marketplaceViewMode = 'grid';
-    }
+    },
   },
+
   getters: {
     isMarketplaceView: (state): boolean => state.currentView === 'marketplace' && !state.selectedPromptId,
     isCreateView: (state): boolean => state.currentView === 'create',
     isDetailsView: (state): boolean => state.selectedPromptId !== null,
     isDraftsView: (state): boolean => state.currentView === 'drafts',
-    isSkillsView: (state): boolean => state.currentView === 'skills',
-    
-    activeDraft: (state) => state.drafts.find(d => d.id === state.activeDraftId) || null,
+
+    activeDraft: (state) => state.drafts.find((draft) => draft.id === state.activeDraftId) || null,
     draftCount: (state) => state.drafts.length,
-    currentSidebarContext: (state) => state.sidebarContext,
+    currentSectionContext: (state) => state.sectionContext,
 
     isDraftEmpty: () => (draft: Partial<PromptDraft>) => {
-      return !draft.name?.trim() && 
-             !draft.category?.trim() && 
-             !draft.description?.trim() && 
-             !draft.promptContent?.trim();
+      return (
+        !draft.name?.trim() &&
+        !draft.category?.trim() &&
+        !draft.description?.trim() &&
+        !draft.promptContent?.trim()
+      );
     },
 
     nonEmptyDrafts: (state): PromptDraft[] => {
-      return state.drafts.filter(d => 
-        d.name?.trim() || 
-        d.category?.trim() || 
-        d.description?.trim() || 
-        d.promptContent?.trim()
-      );
-    }
-  }
+      return state.drafts.filter((draft) => {
+        return (
+          draft.name?.trim() ||
+          draft.category?.trim() ||
+          draft.description?.trim() ||
+          draft.promptContent?.trim()
+        );
+      });
+    },
+  },
 });

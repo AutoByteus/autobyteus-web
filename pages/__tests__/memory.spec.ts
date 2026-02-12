@@ -13,7 +13,7 @@ describe('memory page', () => {
       global: {
         plugins: [pinia],
         stubs: {
-          MemorySidebar: true,
+          MemoryIndexPanel: true,
           MemoryInspector: true,
         },
       },

@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia';
 import {
   GatewayClientError,
-} from '~/services/externalMessagingGatewayClient';
+} from '~/services/messagingGatewayClient';
 import { createGatewayClient } from '~/services/gatewayClientFactory';
 import { useGatewaySessionSetupStore } from '~/stores/gatewaySessionSetupStore';
 import type {
   GatewayCapabilitiesModel,
   GatewayWeComAccountModel,
-} from '~/types/externalMessaging';
+} from '~/types/messaging';
 
 interface GatewayCapabilityState {
   capabilities: GatewayCapabilitiesModel | null;

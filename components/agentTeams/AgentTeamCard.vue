@@ -22,6 +22,12 @@
 
       <div class="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
         <button
+          @click.stop="$emit('sync-team', teamDef)"
+          class="inline-flex min-w-[104px] justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        >
+          Sync
+        </button>
+        <button
           @click.stop="$emit('run-team', teamDef)"
           class="inline-flex min-w-[104px] justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
         >
@@ -89,7 +95,7 @@ const props = defineProps<{
   teamDef: AgentTeamDefinition;
 }>();
 
-defineEmits(['view-details', 'run-team']);
+defineEmits(['view-details', 'run-team', 'sync-team']);
 
 const { teamDef } = toRefs(props);
 const avatarLoadError = ref(false);

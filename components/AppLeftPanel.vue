@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-full w-full flex-col border-r border-gray-200 bg-gray-50 text-gray-800">
+  <div class="flex h-full w-full flex-col bg-gray-50 text-gray-800">
     <section class="flex-shrink-0 border-b border-gray-200 px-2 py-3 bg-white">
       <nav aria-label="Primary navigation">
         <ul class="space-y-1">

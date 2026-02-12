@@ -122,9 +122,9 @@ const isNewDraft = computed(() => {
 
 // Dynamic Back Label based on Context
 const backButtonLabel = computed(() => {
-  return viewStore.currentSidebarContext === 'drafts' 
-    ? 'Back to Drafts' 
-    : 'Back to Marketplace';
+  return viewStore.currentSectionContext === 'drafts'
+    ? 'Back to Drafts'
+    : 'Back to Prompts';
 });
 
 // Initialize form from Store
@@ -137,7 +137,7 @@ onMounted(() => {
     formData.promptContent = viewStore.activeDraft.promptContent;
     formData.suitableForModels = [...viewStore.activeDraft.suitableForModels];
   } else {
-    viewStore.startNewDraft(viewStore.currentSidebarContext);
+    viewStore.startNewDraft(viewStore.currentSectionContext);
   }
 });
 
@@ -193,7 +193,7 @@ function handleClose() {
     viewStore.deleteDraft(viewStore.activeDraftId);
   } else {
     // Explicit navigation based on context
-    if (viewStore.currentSidebarContext === 'drafts') {
+    if (viewStore.currentSectionContext === 'drafts') {
       viewStore.showDraftsList();
     } else {
       viewStore.showMarketplace();

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useGatewaySessionSetupStore } from '~/stores/gatewaySessionSetupStore';
-import { GatewayClientError } from '~/services/externalMessagingGatewayClient';
+import { GatewayClientError } from '~/services/messagingGatewayClient';
 
 const {
   gatewayClientMock,
@@ -25,8 +25,8 @@ const {
   };
 });
 
-vi.mock('~/services/externalMessagingGatewayClient', () => ({
-  createExternalMessagingGatewayClient: createGatewayClientMock,
+vi.mock('~/services/messagingGatewayClient', () => ({
+  createMessagingGatewayClient: createGatewayClientMock,
   GatewayClientError: class GatewayClientError extends Error {
     statusCode: number | null;
 
@@ -50,7 +50,7 @@ vi.mock('~/services/externalMessagingGatewayClient', () => ({
 }));
 
 describe('gatewaySessionSetupStore', () => {
-  const GATEWAY_CONFIG_STORAGE_KEY = 'external_messaging_gateway_config_v1';
+  const GATEWAY_CONFIG_STORAGE_KEY = 'messaging_gateway_config_v1';
   const originalUseRuntimeConfig = (globalThis as any).useRuntimeConfig;
   const originalLocalStorage = (globalThis as any).localStorage;
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full bg-gray-100 pl-2 font-sans text-gray-800 border-t border-b border-gray-300">
+  <div class="flex flex-col h-full bg-gray-100 font-sans text-gray-800">
     <WorkspaceDesktopLayout v-if="isDesktop" :show-file-content="showFileContent" />
     <WorkspaceMobileLayout v-else :show-file-content="showFileContent" />
   </div>

@@ -19,7 +19,7 @@ Prompt Engineering is a **standalone top-level module** accessible via the main 
 
 **Route:** `/prompt-engineering`
 
-**Sidebar Menu Items:**
+**Page Sections (in content header):**
 
 - **Prompts Marketplace** - Browse all prompts
 - **My Drafts** - Manage local draft prompts
@@ -37,7 +37,6 @@ autobyteus-web/
 │   ├── PromptDetails.vue               # Full prompt view/edit
 │   ├── PromptCompare.vue               # Side-by-side diff comparison
 │   ├── PromptCard.vue                  # Individual prompt card
-│   ├── PromptSidebar.vue               # Navigation sidebar
 │   ├── CreatePromptView.vue            # Create/edit draft form
 │   ├── DraftsList.vue                  # Local drafts listing
 │   ├── CreatableCategorySelect.vue     # Category dropdown with create
@@ -145,7 +144,7 @@ Manages UI state and local drafts:
 interface PromptEngineeringViewState {
   currentView: "marketplace" | "create" | "details" | "drafts";
   selectedPromptId: string | null;
-  sidebarContext: "marketplace" | "drafts";
+  sectionContext: "marketplace" | "drafts";
 
   // Marketplace filters
   marketplaceSearchQuery: string;

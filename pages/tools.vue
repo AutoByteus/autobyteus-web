@@ -1,43 +1,66 @@
 <template>
-  <div class="flex h-screen bg-gray-100">
-    <ToolsSidebar :active-page="activeView" @navigate="handleNavigation" />
+  <div class="flex h-full flex-col bg-gray-100">
+    <header class="border-b border-gray-200 bg-white px-8 py-6">
+      <div class="flex flex-col gap-4">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Tools</h1>
+          <p class="text-sm text-gray-600">Browse local tools and manage MCP servers.</p>
+        </div>
+        <nav class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1" aria-label="Tools sections">
+          <button
+            type="button"
+            class="rounded-md px-4 py-2 text-sm font-semibold transition-colors"
+            :class="activeRootSection === 'local-tools' ? 'bg-indigo-600 text-white' : 'text-gray-700 hover:bg-gray-100'"
+            @click="switchRootSection('local-tools')"
+          >
+            Local Tools
+          </button>
+          <button
+            type="button"
+            class="rounded-md px-4 py-2 text-sm font-semibold transition-colors"
+            :class="activeRootSection === 'mcp-servers' ? 'bg-indigo-600 text-white' : 'text-gray-700 hover:bg-gray-100'"
+            @click="switchRootSection('mcp-servers')"
+          >
+            MCP Servers
+          </button>
+        </nav>
+      </div>
+    </header>
 
-    <main class="flex-1 p-8 overflow-y-auto flex flex-col">
-      <!-- Local Tools View -->
-      <div v-if="activeView === 'local-tools'" class="flex flex-col h-full">
-        <ToolsFilter 
+    <main class="flex flex-1 flex-col overflow-y-auto p-8">
+      <div v-if="activeView === 'local-tools'" class="flex h-full flex-col">
+        <ToolsFilter
           v-model:searchQuery="searchQuery"
           v-model:selectedCategory="selectedCategory"
           :categories="localToolCategories"
           :show-category-filter="true"
         />
-        <div v-if="store.getLoading && store.getLocalToolsByCategory.length === 0" class="text-center py-20">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+        <div v-if="store.getLoading && store.getLocalToolsByCategory.length === 0" class="py-20 text-center">
+          <div class="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-500"></div>
           <p>Loading tools...</p>
         </div>
-        <div v-else-if="filteredLocalToolsByCategory.length === 0" class="text-center py-16 bg-white rounded-lg border flex-1 flex flex-col justify-center items-center">
+        <div
+          v-else-if="filteredLocalToolsByCategory.length === 0"
+          class="flex flex-1 flex-col items-center justify-center rounded-lg border bg-white py-16 text-center"
+        >
           <p class="text-lg font-medium text-gray-700">No tools found</p>
-          <p class="text-sm text-gray-500 mt-1">Try adjusting your search or filter.</p>
+          <p class="mt-1 text-sm text-gray-500">Try adjusting your search or filter.</p>
         </div>
         <div v-else class="space-y-8">
-          <ToolList 
+          <ToolList
             v-for="group in filteredLocalToolsByCategory"
             :key="group.categoryName"
             :title="group.categoryName"
             :tools="group.tools"
-            :loading="false" 
+            :loading="false"
             source="Local"
             @details="showToolDetails"
           />
         </div>
       </div>
 
-      <!-- MCP Servers List View -->
-      <div v-else-if="activeView === 'mcp-servers'" class="flex flex-col h-full">
-        <ToolsFilter 
-          v-model:searchQuery="searchQuery" 
-          :show-category-filter="false" 
-        />
+      <div v-else-if="activeView === 'mcp-servers'" class="flex h-full flex-col">
+        <ToolsFilter v-model:searchQuery="searchQuery" :show-category-filter="false" />
         <McpServerList
           class="flex-1"
           :servers="filteredMcpServers"
@@ -50,8 +73,7 @@
           @view-tools="viewToolsForServer"
         />
       </div>
-      
-      <!-- MCP Server Form View (Add/Edit) -->
+
       <div v-else-if="activeView === 'mcp-form'">
         <McpServerFormModal
           :server="selectedServer"
@@ -61,7 +83,6 @@
         />
       </div>
 
-      <!-- MCP Bulk Import View -->
       <div v-else-if="activeView === 'mcp-bulk-import'">
         <McpBulkImportView
           @cancel="handleNavigation('mcp-servers')"
@@ -70,9 +91,8 @@
         />
       </div>
 
-      <!-- Tools for a specific MCP Server -->
-      <div v-else-if="activeView.startsWith('mcp-tools-')" class="flex flex-col h-full">
-         <ToolList
+      <div v-else-if="activeView.startsWith('mcp-tools-')" class="flex h-full flex-col">
+        <ToolList
           class="flex-1"
           :title="`Tools for ${currentServerId}`"
           :tools="store.getToolsForServer(currentServerId!)"
@@ -87,34 +107,27 @@
       </div>
     </main>
 
-    <!-- Modals & Notifications -->
     <ToastContainer />
 
-    <ToolDetailsModal
-      :show="isToolDetailVisible"
-      :tool="selectedTool"
-      @close="isToolDetailVisible = false"
-    />
+    <ToolDetailsModal :show="isToolDetailVisible" :tool="selectedTool" @close="isToolDetailVisible = false" />
 
-    <ToolsConfirmationModal 
-        :show="isDeleteConfirmVisible"
-        title="Delete MCP Server"
-        :message="`Are you sure you want to delete the server '<strong>${serverToDeleteId}</strong>'?<br>This action cannot be undone.`"
-        confirm-button-text="Delete"
-        variant="danger"
-        @confirm="executeDeleteServer"
-        @cancel="cancelDeleteServer"
+    <ToolsConfirmationModal
+      :show="isDeleteConfirmVisible"
+      title="Delete MCP Server"
+      :message="`Are you sure you want to delete the server '<strong>${serverToDeleteId}</strong>'?<br>This action cannot be undone.`"
+      confirm-button-text="Delete"
+      variant="danger"
+      @confirm="executeDeleteServer"
+      @cancel="cancelDeleteServer"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useToolManagementStore } from '~/stores/toolManagementStore';
-import type { Tool, McpServer, ToolCategoryGroup } from '~/stores/toolManagementStore';
+import type { McpServer, Tool, ToolCategoryGroup } from '~/stores/toolManagementStore';
 import { useToasts, type ToastType } from '~/composables/useToasts';
-
-import ToolsSidebar from '~/components/tools/ToolsSidebar.vue';
 import ToolList from '~/components/tools/ToolList.vue';
 import ToolDetailsModal from '~/components/tools/ToolDetailsModal.vue';
 import McpServerList from '~/components/tools/McpServerList.vue';
@@ -127,7 +140,6 @@ import ToolsConfirmationModal from '~/components/tools/ToolsConfirmationModal.vu
 const store = useToolManagementStore();
 const { addToast } = useToasts();
 
-// --- State ---
 const activeView = ref('local-tools');
 const isToolDetailVisible = ref(false);
 const isDeleteConfirmVisible = ref(false);
@@ -144,24 +156,33 @@ const currentServerId = computed(() => {
   return null;
 });
 
-// --- Filtering Logic ---
+const activeRootSection = computed<'local-tools' | 'mcp-servers'>(() => {
+  if (activeView.value.startsWith('mcp-')) {
+    return 'mcp-servers';
+  }
+  return 'local-tools';
+});
+
 const localToolCategories = computed(() => {
-  const categories = store.getLocalToolsByCategory.map(group => group.categoryName);
+  const categories = store.getLocalToolsByCategory.map((group) => group.categoryName);
   return ['All Categories', ...categories.sort()];
 });
 
 const filteredLocalToolsByCategory = computed(() => {
   let groups = store.getLocalToolsByCategory;
   if (selectedCategory.value !== 'All Categories') {
-    groups = groups.filter(group => group.categoryName === selectedCategory.value);
+    groups = groups.filter((group) => group.categoryName === selectedCategory.value);
   }
   if (!searchQuery.value) return groups;
+
   const query = searchQuery.value.toLowerCase();
   return groups.reduce((acc: ToolCategoryGroup[], group) => {
-    const filteredTools = group.tools.filter(tool => 
-      tool.name.toLowerCase().includes(query) || tool.description.toLowerCase().includes(query)
-    );
-    if (filteredTools.length > 0) acc.push({ ...group, tools: filteredTools });
+    const filteredTools = group.tools.filter((tool) => {
+      return tool.name.toLowerCase().includes(query) || tool.description.toLowerCase().includes(query);
+    });
+    if (filteredTools.length > 0) {
+      acc.push({ ...group, tools: filteredTools });
+    }
     return acc;
   }, []);
 });
@@ -169,25 +190,31 @@ const filteredLocalToolsByCategory = computed(() => {
 const filteredMcpServers = computed(() => {
   if (!searchQuery.value) return store.getMcpServers;
   const query = searchQuery.value.toLowerCase();
-  return store.getMcpServers.filter(server => server.serverId.toLowerCase().includes(query));
+  return store.getMcpServers.filter((server) => server.serverId.toLowerCase().includes(query));
 });
 
-// --- Lifecycle ---
 onMounted(() => {
   store.fetchLocalToolsGroupedByCategory();
   store.fetchMcpServers();
 });
 
-// --- Methods ---
+const switchRootSection = (section: 'local-tools' | 'mcp-servers') => {
+  handleNavigation(section);
+};
+
 const handleNavigation = (view: string) => {
   activeView.value = view;
   searchQuery.value = '';
   selectedCategory.value = 'All Categories';
-  if (view === 'local-tools') store.fetchLocalToolsGroupedByCategory();
-  else if (view === 'mcp-servers') store.fetchMcpServers();
+
+  if (view === 'local-tools') {
+    store.fetchLocalToolsGroupedByCategory();
+  } else if (view === 'mcp-servers') {
+    store.fetchMcpServers();
+  }
 };
 
-const handleShowToast = (payload: { message: string, type: ToastType }) => {
+const handleShowToast = (payload: { message: string; type: ToastType }) => {
   addToast(payload.message, payload.type);
 };
 
@@ -218,9 +245,9 @@ const viewToolsForServer = (serverId: string) => {
 const handleServerSave = (payload: { serverId: string; didSync: boolean }) => {
   if (payload.didSync) {
     viewToolsForServer(payload.serverId);
-  } else {
-    handleNavigation('mcp-servers');
+    return;
   }
+  handleNavigation('mcp-servers');
 };
 
 const requestDeleteServer = (serverId: string) => {
@@ -234,37 +261,28 @@ const cancelDeleteServer = () => {
 };
 
 const executeDeleteServer = async () => {
-  if (serverToDeleteId.value) {
-    try {
-      const result = await store.deleteMcpServer(serverToDeleteId.value);
-      addToast(result.message, result.success ? 'success' : 'error');
-    } catch(e: any) {
-      addToast(`Failed to delete server: ${e.message}`, 'error');
-    } finally {
-      cancelDeleteServer();
-    }
+  if (!serverToDeleteId.value) return;
+
+  try {
+    const result = await store.deleteMcpServer(serverToDeleteId.value);
+    addToast(result.message, result.success ? 'success' : 'error');
+  } catch (error: any) {
+    addToast(`Failed to delete server: ${error.message}`, 'error');
+  } finally {
+    cancelDeleteServer();
   }
 };
 
 const discoverTools = async (serverId: string) => {
-    addToast(`Syncing tools for '${serverId}'...`, 'info');
-    try {
-        const result = await store.discoverAndRegisterMcpServerTools(serverId);
-        addToast(result.message, result.success ? 'success' : 'error');
-        if (result.success) {
-            viewToolsForServer(serverId);
-        }
-    } catch(e: any) {
-        addToast(`An unexpected error occurred: ${e.message}`, 'error');
+  addToast(`Syncing tools for '${serverId}'...`, 'info');
+  try {
+    const result = await store.discoverAndRegisterMcpServerTools(serverId);
+    addToast(result.message, result.success ? 'success' : 'error');
+    if (result.success) {
+      viewToolsForServer(serverId);
     }
+  } catch (error: any) {
+    addToast(`An unexpected error occurred: ${error.message}`, 'error');
+  }
 };
-
 </script>
-
-<style>
-/* To ensure full height layout */
-html, body, #__nuxt {
-  height: 100%;
-  margin: 0;
-}
-</style>

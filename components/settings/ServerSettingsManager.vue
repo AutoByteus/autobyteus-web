@@ -1,6 +1,6 @@
 <template>
   <div class="server-settings-manager h-full flex flex-col overflow-hidden">
-    <div class="flex-1 overflow-auto p-8 pt-6">
+    <div class="flex-1 overflow-auto p-8 pt-6 bg-slate-50">
       <div v-if="store.isLoading" class="flex justify-center items-center py-8">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
@@ -10,30 +10,47 @@
       </div>
 
       <div v-else class="space-y-6">
-        <div v-if="activeTab === 'quick'" class="space-y-5">
-          <div class="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-gray-100">
+        <div v-if="activeTab === 'quick'" class="space-y-6 max-w-7xl mx-auto rounded-3xl bg-white/70 p-4 md:p-5">
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
             <section
               v-for="field in quickSetupFields"
               :key="field.key"
-              class="px-5 py-5 border-b border-gray-100 last:border-b-0"
+              class="rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-sm"
               :data-testid="`quick-setting-card-${field.key}`"
             >
-              <div class="flex items-center justify-between gap-3 mb-3">
-                <p class="text-xl font-semibold text-gray-900">{{ field.label }}</p>
-                <button
-                  type="button"
-                  :class="saveButtonClass"
-                  :disabled="isQuickSettingSaveBlocked(field.key)"
-                  :data-testid="`quick-setting-save-${field.key}`"
-                  @click="saveQuickSetting(field.key)"
-                >
-                  <span
-                    v-if="isQuickSettingUpdating(field.key)"
-                    class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 inline-block"
-                  ></span>
-                  <span v-else class="i-heroicons-check-20-solid w-4 h-4"></span>
-                  <span>Save</span>
-                </button>
+              <div class="flex items-start justify-between gap-3 mb-4">
+                <div class="min-w-0">
+                  <p class="text-2xl font-semibold leading-tight text-gray-900">{{ field.label }}</p>
+                  <p class="mt-1 text-sm text-gray-500">{{ field.description }}</p>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    :class="iconActionButtonClass"
+                    :data-testid="`quick-setting-add-row-${field.key}`"
+                    aria-label="Add endpoint"
+                    title="Add endpoint"
+                    @click="addQuickEndpointRow(field.key)"
+                  >
+                    <Icon icon="heroicons:plus" class="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    :class="iconSaveButtonClass"
+                    :disabled="isQuickSettingSaveBlocked(field.key)"
+                    :data-testid="`quick-setting-save-${field.key}`"
+                    aria-label="Save endpoints"
+                    title="Save endpoints"
+                    @click="saveQuickSetting(field.key)"
+                  >
+                    <span
+                      v-if="isQuickSettingUpdating(field.key)"
+                      class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 inline-block"
+                    ></span>
+                    <Icon v-else icon="heroicons:check" class="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               <div class="space-y-2.5">
@@ -42,10 +59,10 @@
                   :key="row.id"
                   class="grid gap-2"
                 >
-                  <div v-if="field.format === 'url'" class="grid grid-cols-12 gap-2 items-center">
+                  <div v-if="field.format === 'url'" class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
                     <select
                       v-model="row.protocol"
-                      class="col-span-3 h-11 px-3 border border-gray-200 bg-white rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      class="sm:col-span-3 h-11 px-3 border border-gray-200 bg-white rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                       :data-testid="`quick-row-protocol-${field.key}-${row.id}`"
                       @change="onQuickEndpointRowChange(field.key)"
                     >
@@ -57,7 +74,7 @@
                     <input
                       v-model="row.host"
                       type="text"
-                      class="col-span-6 h-11 px-3 border border-gray-200 bg-white rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      class="sm:col-span-6 h-11 px-3 border border-gray-200 bg-white rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Host"
                       :data-testid="`quick-row-host-${field.key}-${row.id}`"
                       @input="onQuickEndpointRowChange(field.key)"
@@ -66,7 +83,7 @@
                     <input
                       v-model="row.port"
                       type="text"
-                      class="col-span-2 h-11 px-3 border border-gray-200 bg-white rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      class="sm:col-span-2 h-11 px-3 border border-gray-200 bg-white rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Port"
                       :data-testid="`quick-row-port-${field.key}-${row.id}`"
                       @input="onQuickEndpointRowChange(field.key)"
@@ -74,19 +91,19 @@
 
                     <button
                       type="button"
-                      class="col-span-1 h-11 inline-flex items-center justify-center text-gray-400 hover:text-red-500"
+                      class="sm:col-span-1 h-11 inline-flex items-center justify-center rounded-lg border border-transparent text-gray-400 hover:text-red-500 hover:border-red-100 hover:bg-red-50 transition-colors"
                       :data-testid="`quick-row-remove-${field.key}-${row.id}`"
                       @click="removeQuickEndpointRow(field.key, row.id)"
                     >
-                      <span class="i-heroicons-trash-20-solid w-4 h-4"></span>
+                      <Icon icon="heroicons:x-mark" class="w-4 h-4" />
                     </button>
                   </div>
 
-                  <div v-else class="grid grid-cols-12 gap-2 items-center">
+                  <div v-else class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
                     <input
                       v-model="row.host"
                       type="text"
-                      class="col-span-8 h-11 px-3 border border-gray-200 bg-white rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      class="sm:col-span-8 h-11 px-3 border border-gray-200 bg-white rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Host"
                       :data-testid="`quick-row-host-${field.key}-${row.id}`"
                       @input="onQuickEndpointRowChange(field.key)"
@@ -95,7 +112,7 @@
                     <input
                       v-model="row.port"
                       type="text"
-                      class="col-span-3 h-11 px-3 border border-gray-200 bg-white rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      class="sm:col-span-3 h-11 px-3 border border-gray-200 bg-white rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Port"
                       :data-testid="`quick-row-port-${field.key}-${row.id}`"
                       @input="onQuickEndpointRowChange(field.key)"
@@ -103,31 +120,22 @@
 
                     <button
                       type="button"
-                      class="col-span-1 h-11 inline-flex items-center justify-center text-gray-400 hover:text-red-500"
+                      class="sm:col-span-1 h-11 inline-flex items-center justify-center rounded-lg border border-transparent text-gray-400 hover:text-red-500 hover:border-red-100 hover:bg-red-50 transition-colors"
                       :data-testid="`quick-row-remove-${field.key}-${row.id}`"
                       @click="removeQuickEndpointRow(field.key, row.id)"
                     >
-                      <span class="i-heroicons-trash-20-solid w-4 h-4"></span>
+                      <Icon icon="heroicons:x-mark" class="w-4 h-4" />
                     </button>
                   </div>
                 </div>
               </div>
 
-              <div class="mt-2.5 flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  class="text-sm font-medium text-blue-700 hover:text-blue-800"
-                  :data-testid="`quick-setting-add-row-${field.key}`"
-                  @click="addQuickEndpointRow(field.key)"
-                >
-                  + Add endpoint
-                </button>
-
-                <p v-if="isQuickSettingChanged(field.key) && hasQuickSettingValidationErrors(field.key)" class="text-xs text-red-600">
+              <div class="mt-4 border-t border-gray-100 pt-3 flex min-h-[1.25rem] items-center justify-end gap-2">
+                <p v-if="isQuickSettingChanged(field.key) && hasQuickSettingValidationErrors(field.key)" class="text-sm text-red-600">
                   Complete host and use a valid port (1-65535).
                 </p>
-                <p v-else-if="isQuickSettingChanged(field.key)" class="text-xs text-amber-600">
-                  Unsaved change
+                <p v-else-if="isQuickSettingChanged(field.key)" class="text-sm text-slate-500">
+                  Unsaved changes
                 </p>
               </div>
 
@@ -143,126 +151,129 @@
             </section>
           </div>
 
-          <div class="rounded-3xl bg-white px-6 py-5 shadow-sm ring-1 ring-gray-100">
-            <div class="flex items-start justify-between gap-4 mb-4">
-              <div>
-                <h3 class="text-base font-semibold text-gray-900">Web Search Configuration</h3>
-                <p class="text-sm text-gray-500 mt-1">
-                  Choose one search provider and provide the required configuration.
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+            <section class="rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+              <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
+                <div>
+                  <h3 class="text-2xl font-semibold leading-tight text-gray-900">Web Search Configuration</h3>
+                  <p class="text-sm text-gray-500 mt-1">
+                    Integrate web search with your models
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  :class="iconSaveButtonClass"
+                  :disabled="!canSaveSearchConfig || isSavingSearchConfig"
+                  aria-label="Save web search configuration"
+                  title="Save web search configuration"
+                  @click="saveSearchConfig"
+                >
+                  <span
+                    v-if="isSavingSearchConfig"
+                    class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 inline-block"
+                  ></span>
+                  <Icon v-else icon="heroicons:check" class="w-4 h-4" />
+                </button>
+              </div>
+
+              <div class="space-y-3">
+                <div>
+                  <select
+                    v-model="selectedSearchProvider"
+                    class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    data-testid="search-provider-select"
+                    @blur="markSearchFormTouched"
+                  >
+                    <option value="">Choose a provider...</option>
+                    <option v-for="option in searchProviderOptions" :key="option.value" :value="option.value">
+                      {{ option.label }}
+                    </option>
+                  </select>
+                </div>
+
+                <div v-if="selectedSearchProvider === 'serper'" class="space-y-2">
+                  <label class="block text-sm font-medium text-gray-900">Serper API Key</label>
+                  <input
+                    v-model="searchForm.serperApiKey"
+                    type="password"
+                    class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    placeholder="Enter Serper API key"
+                    data-testid="search-serper-api-key"
+                    @blur="markSearchFormTouched"
+                  >
+                  <p v-if="store.searchConfig.serperApiKeyConfigured" class="text-xs text-gray-500">
+                    A Serper API key is already configured.
+                  </p>
+                </div>
+
+                <div v-if="selectedSearchProvider === 'serpapi'" class="space-y-2">
+                  <label class="block text-sm font-medium text-gray-900">SerpApi API Key</label>
+                  <input
+                    v-model="searchForm.serpapiApiKey"
+                    type="password"
+                    class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    placeholder="Enter SerpApi API key"
+                    data-testid="search-serpapi-api-key"
+                    @blur="markSearchFormTouched"
+                  >
+                  <p v-if="store.searchConfig.serpapiApiKeyConfigured" class="text-xs text-gray-500">
+                    A SerpApi API key is already configured.
+                  </p>
+                </div>
+
+                <div v-if="selectedSearchProvider === 'google_cse'" class="space-y-2">
+                  <label class="block text-sm font-medium text-gray-900">Google CSE API Key</label>
+                  <input
+                    v-model="searchForm.googleCseApiKey"
+                    type="password"
+                    class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    placeholder="Enter Google CSE API key"
+                    data-testid="search-google-cse-api-key"
+                    @blur="markSearchFormTouched"
+                  >
+                  <label class="block text-sm font-medium text-gray-900">Google CSE ID</label>
+                  <input
+                    v-model="searchForm.googleCseId"
+                    type="text"
+                    class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    placeholder="Enter Google CSE ID"
+                    data-testid="search-google-cse-id"
+                    @blur="markSearchFormTouched"
+                  >
+                  <p v-if="store.searchConfig.googleCseApiKeyConfigured" class="text-xs text-gray-500">
+                    A Google CSE API key is already configured.
+                  </p>
+                </div>
+
+                <div v-if="selectedSearchProvider === 'vertex_ai_search'" class="space-y-2">
+                  <label class="block text-sm font-medium text-gray-900">Vertex AI Search API Key</label>
+                  <input
+                    v-model="searchForm.vertexAiSearchApiKey"
+                    type="password"
+                    class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    placeholder="Enter Vertex AI Search API key"
+                    data-testid="search-vertex-ai-api-key"
+                    @blur="markSearchFormTouched"
+                  >
+                  <label class="block text-sm font-medium text-gray-900">Serving Config Path</label>
+                  <input
+                    v-model="searchForm.vertexAiSearchServingConfig"
+                    type="text"
+                    class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    placeholder="projects/{project}/locations/{location}/collections/{collection}/engines/{engine}/servingConfigs/{servingConfig}"
+                    data-testid="search-vertex-serving-config"
+                    @blur="markSearchFormTouched"
+                  >
+                  <p v-if="store.searchConfig.vertexAiSearchApiKeyConfigured" class="text-xs text-gray-500">
+                    A Vertex AI Search API key is already configured.
+                  </p>
+                </div>
+
+                <p v-if="displayedSearchConfigValidationError" class="text-sm text-red-600">
+                  {{ displayedSearchConfigValidationError }}
                 </p>
               </div>
-              <button
-                type="button"
-                :class="saveButtonClass"
-                :disabled="!canSaveSearchConfig || isSavingSearchConfig"
-                @click="saveSearchConfig"
-              >
-                <span
-                  v-if="isSavingSearchConfig"
-                  class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 inline-block"
-                ></span>
-                <span v-else class="i-heroicons-check-20-solid w-4 h-4"></span>
-                <span>Save</span>
-              </button>
-            </div>
-
-            <div class="space-y-3">
-              <div>
-                <select
-                  v-model="selectedSearchProvider"
-                  class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                  data-testid="search-provider-select"
-                  @blur="markSearchFormTouched"
-                >
-                  <option value="">Select a provider</option>
-                  <option v-for="option in searchProviderOptions" :key="option.value" :value="option.value">
-                    {{ option.label }}
-                  </option>
-                </select>
-              </div>
-
-              <div v-if="selectedSearchProvider === 'serper'" class="space-y-2">
-                <label class="block text-sm font-medium text-gray-900">Serper API Key</label>
-                <input
-                  v-model="searchForm.serperApiKey"
-                  type="password"
-                  class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                  placeholder="Enter Serper API key"
-                  data-testid="search-serper-api-key"
-                  @blur="markSearchFormTouched"
-                >
-                <p v-if="store.searchConfig.serperApiKeyConfigured" class="text-xs text-gray-500">
-                  A Serper API key is already configured.
-                </p>
-              </div>
-
-              <div v-if="selectedSearchProvider === 'serpapi'" class="space-y-2">
-                <label class="block text-sm font-medium text-gray-900">SerpApi API Key</label>
-                <input
-                  v-model="searchForm.serpapiApiKey"
-                  type="password"
-                  class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                  placeholder="Enter SerpApi API key"
-                  data-testid="search-serpapi-api-key"
-                  @blur="markSearchFormTouched"
-                >
-                <p v-if="store.searchConfig.serpapiApiKeyConfigured" class="text-xs text-gray-500">
-                  A SerpApi API key is already configured.
-                </p>
-              </div>
-
-              <div v-if="selectedSearchProvider === 'google_cse'" class="space-y-2">
-                <label class="block text-sm font-medium text-gray-900">Google CSE API Key</label>
-                <input
-                  v-model="searchForm.googleCseApiKey"
-                  type="password"
-                  class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                  placeholder="Enter Google CSE API key"
-                  data-testid="search-google-cse-api-key"
-                  @blur="markSearchFormTouched"
-                >
-                <label class="block text-sm font-medium text-gray-900">Google CSE ID</label>
-                <input
-                  v-model="searchForm.googleCseId"
-                  type="text"
-                  class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                  placeholder="Enter Google CSE ID"
-                  data-testid="search-google-cse-id"
-                  @blur="markSearchFormTouched"
-                >
-                <p v-if="store.searchConfig.googleCseApiKeyConfigured" class="text-xs text-gray-500">
-                  A Google CSE API key is already configured.
-                </p>
-              </div>
-
-              <div v-if="selectedSearchProvider === 'vertex_ai_search'" class="space-y-2">
-                <label class="block text-sm font-medium text-gray-900">Vertex AI Search API Key</label>
-                <input
-                  v-model="searchForm.vertexAiSearchApiKey"
-                  type="password"
-                  class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                  placeholder="Enter Vertex AI Search API key"
-                  data-testid="search-vertex-ai-api-key"
-                  @blur="markSearchFormTouched"
-                >
-                <label class="block text-sm font-medium text-gray-900">Serving Config Path</label>
-                <input
-                  v-model="searchForm.vertexAiSearchServingConfig"
-                  type="text"
-                  class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                  placeholder="projects/{project}/locations/{location}/collections/{collection}/engines/{engine}/servingConfigs/{servingConfig}"
-                  data-testid="search-vertex-serving-config"
-                  @blur="markSearchFormTouched"
-                >
-                <p v-if="store.searchConfig.vertexAiSearchApiKeyConfigured" class="text-xs text-gray-500">
-                  A Vertex AI Search API key is already configured.
-                </p>
-              </div>
-
-              <p v-if="displayedSearchConfigValidationError" class="text-sm text-red-600">
-                {{ displayedSearchConfigValidationError }}
-              </p>
-            </div>
+            </section>
           </div>
         </div>
 
@@ -391,6 +402,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { Icon } from '@iconify/vue'
 import { useServerSettingsStore, type SearchProvider } from '~/stores/serverSettings'
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore'
 import ServerMonitor from '~/components/server/ServerMonitor.vue'
@@ -421,28 +433,28 @@ const quickSetupFields: QuickSetupField[] = [
   {
     key: 'LMSTUDIO_HOSTS',
     label: 'LM Studio',
-    description: 'Enter protocol, host, and port for your LM Studio server.',
+    description: 'Local LLM inference server',
     format: 'url',
     defaultProtocol: 'http',
   },
   {
     key: 'OLLAMA_HOSTS',
     label: 'Ollama',
-    description: 'Enter protocol, host, and port for your Ollama server.',
+    description: 'Run open-source models locally',
     format: 'url',
     defaultProtocol: 'http',
   },
   {
     key: 'AUTOBYTEUS_LLM_SERVER_HOSTS',
     label: 'AutoByteus LLM Hosts',
-    description: 'Configure AutoByteus LLM service endpoints.',
+    description: 'Remote language model providers',
     format: 'url',
     defaultProtocol: 'https',
   },
   {
     key: VNC_HOSTS_KEY,
     label: 'AutoByteus VNC Hosts',
-    description: 'Configure AutoByteus VNC host and port endpoints.',
+    description: 'Remote desktop access',
     format: 'hostPort',
     defaultProtocol: 'ws',
   },
@@ -456,7 +468,11 @@ const searchProviderOptions: Array<{ value: SearchProvider; label: string }> = [
 ]
 
 const saveButtonClass =
-  'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-gray-200 bg-gray-50 text-gray-700 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150'
+  'inline-flex items-center gap-1.5 h-10 px-4 text-sm font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:bg-slate-50 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed transition-colors duration-150'
+const iconActionButtonClass =
+  'inline-flex items-center justify-center h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-100 transition-colors duration-150'
+const iconSaveButtonClass =
+  'inline-flex items-center justify-center h-9 w-9 rounded-lg border border-slate-200 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-100 disabled:bg-slate-50 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed transition-colors duration-150'
 
 const props = withDefaults(defineProps<{ sectionMode?: SettingsTab }>(), {
   sectionMode: 'quick',
