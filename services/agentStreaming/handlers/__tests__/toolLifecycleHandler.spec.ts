@@ -1,35 +1,78 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { handleToolApprovalRequested, handleToolAutoExecuting, handleToolLog } from '../toolLifecycleHandler';
+import {
+  handleToolApprovalRequested,
+  handleToolApproved,
+  handleToolDenied,
+  handleToolExecutionFailed,
+  handleToolExecutionStarted,
+  handleToolExecutionSucceeded,
+  handleToolLog,
+} from '../toolLifecycleHandler';
 import { useAgentActivityStore } from '~/stores/agentActivityStore';
 import type { AgentContext } from '~/types/agent/AgentContext';
-import type { EditFileSegment, TerminalCommandSegment } from '~/types/segments';
-import type { ToolApprovalRequestedPayload, ToolAutoExecutingPayload, ToolLogPayload } from '../../protocol/messageTypes';
+import type {
+  EditFileSegment,
+  TerminalCommandSegment,
+  ToolCallSegment,
+} from '~/types/segments';
+import type {
+  ToolApprovalRequestedPayload,
+  ToolApprovedPayload,
+  ToolDeniedPayload,
+  ToolExecutionFailedPayload,
+  ToolExecutionStartedPayload,
+  ToolExecutionSucceededPayload,
+  ToolLogPayload,
+} from '../../protocol/messageTypes';
 
 vi.mock('~/stores/agentActivityStore', () => ({
   useAgentActivityStore: vi.fn(),
 }));
 
-describe('toolLifecycleHandler', () => {
-  const agentId = 'test-agent-id';
-  let mockContext: AgentContext;
-  let mockActivityStore: any;
+const agentId = 'test-agent-id';
 
-  const buildEditFileSegment = (invocationId: string): EditFileSegment => ({
-    type: 'edit_file',
-    invocationId,
-    toolName: 'edit_file',
-    arguments: {},
-    status: 'parsing',
-    logs: [],
-    result: null,
-    error: null,
-    path: '',
-    originalContent: '',
-    language: 'diff',
-  });
+const buildEditFileSegment = (invocationId: string): EditFileSegment => ({
+  type: 'edit_file',
+  invocationId,
+  toolName: 'edit_file',
+  arguments: {},
+  status: 'parsed',
+  logs: [],
+  result: null,
+  error: null,
+  path: '',
+  originalContent: '',
+  language: 'diff',
+});
 
-  const buildContextWithSegment = (segment: EditFileSegment, segmentId: string): AgentContext => ({
+const buildTerminalSegment = (invocationId: string): TerminalCommandSegment => ({
+  type: 'terminal_command',
+  invocationId,
+  toolName: 'run_bash',
+  arguments: {},
+  status: 'parsed',
+  logs: [],
+  result: null,
+  error: null,
+  command: '',
+  description: '',
+});
+
+const buildToolCallSegment = (invocationId: string): ToolCallSegment => ({
+  type: 'tool_call',
+  invocationId,
+  toolName: 'read_file',
+  arguments: {},
+  status: 'parsed',
+  logs: [],
+  result: null,
+  error: null,
+  rawContent: '',
+});
+
+const buildContextWithSegment = (segment: ToolCallSegment | TerminalCommandSegment | EditFileSegment): AgentContext =>
+  ({
     state: { agentId },
     conversation: {
       messages: [
@@ -38,29 +81,18 @@ describe('toolLifecycleHandler', () => {
           text: '',
           timestamp: new Date(),
           isComplete: false,
-          segments: [Object.assign(segment, { _segmentId: segmentId })],
+          segments: [Object.assign(segment, { _segmentId: segment.invocationId })],
         },
       ],
       updatedAt: '',
     },
   }) as AgentContext;
 
-  const buildTerminalSegment = (invocationId: string): TerminalCommandSegment => ({
-    type: 'terminal_command',
-    invocationId,
-    toolName: 'run_bash',
-    arguments: { command: '' },
-    status: 'parsing',
-    logs: [],
-    result: null,
-    error: null,
-    command: '',
-    description: '',
-  });
+describe('toolLifecycleHandler', () => {
+  let mockActivityStore: any;
 
   beforeEach(() => {
     setActivePinia(createPinia());
-
     mockActivityStore = {
       updateActivityStatus: vi.fn(),
       updateActivityArguments: vi.fn(),
@@ -68,16 +100,15 @@ describe('toolLifecycleHandler', () => {
       addActivityLog: vi.fn(),
       setActivityResult: vi.fn(),
     };
-
     (useAgentActivityStore as any).mockReturnValue(mockActivityStore);
   });
 
-  it('hydrates edit_file on TOOL_AUTO_EXECUTING', () => {
+  it('hydrates edit_file on TOOL_APPROVAL_REQUESTED', () => {
     const invocationId = 'patch-1';
     const segment = buildEditFileSegment(invocationId);
-    mockContext = buildContextWithSegment(segment, invocationId);
+    const context = buildContextWithSegment(segment);
 
-    const payload: ToolAutoExecutingPayload = {
+    const payload: ToolApprovalRequestedPayload = {
       invocation_id: invocationId,
       tool_name: 'edit_file',
       arguments: {
@@ -86,118 +117,158 @@ describe('toolLifecycleHandler', () => {
       },
     };
 
-    handleToolAutoExecuting(payload, mockContext);
+    handleToolApprovalRequested(payload, context);
 
-    expect(segment.status).toBe('executing');
-    expect(segment.toolName).toBe('edit_file');
-    expect(segment.arguments).toEqual(payload.arguments);
+    expect(segment.status).toBe('awaiting-approval');
     expect(segment.path).toBe('/tmp/example.txt');
     expect(segment.originalContent).toBe('--- a\n+++ b\n@@\n+line\n');
-    expect(mockActivityStore.updateActivityStatus).toHaveBeenCalledWith(agentId, invocationId, 'executing');
-    expect(mockActivityStore.updateActivityArguments).toHaveBeenCalledWith(agentId, invocationId, payload.arguments);
-    expect(mockActivityStore.setHighlightedActivity).toHaveBeenCalledWith(agentId, invocationId);
-  });
-
-  it('hydrates edit_file on TOOL_APPROVAL_REQUESTED', () => {
-    const invocationId = 'patch-approve-1';
-    const segment = buildEditFileSegment(invocationId);
-    mockContext = buildContextWithSegment(segment, invocationId);
-
-    const payload: ToolApprovalRequestedPayload = {
-      invocation_id: invocationId,
-      tool_name: 'edit_file',
-      arguments: {
-        path: '/tmp/approved.txt',
-        patch: '--- a\n+++ b\n@@\n+approved\n',
-      },
-    };
-
-    handleToolApprovalRequested(payload, mockContext);
-
-    expect(segment.status).toBe('awaiting-approval');
-    expect(segment.toolName).toBe('edit_file');
-    expect(segment.arguments).toEqual(payload.arguments);
-    expect(segment.path).toBe('/tmp/approved.txt');
-    expect(segment.originalContent).toBe('--- a\n+++ b\n@@\n+approved\n');
     expect(mockActivityStore.updateActivityStatus).toHaveBeenCalledWith(agentId, invocationId, 'awaiting-approval');
     expect(mockActivityStore.updateActivityArguments).toHaveBeenCalledWith(agentId, invocationId, payload.arguments);
-    expect(mockActivityStore.setHighlightedActivity).toHaveBeenCalledWith(agentId, invocationId);
   });
 
-  it('merges terminal command metadata on TOOL_APPROVAL_REQUESTED', () => {
-    const invocationId = 'bash-approve-1';
+  it('applies TOOL_APPROVED then TOOL_EXECUTION_STARTED progression', () => {
+    const invocationId = 'bash-1';
     const segment = buildTerminalSegment(invocationId);
-    mockContext = buildContextWithSegment(segment as any, invocationId);
+    const context = buildContextWithSegment(segment);
 
-    const payload: ToolApprovalRequestedPayload = {
+    const approvedPayload: ToolApprovedPayload = {
       invocation_id: invocationId,
       tool_name: 'run_bash',
-      arguments: {
-        command: 'npm run dev',
-        background: true,
-        timeout_seconds: 60,
-      },
+      reason: 'approved',
+    };
+    const startedPayload: ToolExecutionStartedPayload = {
+      invocation_id: invocationId,
+      tool_name: 'run_bash',
+      arguments: { command: 'npm run dev', background: true },
     };
 
-    handleToolApprovalRequested(payload, mockContext);
+    handleToolApproved(approvedPayload, context);
+    expect(segment.status).toBe('approved');
 
-    expect(segment.status).toBe('awaiting-approval');
-    expect(segment.arguments).toEqual({
-      command: 'npm run dev',
-      background: true,
-      timeout_seconds: 60,
-    });
+    handleToolExecutionStarted(startedPayload, context);
+    expect(segment.status).toBe('executing');
     expect(segment.command).toBe('npm run dev');
-    expect(mockActivityStore.updateActivityArguments).toHaveBeenCalledWith(agentId, invocationId, payload.arguments);
+    expect(mockActivityStore.updateActivityStatus).toHaveBeenCalledWith(agentId, invocationId, 'approved');
+    expect(mockActivityStore.updateActivityStatus).toHaveBeenCalledWith(agentId, invocationId, 'executing');
   });
 
-  it('merges terminal command metadata on TOOL_AUTO_EXECUTING', () => {
-    const invocationId = 'bash-auto-1';
+  it('does not regress from executing back to approved', () => {
+    const invocationId = 'bash-2';
     const segment = buildTerminalSegment(invocationId);
-    mockContext = buildContextWithSegment(segment as any, invocationId);
+    const context = buildContextWithSegment(segment);
 
-    const payload: ToolAutoExecutingPayload = {
+    const startedPayload: ToolExecutionStartedPayload = {
       invocation_id: invocationId,
       tool_name: 'run_bash',
-      arguments: {
-        command: 'python server.py',
-        background: true,
-        timeout_seconds: 10,
-      },
+      arguments: { command: 'python server.py' },
+    };
+    const approvedPayload: ToolApprovedPayload = {
+      invocation_id: invocationId,
+      tool_name: 'run_bash',
+      reason: 'late',
     };
 
-    handleToolAutoExecuting(payload, mockContext);
+    handleToolExecutionStarted(startedPayload, context);
+    handleToolApproved(approvedPayload, context);
 
     expect(segment.status).toBe('executing');
-    expect(segment.arguments).toEqual({
-      command: 'python server.py',
-      background: true,
-      timeout_seconds: 10,
-    });
-    expect(segment.command).toBe('python server.py');
-    expect(mockActivityStore.updateActivityArguments).toHaveBeenCalledWith(agentId, invocationId, payload.arguments);
   });
 
-  it('handles edit_file TOOL_LOG success updates', () => {
-    const invocationId = 'patch-log-1';
-    const segment = buildEditFileSegment(invocationId);
-    mockContext = buildContextWithSegment(segment, invocationId);
+  it('applies success terminal state and ignores later started transition', () => {
+    const invocationId = 'tool-1';
+    const segment = buildToolCallSegment(invocationId);
+    const context = buildContextWithSegment(segment);
+
+    const startedPayload: ToolExecutionStartedPayload = {
+      invocation_id: invocationId,
+      tool_name: 'read_file',
+      arguments: { path: '/tmp/a.txt' },
+    };
+    const succeededPayload: ToolExecutionSucceededPayload = {
+      invocation_id: invocationId,
+      tool_name: 'read_file',
+      result: { content: 'ok' },
+    };
+
+    handleToolExecutionStarted(startedPayload, context);
+    handleToolExecutionSucceeded(succeededPayload, context);
+    handleToolExecutionStarted(startedPayload, context);
+
+    expect(segment.status).toBe('success');
+    expect(segment.result).toEqual({ content: 'ok' });
+    expect(mockActivityStore.updateActivityStatus).toHaveBeenCalledWith(agentId, invocationId, 'success');
+  });
+
+  it('applies failed terminal state and updates activity result', () => {
+    const invocationId = 'tool-2';
+    const segment = buildToolCallSegment(invocationId);
+    const context = buildContextWithSegment(segment);
+
+    const payload: ToolExecutionFailedPayload = {
+      invocation_id: invocationId,
+      tool_name: 'read_file',
+      error: 'file not found',
+    };
+
+    handleToolExecutionFailed(payload, context);
+    expect(segment.status).toBe('error');
+    expect(segment.error).toBe('file not found');
+    expect(mockActivityStore.setActivityResult).toHaveBeenCalledWith(agentId, invocationId, null, 'file not found');
+  });
+
+  it('applies denied terminal state when reason or error exists', () => {
+    const invocationId = 'tool-3';
+    const segment = buildToolCallSegment(invocationId);
+    const context = buildContextWithSegment(segment);
+
+    const payload: ToolDeniedPayload = {
+      invocation_id: invocationId,
+      tool_name: 'delete_file',
+      reason: 'Denied by user',
+    };
+
+    handleToolDenied(payload, context);
+    expect(segment.status).toBe('denied');
+    expect(segment.error).toBe('Denied by user');
+    expect(mockActivityStore.updateActivityStatus).toHaveBeenCalledWith(agentId, invocationId, 'denied');
+  });
+
+  it('drops malformed denied payload without state mutation', () => {
+    const invocationId = 'tool-4';
+    const segment = buildToolCallSegment(invocationId);
+    const context = buildContextWithSegment(segment);
+
+    handleToolDenied(
+      {
+        invocation_id: invocationId,
+        tool_name: 'delete_file',
+        reason: null,
+        error: null,
+      } as any,
+      context,
+    );
+
+    expect(segment.status).toBe('parsed');
+    expect(mockActivityStore.updateActivityStatus).not.toHaveBeenCalled();
+  });
+
+  it('appends TOOL_LOG entries without inferring terminal status', () => {
+    const invocationId = 'tool-5';
+    const segment = buildToolCallSegment(invocationId);
+    segment.status = 'executing';
+    const context = buildContextWithSegment(segment);
 
     const payload: ToolLogPayload = {
       tool_invocation_id: invocationId,
-      tool_name: 'edit_file',
-      log_entry:
-        '[TOOL_RESULT_SUCCESS_PROCESSED] Agent_ID: test, Tool: edit_file, Invocation_ID: patch-log-1, Result: {"ok": true}',
+      tool_name: 'read_file',
+      log_entry: '[TOOL_RESULT_DIRECT] {"ok":true}',
     };
 
-    handleToolLog(payload, mockContext);
+    handleToolLog(payload, context);
 
-    expect(segment.status).toBe('success');
-    expect(segment.result).toEqual({ ok: true });
-    expect(segment.error).toBeNull();
     expect(segment.logs).toContain(payload.log_entry);
+    expect(segment.status).toBe('executing');
     expect(mockActivityStore.addActivityLog).toHaveBeenCalledWith(agentId, invocationId, payload.log_entry);
-    expect(mockActivityStore.updateActivityStatus).toHaveBeenCalledWith(agentId, invocationId, 'success');
-    expect(mockActivityStore.setActivityResult).toHaveBeenCalledWith(agentId, invocationId, { ok: true }, null);
+    expect(mockActivityStore.updateActivityStatus).not.toHaveBeenCalled();
   });
 });

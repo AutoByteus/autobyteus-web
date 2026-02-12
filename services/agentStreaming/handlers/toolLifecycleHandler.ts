@@ -1,140 +1,46 @@
-/**
- * Tool event handlers - Business logic for TOOL_* events.
- * 
- * Layer 3 of the agent streaming architecture - pure functions that
- * handle tool lifecycle events and update segment state.
- */
-
 import type { AgentContext } from '~/types/agent/AgentContext';
-import type { ToolCallSegment, WriteFileSegment, TerminalCommandSegment, EditFileSegment } from '~/types/segments';
-import type { 
-  ToolApprovalRequestedPayload, 
-  ToolAutoExecutingPayload, 
-  ToolLogPayload 
+import type {
+  EditFileSegment,
+  TerminalCommandSegment,
+  ToolCallSegment,
+  WriteFileSegment,
+} from '~/types/segments';
+import type {
+  ToolApprovalRequestedPayload,
+  ToolApprovedPayload,
+  ToolDeniedPayload,
+  ToolExecutionFailedPayload,
+  ToolExecutionStartedPayload,
+  ToolExecutionSucceededPayload,
+  ToolLogPayload,
 } from '../protocol/messageTypes';
 import { findSegmentById } from './segmentHandler';
 import { useAgentActivityStore } from '~/stores/agentActivityStore';
+import {
+  appendLog,
+  applyApprovedState,
+  applyApprovalRequestedState,
+  applyDeniedState,
+  applyExecutionFailedState,
+  applyExecutionStartedState,
+  applyExecutionSucceededState,
+  isTerminalStatus,
+  type ToolLifecycleSegment,
+} from './toolLifecycleState';
+import {
+  parseToolApprovalRequestedPayload,
+  parseToolApprovedPayload,
+  parseToolDeniedPayload,
+  parseToolExecutionFailedPayload,
+  parseToolExecutionStartedPayload,
+  parseToolExecutionSucceededPayload,
+  parseToolLogPayload,
+} from './toolLifecycleParsers';
 
-/**
- * Handle TOOL_APPROVAL_REQUESTED event.
- * 
- * Note: invocation_id === segment_id (backend guarantees this)
- */
-export function handleToolApprovalRequested(
-  payload: ToolApprovalRequestedPayload,
-  context: AgentContext
-): void {
-  const segment = findToolLifecycleSegment(context, payload.invocation_id);
-  if (!segment) {
-    console.warn(`Tool segment not found for approval request: ${payload.invocation_id}`);
-    return;
-  }
-
-  segment.status = 'awaiting-approval';
-  // Merge latest arguments so terminal metadata (e.g. background/timeout) stays visible in UI.
-  segment.arguments = { ...segment.arguments, ...payload.arguments };
-  if (!segment.toolName) {
-    segment.toolName = payload.tool_name;
-  }
-  hydrateSegmentContentFromArguments(segment, payload.arguments);
-
-  // Sidecar Store Update
-  const activityStore = useAgentActivityStore();
-  activityStore.updateActivityStatus(context.state.agentId, payload.invocation_id, 'awaiting-approval');
-  activityStore.updateActivityArguments(context.state.agentId, payload.invocation_id, payload.arguments);
-
-  // Auto-highlight tools awaiting approval (including write_file since streaming is done)
-  activityStore.setHighlightedActivity(context.state.agentId, payload.invocation_id);
-}
-
-/**
- * Handle TOOL_AUTO_EXECUTING event.
- */
-export function handleToolAutoExecuting(
-  payload: ToolAutoExecutingPayload,
-  context: AgentContext
-): void {
-  const segment = findToolLifecycleSegment(context, payload.invocation_id);
-  if (!segment) {
-    console.warn(`Tool segment not found for auto-execution: ${payload.invocation_id}`);
-    return;
-  }
-
-  segment.status = 'executing';
-  segment.arguments = { ...segment.arguments, ...payload.arguments };
-  if (!segment.toolName) {
-    segment.toolName = payload.tool_name;
-  }
-  hydrateSegmentContentFromArguments(segment, payload.arguments);
-
-  // Sidecar Store Update
-  const activityStore = useAgentActivityStore();
-  activityStore.updateActivityStatus(context.state.agentId, payload.invocation_id, 'executing');
-  activityStore.updateActivityArguments(context.state.agentId, payload.invocation_id, payload.arguments);
-
-  // Auto-highlight executing tools (except write_file which shows artifacts)
-  if (segment.type !== 'write_file') {
-    activityStore.setHighlightedActivity(context.state.agentId, payload.invocation_id);
-  }
-}
-
-/**
- * Handle TOOL_LOG event.
- */
-export function handleToolLog(
-  payload: ToolLogPayload,
-  context: AgentContext
-): void {
-  const segment = findToolLifecycleSegment(context, payload.tool_invocation_id);
-  if (!segment) {
-    console.warn(`Tool segment not found for log: ${payload.tool_invocation_id}`);
-    return;
-  }
-
-  // Append log
-  segment.logs.push(payload.log_entry);
-
-  const info = { result: null as any, error: null as string | null, status: null as any };
-
-  // Parse log for result/error status
-  const maybeResult = parseResultFromLog(payload.log_entry);
-  if (maybeResult !== null) {
-    segment.status = 'success';
-    segment.result = maybeResult;
-    segment.error = null;
-    info.result = maybeResult;
-    info.status = 'success';
-  } else {
-    const maybeError = parseErrorFromLog(payload.log_entry);
-    if (maybeError !== null) {
-      segment.status = 'error';
-      segment.error = maybeError;
-      segment.result = null;
-      info.error = maybeError;
-      info.status = 'error';
-    }
-  }
-
-  // Sidecar Store Update
-  const activityStore = useAgentActivityStore();
-  activityStore.addActivityLog(context.state.agentId, payload.tool_invocation_id, payload.log_entry);
-  if (info.status) {
-    activityStore.updateActivityStatus(context.state.agentId, payload.tool_invocation_id, info.status);
-    activityStore.setActivityResult(context.state.agentId, payload.tool_invocation_id, info.result, info.error);
-  }
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Find a ToolCallSegment by invocation ID.
- */
-function findToolLifecycleSegment(
+const findToolLifecycleSegment = (
   context: AgentContext,
-  invocationId: string
-): ToolCallSegment | WriteFileSegment | TerminalCommandSegment | EditFileSegment | null {
+  invocationId: string,
+): ToolLifecycleSegment | null => {
   const segment = findSegmentById(context, invocationId);
   if (
     segment?.type === 'tool_call' ||
@@ -142,79 +48,228 @@ function findToolLifecycleSegment(
     segment?.type === 'terminal_command' ||
     segment?.type === 'edit_file'
   ) {
-    return segment as ToolCallSegment | WriteFileSegment | TerminalCommandSegment | EditFileSegment;
+    return segment as ToolLifecycleSegment;
   }
   return null;
-}
+};
 
-/**
- * Parse a success result from a tool log entry.
- */
-function parseResultFromLog(logEntry: string): any | null {
-  // Check for TOOL_RESULT_SUCCESS_PROCESSED
-  if (logEntry.startsWith('[TOOL_RESULT_SUCCESS_PROCESSED]')) {
-    const resultMatch = logEntry.match(/Result:\s*([\s\S]*)$/);
-    if (resultMatch?.[1]) {
-      const resultString = resultMatch[1].trim();
-      try {
-        return JSON.parse(resultString);
-      } catch {
-        return resultString;
-      }
-    }
-  }
+const warnInvalidPayload = (eventType: string, payload: unknown): void => {
+  console.warn(`[toolLifecycleHandler] Dropping malformed ${eventType} payload`, payload);
+};
 
-  // Check for APPROVED_TOOL_RESULT and TOOL_RESULT_DIRECT
-  const directResultMatch = logEntry.match(/\[(?:APPROVED_TOOL_RESULT|TOOL_RESULT_DIRECT)\]\s*([\s\S]*)/);
-  if (directResultMatch?.[1]) {
-    const resultString = directResultMatch[1].trim();
-    try {
-      return JSON.parse(resultString);
-    } catch {
-      return resultString;
-    }
-  }
+const warnSegmentMissing = (eventType: string, invocationId: string): void => {
+  console.warn(`[toolLifecycleHandler] Segment not found for ${eventType}: ${invocationId}`);
+};
 
-  return null;
-}
-
-/**
- * Parse an error from a tool log entry.
- */
-function parseErrorFromLog(logEntry: string): string | null {
-  const errorPrefixes = [
-    '[APPROVED_TOOL_ERROR]',
-    '[TOOL_ERROR_DIRECT]',
-    '[APPROVED_TOOL_EXCEPTION]',
-    '[TOOL_EXCEPTION_DIRECT]',
-  ];
-  
-  for (const prefix of errorPrefixes) {
-    if (logEntry.startsWith(prefix)) {
-      return logEntry.substring(prefix.length).trim();
-    }
-  }
-  
-  return null;
-}
-
-function hydrateSegmentContentFromArguments(
+const mergeArguments = (
   segment: ToolCallSegment | WriteFileSegment | TerminalCommandSegment | EditFileSegment,
-  argumentsPayload: Record<string, any>
-): void {
-  if (segment.type === 'terminal_command' && !segment.command && argumentsPayload?.command) {
+  argumentsPayload: Record<string, any>,
+): void => {
+  segment.arguments = { ...segment.arguments, ...argumentsPayload };
+
+  if (segment.type === 'terminal_command' && !segment.command && argumentsPayload.command) {
     segment.command = String(argumentsPayload.command);
   }
-  if (segment.type === 'write_file' && !segment.originalContent && argumentsPayload?.content) {
+  if (segment.type === 'write_file' && !segment.originalContent && argumentsPayload.content) {
     segment.originalContent = String(argumentsPayload.content);
   }
-  if (segment.type === 'write_file' && !segment.path && argumentsPayload?.path) {
+  if (segment.type === 'write_file' && !segment.path && argumentsPayload.path) {
     segment.path = String(argumentsPayload.path);
   }
-  if (segment.type === 'edit_file' && !segment.originalContent && argumentsPayload?.patch) {
+  if (segment.type === 'edit_file' && !segment.originalContent && argumentsPayload.patch) {
     segment.originalContent = String(argumentsPayload.patch);
   }
-  if (segment.type === 'edit_file' && !segment.path && argumentsPayload?.path) {
+  if (segment.type === 'edit_file' && !segment.path && argumentsPayload.path) {
     segment.path = String(argumentsPayload.path);
   }
+};
+
+export function handleToolApprovalRequested(
+  payload: ToolApprovalRequestedPayload,
+  context: AgentContext,
+): void {
+  const parsed = parseToolApprovalRequestedPayload(payload);
+  if (!parsed) {
+    warnInvalidPayload('TOOL_APPROVAL_REQUESTED', payload);
+    return;
+  }
+
+  const segment = findToolLifecycleSegment(context, parsed.invocationId);
+  if (!segment) {
+    warnSegmentMissing('TOOL_APPROVAL_REQUESTED', parsed.invocationId);
+    return;
+  }
+
+  if (!isTerminalStatus(segment.status)) {
+    mergeArguments(segment, parsed.arguments);
+    if (!segment.toolName) {
+      segment.toolName = parsed.toolName;
+    }
+  }
+
+  const transitioned = applyApprovalRequestedState(segment);
+  const activityStore = useAgentActivityStore();
+  activityStore.updateActivityArguments(context.state.agentId, parsed.invocationId, parsed.arguments);
+  if (transitioned) {
+    activityStore.updateActivityStatus(context.state.agentId, parsed.invocationId, 'awaiting-approval');
+    activityStore.setHighlightedActivity(context.state.agentId, parsed.invocationId);
+  }
+}
+
+export function handleToolApproved(payload: ToolApprovedPayload, context: AgentContext): void {
+  const parsed = parseToolApprovedPayload(payload);
+  if (!parsed) {
+    warnInvalidPayload('TOOL_APPROVED', payload);
+    return;
+  }
+
+  const segment = findToolLifecycleSegment(context, parsed.invocationId);
+  if (!segment) {
+    warnSegmentMissing('TOOL_APPROVED', parsed.invocationId);
+    return;
+  }
+
+  if (!segment.toolName) {
+    segment.toolName = parsed.toolName;
+  }
+
+  const transitioned = applyApprovedState(segment);
+  if (transitioned) {
+    const activityStore = useAgentActivityStore();
+    activityStore.updateActivityStatus(context.state.agentId, parsed.invocationId, 'approved');
+    activityStore.setHighlightedActivity(context.state.agentId, parsed.invocationId);
+  }
+}
+
+export function handleToolDenied(payload: ToolDeniedPayload, context: AgentContext): void {
+  const parsed = parseToolDeniedPayload(payload);
+  if (!parsed) {
+    warnInvalidPayload('TOOL_DENIED', payload);
+    return;
+  }
+
+  const segment = findToolLifecycleSegment(context, parsed.invocationId);
+  if (!segment) {
+    warnSegmentMissing('TOOL_DENIED', parsed.invocationId);
+    return;
+  }
+
+  if (!segment.toolName) {
+    segment.toolName = parsed.toolName;
+  }
+
+  const transitioned = applyDeniedState(segment, parsed.reason, parsed.error);
+  if (transitioned) {
+    const activityStore = useAgentActivityStore();
+    activityStore.updateActivityStatus(context.state.agentId, parsed.invocationId, 'denied');
+    activityStore.setActivityResult(context.state.agentId, parsed.invocationId, null, segment.error);
+  }
+}
+
+export function handleToolExecutionStarted(
+  payload: ToolExecutionStartedPayload,
+  context: AgentContext,
+): void {
+  const parsed = parseToolExecutionStartedPayload(payload);
+  if (!parsed) {
+    warnInvalidPayload('TOOL_EXECUTION_STARTED', payload);
+    return;
+  }
+
+  const segment = findToolLifecycleSegment(context, parsed.invocationId);
+  if (!segment) {
+    warnSegmentMissing('TOOL_EXECUTION_STARTED', parsed.invocationId);
+    return;
+  }
+
+  if (!isTerminalStatus(segment.status)) {
+    mergeArguments(segment, parsed.arguments);
+    if (!segment.toolName) {
+      segment.toolName = parsed.toolName;
+    }
+  }
+
+  const transitioned = applyExecutionStartedState(segment);
+  const activityStore = useAgentActivityStore();
+  activityStore.updateActivityArguments(context.state.agentId, parsed.invocationId, parsed.arguments);
+  if (transitioned) {
+    activityStore.updateActivityStatus(context.state.agentId, parsed.invocationId, 'executing');
+    if (segment.type !== 'write_file') {
+      activityStore.setHighlightedActivity(context.state.agentId, parsed.invocationId);
+    }
+  }
+}
+
+export function handleToolExecutionSucceeded(
+  payload: ToolExecutionSucceededPayload,
+  context: AgentContext,
+): void {
+  const parsed = parseToolExecutionSucceededPayload(payload);
+  if (!parsed) {
+    warnInvalidPayload('TOOL_EXECUTION_SUCCEEDED', payload);
+    return;
+  }
+
+  const segment = findToolLifecycleSegment(context, parsed.invocationId);
+  if (!segment) {
+    warnSegmentMissing('TOOL_EXECUTION_SUCCEEDED', parsed.invocationId);
+    return;
+  }
+
+  if (!segment.toolName) {
+    segment.toolName = parsed.toolName;
+  }
+
+  const transitioned = applyExecutionSucceededState(segment, parsed.result);
+  if (transitioned) {
+    const activityStore = useAgentActivityStore();
+    activityStore.updateActivityStatus(context.state.agentId, parsed.invocationId, 'success');
+    activityStore.setActivityResult(context.state.agentId, parsed.invocationId, segment.result, null);
+  }
+}
+
+export function handleToolExecutionFailed(
+  payload: ToolExecutionFailedPayload,
+  context: AgentContext,
+): void {
+  const parsed = parseToolExecutionFailedPayload(payload);
+  if (!parsed) {
+    warnInvalidPayload('TOOL_EXECUTION_FAILED', payload);
+    return;
+  }
+
+  const segment = findToolLifecycleSegment(context, parsed.invocationId);
+  if (!segment) {
+    warnSegmentMissing('TOOL_EXECUTION_FAILED', parsed.invocationId);
+    return;
+  }
+
+  if (!segment.toolName) {
+    segment.toolName = parsed.toolName;
+  }
+
+  const transitioned = applyExecutionFailedState(segment, parsed.error);
+  if (transitioned) {
+    const activityStore = useAgentActivityStore();
+    activityStore.updateActivityStatus(context.state.agentId, parsed.invocationId, 'error');
+    activityStore.setActivityResult(context.state.agentId, parsed.invocationId, null, segment.error);
+  }
+}
+
+export function handleToolLog(payload: ToolLogPayload, context: AgentContext): void {
+  const parsed = parseToolLogPayload(payload);
+  if (!parsed) {
+    warnInvalidPayload('TOOL_LOG', payload);
+    return;
+  }
+
+  const segment = findToolLifecycleSegment(context, parsed.invocationId);
+  if (!segment) {
+    warnSegmentMissing('TOOL_LOG', parsed.invocationId);
+    return;
+  }
+
+  appendLog(segment, parsed.logEntry);
+  const activityStore = useAgentActivityStore();
+  activityStore.addActivityLog(context.state.agentId, parsed.invocationId, parsed.logEntry);
 }

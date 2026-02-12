@@ -14,7 +14,11 @@ import {
   handleSegmentContent,
   handleSegmentEnd,
   handleToolApprovalRequested,
-  handleToolAutoExecuting,
+  handleToolApproved,
+  handleToolDenied,
+  handleToolExecutionStarted,
+  handleToolExecutionSucceeded,
+  handleToolExecutionFailed,
   handleToolLog,
   handleAgentStatus,
   handleAssistantComplete,
@@ -241,8 +245,24 @@ export class TeamStreamingService {
         handleToolApprovalRequested(message.payload, memberContext);
         break;
 
-      case 'TOOL_AUTO_EXECUTING':
-        handleToolAutoExecuting(message.payload, memberContext);
+      case 'TOOL_APPROVED':
+        handleToolApproved(message.payload, memberContext);
+        break;
+
+      case 'TOOL_DENIED':
+        handleToolDenied(message.payload, memberContext);
+        break;
+
+      case 'TOOL_EXECUTION_STARTED':
+        handleToolExecutionStarted(message.payload, memberContext);
+        break;
+
+      case 'TOOL_EXECUTION_SUCCEEDED':
+        handleToolExecutionSucceeded(message.payload, memberContext);
+        break;
+
+      case 'TOOL_EXECUTION_FAILED':
+        handleToolExecutionFailed(message.payload, memberContext);
         break;
 
       case 'TOOL_LOG':

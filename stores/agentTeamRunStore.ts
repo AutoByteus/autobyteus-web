@@ -11,7 +11,6 @@ import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useAgentActivityStore } from '~/stores/agentActivityStore';
 import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
 import { TeamStreamingService } from '~/services/agentStreaming';
-import type { ToolInvocationLifecycle } from '~/types/segments';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 
 // Maintain a map of streaming services per team
@@ -213,15 +212,6 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
         }
       }
 
-      const segment = focusedMember.state.conversation.messages
-        .flatMap(m => m.type === 'ai' ? m.segments : [])
-        .find(s =>
-          (s.type === 'tool_call' || s.type === 'write_file' || s.type === 'terminal_command') &&
-          (s as ToolInvocationLifecycle).invocationId === invocationId
-        ) as ToolInvocationLifecycle | undefined;
-      if (segment) {
-        segment.status = isApproved ? 'executing' : 'denied';
-      }
     },
   },
 });

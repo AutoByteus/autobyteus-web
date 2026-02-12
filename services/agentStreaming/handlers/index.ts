@@ -8,7 +8,11 @@ export {
 
 export {
   handleToolApprovalRequested,
-  handleToolAutoExecuting,
+  handleToolApproved,
+  handleToolDenied,
+  handleToolExecutionStarted,
+  handleToolExecutionSucceeded,
+  handleToolExecutionFailed,
   handleToolLog,
 } from './toolLifecycleHandler';
 

@@ -17,6 +17,7 @@
           <div v-if="isExecuting" class="animate-spin h-5 w-5 border-[2.5px] border-blue-500 border-t-transparent rounded-full flex-shrink-0"></div>
           <Icon v-else-if="status === 'success'" icon="heroicons:check-circle-solid" class="w-5 h-5 text-green-500 flex-shrink-0" />
           <Icon v-else-if="status === 'error'" icon="heroicons:exclamation-circle-solid" class="w-5 h-5 text-red-500 flex-shrink-0" />
+          <Icon v-else-if="status === 'approved'" icon="heroicons:check-badge-solid" class="w-5 h-5 text-cyan-500 flex-shrink-0" />
           <Icon v-else-if="isAwaiting" icon="heroicons:hand-raised-solid" class="w-5 h-5 text-amber-500 animate-pulse flex-shrink-0" />
           <Icon v-else-if="status === 'denied'" icon="heroicons:x-circle-solid" class="w-5 h-5 text-gray-400 flex-shrink-0" />
           <Icon v-else icon="heroicons:wrench-screwdriver-solid" class="w-5 h-5 text-gray-500 flex-shrink-0" />
@@ -128,6 +129,8 @@ const statusClasses = computed(() => {
       return 'bg-white border-gray-200';
     case 'error':
       return 'bg-white border-red-200';
+    case 'approved':
+      return 'bg-white border-cyan-200';
     case 'awaiting-approval':
       return 'bg-amber-50 border-amber-200';
     case 'denied':
@@ -143,6 +146,8 @@ const statusLabel = computed(() => {
       return 'success';
     case 'error':
       return 'failed';
+    case 'approved':
+      return 'approved';
     case 'executing':
     case 'parsing':
       return 'running';
@@ -159,6 +164,8 @@ const statusTextClasses = computed(() => {
       return 'text-green-600';
     case 'error':
       return 'text-red-600';
+    case 'approved':
+      return 'text-cyan-600';
     case 'executing':
     case 'parsing':
       return 'text-blue-600';

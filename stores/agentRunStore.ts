@@ -8,7 +8,6 @@ import type {
 } from '~/generated/graphql';
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { AgentStreamingService } from '~/services/agentStreaming';
-import type { ToolInvocationLifecycle } from '~/types/segments';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 
 // Maintain a map of streaming services per agent
@@ -182,17 +181,8 @@ export const useAgentRunStore = defineStore('agentRun', {
         }
       }
 
-      // Optimistically update the UI
-      if (agent) {
-        const segment = agent.state.conversation.messages
-          .flatMap(m => m.type === 'ai' ? m.segments : [])
-          .find(s =>
-            (s.type === 'tool_call' || s.type === 'write_file' || s.type === 'terminal_command') &&
-            (s as ToolInvocationLifecycle).invocationId === invocationId
-          ) as ToolInvocationLifecycle | undefined;
-        if (segment) {
-          segment.status = isApproved ? 'executing' : 'denied';
-        }
+      if (!agent) {
+        return;
       }
     },
 

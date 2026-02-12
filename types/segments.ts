@@ -17,6 +17,7 @@ export type ToolInvocationStatus =
   | 'parsing'
   | 'parsed'
   | 'awaiting-approval'
+  | 'approved'
   | 'executing'
   | 'success'
   | 'error'

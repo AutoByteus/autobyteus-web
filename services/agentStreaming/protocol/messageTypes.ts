@@ -17,7 +17,11 @@ export type ServerMessageType =
   | 'AGENT_STATUS'
   | 'TEAM_STATUS'
   | 'TOOL_APPROVAL_REQUESTED'
-  | 'TOOL_AUTO_EXECUTING'
+  | 'TOOL_APPROVED'
+  | 'TOOL_DENIED'
+  | 'TOOL_EXECUTION_STARTED'
+  | 'TOOL_EXECUTION_SUCCEEDED'
+  | 'TOOL_EXECUTION_FAILED'
   | 'TOOL_LOG'
   | 'ASSISTANT_CHUNK'
   | 'ASSISTANT_COMPLETE'
@@ -89,15 +93,54 @@ export interface TeamStatusPayload {
 export interface ToolApprovalRequestedPayload {
   invocation_id: string;
   tool_name: string;
+  turn_id?: string | null;
   arguments: Record<string, any>;
   agent_name?: string;
   agent_id?: string;
 }
 
-export interface ToolAutoExecutingPayload {
+export interface ToolApprovedPayload {
   invocation_id: string;
   tool_name: string;
-  arguments: Record<string, any>;
+  turn_id?: string | null;
+  reason?: string | null;
+  agent_name?: string;
+  agent_id?: string;
+}
+
+export interface ToolDeniedPayload {
+  invocation_id: string;
+  tool_name: string;
+  turn_id?: string | null;
+  reason?: string | null;
+  error?: string | null;
+  agent_name?: string;
+  agent_id?: string;
+}
+
+export interface ToolExecutionStartedPayload {
+  invocation_id: string;
+  tool_name: string;
+  turn_id?: string | null;
+  arguments?: Record<string, any>;
+  agent_name?: string;
+  agent_id?: string;
+}
+
+export interface ToolExecutionSucceededPayload {
+  invocation_id: string;
+  tool_name: string;
+  turn_id?: string | null;
+  result?: any;
+  agent_name?: string;
+  agent_id?: string;
+}
+
+export interface ToolExecutionFailedPayload {
+  invocation_id: string;
+  tool_name: string;
+  turn_id?: string | null;
+  error: string;
   agent_name?: string;
   agent_id?: string;
 }
@@ -222,7 +265,11 @@ export type ServerMessage =
   | { type: 'AGENT_STATUS'; payload: AgentStatusPayload }
   | { type: 'TEAM_STATUS'; payload: TeamStatusPayload }
   | { type: 'TOOL_APPROVAL_REQUESTED'; payload: ToolApprovalRequestedPayload }
-  | { type: 'TOOL_AUTO_EXECUTING'; payload: ToolAutoExecutingPayload }
+  | { type: 'TOOL_APPROVED'; payload: ToolApprovedPayload }
+  | { type: 'TOOL_DENIED'; payload: ToolDeniedPayload }
+  | { type: 'TOOL_EXECUTION_STARTED'; payload: ToolExecutionStartedPayload }
+  | { type: 'TOOL_EXECUTION_SUCCEEDED'; payload: ToolExecutionSucceededPayload }
+  | { type: 'TOOL_EXECUTION_FAILED'; payload: ToolExecutionFailedPayload }
   | { type: 'TOOL_LOG'; payload: ToolLogPayload }
   | { type: 'ASSISTANT_CHUNK'; payload: AssistantChunkPayload }
   | { type: 'ASSISTANT_COMPLETE'; payload: AssistantCompletePayload }

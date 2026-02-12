@@ -167,6 +167,7 @@ const statusIconName = computed(() => {
   switch (props.activity.status) {
     case 'success': return 'heroicons:check-circle-solid';
     case 'error': return 'heroicons:x-circle-solid';
+    case 'approved': return 'heroicons:check-badge-solid';
     case 'executing':
     case 'parsing': return 'heroicons:clock-solid'; 
     case 'awaiting-approval': return 'heroicons:hand-raised-solid';
@@ -179,6 +180,7 @@ const iconColorClass = computed(() => {
   switch (props.activity.status) {
     case 'success': return 'text-green-500';
     case 'error': return 'text-red-500';
+    case 'approved': return 'text-cyan-600';
     case 'executing':
     case 'parsing': return 'text-blue-500';
     case 'awaiting-approval': return 'text-amber-500';
@@ -210,6 +212,9 @@ const containerClasses = computed(() => {
         case 'awaiting-approval':
             glowClass = 'ring-2 ring-amber-500 ring-inset shadow-[inset_0_0_20px_rgba(245,158,11,0.6),inset_0_0_40px_rgba(245,158,11,0.4),inset_0_0_80px_rgba(245,158,11,0.2)] bg-amber-50/50';
             break;
+        case 'approved':
+            glowClass = 'ring-2 ring-cyan-500 ring-inset shadow-[inset_0_0_20px_rgba(6,182,212,0.6),inset_0_0_40px_rgba(6,182,212,0.4),inset_0_0_80px_rgba(6,182,212,0.2)] bg-cyan-50/50';
+            break;
         case 'executing':
         case 'parsing':
             glowClass = 'ring-2 ring-blue-500 ring-inset shadow-[inset_0_0_20px_rgba(59,130,246,0.6),inset_0_0_40px_rgba(59,130,246,0.4),inset_0_0_80px_rgba(59,130,246,0.2)] bg-blue-50/50';
@@ -226,6 +231,7 @@ const containerClasses = computed(() => {
   switch (props.activity.status) {
     case 'success': borderClass = 'border-green-200 hover:border-green-300'; break;
     case 'error': borderClass = 'border-red-200 hover:border-red-300'; break;
+    case 'approved': borderClass = 'border-cyan-200 hover:border-cyan-300'; break;
     case 'executing':
     case 'parsing': borderClass = 'border-blue-200 hover:border-blue-300'; break;
     case 'awaiting-approval': borderClass = 'border-amber-200 hover:border-amber-300'; break;
@@ -239,6 +245,7 @@ const statusLabel = computed(() => {
   switch (props.activity.status) {
     case 'success': return 'Success';
     case 'error': return 'Failed';
+    case 'approved': return 'Approved';
     case 'executing':
     case 'parsing': return 'Running';
     case 'awaiting-approval': return 'Review';
@@ -251,6 +258,7 @@ const statusChipClasses = computed(() => {
   switch (props.activity.status) {
     case 'success': return 'bg-green-100 text-green-700 border-green-200';
     case 'error': return 'bg-red-100 text-red-700 border-red-200';
+    case 'approved': return 'bg-cyan-100 text-cyan-700 border-cyan-200';
     case 'executing':
     case 'parsing': return 'bg-blue-100 text-blue-700 border-blue-200';
     case 'awaiting-approval': return 'bg-amber-100 text-amber-700 border-amber-200';

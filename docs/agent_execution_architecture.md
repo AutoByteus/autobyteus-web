@@ -77,8 +77,12 @@ Incoming events are routed based on their `type`:
 | `SEGMENT_CONTENT`         | `segmentHandler.handleSegmentContent`              | Appends streaming content (deltas) to an existing segment.      |
 | `SEGMENT_END`             | `segmentHandler.handleSegmentEnd`                  | Finalizes a segment, setting final status or metadata.          |
 | `TOOL_APPROVAL_REQUESTED` | `toolLifecycleHandler.handleToolApprovalRequested` | Sets segment status to `awaiting-approval`.                     |
-| `TOOL_AUTO_EXECUTING`     | `toolLifecycleHandler.handleToolAutoExecuting`     | Sets segment status to `executing`.                             |
-| `TOOL_LOG`                | `toolLifecycleHandler.handleToolLog`               | Appends execution logs, results, or errors to the tool segment. |
+| `TOOL_APPROVED`           | `toolLifecycleHandler.handleToolApproved`          | Marks invocation as approved before execution starts.           |
+| `TOOL_DENIED`             | `toolLifecycleHandler.handleToolDenied`            | Marks invocation as terminal denied immediately.                |
+| `TOOL_EXECUTION_STARTED`  | `toolLifecycleHandler.handleToolExecutionStarted`  | Sets segment status to `executing`.                            |
+| `TOOL_EXECUTION_SUCCEEDED`| `toolLifecycleHandler.handleToolExecutionSucceeded`| Sets terminal `success` + stores result payload.               |
+| `TOOL_EXECUTION_FAILED`   | `toolLifecycleHandler.handleToolExecutionFailed`   | Sets terminal `error` + stores failure details.                |
+| `TOOL_LOG`                | `toolLifecycleHandler.handleToolLog`               | Appends diagnostic execution logs only.                         |
 | `ARTIFACT_PERSISTED`      | `artifactHandler.handleArtifactPersisted`          | Updates the `AgentArtifactsStore` with a saved file.            |
 | `TODO_LIST_UPDATE`        | `todoHandler.handleTodoListUpdate`                 | Syncs the agent's internal todo list with the UI.               |
 
@@ -100,9 +104,10 @@ These handlers are pure functions that take a payload and an `AgentContext`, and
 
 #### `toolLifecycleHandler.ts`
 
-- Manages the state transitions of tool segments _after_ they have been parsed.
-- Updates the status: `parsing` -> `parsed` -> `awaiting-approval` | `executing` -> `success` | `error`.
-- Hydrates arguments: When a tool is ready to execute, the full arguments JSON is attached to the segment.
+- Routes explicit lifecycle events through dedicated parse/state modules.
+- Enforces monotonic non-terminal transitions: `awaiting-approval` -> `approved` -> `executing`.
+- Enforces terminal precedence: `success` / `error` / `denied` are terminal and cannot be regressed by later non-terminal events or logs.
+- Hydrates arguments only from lifecycle payloads (`TOOL_APPROVAL_REQUESTED`, `TOOL_EXECUTION_STARTED`).
 
 ### Sidecar Store Pattern
 
@@ -122,21 +127,12 @@ A key architectural pattern is the **Sidecar Store Pattern** for runtime data. I
 
 ## Error Event Nuance (Tool vs System)
 
-The backend currently emits two kinds of error-shaped signals:
+The backend can emit:
 
-- `TOOL_LOG` entries that include tool execution failures.
-- A generic `ERROR` event for unrecoverable errors.
+- Explicit tool terminal lifecycle events (`TOOL_EXECUTION_FAILED`, `TOOL_DENIED`) for invocation-scoped failures.
+- A generic `ERROR` event for unrecoverable system/agent failures.
 
-Because tool failures arrive via `TOOL_LOG`, they are already surfaced in:
-
-- The tool call segment (red status + error details).
-- The Activity panel (logs + error state).
-
-To avoid duplicate error rendering in the main chat, the frontend suppresses the chat `ErrorSegment` only when the `ERROR` message matches a tool execution failure (e.g. "Error executing tool 'X' (ID: ...)"). Non-tool/system errors still render as chat error segments so the user can see that the run failed.
-
-### Backend improvement suggestion
-
-A cleaner protocol would make tool errors explicit (e.g., include `invocation_id` or a `source: "tool"` field on `ERROR`, or emit a dedicated `TOOL_ERROR` event). That would let the frontend route errors without string parsing and avoid any ambiguity between tool failures and system/agent failures.
+`TOOL_LOG` is diagnostic-only and never the lifecycle authority for completion/failure.
 
 ## Related Documentation
 
