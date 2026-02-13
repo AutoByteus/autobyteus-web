@@ -42,6 +42,7 @@ export interface RunHistoryItem {
 export interface RunHistoryAgentGroup {
   agentDefinitionId: string;
   agentName: string;
+  agentAvatarUrl?: string | null;
   runs: RunHistoryItem[];
 }
 
@@ -162,6 +163,7 @@ const toRunStatus = (status: AgentStatus): Pick<RunHistoryItem, 'isActive' | 'la
 export const useRunHistoryStore = defineStore('runHistory', {
   state: () => ({
     workspaceGroups: [] as RunHistoryWorkspaceGroup[],
+    agentAvatarByDefinitionId: {} as Record<string, string>,
     resumeConfigByRunId: {} as Record<string, RunResumeConfigPayload>,
     selectedRunId: null as string | null,
     loading: false,
@@ -215,11 +217,45 @@ export const useRunHistoryStore = defineStore('runHistory', {
         }
 
         this.workspaceGroups = data?.listRunHistory || [];
+        await this.refreshAgentAvatarIndex({ loadDefinitionsIfNeeded: true });
       } catch (error: any) {
         this.error = error?.message || 'Failed to load run history.';
       } finally {
         this.loading = false;
       }
+    },
+
+    async refreshAgentAvatarIndex(options: { loadDefinitionsIfNeeded?: boolean } = {}): Promise<void> {
+      const agentDefinitionStore = useAgentDefinitionStore();
+      const agentContextsStore = useAgentContextsStore();
+      const shouldLoadDefinitions = options.loadDefinitionsIfNeeded ?? false;
+
+      if (shouldLoadDefinitions && agentDefinitionStore.agentDefinitions.length === 0) {
+        try {
+          await agentDefinitionStore.fetchAllAgentDefinitions();
+        } catch {
+          // Best-effort hydration only.
+        }
+      }
+
+      const next: Record<string, string> = { ...this.agentAvatarByDefinitionId };
+
+      for (const definition of agentDefinitionStore.agentDefinitions) {
+        const avatarUrl = definition.avatarUrl?.trim();
+        if (avatarUrl) {
+          next[definition.id] = avatarUrl;
+        }
+      }
+
+      for (const context of agentContextsStore.instances.values()) {
+        const definitionId = context.config.agentDefinitionId;
+        const avatarUrl = context.config.agentAvatarUrl?.trim();
+        if (definitionId && avatarUrl) {
+          next[definitionId] = avatarUrl;
+        }
+      }
+
+      this.agentAvatarByDefinitionId = next;
     },
 
     async openRun(runId: string): Promise<void> {
@@ -404,6 +440,17 @@ export const useRunHistoryStore = defineStore('runHistory', {
       const workspaceStore = useWorkspaceStore();
       const agentContextsStore = useAgentContextsStore();
       const workspaceDescriptors = new Map<string, string>();
+      const agentAvatarByDefinitionId = new Map<string, string>(
+        Object.entries(this.agentAvatarByDefinitionId),
+      );
+
+      for (const context of agentContextsStore.instances.values()) {
+        const definitionId = context.config.agentDefinitionId;
+        const avatarUrl = context.config.agentAvatarUrl?.trim();
+        if (definitionId && avatarUrl) {
+          agentAvatarByDefinitionId.set(definitionId, avatarUrl);
+        }
+      }
 
       for (const group of this.workspaceGroups) {
         const normalizedRoot = normalizeRootPath(group.workspaceRootPath);
@@ -429,6 +476,17 @@ export const useRunHistoryStore = defineStore('runHistory', {
         }
       }
 
+      const persistedWorkspaces: RunHistoryWorkspaceGroup[] = this.workspaceGroups.map((workspace) => ({
+        ...workspace,
+        agents: workspace.agents.map((agent) => ({
+          ...agent,
+          agentAvatarUrl:
+            agent.agentAvatarUrl ??
+            agentAvatarByDefinitionId.get(agent.agentDefinitionId) ??
+            null,
+        })),
+      }));
+
       const draftRuns: DraftRunSnapshot[] = [];
       for (const [runId, context] of agentContextsStore.instances.entries()) {
         if (!runId.startsWith(DRAFT_RUN_ID_PREFIX)) {
@@ -446,12 +504,17 @@ export const useRunHistoryStore = defineStore('runHistory', {
         const agentName = context.config.agentDefinitionName || 'Agent';
         const conversation = context.state.conversation;
         const { isActive, lastKnownStatus } = toRunStatus(context.state.currentStatus);
+        const agentAvatarUrl =
+          context.config.agentAvatarUrl?.trim() ||
+          agentAvatarByDefinitionId.get(context.config.agentDefinitionId) ||
+          null;
 
         draftRuns.push({
           runId,
           workspaceRootPath,
           agentDefinitionId: context.config.agentDefinitionId,
           agentName,
+          agentAvatarUrl,
           summary: summarizeDraftRun(conversation, agentName),
           lastActivityAt:
             conversation.updatedAt ||
@@ -463,7 +526,7 @@ export const useRunHistoryStore = defineStore('runHistory', {
       }
 
       const projectedTree = buildRunTreeProjection({
-        persistedWorkspaces: this.workspaceGroups,
+        persistedWorkspaces,
         workspaceDescriptors: Array.from(workspaceDescriptors.entries()).map(
           ([workspaceRootPath, workspaceName]) => ({
             workspaceRootPath,

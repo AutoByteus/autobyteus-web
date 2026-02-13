@@ -28,6 +28,7 @@ const {
           {
             agentDefinitionId: 'agent-def-1',
             agentName: 'SuperAgent',
+            agentAvatarUrl: 'https://example.com/superagent.png',
             runs: [
               {
                 runId: 'temp-1',
@@ -133,6 +134,32 @@ describe('WorkspaceAgentRunsTreePanel', () => {
 
     expect(workspaceStoreMock.fetchAllWorkspaces).toHaveBeenCalledTimes(1);
     expect(runHistoryStoreMock.fetchTree).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders agent avatar image when the tree node provides avatar URL', async () => {
+    const wrapper = mountComponent();
+    await flushPromises();
+
+    const avatar = wrapper.find('img[alt="SuperAgent avatar"]');
+    expect(avatar.exists()).toBe(true);
+    expect(avatar.attributes('src')).toBe('https://example.com/superagent.png');
+  });
+
+  it('tracks broken avatar per URL key so a changed avatar URL can recover', async () => {
+    const wrapper = mountComponent();
+    await flushPromises();
+
+    const vm = wrapper.vm as any;
+    const workspaceRootPath = '/ws/a';
+    const agentDefinitionId = 'agent-def-1';
+    const firstAvatarUrl = 'https://example.com/superagent.png';
+    const replacementAvatarUrl = 'https://example.com/superagent-v2.png';
+
+    expect(vm.showAgentAvatar(workspaceRootPath, agentDefinitionId, firstAvatarUrl)).toBe(true);
+    vm.onAgentAvatarError(workspaceRootPath, agentDefinitionId, firstAvatarUrl);
+    await nextTick();
+    expect(vm.showAgentAvatar(workspaceRootPath, agentDefinitionId, firstAvatarUrl)).toBe(false);
+    expect(vm.showAgentAvatar(workspaceRootPath, agentDefinitionId, replacementAvatarUrl)).toBe(true);
   });
 
   it('selects run via runHistoryStore.selectTreeRun and emits instance-selected', async () => {
