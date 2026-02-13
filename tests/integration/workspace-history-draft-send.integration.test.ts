@@ -120,12 +120,14 @@ describe('workspace history + draft send integration', () => {
     const runHistoryStore = useRunHistoryStore();
     const contextsStore = useAgentContextsStore();
     const runStore = useAgentRunStore();
-
-    const tempRunId = await runHistoryStore.createDraftRun({
+    const tempRunIdFromConfig = await runHistoryStore.createDraftRun({
       workspaceRootPath: '/tmp/workspace-a',
       agentDefinitionId: 'agent-def-1',
     });
 
+    expect(tempRunIdFromConfig).toBeUndefined();
+
+    const tempRunId = contextsStore.createInstanceFromTemplate();
     const tempContext = contextsStore.getInstance(tempRunId);
     expect(tempContext).toBeTruthy();
     expect(tempContext?.config.llmModelIdentifier).toBe('fallback-model-1');

@@ -62,15 +62,17 @@ describe('RunningAgentsPanel', () => {
     expect(store.selectInstance).toHaveBeenCalledWith('inst-1', 'agent');
   });
 
-  it('should create new instance from definition', async () => {
+  it('should prepare new run config from definition', async () => {
     const wrapper = mountComponent();
     const configStore = useAgentRunConfigStore();
     const contextsStore = useAgentContextsStore();
+    const selectionStore = useAgentSelectionStore();
     const group = wrapper.findComponent({ name: 'RunningAgentGroup' });
 
     await group.vm.$emit('create', 'def-1');
 
     expect(configStore.setAgentConfig).toHaveBeenCalled();
-    expect(contextsStore.createInstanceFromTemplate).toHaveBeenCalled();
+    expect(selectionStore.clearSelection).toHaveBeenCalled();
+    expect(contextsStore.createInstanceFromTemplate).not.toHaveBeenCalled();
   });
 });

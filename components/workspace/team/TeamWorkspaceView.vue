@@ -35,6 +35,7 @@
 import { computed } from 'vue';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
+import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 import TeamStatusDisplay from '~/components/workspace/team/TeamStatusDisplay.vue';
 import AgentTeamEventMonitor from '~/components/workspace/team/AgentTeamEventMonitor.vue';
@@ -42,17 +43,18 @@ import WorkspaceHeaderActions from '~/components/workspace/common/WorkspaceHeade
 
 const teamContextsStore = useAgentTeamContextsStore();
 const teamRunConfigStore = useTeamRunConfigStore();
+const agentRunConfigStore = useAgentRunConfigStore();
 const selectionStore = useAgentSelectionStore();
 
 const activeTeamContext = computed(() => teamContextsStore.activeTeamContext);
 
 const createNewTeamInstance = () => {
-  if (activeTeamContext.value) {
-    const template = JSON.parse(JSON.stringify(activeTeamContext.value.config));
-    template.isLocked = false;
-    teamRunConfigStore.setConfig(template);
-    selectionStore.clearSelection();
-    teamContextsStore.createInstanceFromTemplate();
-  }
+  if (!activeTeamContext.value) return;
+
+  const template = JSON.parse(JSON.stringify(activeTeamContext.value.config));
+  template.isLocked = false;
+  teamRunConfigStore.setConfig(template);
+  agentRunConfigStore.clearConfig();
+  selectionStore.clearSelection();
 };
 </script>

@@ -519,7 +519,7 @@ describe('runHistoryStore', () => {
     workspaceStoreMock.createWorkspace.mockResolvedValueOnce('ws-1');
 
     const store = useRunHistoryStore();
-    const runId = await store.createDraftRun({
+    await store.createDraftRun({
       workspaceRootPath: '/ws/a',
       agentDefinitionId: 'agent-def-1',
     });
@@ -531,8 +531,8 @@ describe('runHistoryStore', () => {
     });
     expect(workspaceStoreMock.createWorkspace).toHaveBeenCalledWith({ root_path: '/ws/a' });
     expect(selectionStoreMock.clearSelection).toHaveBeenCalled();
-    expect(runId).toBe('temp-123');
-    expect(store.selectedRunId).toBe('temp-123');
+    expect(agentContextsStoreMock.createInstanceFromTemplate).not.toHaveBeenCalled();
+    expect(store.selectedRunId).toBeNull();
   });
 
   it('reuses model from existing context when creating draft run', async () => {
@@ -573,6 +573,7 @@ describe('runHistoryStore', () => {
       }),
     );
     expect(workspaceStoreMock.createWorkspace).toHaveBeenCalledWith({ root_path: '/ws/a' });
+    expect(agentContextsStoreMock.createInstanceFromTemplate).not.toHaveBeenCalled();
   });
 
   it('revalidates workspace id via backend creation even when local cache has matching root path', async () => {

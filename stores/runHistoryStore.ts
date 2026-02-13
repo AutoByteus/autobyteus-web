@@ -307,7 +307,7 @@ export const useRunHistoryStore = defineStore('runHistory', {
     async createDraftRun(options: {
       workspaceRootPath: string;
       agentDefinitionId: string;
-    }): Promise<string> {
+    }): Promise<void> {
       const agentDefinitionStore = useAgentDefinitionStore();
       if (agentDefinitionStore.agentDefinitions.length === 0) {
         await agentDefinitionStore.fetchAllAgentDefinitions();
@@ -375,11 +375,7 @@ export const useRunHistoryStore = defineStore('runHistory', {
       }
 
       selectionStore.clearSelection();
-
-      const tempRunId = agentContextsStore.createInstanceFromTemplate();
-      this.selectedRunId = tempRunId;
-
-      return tempRunId;
+      this.selectedRunId = null;
     },
 
     async createWorkspace(rootPath: string): Promise<string> {

@@ -123,7 +123,6 @@ const createAgentInstance = (definitionId: string) => {
 
   teamRunConfigStore.clearConfig();
   selectionStore.clearSelection();
-  agentContextsStore.createInstanceFromTemplate();
   emit('instance-created', { type: 'agent', definitionId });
 };
 
@@ -142,7 +141,6 @@ const createTeamInstance = (definitionId: string) => {
 
   agentRunConfigStore.clearConfig();
   selectionStore.clearSelection();
-  teamContextsStore.createInstanceFromTemplate();
   emit('instance-created', { type: 'team', definitionId });
 };
 
