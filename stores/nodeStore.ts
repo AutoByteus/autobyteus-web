@@ -195,6 +195,17 @@ export const useNodeStore = defineStore('nodeStore', () => {
     return getNodeById(nodeId)?.baseUrl || null;
   }
 
+  async function ensureNodeWindowReady(nodeId: string): Promise<{ windowId: number; created: boolean }> {
+    const node = getNodeById(nodeId);
+    if (!node) {
+      throw new Error(`Node '${nodeId}' is not configured.`);
+    }
+    if (!window.electronAPI?.openNodeWindow) {
+      throw new Error('Node window control is only supported in Electron runtime.');
+    }
+    return await window.electronAPI.openNodeWindow(nodeId);
+  }
+
   async function upsertRegistry(change: NodeRegistryChange): Promise<NodeRegistrySnapshot> {
     if (!window.electronAPI?.upsertNodeRegistry) {
       throw new Error('Node registry update is only supported in Electron runtime.');
@@ -311,6 +322,7 @@ export const useNodeStore = defineStore('nodeStore', () => {
     initializeRegistry,
     getNodeById,
     getNodeBaseUrl,
+    ensureNodeWindowReady,
     addRemoteNode,
     removeRemoteNode,
     renameNode,

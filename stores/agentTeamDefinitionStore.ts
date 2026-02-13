@@ -3,20 +3,18 @@ import { ref, computed } from 'vue';
 import { getApolloClient } from '~/utils/apolloClient';
 import { GetAgentTeamDefinitions } from '~/graphql/queries/agentTeamDefinitionQueries';
 import { CreateAgentTeamDefinition, UpdateAgentTeamDefinition, DeleteAgentTeamDefinition } from '~/graphql/mutations/agentTeamDefinitionMutations';
-import type { 
-  GetAgentTeamDefinitionsQuery,
-  CreateAgentTeamDefinitionMutation,
-  CreateAgentTeamDefinitionMutationVariables,
-  UpdateAgentTeamDefinitionMutation,
-  UpdateAgentTeamDefinitionMutationVariables,
-  DeleteAgentTeamDefinitionMutation,
-  DeleteAgentTeamDefinitionMutationVariables,
-  TeamMemberInput,
-} from '~/generated/graphql';
+import type { GetAgentTeamDefinitionsQuery } from '~/generated/graphql';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
+import { EMBEDDED_NODE_ID } from '~/types/node';
 
-// Re-exporting this for use in forms
-export type { TeamMemberInput };
+export interface TeamMemberInput {
+  memberName: string;
+  referenceId: string;
+  referenceType: 'AGENT' | 'AGENT_TEAM';
+  homeNodeId?: string | null;
+  requiredNodeId?: string | null;
+  preferredNodeId?: string | null;
+}
 
 export interface AgentTeamDefinition {
   __typename?: 'AgentTeamDefinition';
@@ -32,6 +30,9 @@ export interface AgentTeamDefinition {
     memberName: string;
     referenceId: string;
     referenceType: 'AGENT' | 'AGENT_TEAM';
+    homeNodeId?: string | null;
+    requiredNodeId?: string | null;
+    preferredNodeId?: string | null;
   }[];
 }
 
@@ -53,6 +54,29 @@ export interface UpdateAgentTeamDefinitionInput {
   avatarUrl?: string | null;
   nodes?: TeamMemberInput[] | null;
 }
+
+const normalizeTeamMember = (member: any): TeamMemberInput => ({
+  memberName: String(member?.memberName ?? ''),
+  referenceId: String(member?.referenceId ?? ''),
+  referenceType: member?.referenceType === 'AGENT_TEAM' ? 'AGENT_TEAM' : 'AGENT',
+  homeNodeId: String(member?.homeNodeId ?? '').trim() || EMBEDDED_NODE_ID,
+  requiredNodeId: member?.requiredNodeId ?? null,
+  preferredNodeId: member?.preferredNodeId ?? null,
+});
+
+const normalizeDefinition = (definition: any): AgentTeamDefinition => ({
+  __typename: definition?.__typename,
+  id: String(definition?.id ?? ''),
+  name: String(definition?.name ?? ''),
+  description: String(definition?.description ?? ''),
+  role: definition?.role ?? null,
+  avatarUrl: definition?.avatarUrl ?? null,
+  updatedAt: definition?.updatedAt ?? null,
+  coordinatorMemberName: String(definition?.coordinatorMemberName ?? ''),
+  nodes: Array.isArray(definition?.nodes)
+    ? definition.nodes.map(normalizeTeamMember)
+    : [],
+});
 
 export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', () => {
   const agentTeamDefinitions = ref<AgentTeamDefinition[]>([]);
@@ -84,7 +108,9 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
         throw new Error(errors.map(e => e.message).join(', '));
       }
 
-      agentTeamDefinitions.value = (data.agentTeamDefinitions || []) as AgentTeamDefinition[];
+      agentTeamDefinitions.value = (data.agentTeamDefinitions || []).map((definition: any) =>
+        normalizeDefinition(definition),
+      );
     } catch (e) {
       error.value = e;
       console.error("Failed to fetch agent team definitions:", e);
@@ -107,7 +133,9 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
         throw new Error(errors.map(e => e.message).join(', '));
       }
 
-      agentTeamDefinitions.value = (data.agentTeamDefinitions || []) as AgentTeamDefinition[];
+      agentTeamDefinitions.value = (data.agentTeamDefinitions || []).map((definition: any) =>
+        normalizeDefinition(definition),
+      );
     } catch (e) {
       error.value = e;
       console.error("Failed to reload agent team definitions:", e);
@@ -122,10 +150,15 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
       const client = getApolloClient();
       const cleanedInput = JSON.parse(JSON.stringify(input));
       if (cleanedInput.nodes) {
-        cleanedInput.nodes.forEach((node: any) => delete node.__typename);
+        cleanedInput.nodes = cleanedInput.nodes.map((node: any) => {
+          const nextNode = { ...node };
+          delete nextNode.__typename;
+          nextNode.homeNodeId = String(nextNode.homeNodeId ?? '').trim() || EMBEDDED_NODE_ID;
+          return nextNode;
+        });
       }
 
-      const { data, errors } = await client.mutate<CreateAgentTeamDefinitionMutation, CreateAgentTeamDefinitionMutationVariables>({
+      const { data, errors } = await client.mutate({
         mutation: CreateAgentTeamDefinition,
         variables: { input: cleanedInput },
         refetchQueries: [{ query: GetAgentTeamDefinitions }]
@@ -139,7 +172,9 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
         // The refetch will update the cache and trigger reactivity.
         // We need to wait for the data to be available in the store.
         await client.query({ query: GetAgentTeamDefinitions, fetchPolicy: 'network-only' }).then(({ data }) => {
-            agentTeamDefinitions.value = (data.agentTeamDefinitions || []) as AgentTeamDefinition[];
+          agentTeamDefinitions.value = (data.agentTeamDefinitions || []).map((definition: any) =>
+            normalizeDefinition(definition),
+          );
         });
         return getAgentTeamDefinitionById.value(data.createAgentTeamDefinition.id);
       }
@@ -156,10 +191,15 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
       const client = getApolloClient();
       const cleanedInput = JSON.parse(JSON.stringify(input));
       if (cleanedInput.nodes) {
-        cleanedInput.nodes.forEach((node: any) => delete node.__typename);
+        cleanedInput.nodes = cleanedInput.nodes.map((node: any) => {
+          const nextNode = { ...node };
+          delete nextNode.__typename;
+          nextNode.homeNodeId = String(nextNode.homeNodeId ?? '').trim() || EMBEDDED_NODE_ID;
+          return nextNode;
+        });
       }
 
-      const { data, errors } = await client.mutate<UpdateAgentTeamDefinitionMutation, UpdateAgentTeamDefinitionMutationVariables>({
+      const { data, errors } = await client.mutate({
         mutation: UpdateAgentTeamDefinition,
         variables: { input: cleanedInput },
         refetchQueries: [{ query: GetAgentTeamDefinitions }]
@@ -171,7 +211,9 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
 
       if (data?.updateAgentTeamDefinition) {
         await client.query({ query: GetAgentTeamDefinitions, fetchPolicy: 'network-only' }).then(({ data }) => {
-            agentTeamDefinitions.value = (data.agentTeamDefinitions || []) as AgentTeamDefinition[];
+          agentTeamDefinitions.value = (data.agentTeamDefinitions || []).map((definition: any) =>
+            normalizeDefinition(definition),
+          );
         });
         return getAgentTeamDefinitionById.value(data.updateAgentTeamDefinition.id);
       }
@@ -186,7 +228,7 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
   async function deleteAgentTeamDefinition(id: string): Promise<boolean> {
     try {
       const client = getApolloClient();
-      const { data, errors } = await client.mutate<DeleteAgentTeamDefinitionMutation, DeleteAgentTeamDefinitionMutationVariables>({
+      const { data, errors } = await client.mutate({
         mutation: DeleteAgentTeamDefinition,
         variables: { id },
         update: (cache) => {

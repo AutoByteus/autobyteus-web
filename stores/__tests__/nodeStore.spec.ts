@@ -298,4 +298,44 @@ describe('nodeStore', () => {
     const afterRemove = JSON.parse(window.localStorage.getItem(NODE_REGISTRY_STORAGE_KEY) || '{}');
     expect(afterRemove.nodes.some((node: any) => node.id === added.id)).toBe(false);
   });
+
+  it('ensures node window is ready in electron runtime', async () => {
+    const openNodeWindow = vi.fn().mockResolvedValue({ windowId: 77, created: false });
+    setElectronApiMock({
+      getNodeRegistrySnapshot: vi.fn().mockResolvedValue({
+        version: 1,
+        nodes: [
+          {
+            id: EMBEDDED_NODE_ID,
+            name: 'Embedded Node',
+            baseUrl: 'http://localhost:29695',
+            nodeType: 'embedded',
+            isSystem: true,
+            createdAt: '2026-02-08T00:00:00.000Z',
+            updatedAt: '2026-02-08T00:00:00.000Z',
+            capabilityProbeState: 'ready',
+            capabilities: { terminal: true, fileExplorerStreaming: true },
+          },
+        ],
+      }),
+      onNodeRegistryUpdated: vi.fn().mockReturnValue(vi.fn()),
+      openNodeWindow,
+    });
+
+    const store = useNodeStore();
+    await store.initializeRegistry();
+    const result = await store.ensureNodeWindowReady(EMBEDDED_NODE_ID);
+
+    expect(result).toEqual({ windowId: 77, created: false });
+    expect(openNodeWindow).toHaveBeenCalledWith(EMBEDDED_NODE_ID);
+  });
+
+  it('rejects ensureNodeWindowReady outside electron runtime', async () => {
+    const store = useNodeStore();
+    await store.initializeRegistry();
+
+    await expect(store.ensureNodeWindowReady(EMBEDDED_NODE_ID)).rejects.toThrow(
+      'Node window control is only supported in Electron runtime.',
+    );
+  });
 });

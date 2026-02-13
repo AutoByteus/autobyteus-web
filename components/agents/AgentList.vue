@@ -46,6 +46,9 @@
       <div v-if="syncError" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
         {{ syncError }}
       </div>
+      <div v-if="runError" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        {{ runError }}
+      </div>
       <div v-if="syncInfo" class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
         {{ syncInfo }}
       </div>
@@ -100,15 +103,45 @@
         <p>{{ error.message }}</p>
       </div>
 
-      <div v-else-if="filteredAgentDefinitions.length > 0" class="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <AgentCard
-          v-for="agentDef in filteredAgentDefinitions"
-          :key="agentDef.id"
-          :agent-def="agentDef"
-          @view-details="viewDetails"
-          @run-agent="runAgent"
-          @sync-agent="syncAgent"
-        />
+      <div v-else-if="hasAnyResults" class="space-y-6">
+        <div v-if="filteredAgentDefinitions.length > 0" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <AgentCard
+            v-for="agentDef in filteredAgentDefinitions"
+            :key="agentDef.id"
+            :agent-def="agentDef"
+            @view-details="viewDetails"
+            @run-agent="runAgent"
+            @sync-agent="syncAgent"
+          />
+        </div>
+
+        <section
+          v-for="section in remoteCatalogSections"
+          :key="`remote-agents-${section.nodeId}`"
+          class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+        >
+          <div class="mb-3 flex items-center justify-between gap-2">
+            <h3 class="text-sm font-semibold text-slate-900">{{ section.nodeName }}</h3>
+            <span
+              class="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+              :class="section.status === 'ready' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'"
+            >
+              {{ section.status.toUpperCase() }}
+            </span>
+          </div>
+          <p v-if="section.errorMessage" class="mb-3 text-xs text-amber-700">{{ section.errorMessage }}</p>
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <RemoteAgentCard
+              v-for="agent in section.agents"
+              :key="`${section.nodeId}-${agent.definitionId}`"
+              :agent="agent"
+              :node-status="section.status"
+              :node-error-message="section.errorMessage"
+              :busy="Boolean(remoteRunBusyByAgentKey[`${section.nodeId}:${agent.definitionId}`])"
+              @run="runRemoteAgent(section.nodeId, agent)"
+            />
+          </div>
+        </section>
       </div>
 
       <div v-else class="rounded-lg border border-slate-200 bg-white py-16 text-center shadow-sm">
@@ -142,10 +175,15 @@ import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useAgentDefinitionStore, type AgentDefinition } from '~/stores/agentDefinitionStore';
 import AgentCard from '~/components/agents/AgentCard.vue';
-import { useRunActions } from '~/composables/useRunActions';
+import RemoteAgentCard from '~/components/agents/RemoteAgentCard.vue';
+import {
+  useHomeNodeRunLauncher,
+  type HomeNodeRunnableAgent,
+} from '~/composables/useHomeNodeRunLauncher';
 import { useNodeStore } from '~/stores/nodeStore';
 import { useNodeSyncStore } from '~/stores/nodeSyncStore';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
+import { useFederatedCatalogStore } from '~/stores/federatedCatalogStore';
 import { EMBEDDED_NODE_ID } from '~/types/node';
 import NodeSyncTargetPickerModal from '~/components/sync/NodeSyncTargetPickerModal.vue';
 import NodeSyncReportPanel from '~/components/sync/NodeSyncReportPanel.vue';
@@ -154,11 +192,12 @@ import type { NodeSyncRunReport } from '~/types/nodeSync';
 const emit = defineEmits(['navigate']);
 
 const agentDefinitionStore = useAgentDefinitionStore();
-const { prepareAgentRun } = useRunActions();
+const { launchFromCatalogAgent } = useHomeNodeRunLauncher();
 const { deleteResult } = storeToRefs(agentDefinitionStore);
 const nodeStore = useNodeStore();
 const nodeSyncStore = useNodeSyncStore();
 const windowNodeContextStore = useWindowNodeContextStore();
+const federatedCatalogStore = useFederatedCatalogStore();
 
 const agentDefinitions = computed(() => agentDefinitionStore.agentDefinitions);
 const loading = computed(() => agentDefinitionStore.loading);
@@ -168,10 +207,12 @@ const searchQuery = ref('');
 const reloading = ref(false);
 const syncInfo = ref<string | null>(null);
 const syncError = ref<string | null>(null);
+const runError = ref<string | null>(null);
 const pendingSyncAgent = ref<AgentDefinition | null>(null);
 const isTargetPickerOpen = ref(false);
 const availableSyncTargets = ref<Array<{ id: string; name: string; baseUrl: string }>>([]);
 const lastAgentSyncReport = ref<NodeSyncRunReport | null>(null);
+const remoteRunBusyByAgentKey = ref<Record<string, boolean>>({});
 
 const sourceNodeId = computed(() => windowNodeContextStore.nodeId || EMBEDDED_NODE_ID);
 const sourceNodeName = computed(() => nodeStore.getNodeById(sourceNodeId.value)?.name || 'Current Node');
@@ -211,16 +252,48 @@ const filteredAgentDefinitions = computed(() => {
   });
 });
 
+const remoteCatalogSections = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase();
+  return federatedCatalogStore.catalogByNode
+    .filter((scope) => scope.nodeId !== sourceNodeId.value)
+    .map((scope) => ({
+      nodeId: scope.nodeId,
+      nodeName: scope.nodeName,
+      status: scope.status,
+      errorMessage: scope.errorMessage,
+      agents: scope.agents.filter((agent) => {
+        if (!query) {
+          return true;
+        }
+        return (
+          agent.name.toLowerCase().includes(query)
+          || agent.description.toLowerCase().includes(query)
+          || agent.role.toLowerCase().includes(query)
+          || (agent.toolNames ?? []).join(' ').toLowerCase().includes(query)
+          || (agent.skillNames ?? []).join(' ').toLowerCase().includes(query)
+        );
+      }),
+    }))
+    .filter((scope) => scope.agents.length > 0 || Boolean(scope.errorMessage));
+});
+
+const hasAnyResults = computed(() =>
+  filteredAgentDefinitions.value.length > 0 || remoteCatalogSections.value.length > 0,
+);
+
 onMounted(() => {
   // Fetch main agent definitions
   if (agentDefinitions.value.length === 0) {
     agentDefinitionStore.fetchAllAgentDefinitions();
   }
 
-  nodeStore.initializeRegistry().catch((error) => {
+  Promise.resolve(nodeStore.initializeRegistry()).catch((error) => {
     syncError.value = error instanceof Error ? error.message : String(error);
   });
-  nodeSyncStore.initialize().catch((error) => {
+  Promise.resolve(federatedCatalogStore.loadCatalog()).catch((error) => {
+    syncError.value = error instanceof Error ? error.message : String(error);
+  });
+  Promise.resolve(nodeSyncStore.initialize()).catch((error) => {
     syncError.value = error instanceof Error ? error.message : String(error);
   });
 });
@@ -228,7 +301,10 @@ onMounted(() => {
 const handleReload = async () => {
   reloading.value = true;
   try {
-    await agentDefinitionStore.reloadAllAgentDefinitions();
+    await Promise.all([
+      agentDefinitionStore.reloadAllAgentDefinitions(),
+      federatedCatalogStore.reloadCatalog(),
+    ]);
   } catch (e) {
     console.error("Failed to reload agents:", e);
     // Optionally show a notification to the user
@@ -241,9 +317,41 @@ const viewDetails = (agentId: string) => {
   emit('navigate', { view: 'detail', id: agentId });
 };
 
-const runAgent = (agentDef: AgentDefinition) => {
-  prepareAgentRun(agentDef);
-  navigateTo('/workspace');
+const runAgent = async (agentDef: AgentDefinition): Promise<void> => {
+  runError.value = null;
+  const localRef: HomeNodeRunnableAgent = {
+    homeNodeId: sourceNodeId.value,
+    definitionId: agentDef.id,
+    name: agentDef.name,
+  };
+
+  try {
+    await launchFromCatalogAgent(localRef);
+  } catch (error) {
+    runError.value = error instanceof Error ? error.message : String(error);
+  }
+};
+
+const runRemoteAgent = async (nodeId: string, agent: { definitionId: string; name: string }): Promise<void> => {
+  runError.value = null;
+  const agentKey = `${nodeId}:${agent.definitionId}`;
+  remoteRunBusyByAgentKey.value = {
+    ...remoteRunBusyByAgentKey.value,
+    [agentKey]: true,
+  };
+
+  try {
+    await launchFromCatalogAgent({
+      homeNodeId: nodeId,
+      definitionId: agent.definitionId,
+      name: agent.name,
+    });
+  } catch (error) {
+    runError.value = error instanceof Error ? error.message : String(error);
+  } finally {
+    const { [agentKey]: _removed, ...remaining } = remoteRunBusyByAgentKey.value;
+    remoteRunBusyByAgentKey.value = remaining;
+  }
 };
 
 const syncAgent = async (agentDef: AgentDefinition): Promise<void> => {

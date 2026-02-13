@@ -2,6 +2,10 @@
 
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { NodeRegistryChange } from './nodeRegistryTypes'
+import type {
+  DispatchNodeWindowCommandResult,
+  NodeWindowCommand,
+} from './window-command-types'
 
 type Cleanup = () => void
 
@@ -34,6 +38,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getNodeRegistrySnapshot: () => ipcRenderer.invoke('get-node-registry-snapshot'),
   onNodeRegistryUpdated: (callback: (snapshot: any) => void) => {
     return registerIpcListener('node-registry-updated', callback)
+  },
+  dispatchNodeWindowCommand: (nodeId: string, command: NodeWindowCommand): Promise<DispatchNodeWindowCommandResult> =>
+    ipcRenderer.invoke('dispatch-node-window-command', nodeId, command),
+  onNodeWindowCommand: (callback: (command: NodeWindowCommand) => void) => {
+    return registerIpcListener('node-window-command', callback)
   },
 
   // Method for directly checking server health

@@ -7,6 +7,17 @@ import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
 import { useNodeStore } from '~/stores/nodeStore';
 import { useNodeSyncStore } from '~/stores/nodeSyncStore';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
+import { useFederatedCatalogStore } from '~/stores/federatedCatalogStore';
+
+const { launchFromCatalogTeamMock } = vi.hoisted(() => ({
+  launchFromCatalogTeamMock: vi.fn(),
+}));
+
+vi.mock('~/composables/useHomeNodeRunLauncher', () => ({
+  useHomeNodeRunLauncher: () => ({
+    launchFromCatalogTeam: launchFromCatalogTeamMock,
+  }),
+}));
 
 const AgentTeamCardStub = {
   name: 'AgentTeamCard',
@@ -93,6 +104,7 @@ describe('AgentTeamList', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    launchFromCatalogTeamMock.mockReset();
     setElectronApiMock(null);
   });
 
@@ -118,6 +130,42 @@ describe('AgentTeamList', () => {
     const windowNodeContextStore = useWindowNodeContextStore();
     windowNodeContextStore.nodeId = options?.sourceNodeId ?? 'embedded-local';
 
+    const federatedCatalogStore = useFederatedCatalogStore();
+    federatedCatalogStore.catalogByNode = [
+      {
+        nodeId: 'embedded-local',
+        nodeName: 'Embedded Node',
+        baseUrl: 'http://localhost:29695',
+        status: 'ready',
+        errorMessage: null,
+        agents: [],
+        teams: [],
+      },
+      {
+        nodeId: 'remote-1',
+        nodeName: 'Remote One',
+        baseUrl: 'http://localhost:8001',
+        status: 'ready',
+        errorMessage: null,
+        agents: [],
+        teams: [
+          {
+            homeNodeId: 'remote-1',
+            definitionId: 'remote-team-1',
+            name: 'Remote Team One',
+            description: 'Remote team description',
+            role: 'orchestrator',
+            avatarUrl: null,
+            coordinatorMemberName: 'remote_lead',
+            memberCount: 2,
+            nestedTeamCount: 0,
+          },
+        ],
+      },
+    ] as any;
+    (federatedCatalogStore.loadCatalog as any).mockResolvedValue(undefined);
+    (federatedCatalogStore.reloadCatalog as any).mockResolvedValue(undefined);
+
     const wrapper = mount(AgentTeamList, {
       global: {
         plugins: [pinia],
@@ -138,6 +186,33 @@ describe('AgentTeamList', () => {
     const wrapper = await mountComponent();
     const cards = wrapper.findAllComponents({ name: 'AgentTeamCard' });
     expect(cards).toHaveLength(2);
+    expect(wrapper.findAll('section')).toHaveLength(1);
+    expect(wrapper.text()).toContain('Remote Team One');
+  });
+
+  it('launches remote team run handoff when remote run is clicked', async () => {
+    const wrapper = await mountComponent();
+    launchFromCatalogTeamMock.mockResolvedValue(undefined);
+
+    await wrapper.get('section button').trigger('click');
+    await flushAsyncUi();
+
+    expect(launchFromCatalogTeamMock).toHaveBeenCalledWith({
+      homeNodeId: 'remote-1',
+      definitionId: 'remote-team-1',
+      name: 'Remote Team One',
+    });
+    expect(readSetupRef<string | null>(wrapper, 'runError')).toBeNull();
+  });
+
+  it('shows remote run handoff error when launcher throws', async () => {
+    const wrapper = await mountComponent();
+    launchFromCatalogTeamMock.mockRejectedValue(new Error('destination window unavailable'));
+
+    await wrapper.get('section button').trigger('click');
+    await flushAsyncUi();
+
+    expect(readSetupRef<string | null>(wrapper, 'runError')).toBe('destination window unavailable');
   });
 
   it('shows error when no target nodes are available for team sync', async () => {

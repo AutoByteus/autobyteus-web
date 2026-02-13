@@ -105,12 +105,24 @@
           </div>
 
           <div class="mt-3 max-h-[26rem] space-y-4 overflow-y-auto pr-1">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">My Agents</p>
-              <div class="mt-2 space-y-2">
+            <div v-for="section in librarySections" :key="`library-${section.nodeId}`" class="space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ section.nodeName }}</p>
+                <span
+                  class="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                  :class="section.isLocal ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'"
+                >
+                  {{ section.isLocal ? 'LOCAL' : 'REMOTE' }}
+                </span>
+              </div>
+              <p v-if="section.errorMessage" class="text-xs text-amber-700">
+                {{ section.errorMessage }}
+              </p>
+
+              <div class="space-y-2">
                 <div
-                  v-for="item in filteredAgentItems"
-                  :key="`AGENT-${item.id}`"
+                  v-for="item in section.agents"
+                  :key="`AGENT-${item.homeNodeId}-${item.id}`"
                   draggable="true"
                   class="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-800"
                   @dragstart="onLibraryDragStart($event, item)"
@@ -125,16 +137,10 @@
                   </button>
                   <span class="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">AGENT</span>
                 </div>
-                <p v-if="filteredAgentItems.length === 0" class="text-xs text-slate-400">No agents found.</p>
-              </div>
-            </div>
 
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">My Teams</p>
-              <div class="mt-2 space-y-2">
                 <div
-                  v-for="item in filteredTeamItems"
-                  :key="`TEAM-${item.id}`"
+                  v-for="item in section.teams"
+                  :key="`TEAM-${item.homeNodeId}-${item.id}`"
                   draggable="true"
                   class="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-800"
                   @dragstart="onLibraryDragStart($event, item)"
@@ -149,9 +155,10 @@
                   </button>
                   <span class="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700">TEAM</span>
                 </div>
-                <p v-if="filteredTeamItems.length === 0" class="text-xs text-slate-400">No teams found.</p>
               </div>
             </div>
+
+            <p v-if="librarySections.length === 0" class="text-xs text-slate-400">No agents or teams found.</p>
           </div>
 
           <p class="mt-3 text-xs text-slate-500">Drag items from this library into Team Canvas</p>
@@ -179,7 +186,7 @@
           <div class="mt-3 space-y-2">
             <div
               v-for="(node, index) in formData.nodes"
-              :key="`${node.memberName}-${index}`"
+              :key="buildNodeCanvasKey(node, index)"
               class="rounded-md border p-3"
               :class="[
                 selectedNodeIndex === index ? 'border-blue-300 bg-blue-50/40' : 'border-slate-200 bg-white',
@@ -274,6 +281,34 @@
               </div>
 
               <div>
+                <label class="block text-xs font-medium text-slate-600">Required Node</label>
+                <select
+                  class="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  :value="selectedNode.requiredNodeId || ''"
+                  @change="updateSelectedRequiredNodeId(($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="">Any node</option>
+                  <option v-for="node in availableNodes" :key="`required-${node.id}`" :value="node.id">
+                    {{ node.name }} ({{ node.id }})
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium text-slate-600">Preferred Node</label>
+                <select
+                  class="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  :value="selectedNode.preferredNodeId || ''"
+                  @change="updateSelectedPreferredNodeId(($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="">No preference</option>
+                  <option v-for="node in availableNodes" :key="`preferred-${node.id}`" :value="node.id">
+                    {{ node.name }} ({{ node.id }})
+                  </option>
+                </select>
+              </div>
+
+              <div>
                 <p class="text-xs font-medium text-slate-600">Coordinator</p>
                 <div class="mt-1 inline-flex items-center gap-2 text-sm text-slate-800" v-if="selectedNode.referenceType === 'AGENT'">
                   <span>{{ isCoordinator(selectedNode) ? 'Enabled' : 'Disabled' }}</span>
@@ -337,8 +372,11 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, toRefs, watch } from 'vue';
 import { useFileUploadStore } from '~/stores/fileUploadStore';
-import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
 import { useAgentTeamDefinitionStore, type TeamMemberInput } from '~/stores/agentTeamDefinitionStore';
+import { useNodeStore } from '~/stores/nodeStore';
+import { useFederatedCatalogStore } from '~/stores/federatedCatalogStore';
+import { EMBEDDED_NODE_ID } from '~/types/node';
+import { buildFederatedMemberKey } from '~/utils/federated-catalog/federated-member-key';
 
 type ReferenceType = 'AGENT' | 'AGENT_TEAM';
 
@@ -346,6 +384,18 @@ interface LibraryItem {
   id: string;
   name: string;
   referenceType: ReferenceType;
+  homeNodeId: string;
+  nodeName: string;
+}
+
+interface LibrarySection {
+  nodeId: string;
+  nodeName: string;
+  isLocal: boolean;
+  status: 'ready' | 'degraded' | 'unreachable';
+  errorMessage?: string | null;
+  agents: LibraryItem[];
+  teams: LibraryItem[];
 }
 
 const props = defineProps<{
@@ -358,8 +408,9 @@ const emit = defineEmits(['submit', 'cancel']);
 const { initialData } = toRefs(props);
 
 const fileUploadStore = useFileUploadStore();
-const agentDefStore = useAgentDefinitionStore();
 const agentTeamDefStore = useAgentTeamDefinitionStore();
+const federatedCatalogStore = useFederatedCatalogStore();
+const nodeStore = useNodeStore();
 
 const avatarFileInputRef = ref<HTMLInputElement | null>(null);
 const avatarUploadError = ref<string | null>(null);
@@ -399,39 +450,49 @@ const avatarInitials = computed(() => {
 });
 
 const currentTeamId = computed(() => initialData.value?.id ?? null);
+const localNodeId = computed(() => federatedCatalogStore.localNodeId || EMBEDDED_NODE_ID);
 
-const agentLibraryItems = computed<LibraryItem[]>(() =>
-  (agentDefStore.agentDefinitions || []).map((agent) => ({
-    id: agent.id,
-    name: agent.name,
-    referenceType: 'AGENT',
-  })),
-);
-
-const teamLibraryItems = computed<LibraryItem[]>(() =>
-  (agentTeamDefStore.agentTeamDefinitions || [])
-    .filter((team) => team.id !== currentTeamId.value)
-    .map((team) => ({
-      id: team.id,
-      name: team.name,
-      referenceType: 'AGENT_TEAM',
-    })),
-);
-
-const filteredAgentItems = computed(() => {
+const librarySections = computed<LibrarySection[]>(() => {
   const query = librarySearch.value.trim().toLowerCase();
-  if (!query) {
-    return agentLibraryItems.value;
-  }
-  return agentLibraryItems.value.filter((item) => item.name.toLowerCase().includes(query));
-});
 
-const filteredTeamItems = computed(() => {
-  const query = librarySearch.value.trim().toLowerCase();
-  if (!query) {
-    return teamLibraryItems.value;
-  }
-  return teamLibraryItems.value.filter((item) => item.name.toLowerCase().includes(query));
+  return federatedCatalogStore.catalogByNode
+    .map((scope) => {
+      const agents = (scope.agents || [])
+        .filter((agent) => !query || agent.name.toLowerCase().includes(query))
+        .map(
+          (agent): LibraryItem => ({
+            id: agent.definitionId,
+            name: agent.name,
+            referenceType: 'AGENT',
+            homeNodeId: agent.homeNodeId,
+            nodeName: scope.nodeName,
+          }),
+        );
+
+      const teams = (scope.teams || [])
+        .filter((team) => team.definitionId !== currentTeamId.value)
+        .filter((team) => !query || team.name.toLowerCase().includes(query))
+        .map(
+          (team): LibraryItem => ({
+            id: team.definitionId,
+            name: team.name,
+            referenceType: 'AGENT_TEAM',
+            homeNodeId: team.homeNodeId,
+            nodeName: scope.nodeName,
+          }),
+        );
+
+      return {
+        nodeId: scope.nodeId,
+        nodeName: scope.nodeName,
+        isLocal: scope.nodeId === localNodeId.value,
+        status: scope.status,
+        errorMessage: scope.errorMessage ?? null,
+        agents,
+        teams,
+      } satisfies LibrarySection;
+    })
+    .filter((scope) => scope.agents.length > 0 || scope.teams.length > 0 || Boolean(scope.errorMessage));
 });
 
 const selectedNode = computed(() => {
@@ -440,6 +501,8 @@ const selectedNode = computed(() => {
   }
   return formData.nodes[selectedNodeIndex.value] || null;
 });
+
+const availableNodes = computed(() => nodeStore.nodes);
 
 const nameValid = computed(() => Boolean(formData.name.trim()));
 const descriptionValid = computed(() => Boolean(formData.description.trim()));
@@ -456,10 +519,14 @@ const coordinatorValid = computed(() => {
 const canSubmit = computed(() => nameValid.value && descriptionValid.value && membersValid.value && coordinatorValid.value);
 
 const getReferenceName = (node: TeamMemberInput): string => {
+  const homeNodeId = node.homeNodeId || EMBEDDED_NODE_ID;
+  const nodeName = nodeStore.getNodeById(homeNodeId)?.name || homeNodeId;
   if (node.referenceType === 'AGENT') {
-    return agentDefStore.getAgentDefinitionById(node.referenceId)?.name || node.referenceId;
+    const agent = federatedCatalogStore.findAgentByNodeAndId(homeNodeId, node.referenceId);
+    return agent ? `${agent.name} @ ${nodeName}` : `${node.referenceId} @ ${nodeName}`;
   }
-  return agentTeamDefStore.getAgentTeamDefinitionById(node.referenceId)?.name || node.referenceId;
+  const team = federatedCatalogStore.findTeamByNodeAndId(homeNodeId, node.referenceId);
+  return team ? `${team.name} @ ${nodeName}` : `${node.referenceId} @ ${nodeName}`;
 };
 
 const buildMemberBaseName = (rawName: string): string => {
@@ -488,11 +555,21 @@ const buildUniqueMemberName = (rawName: string): string => {
   return `${baseName}_${counter}`;
 };
 
+const buildNodeCanvasKey = (node: TeamMemberInput, index: number): string =>
+  `${buildFederatedMemberKey({
+    homeNodeId: node.homeNodeId?.trim() || EMBEDDED_NODE_ID,
+    referenceType: node.referenceType,
+    referenceId: node.referenceId,
+  })}:${node.memberName}:${index}`;
+
 const addNodeFromLibrary = (item: LibraryItem) => {
   const newNode: TeamMemberInput = {
     memberName: buildUniqueMemberName(item.name),
     referenceType: item.referenceType,
     referenceId: item.id,
+    homeNodeId: item.homeNodeId,
+    requiredNodeId: null,
+    preferredNodeId: null,
   };
 
   formData.nodes.push(newNode);
@@ -575,6 +652,25 @@ const updateSelectedMemberName = (nextNameRaw: string) => {
   }
 };
 
+const normalizeNodeHint = (value: string): string | null => {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const updateSelectedRequiredNodeId = (nextNodeId: string) => {
+  if (!selectedNode.value) {
+    return;
+  }
+  selectedNode.value.requiredNodeId = normalizeNodeHint(nextNodeId);
+};
+
+const updateSelectedPreferredNodeId = (nextNodeId: string) => {
+  if (!selectedNode.value) {
+    return;
+  }
+  selectedNode.value.preferredNodeId = normalizeNodeHint(nextNodeId);
+};
+
 const validateForm = () => {
   clearErrors();
   let valid = true;
@@ -603,6 +699,11 @@ const validateForm = () => {
     }
     if (!node.referenceId) {
       formErrors.nodes = 'Each member needs a source reference.';
+      valid = false;
+      break;
+    }
+    if (!node.homeNodeId?.trim()) {
+      formErrors.nodes = 'Each member must include an owner node.';
       valid = false;
       break;
     }
@@ -677,6 +778,9 @@ const handleSubmit = () => {
       memberName: node.memberName.trim(),
       referenceType: node.referenceType,
       referenceId: node.referenceId,
+      homeNodeId: node.homeNodeId?.trim() || EMBEDDED_NODE_ID,
+      requiredNodeId: node.requiredNodeId?.trim() || null,
+      preferredNodeId: node.preferredNodeId?.trim() || null,
     })),
     avatarUrl: formData.avatarUrl,
   };
@@ -696,7 +800,14 @@ watch(
       formData.description = newData.description || '';
       formData.coordinatorMemberName = newData.coordinatorMemberName || '';
       formData.avatarUrl = newData.avatarUrl || newData.avatar_url || '';
-      formData.nodes = JSON.parse(JSON.stringify(newData.nodes || []));
+      formData.nodes = (newData.nodes || []).map((node: TeamMemberInput) => ({
+        memberName: node.memberName,
+        referenceId: node.referenceId,
+        referenceType: node.referenceType,
+        homeNodeId: node.homeNodeId ?? EMBEDDED_NODE_ID,
+        requiredNodeId: node.requiredNodeId ?? null,
+        preferredNodeId: node.preferredNodeId ?? null,
+      }));
       selectedNodeIndex.value = formData.nodes.length > 0 ? 0 : null;
     } else {
       selectedNodeIndex.value = null;
@@ -713,9 +824,11 @@ watch(
 );
 
 onMounted(() => {
-  if (agentDefStore.agentDefinitions.length === 0) {
-    agentDefStore.fetchAllAgentDefinitions();
-  }
+  Promise.resolve(nodeStore.initializeRegistry())
+    .then(() => federatedCatalogStore.loadCatalog())
+    .catch((error) => {
+      console.error('Failed to load federated catalog for team builder:', error);
+    });
   if (agentTeamDefStore.agentTeamDefinitions.length === 0) {
     agentTeamDefStore.fetchAllAgentTeamDefinitions();
   }

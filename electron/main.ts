@@ -11,6 +11,12 @@ import type {
   WindowNodeContext,
 } from './nodeRegistryTypes';
 import { EMBEDDED_NODE_ID } from './nodeRegistryTypes';
+import { NodeWindowCommandRelay } from './node-window-command-relay';
+import type {
+  DispatchNodeWindowCommandResult,
+  NodeWindowCommand,
+} from './window-command-types';
+import { isNodeWindowCommand } from './window-command-validators';
 import { logger } from './logger';
 import { serverManager } from './server/serverManagerFactory';
 import { ServerStatusManager } from './server/serverStatusManager';
@@ -27,6 +33,8 @@ let shutdownTimer: NodeJS.Timeout | null = null;
 
 const nodeIdByWindowId = new Map<number, string>();
 const windowIdByNodeId = new Map<string, number>();
+const readyWindowIds = new Set<number>();
+const nodeWindowCommandRelay = new NodeWindowCommandRelay();
 let nodeRegistrySnapshot: NodeRegistrySnapshot = {
   version: 0,
   nodes: [],
@@ -169,6 +177,7 @@ function mapWindowNodeBinding(window: BrowserWindow, nodeId: string): void {
   const webContentsId = window.webContents.id;
   nodeIdByWindowId.set(webContentsId, nodeId);
   windowIdByNodeId.set(nodeId, webContentsId);
+  readyWindowIds.delete(webContentsId);
 }
 
 function clearWindowNodeBindingByWebContentsId(webContentsId: number): void {
@@ -176,6 +185,7 @@ function clearWindowNodeBindingByWebContentsId(webContentsId: number): void {
   if (nodeId) {
     windowIdByNodeId.delete(nodeId);
   }
+  readyWindowIds.delete(webContentsId);
   nodeIdByWindowId.delete(webContentsId);
 }
 
@@ -225,11 +235,14 @@ function createNodeBoundWindow(nodeId: string): BrowserWindow {
   });
 
   window.webContents.on('did-finish-load', () => {
+    readyWindowIds.add(webContentsId);
     window.webContents.send('server-status', serverStatusManager.getStatus());
     window.webContents.send('node-registry-updated', nodeRegistrySnapshot);
+    flushPendingNodeCommands(nodeId, webContentsId);
   });
 
   window.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    readyWindowIds.delete(webContentsId);
     logger.error('Page failed to load:', {
       nodeId,
       errorCode,
@@ -290,6 +303,93 @@ function ensureNodeExists(nodeId: string): void {
   }
 }
 
+function isWindowReadyForCommands(windowId: number): boolean {
+  return readyWindowIds.has(windowId);
+}
+
+function deliverNodeWindowCommand(windowId: number, command: NodeWindowCommand): boolean {
+  const target = BrowserWindow.fromId(windowId);
+  if (!target || target.isDestroyed()) {
+    return false;
+  }
+
+  try {
+    target.webContents.send('node-window-command', command);
+    return true;
+  } catch (error) {
+    logger.error('Failed to deliver node-window-command', {
+      windowId,
+      nodeId: nodeIdByWindowId.get(windowId),
+      commandId: command.commandId,
+      commandType: command.commandType,
+      error,
+    });
+    return false;
+  }
+}
+
+function flushPendingNodeCommands(nodeId: string, windowId: number): number {
+  const pendingCommands = nodeWindowCommandRelay.drain(nodeId);
+  if (pendingCommands.length === 0) {
+    return 0;
+  }
+
+  let deliveredCount = 0;
+  for (const command of pendingCommands) {
+    if (deliverNodeWindowCommand(windowId, command)) {
+      deliveredCount += 1;
+      continue;
+    }
+    nodeWindowCommandRelay.enqueue(nodeId, command);
+  }
+
+  logger.info('Flushed pending node-window-command queue', {
+    nodeId,
+    windowId,
+    deliveredCount,
+    remaining: nodeWindowCommandRelay.getPendingCount(nodeId),
+  });
+
+  return deliveredCount;
+}
+
+function dispatchNodeWindowCommand(
+  nodeId: string,
+  command: NodeWindowCommand,
+): DispatchNodeWindowCommandResult {
+  ensureNodeExists(nodeId);
+
+  const { windowId } = openNodeWindow(nodeId);
+  if (!isWindowReadyForCommands(windowId)) {
+    nodeWindowCommandRelay.enqueue(nodeId, command);
+    return {
+      accepted: true,
+      delivered: false,
+      queued: true,
+      windowId,
+      reason: 'destination-window-not-ready',
+    };
+  }
+
+  if (deliverNodeWindowCommand(windowId, command)) {
+    return {
+      accepted: true,
+      delivered: true,
+      queued: false,
+      windowId,
+    };
+  }
+
+  nodeWindowCommandRelay.enqueue(nodeId, command);
+  return {
+    accepted: true,
+    delivered: false,
+    queued: true,
+    windowId,
+    reason: 'delivery-failed-enqueued',
+  };
+}
+
 function applyNodeRegistryChange(change: NodeRegistryChange): NodeRegistrySnapshot {
   const now = nowIsoString();
   const existingNodes = [...nodeRegistrySnapshot.nodes];
@@ -335,6 +435,7 @@ function applyNodeRegistryChange(change: NodeRegistryChange): NodeRegistrySnapsh
       throw new Error(`Node does not exist: ${change.nodeId}`);
     }
     closeNodeWindowIfOpen(change.nodeId);
+    nodeWindowCommandRelay.clearNode(change.nodeId);
     existingNodes.splice(removeIndex, 1);
   } else if (change.type === 'rename') {
     const target = existingNodes.find((node) => node.id === change.nodeId);
@@ -399,6 +500,45 @@ function installIpcHandlers(): void {
   });
 
   ipcMain.handle('list-node-windows', async () => listNodeWindows());
+
+  ipcMain.handle(
+    'dispatch-node-window-command',
+    async (
+      _event,
+      nodeId: string,
+      commandCandidate: unknown,
+    ): Promise<DispatchNodeWindowCommandResult> => {
+      try {
+        if (!isNodeWindowCommand(commandCandidate)) {
+          return {
+            accepted: false,
+            delivered: false,
+            queued: false,
+            reason: 'invalid-command-payload',
+          };
+        }
+
+        const command = commandCandidate;
+        if (command.payload.homeNodeId !== nodeId) {
+          return {
+            accepted: false,
+            delivered: false,
+            queued: false,
+            reason: 'command-home-node-mismatch',
+          };
+        }
+
+        return dispatchNodeWindowCommand(nodeId, command);
+      } catch (error) {
+        return {
+          accepted: false,
+          delivered: false,
+          queued: false,
+          reason: error instanceof Error ? error.message : String(error),
+        };
+      }
+    },
+  );
 
   ipcMain.handle('get-window-context', async (event): Promise<WindowNodeContext> => {
     return getWindowContextByWebContentsId(event.sender.id);

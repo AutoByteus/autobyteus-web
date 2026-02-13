@@ -45,6 +45,9 @@
       <div v-if="syncError" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
         {{ syncError }}
       </div>
+      <div v-if="runError" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        {{ runError }}
+      </div>
       <div v-if="syncInfo" class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
         {{ syncInfo }}
       </div>
@@ -63,15 +66,45 @@
         <p class="font-bold">Error loading agent team definitions:</p>
         <p>{{ error.message }}</p>
       </div>
-      <div v-else-if="filteredTeamDefinitions.length > 0" class="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <AgentTeamCard
-          v-for="teamDef in filteredTeamDefinitions"
-          :key="teamDef.id"
-          :team-def="teamDef"
-          @view-details="viewDetails"
-          @run-team="handleRunTeam"
-          @sync-team="syncTeam"
-        />
+      <div v-else-if="hasAnyResults" class="space-y-6">
+        <div v-if="filteredTeamDefinitions.length > 0" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <AgentTeamCard
+            v-for="teamDef in filteredTeamDefinitions"
+            :key="teamDef.id"
+            :team-def="teamDef"
+            @view-details="viewDetails"
+            @run-team="handleRunTeam"
+            @sync-team="syncTeam"
+          />
+        </div>
+
+        <section
+          v-for="section in remoteCatalogSections"
+          :key="`remote-teams-${section.nodeId}`"
+          class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+        >
+          <div class="mb-3 flex items-center justify-between gap-2">
+            <h3 class="text-sm font-semibold text-slate-900">{{ section.nodeName }}</h3>
+            <span
+              class="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+              :class="section.status === 'ready' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'"
+            >
+              {{ section.status.toUpperCase() }}
+            </span>
+          </div>
+          <p v-if="section.errorMessage" class="mb-3 text-xs text-amber-700">{{ section.errorMessage }}</p>
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <RemoteTeamCard
+              v-for="team in section.teams"
+              :key="`${section.nodeId}-${team.definitionId}`"
+              :team="team"
+              :node-status="section.status"
+              :node-error-message="section.errorMessage"
+              :busy="Boolean(remoteRunBusyByTeamKey[`${section.nodeId}:${team.definitionId}`])"
+              @run="runRemoteTeam(section.nodeId, team)"
+            />
+          </div>
+        </section>
       </div>
       <div v-else class="rounded-lg border border-slate-200 bg-white py-16 text-center shadow-sm">
         <div class="text-slate-500">
@@ -103,10 +136,16 @@
 import { computed, onMounted, ref } from 'vue';
 import { useAgentTeamDefinitionStore, type AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
 import AgentTeamCard from '~/components/agentTeams/AgentTeamCard.vue';
+import RemoteTeamCard from '~/components/agentTeams/RemoteTeamCard.vue';
 import { useRunActions } from '~/composables/useRunActions';
+import {
+  useHomeNodeRunLauncher,
+  type HomeNodeRunnableTeam,
+} from '~/composables/useHomeNodeRunLauncher';
 import { useNodeStore } from '~/stores/nodeStore';
 import { useNodeSyncStore } from '~/stores/nodeSyncStore';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
+import { useFederatedCatalogStore } from '~/stores/federatedCatalogStore';
 import { EMBEDDED_NODE_ID } from '~/types/node';
 import NodeSyncTargetPickerModal from '~/components/sync/NodeSyncTargetPickerModal.vue';
 import NodeSyncReportPanel from '~/components/sync/NodeSyncReportPanel.vue';
@@ -115,11 +154,13 @@ import type { NodeSyncRunReport } from '~/types/nodeSync';
 const emit = defineEmits(['navigate']);
 
 const store = useAgentTeamDefinitionStore();
+const { launchFromCatalogTeam } = useHomeNodeRunLauncher();
 const { prepareTeamRun } = useRunActions();
 const router = useRouter();
 const nodeStore = useNodeStore();
 const nodeSyncStore = useNodeSyncStore();
 const windowNodeContextStore = useWindowNodeContextStore();
+const federatedCatalogStore = useFederatedCatalogStore();
 
 const teamDefinitions = computed(() => store.agentTeamDefinitions);
 const loading = computed(() => store.loading);
@@ -129,10 +170,12 @@ const searchQuery = ref('');
 const reloading = ref(false);
 const syncInfo = ref<string | null>(null);
 const syncError = ref<string | null>(null);
+const runError = ref<string | null>(null);
 const pendingSyncTeam = ref<AgentTeamDefinition | null>(null);
 const isTargetPickerOpen = ref(false);
 const availableSyncTargets = ref<Array<{ id: string; name: string; baseUrl: string }>>([]);
 const lastTeamSyncReport = ref<NodeSyncRunReport | null>(null);
+const remoteRunBusyByTeamKey = ref<Record<string, boolean>>({});
 
 const sourceNodeId = computed(() => windowNodeContextStore.nodeId || EMBEDDED_NODE_ID);
 const sourceNodeName = computed(() => nodeStore.getNodeById(sourceNodeId.value)?.name || 'Current Node');
@@ -145,15 +188,46 @@ const filteredTeamDefinitions = computed(() => {
   return teamDefinitions.value.filter((teamDef) => teamDef.name.toLowerCase().includes(query));
 });
 
+const remoteCatalogSections = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase();
+  return federatedCatalogStore.catalogByNode
+    .filter((scope) => scope.nodeId !== sourceNodeId.value)
+    .map((scope) => ({
+      nodeId: scope.nodeId,
+      nodeName: scope.nodeName,
+      status: scope.status,
+      errorMessage: scope.errorMessage,
+      teams: scope.teams.filter((team) => {
+        if (!query) {
+          return true;
+        }
+        return (
+          team.name.toLowerCase().includes(query)
+          || team.description.toLowerCase().includes(query)
+          || (team.role || '').toLowerCase().includes(query)
+          || team.coordinatorMemberName.toLowerCase().includes(query)
+        );
+      }),
+    }))
+    .filter((scope) => scope.teams.length > 0 || Boolean(scope.errorMessage));
+});
+
+const hasAnyResults = computed(() =>
+  filteredTeamDefinitions.value.length > 0 || remoteCatalogSections.value.length > 0,
+);
+
 onMounted(() => {
   if (teamDefinitions.value.length === 0) {
     store.fetchAllAgentTeamDefinitions();
   }
 
-  nodeStore.initializeRegistry().catch((error) => {
+  Promise.resolve(nodeStore.initializeRegistry()).catch((error) => {
     syncError.value = error instanceof Error ? error.message : String(error);
   });
-  nodeSyncStore.initialize().catch((error) => {
+  Promise.resolve(federatedCatalogStore.loadCatalog()).catch((error) => {
+    syncError.value = error instanceof Error ? error.message : String(error);
+  });
+  Promise.resolve(nodeSyncStore.initialize()).catch((error) => {
     syncError.value = error instanceof Error ? error.message : String(error);
   });
 });
@@ -161,7 +235,10 @@ onMounted(() => {
 const handleReload = async () => {
   reloading.value = true;
   try {
-    await store.reloadAllAgentTeamDefinitions();
+    await Promise.all([
+      store.reloadAllAgentTeamDefinitions(),
+      federatedCatalogStore.reloadCatalog(),
+    ]);
   } catch (e) {
     console.error('Failed to reload agent teams:', e);
   } finally {
@@ -176,6 +253,30 @@ const viewDetails = (teamId: string) => {
 const handleRunTeam = (teamDef: AgentTeamDefinition) => {
   prepareTeamRun(teamDef);
   router.push('/workspace');
+};
+
+const runRemoteTeam = async (nodeId: string, team: { definitionId: string; name: string }): Promise<void> => {
+  runError.value = null;
+  const teamKey = `${nodeId}:${team.definitionId}`;
+  remoteRunBusyByTeamKey.value = {
+    ...remoteRunBusyByTeamKey.value,
+    [teamKey]: true,
+  };
+
+  const remoteTeam: HomeNodeRunnableTeam = {
+    homeNodeId: nodeId,
+    definitionId: team.definitionId,
+    name: team.name,
+  };
+
+  try {
+    await launchFromCatalogTeam(remoteTeam);
+  } catch (error) {
+    runError.value = error instanceof Error ? error.message : String(error);
+  } finally {
+    const { [teamKey]: _removed, ...remaining } = remoteRunBusyByTeamKey.value;
+    remoteRunBusyByTeamKey.value = remaining;
+  }
 };
 
 const syncTeam = async (teamDef: AgentTeamDefinition): Promise<void> => {

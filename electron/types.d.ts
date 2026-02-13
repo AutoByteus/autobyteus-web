@@ -3,6 +3,10 @@ import type {
   NodeRegistrySnapshot,
   WindowNodeContext,
 } from './nodeRegistryTypes';
+import type {
+  DispatchNodeWindowCommandResult,
+  NodeWindowCommand,
+} from './window-command-types';
 
 type Cleanup = () => void;
 
@@ -23,6 +27,11 @@ interface Window {
     upsertNodeRegistry: (change: NodeRegistryChange) => Promise<NodeRegistrySnapshot>;
     getNodeRegistrySnapshot: () => Promise<NodeRegistrySnapshot>;
     onNodeRegistryUpdated: (callback: (snapshot: NodeRegistrySnapshot) => void) => Cleanup;
+    dispatchNodeWindowCommand: (
+      nodeId: string,
+      command: NodeWindowCommand,
+    ) => Promise<DispatchNodeWindowCommandResult>;
+    onNodeWindowCommand: (callback: (command: NodeWindowCommand) => void) => Cleanup;
 
     getLogFilePath: () => Promise<string>;
     openLogFile: (filePath: string) => Promise<{ success: boolean; error?: string }>;

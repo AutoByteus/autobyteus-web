@@ -31,26 +31,38 @@ export const useWindowNodeContextStore = defineStore('windowNodeContext', () => 
   const windowId = ref<number | null>(null);
   const nodeId = ref<string>(EMBEDDED_NODE_ID);
   const nodeBaseUrl = ref<string>(resolveDefaultEmbeddedBaseUrl());
+  const bindingRevision = ref(0);
   const initialized = ref(false);
   const lastReadyError = ref<string | null>(null);
 
   const isEmbeddedWindow = computed(() => nodeId.value === EMBEDDED_NODE_ID);
   const boundEndpoints = computed<NodeEndpoints>(() => deriveNodeEndpoints(nodeBaseUrl.value));
 
+  function applyNodeBinding(nextNodeId: string, nextBaseUrl: string): void {
+    const normalizedBaseUrl = nextBaseUrl.trim();
+    const didChange = nodeId.value !== nextNodeId || nodeBaseUrl.value !== normalizedBaseUrl;
+    nodeId.value = nextNodeId;
+    nodeBaseUrl.value = normalizedBaseUrl;
+    if (didChange) {
+      bindingRevision.value += 1;
+    }
+  }
+
   function initializeFromWindowContext(context: WindowNodeContext, baseUrl?: string): void {
     windowId.value = context.windowId;
-    nodeId.value = context.nodeId || EMBEDDED_NODE_ID;
+    const nextNodeId = context.nodeId || EMBEDDED_NODE_ID;
     if (baseUrl && baseUrl.trim()) {
-      nodeBaseUrl.value = baseUrl.trim();
-    } else if (nodeId.value === EMBEDDED_NODE_ID) {
-      nodeBaseUrl.value = resolveDefaultEmbeddedBaseUrl();
+      applyNodeBinding(nextNodeId, baseUrl);
+    } else if (nextNodeId === EMBEDDED_NODE_ID) {
+      applyNodeBinding(nextNodeId, resolveDefaultEmbeddedBaseUrl());
+    } else {
+      applyNodeBinding(nextNodeId, nodeBaseUrl.value);
     }
     initialized.value = true;
   }
 
   function bindNodeContext(nextNodeId: string, nextBaseUrl: string): void {
-    nodeId.value = nextNodeId;
-    nodeBaseUrl.value = nextBaseUrl.trim();
+    applyNodeBinding(nextNodeId, nextBaseUrl);
   }
 
   function getBoundEndpoints(): NodeEndpoints {
@@ -96,6 +108,7 @@ export const useWindowNodeContextStore = defineStore('windowNodeContext', () => 
     windowId,
     nodeId,
     nodeBaseUrl,
+    bindingRevision,
     initialized,
     lastReadyError,
     isEmbeddedWindow,

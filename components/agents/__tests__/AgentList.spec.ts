@@ -7,6 +7,7 @@ import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
 import { useNodeStore } from '~/stores/nodeStore';
 import { useNodeSyncStore } from '~/stores/nodeSyncStore';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
+import { useFederatedCatalogStore } from '~/stores/federatedCatalogStore';
 
 const AgentCardStub = {
   name: 'AgentCard',
@@ -82,7 +83,11 @@ describe('AgentList', () => {
     setElectronApiMock(null);
   });
 
-  const mountComponent = async (options?: { nodes?: any[]; sourceNodeId?: string }) => {
+  const mountComponent = async (options?: {
+    nodes?: any[];
+    sourceNodeId?: string;
+    catalogByNode?: any[];
+  }) => {
     const pinia = createTestingPinia({
       createSpy: vi.fn,
       stubActions: true,
@@ -103,6 +108,11 @@ describe('AgentList', () => {
 
     const windowNodeContextStore = useWindowNodeContextStore();
     windowNodeContextStore.nodeId = options?.sourceNodeId ?? 'embedded-local';
+
+    const federatedCatalogStore = useFederatedCatalogStore();
+    federatedCatalogStore.catalogByNode = (options?.catalogByNode ?? []) as any;
+    (federatedCatalogStore.loadCatalog as any).mockResolvedValue(undefined);
+    (federatedCatalogStore.reloadCatalog as any).mockResolvedValue(undefined);
 
     const wrapper = mount(AgentList, {
       global: {
@@ -195,5 +205,98 @@ describe('AgentList', () => {
     await wrapper.vm.$nextTick();
 
     expect(readSetupRef<string | null>(wrapper, 'syncError')).toBe('sync failed for remote node');
+  });
+
+  it('shows remote catalog section and surfaces remote run error in browser runtime', async () => {
+    const wrapper = await mountComponent({
+      catalogByNode: [
+        {
+          nodeId: 'embedded-local',
+          nodeName: 'Embedded Node',
+          baseUrl: 'http://localhost:29695',
+          status: 'ready',
+          errorMessage: null,
+          agents: [],
+          teams: [],
+        },
+        {
+          nodeId: 'remote-1',
+          nodeName: 'Remote One',
+          baseUrl: 'http://localhost:8001',
+          status: 'ready',
+          errorMessage: null,
+          agents: [
+            {
+              homeNodeId: 'remote-1',
+              definitionId: 'agent-remote',
+              name: 'Remote Agent',
+              role: 'helper',
+              description: 'Remote node agent',
+              toolNames: ['remote_tool_alpha'],
+              skillNames: ['remote_skill_beta'],
+            },
+          ],
+          teams: [],
+        },
+      ],
+    });
+
+    expect(wrapper.text()).toContain('Remote One');
+    expect(wrapper.text()).toContain('Remote Agent');
+
+    const setupState = (wrapper.vm as any).$?.setupState;
+    await setupState.runRemoteAgent('remote-1', {
+      definitionId: 'agent-remote',
+      name: 'Remote Agent',
+    });
+    await flushAsyncUi();
+
+    expect(readSetupRef<string | null>(wrapper, 'runError')).toBe(
+      'Remote run handoff requires Electron desktop runtime.',
+    );
+  });
+
+  it('includes remote tool and skill names in search filtering', async () => {
+    const wrapper = await mountComponent({
+      catalogByNode: [
+        {
+          nodeId: 'embedded-local',
+          nodeName: 'Embedded Node',
+          baseUrl: 'http://localhost:29695',
+          status: 'ready',
+          errorMessage: null,
+          agents: [],
+          teams: [],
+        },
+        {
+          nodeId: 'remote-1',
+          nodeName: 'Remote One',
+          baseUrl: 'http://localhost:8001',
+          status: 'ready',
+          errorMessage: null,
+          agents: [
+            {
+              homeNodeId: 'remote-1',
+              definitionId: 'agent-remote',
+              name: 'Remote Agent',
+              role: 'helper',
+              description: 'Remote node agent',
+              toolNames: ['remote_tool_alpha'],
+              skillNames: ['remote_skill_beta'],
+            },
+          ],
+          teams: [],
+        },
+      ],
+    });
+
+    const searchInput = wrapper.get('#agent-search');
+    await searchInput.setValue('remote_skill_beta');
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain('Remote Agent');
+
+    await searchInput.setValue('remote_tool_alpha');
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain('Remote Agent');
   });
 });

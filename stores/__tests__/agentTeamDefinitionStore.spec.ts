@@ -48,6 +48,23 @@ describe('agentTeamDefinitionStore', () => {
             role: 'orchestrator',
             nodes: [],
           },
+          {
+            id: 'team-2',
+            name: 'Team Two',
+            description: 'Placement team',
+            coordinatorMemberName: 'Leader',
+            role: null,
+            nodes: [
+              {
+                memberName: 'leader',
+                referenceId: 'agent-1',
+                referenceType: 'AGENT',
+                homeNodeId: 'remote-node-1',
+                requiredNodeId: 'embedded-local',
+                preferredNodeId: 'remote-node-1',
+              },
+            ],
+          },
         ],
       },
       errors: [],
@@ -58,7 +75,10 @@ describe('agentTeamDefinitionStore', () => {
 
     expect(mockWaitForBoundBackendReady).toHaveBeenCalledTimes(1);
     expect(mockQuery).toHaveBeenCalledTimes(1);
-    expect(store.agentTeamDefinitions).toHaveLength(1);
+    expect(store.agentTeamDefinitions).toHaveLength(2);
     expect(store.agentTeamDefinitions[0].id).toBe('team-1');
+    expect(store.agentTeamDefinitions[1].nodes[0]?.homeNodeId).toBe('remote-node-1');
+    expect(store.agentTeamDefinitions[1].nodes[0]?.requiredNodeId).toBe('embedded-local');
+    expect(store.agentTeamDefinitions[1].nodes[0]?.preferredNodeId).toBe('remote-node-1');
   });
 });
