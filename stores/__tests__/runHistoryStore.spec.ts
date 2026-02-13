@@ -4,6 +4,7 @@ import { useRunHistoryStore } from '../runHistoryStore';
 
 const {
   queryMock,
+  mutateMock,
   windowNodeContextStoreMock,
   workspaceStoreMock,
   agentDefinitionStoreMock,
@@ -31,6 +32,7 @@ const {
 
   return {
     queryMock: vi.fn(),
+    mutateMock: vi.fn(),
     windowNodeContextStoreMock: {
       waitForBoundBackendReady: vi.fn().mockResolvedValue(true),
       lastReadyError: null as string | null,
@@ -85,6 +87,9 @@ const {
         };
         return true;
       }),
+      removeInstance: vi.fn((id: string) => {
+        instances.delete(id);
+      }),
       createInstanceFromTemplate: vi.fn().mockReturnValue('temp-123'),
       getInstance: vi.fn((id: string) => instances.get(id)),
     },
@@ -111,6 +116,7 @@ const {
 vi.mock('~/utils/apolloClient', () => ({
   getApolloClient: () => ({
     query: queryMock,
+    mutate: mutateMock,
   }),
 }));
 
@@ -187,6 +193,7 @@ describe('runHistoryStore', () => {
     selectionStoreMock.selectedInstanceId = null;
     llmProviderConfigStoreMock.models = ['model-default'];
     llmProviderConfigStoreMock.fetchProvidersWithModels.mockResolvedValue(undefined);
+    mutateMock.mockReset();
   });
 
   it('fetches run history tree from GraphQL', async () => {
@@ -754,5 +761,129 @@ describe('runHistoryStore', () => {
     expect(store.selectedRunId).toBe('temp-1');
     expect(agentRunConfigStoreMock.clearConfig).toHaveBeenCalled();
     expect(teamRunConfigStoreMock.clearConfig).toHaveBeenCalled();
+  });
+
+  it('deleteRun removes local state and refreshes tree when backend succeeds', async () => {
+    mutateMock.mockResolvedValueOnce({
+      data: {
+        deleteRunHistory: {
+          success: true,
+          message: 'Run deleted.',
+        },
+      },
+      errors: [],
+    });
+
+    const store = useRunHistoryStore();
+    store.workspaceGroups = [
+      {
+        workspaceRootPath: '/ws/a',
+        workspaceName: 'a',
+        agents: [
+          {
+            agentDefinitionId: 'agent-def-1',
+            agentName: 'SuperAgent',
+            runs: [
+              {
+                runId: 'run-1',
+                summary: 'Persisted run',
+                lastActivityAt: '2026-01-01T00:00:00.000Z',
+                lastKnownStatus: 'IDLE',
+                isActive: false,
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    store.resumeConfigByRunId = {
+      'run-1': {
+        runId: 'run-1',
+        isActive: false,
+        manifestConfig: {
+          agentDefinitionId: 'agent-def-1',
+          workspaceRootPath: '/ws/a',
+          llmModelIdentifier: 'model-x',
+          llmConfig: null,
+          autoExecuteTools: false,
+          skillAccessMode: null,
+        },
+        editableFields: {
+          llmModelIdentifier: true,
+          llmConfig: true,
+          autoExecuteTools: true,
+          skillAccessMode: true,
+          workspaceRootPath: false,
+        },
+      },
+    };
+    store.selectedRunId = 'run-1';
+
+    selectionStoreMock.selectedType = 'agent';
+    selectionStoreMock.selectedInstanceId = 'run-1';
+    agentContextsStoreMock.instances.set('run-1', {
+      config: { workspaceId: 'ws-1' },
+      state: { conversation: { messages: [] } },
+    });
+
+    const refreshSpy = vi.spyOn(store, 'refreshTreeQuietly').mockResolvedValue(undefined);
+    const deleted = await store.deleteRun('run-1');
+
+    expect(deleted).toBe(true);
+    expect(mutateMock).toHaveBeenCalledTimes(1);
+    expect(agentContextsStoreMock.removeInstance).toHaveBeenCalledWith('run-1');
+    expect(store.selectedRunId).toBeNull();
+    expect(store.resumeConfigByRunId['run-1']).toBeUndefined();
+    expect(store.workspaceGroups).toEqual([]);
+    expect(refreshSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('deleteRun does not mutate local state when backend rejects deletion', async () => {
+    mutateMock.mockResolvedValueOnce({
+      data: {
+        deleteRunHistory: {
+          success: false,
+          message: 'Run is active.',
+        },
+      },
+      errors: [],
+    });
+
+    const store = useRunHistoryStore();
+    store.workspaceGroups = [
+      {
+        workspaceRootPath: '/ws/a',
+        workspaceName: 'a',
+        agents: [
+          {
+            agentDefinitionId: 'agent-def-1',
+            agentName: 'SuperAgent',
+            runs: [
+              {
+                runId: 'run-1',
+                summary: 'Persisted run',
+                lastActivityAt: '2026-01-01T00:00:00.000Z',
+                lastKnownStatus: 'IDLE',
+                isActive: false,
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const deleted = await store.deleteRun('run-1');
+
+    expect(deleted).toBe(false);
+    expect(store.workspaceGroups[0]?.agents[0]?.runs[0]?.runId).toBe('run-1');
+    expect(agentContextsStoreMock.removeInstance).not.toHaveBeenCalled();
+  });
+
+  it('deleteRun rejects draft run IDs without backend mutation call', async () => {
+    const store = useRunHistoryStore();
+    const deleted = await store.deleteRun('temp-123');
+
+    expect(deleted).toBe(false);
+    expect(mutateMock).not.toHaveBeenCalled();
   });
 });

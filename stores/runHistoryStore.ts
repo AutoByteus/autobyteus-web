@@ -9,6 +9,7 @@ import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
 import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import { ListRunHistory } from '~/graphql/queries/runHistoryQueries';
+import { DeleteRunHistory } from '~/graphql/mutations/runHistoryMutations';
 import type { SkillAccessMode } from '~/types/agent/AgentRunConfig';
 import type { Conversation } from '~/types/conversation';
 import { AgentStatus } from '~/types/agent/AgentStatus';
@@ -80,6 +81,13 @@ interface ListRunHistoryQueryData {
   listRunHistory: RunHistoryWorkspaceGroup[];
 }
 
+interface DeleteRunHistoryMutationData {
+  deleteRunHistory: {
+    success: boolean;
+    message: string;
+  };
+}
+
 const FALSE_EDITABLE_FIELDS: RunEditableFieldFlags = {
   llmModelIdentifier: false,
   llmConfig: false,
@@ -141,6 +149,23 @@ const summarizeDraftRun = (
     return firstUserMessage.text.trim();
   }
   return `${DEFAULT_DRAFT_SUMMARY_PREFIX}${agentName}`.trim();
+};
+
+const removeRunFromWorkspaceGroups = (
+  groups: RunHistoryWorkspaceGroup[],
+  runId: string,
+): RunHistoryWorkspaceGroup[] => {
+  return groups
+    .map((workspace) => ({
+      ...workspace,
+      agents: workspace.agents
+        .map((agent) => ({
+          ...agent,
+          runs: agent.runs.filter((run) => run.runId !== runId),
+        }))
+        .filter((agent) => agent.runs.length > 0),
+    }))
+    .filter((workspace) => workspace.agents.length > 0);
 };
 
 const toRunStatus = (status: AgentStatus): Pick<RunHistoryItem, 'isActive' | 'lastKnownStatus'> => {
@@ -426,6 +451,59 @@ export const useRunHistoryStore = defineStore('runHistory', {
           ),
         })),
       }));
+    },
+
+    async deleteRun(runId: string): Promise<boolean> {
+      const normalizedRunId = runId.trim();
+      if (!normalizedRunId || normalizedRunId.startsWith(DRAFT_RUN_ID_PREFIX)) {
+        return false;
+      }
+
+      try {
+        const client = getApolloClient();
+        const { data, errors } = await client.mutate<DeleteRunHistoryMutationData>({
+          mutation: DeleteRunHistory,
+          variables: { runId: normalizedRunId },
+        });
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map((e: { message: string }) => e.message).join(', '));
+        }
+
+        const result = data?.deleteRunHistory;
+        if (!result?.success) {
+          return false;
+        }
+
+        const nextResumeConfigs = { ...this.resumeConfigByRunId };
+        delete nextResumeConfigs[normalizedRunId];
+        this.resumeConfigByRunId = nextResumeConfigs;
+        this.workspaceGroups = removeRunFromWorkspaceGroups(this.workspaceGroups, normalizedRunId);
+
+        const agentContextsStore = useAgentContextsStore();
+        const hadContext = Boolean(agentContextsStore.getInstance(normalizedRunId));
+        if (hadContext) {
+          agentContextsStore.removeInstance(normalizedRunId);
+        }
+
+        const selectionStore = useAgentSelectionStore();
+        const selectedBySelectionStore =
+          selectionStore.selectedType === 'agent' &&
+          selectionStore.selectedInstanceId === normalizedRunId;
+        if (selectedBySelectionStore && !hadContext) {
+          selectionStore.clearSelection();
+        }
+
+        if (this.selectedRunId === normalizedRunId) {
+          this.selectedRunId = null;
+        }
+
+        await this.refreshTreeQuietly();
+        return true;
+      } catch (error: any) {
+        console.error(`Failed to delete run '${normalizedRunId}':`, error);
+        return false;
+      }
     },
 
     async refreshTreeQuietly(limitPerAgent = 6): Promise<void> {

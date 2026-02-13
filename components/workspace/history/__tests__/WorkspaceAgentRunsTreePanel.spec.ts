@@ -48,6 +48,15 @@ const {
                 source: 'history',
                 isDraft: false,
               },
+              {
+                runId: 'run-2',
+                summary: 'Historical draft cleanup',
+                lastActivityAt: '2026-01-01T00:10:00.000Z',
+                lastKnownStatus: 'IDLE',
+                isActive: false,
+                source: 'history',
+                isDraft: false,
+              },
             ],
           },
         ],
@@ -73,6 +82,7 @@ const {
       selectTreeRun: vi.fn().mockResolvedValue(undefined),
       createDraftRun: vi.fn().mockResolvedValue('temp-2'),
       createWorkspace: vi.fn(async (rootPath: string) => rootPath),
+      deleteRun: vi.fn().mockResolvedValue(true),
     },
     workspaceStoreMock: {
       fetchAllWorkspaces: vi.fn().mockResolvedValue(undefined),
@@ -124,6 +134,27 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     global: {
       stubs: {
         Icon: { template: '<span class="icon-stub" />' },
+        ConfirmationModal: {
+          props: ['show'],
+          template: `
+            <div v-if="show" data-test="delete-confirmation-modal">
+              <button
+                type="button"
+                data-test="delete-confirmation-confirm"
+                @click="$emit('confirm')"
+              >
+                confirm
+              </button>
+              <button
+                type="button"
+                data-test="delete-confirmation-cancel"
+                @click="$emit('cancel')"
+              >
+                cancel
+              </button>
+            </div>
+          `,
+        },
       },
     },
   });
@@ -229,6 +260,14 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     expect(statusDots).toHaveLength(1);
   });
 
+  it('renders delete action only for inactive history runs', async () => {
+    const wrapper = mountComponent();
+    await flushPromises();
+
+    const deleteButtons = wrapper.findAll('button[title="Delete run permanently"]');
+    expect(deleteButtons).toHaveLength(1);
+  });
+
   it('terminates active run from row action without selecting the row', async () => {
     const wrapper = mountComponent();
     await flushPromises();
@@ -253,5 +292,54 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     await flushPromises();
 
     expect(addToastMock).toHaveBeenCalledWith('Failed to terminate run. Please try again.', 'error');
+  });
+
+  it('deletes inactive history run from row action without selecting the row', async () => {
+    const wrapper = mountComponent();
+    await flushPromises();
+    const vm = wrapper.vm as any;
+
+    const deleteButton = wrapper.find('button[title="Delete run permanently"]');
+    await deleteButton.trigger('click');
+    await nextTick();
+    expect(vm.showDeleteConfirmation).toBe(true);
+    expect(runHistoryStoreMock.deleteRun).not.toHaveBeenCalled();
+    await vm.confirmDeleteRun();
+    await flushPromises();
+
+    expect(runHistoryStoreMock.deleteRun).toHaveBeenCalledWith('run-2');
+    expect(runHistoryStoreMock.selectTreeRun).not.toHaveBeenCalled();
+  });
+
+  it('does not call delete when confirmation is cancelled', async () => {
+    const wrapper = mountComponent();
+    await flushPromises();
+    const vm = wrapper.vm as any;
+
+    const deleteButton = wrapper.find('button[title="Delete run permanently"]');
+    await deleteButton.trigger('click');
+    await nextTick();
+    expect(vm.showDeleteConfirmation).toBe(true);
+    vm.closeDeleteConfirmation();
+    await flushPromises();
+
+    expect(runHistoryStoreMock.deleteRun).not.toHaveBeenCalled();
+    expect(vm.showDeleteConfirmation).toBe(false);
+  });
+
+  it('shows an error toast when delete fails', async () => {
+    runHistoryStoreMock.deleteRun.mockResolvedValueOnce(false);
+    const wrapper = mountComponent();
+    await flushPromises();
+    const vm = wrapper.vm as any;
+
+    const deleteButton = wrapper.find('button[title="Delete run permanently"]');
+    await deleteButton.trigger('click');
+    await nextTick();
+    expect(vm.showDeleteConfirmation).toBe(true);
+    await vm.confirmDeleteRun();
+    await flushPromises();
+
+    expect(addToastMock).toHaveBeenCalledWith('Failed to delete run. Please try again.', 'error');
   });
 });
