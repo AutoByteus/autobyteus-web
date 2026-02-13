@@ -35,7 +35,6 @@ describe('messagingVerificationStore', () => {
         threadId: null,
         targetType: 'AGENT',
         targetId: 'agent-1',
-        allowTransportFallback: false,
         updatedAt: '2026-02-09T12:00:00.000Z',
       },
     ];
@@ -96,7 +95,6 @@ describe('messagingVerificationStore', () => {
         threadId: null,
         targetType: 'AGENT',
         targetId: 'agent-1',
-        allowTransportFallback: false,
         updatedAt: '2026-02-09T12:00:00.000Z',
       },
     ];
@@ -121,6 +119,8 @@ describe('messagingVerificationStore', () => {
       wecomAppEnabled: true,
       discordEnabled: true,
       discordAccountId: 'discord-1',
+      telegramEnabled: false,
+      telegramAccountId: null,
     });
 
     gatewayStore.gatewayStatus = 'READY';
@@ -141,7 +141,6 @@ describe('messagingVerificationStore', () => {
         threadId: null,
         targetType: 'AGENT',
         targetId: 'agent-1',
-        allowTransportFallback: false,
         updatedAt: '2026-02-09T12:00:00.000Z',
       },
     ];
@@ -190,7 +189,6 @@ describe('messagingVerificationStore', () => {
         threadId: null,
         targetType: 'AGENT',
         targetId: 'agent-1',
-        allowTransportFallback: false,
         updatedAt: '2026-02-09T12:00:00.000Z',
       },
     ];
@@ -213,5 +211,56 @@ describe('messagingVerificationStore', () => {
       true,
     );
     expect(result.checks.find((check) => check.key === 'target_runtime')?.status).toBe('FAILED');
+  });
+
+  it('reports gateway runtime critical blocker when reliability state is CRITICAL_LOCK_LOST', async () => {
+    const gatewayStore = useGatewaySessionSetupStore();
+    const verificationStore = useMessagingVerificationStore();
+    const bindingStore = useMessagingChannelBindingSetupStore();
+
+    gatewayStore.gatewayStatus = 'READY';
+    gatewayStore.runtimeReliabilityStatus = {
+      runtime: {
+        state: 'CRITICAL_LOCK_LOST',
+        criticalCode: 'CRITICAL_LOCK_LOST',
+        updatedAt: '2026-02-12T00:00:00.000Z',
+        workers: {
+          inboundForwarder: { running: false, lastError: 'lock lost', lastErrorAt: null },
+          outboundSender: { running: false, lastError: 'lock lost', lastErrorAt: null },
+        },
+        locks: {
+          inbox: {
+            ownerId: 'owner-inbox',
+            held: false,
+            lost: true,
+            lastHeartbeatAt: null,
+            lastError: 'lock lost',
+          },
+          outbox: {
+            ownerId: 'owner-outbox',
+            held: false,
+            lost: true,
+            lastHeartbeatAt: null,
+            lastError: 'lock lost',
+          },
+        },
+      },
+      queue: {
+        inboundDeadLetterCount: 0,
+        inboundCompletedUnboundCount: 0,
+        outboundDeadLetterCount: 0,
+      },
+    };
+    vi.spyOn(gatewayStore, 'refreshRuntimeReliabilityStatus').mockResolvedValue(
+      gatewayStore.runtimeReliabilityStatus,
+    );
+
+    bindingStore.capabilities.bindingCrudEnabled = true;
+
+    const result = await verificationStore.runSetupVerification();
+
+    expect(result.ready).toBe(false);
+    expect(result.blockers.some((item) => item.code === 'GATEWAY_RUNTIME_CRITICAL')).toBe(true);
+    expect(result.checks.find((check) => check.key === 'gateway')?.status).toBe('FAILED');
   });
 });

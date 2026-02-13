@@ -62,6 +62,7 @@ describe('messagingChannelBindingOptionsStore', () => {
       }),
       getWeChatPersonalPeerCandidates: vi.fn(),
       getDiscordPeerCandidates: vi.fn(),
+      getTelegramPeerCandidates: vi.fn(),
     };
     vi.spyOn(gatewayStore, 'createClient').mockReturnValue(gatewayClientMock as any);
 
@@ -98,6 +99,7 @@ describe('messagingChannelBindingOptionsStore', () => {
         ],
       }),
       getDiscordPeerCandidates: vi.fn(),
+      getTelegramPeerCandidates: vi.fn(),
     };
     vi.spyOn(gatewayStore, 'createClient').mockReturnValue(gatewayClientMock as any);
 
@@ -133,6 +135,7 @@ describe('messagingChannelBindingOptionsStore', () => {
           },
         ],
       }),
+      getTelegramPeerCandidates: vi.fn(),
     };
     vi.spyOn(gatewayStore, 'createClient').mockReturnValue(gatewayClientMock as any);
 
@@ -147,6 +150,42 @@ describe('messagingChannelBindingOptionsStore', () => {
     });
     expect(gatewayClientMock.getWhatsAppPersonalPeerCandidates).not.toHaveBeenCalled();
     expect(gatewayClientMock.getWeChatPersonalPeerCandidates).not.toHaveBeenCalled();
+  });
+
+  it('loads Telegram peer candidates through gateway client boundary', async () => {
+    const gatewayStore = useGatewaySessionSetupStore();
+    const gatewayClientMock = {
+      getWhatsAppPersonalPeerCandidates: vi.fn(),
+      getWeChatPersonalPeerCandidates: vi.fn(),
+      getDiscordPeerCandidates: vi.fn(),
+      getTelegramPeerCandidates: vi.fn().mockResolvedValue({
+        accountId: 'telegram-acct-1',
+        updatedAt: '2026-02-09T10:00:00.000Z',
+        items: [
+          {
+            peerId: '100200300',
+            peerType: 'USER',
+            threadId: null,
+            displayName: 'Alice',
+            lastMessageAt: '2026-02-09T09:59:00.000Z',
+          },
+        ],
+      }),
+    };
+    vi.spyOn(gatewayStore, 'createClient').mockReturnValue(gatewayClientMock as any);
+
+    const store = useMessagingChannelBindingOptionsStore();
+    const result = await store.loadPeerCandidates('telegram-acct-1', undefined, 'TELEGRAM');
+
+    expect(result).toHaveLength(1);
+    expect(gatewayClientMock.getTelegramPeerCandidates).toHaveBeenCalledWith({
+      accountId: 'telegram-acct-1',
+      includeGroups: undefined,
+      limit: undefined,
+    });
+    expect(gatewayClientMock.getWhatsAppPersonalPeerCandidates).not.toHaveBeenCalled();
+    expect(gatewayClientMock.getWeChatPersonalPeerCandidates).not.toHaveBeenCalled();
+    expect(gatewayClientMock.getDiscordPeerCandidates).not.toHaveBeenCalled();
   });
 
   it('asserts stale selections for dropdown-driven values', () => {
@@ -179,7 +218,6 @@ describe('messagingChannelBindingOptionsStore', () => {
           threadId: null,
           targetType: 'AGENT',
           targetId: 'agent-1',
-          allowTransportFallback: false,
         },
         peerSelectionMode: 'dropdown',
         targetSelectionMode: 'dropdown',
@@ -198,7 +236,6 @@ describe('messagingChannelBindingOptionsStore', () => {
           threadId: null,
           targetType: 'AGENT',
           targetId: 'agent-stale',
-          allowTransportFallback: false,
         },
         peerSelectionMode: 'dropdown',
         targetSelectionMode: 'dropdown',
@@ -221,7 +258,6 @@ describe('messagingChannelBindingOptionsStore', () => {
           threadId: null,
           targetType: 'AGENT',
           targetId: 'manual-target',
-          allowTransportFallback: false,
         },
         peerSelectionMode: 'manual',
         targetSelectionMode: 'manual',

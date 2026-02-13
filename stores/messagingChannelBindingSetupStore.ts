@@ -117,15 +117,13 @@ function bindingMatchesScope(
 
 function isBindingField(value: unknown): value is BindingField {
   return (
-    value === 'id' ||
     value === 'provider' ||
     value === 'transport' ||
     value === 'accountId' ||
     value === 'peerId' ||
     value === 'threadId' ||
     value === 'targetType' ||
-    value === 'targetId' ||
-    value === 'allowTransportFallback'
+    value === 'targetId'
   );
 }
 
@@ -141,6 +139,9 @@ function issueCodeToField(code: string): BindingField | null {
   }
   if (code === 'INVALID_DISCORD_THREAD_TARGET_COMBINATION') {
     return 'threadId';
+  }
+  if (code === 'TELEGRAM_TEAM_TARGET_NOT_SUPPORTED') {
+    return 'targetType';
   }
   return null;
 }
@@ -325,6 +326,10 @@ export const useMessagingChannelBindingSetupStore = defineStore(
         errors.transport = `Transport ${draft.transport} is not supported for provider ${draft.provider}.`;
       }
 
+      if (draft.provider === 'TELEGRAM' && draft.targetType === 'TEAM') {
+        errors.targetType = 'Telegram bindings currently support AGENT targets only.';
+      }
+
       if (draft.provider === 'DISCORD') {
         const validationIssues = validateDiscordBindingIdentity({
           accountId: draft.accountId,
@@ -374,7 +379,6 @@ export const useMessagingChannelBindingSetupStore = defineStore(
           mutation: UPSERT_EXTERNAL_CHANNEL_BINDING,
           variables: {
             input: {
-              id: draft.id,
               provider: draft.provider,
               transport: draft.transport,
               accountId: draft.accountId,
@@ -382,7 +386,6 @@ export const useMessagingChannelBindingSetupStore = defineStore(
               threadId: draft.threadId,
               targetType: draft.targetType,
               targetId: draft.targetId,
-              allowTransportFallback: draft.allowTransportFallback,
             },
           },
         });

@@ -34,7 +34,6 @@ describe('messagingProviderFlowStore', () => {
         threadId: null,
         targetType: 'AGENT',
         targetId: 'agent-1',
-        allowTransportFallback: false,
         updatedAt: '2026-02-09T12:00:00.000Z',
       },
     ];
@@ -77,6 +76,8 @@ describe('messagingProviderFlowStore', () => {
       wecomAppEnabled: true,
       discordEnabled: true,
       discordAccountId: 'discord-1',
+      telegramEnabled: false,
+      telegramAccountId: null,
     });
     providerScopeStore.setSelectedProvider('DISCORD');
 
@@ -92,7 +93,6 @@ describe('messagingProviderFlowStore', () => {
         threadId: null,
         targetType: 'AGENT',
         targetId: 'agent-1',
-        allowTransportFallback: false,
         updatedAt: '2026-02-09T12:00:00.000Z',
       },
     ];
@@ -115,6 +115,8 @@ describe('messagingProviderFlowStore', () => {
       wecomAppEnabled: true,
       discordEnabled: false,
       discordAccountId: null,
+      telegramEnabled: false,
+      telegramAccountId: null,
     });
     providerScopeStore.setSelectedProvider('WECOM');
 
@@ -131,7 +133,6 @@ describe('messagingProviderFlowStore', () => {
         threadId: null,
         targetType: 'AGENT',
         targetId: 'agent-1',
-        allowTransportFallback: false,
         updatedAt: '2026-02-09T12:00:00.000Z',
       },
     ];

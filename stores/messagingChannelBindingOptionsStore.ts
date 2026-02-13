@@ -118,7 +118,7 @@ export const useMessagingChannelBindingOptionsStore = defineStore(
         provider: MessagingProvider = 'WHATSAPP',
       ): Promise<GatewayPeerCandidate[]> {
         const normalizedContextId = contextId.trim();
-        if (provider !== 'DISCORD' && !normalizedContextId) {
+        if (provider !== 'DISCORD' && provider !== 'TELEGRAM' && !normalizedContextId) {
           throw new Error('sessionId is required to load peer candidates.');
         }
 
@@ -135,6 +135,12 @@ export const useMessagingChannelBindingOptionsStore = defineStore(
                   includeGroups: options?.includeGroups,
                   limit: options?.limit,
                 })
+              : provider === 'TELEGRAM'
+              ? await client.getTelegramPeerCandidates({
+                  accountId: normalizedContextId || undefined,
+                  includeGroups: options?.includeGroups,
+                  limit: options?.limit,
+                })
               : provider === 'WECHAT'
               ? await client.getWeChatPersonalPeerCandidates(normalizedContextId, {
                   includeGroups: options?.includeGroups,
@@ -147,7 +153,7 @@ export const useMessagingChannelBindingOptionsStore = defineStore(
 
           this.peerCandidates = response.items;
           this.peerCandidatesSessionId =
-            provider === 'DISCORD'
+            provider === 'DISCORD' || provider === 'TELEGRAM'
               ? null
               : (response as { sessionId: string }).sessionId;
           return this.peerCandidates;

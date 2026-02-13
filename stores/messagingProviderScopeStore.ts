@@ -14,6 +14,7 @@ interface MessagingProviderScopeState {
   selectedProvider: MessagingProvider;
   availableProviders: MessagingProvider[];
   discordAccountId: string | null;
+  telegramAccountId: string | null;
   initialized: boolean;
 }
 
@@ -34,6 +35,10 @@ const PROVIDER_OPTIONS: Record<MessagingProvider, ProviderScopeOption> = {
     provider: 'DISCORD',
     label: 'Discord Bot',
   },
+  TELEGRAM: {
+    provider: 'TELEGRAM',
+    label: 'Telegram Bot',
+  },
 };
 
 function resolveAvailableProviders(
@@ -49,6 +54,9 @@ function resolveAvailableProviders(
   if (capabilities?.discordEnabled) {
     providers.push('DISCORD');
   }
+  if (capabilities?.telegramEnabled) {
+    providers.push('TELEGRAM');
+  }
   return providers;
 }
 
@@ -59,6 +67,7 @@ export const useMessagingProviderScopeStore = defineStore(
       selectedProvider: 'WHATSAPP',
       availableProviders: ['WHATSAPP'],
       discordAccountId: null,
+      telegramAccountId: null,
       initialized: false,
     }),
 
@@ -76,7 +85,11 @@ export const useMessagingProviderScopeStore = defineStore(
       },
 
       resolvedTransport(state): MessagingTransport {
-        if (state.selectedProvider === 'WECOM' || state.selectedProvider === 'DISCORD') {
+        if (
+          state.selectedProvider === 'WECOM' ||
+          state.selectedProvider === 'DISCORD' ||
+          state.selectedProvider === 'TELEGRAM'
+        ) {
           return 'BUSINESS_API';
         }
         return 'PERSONAL_SESSION';
@@ -91,6 +104,11 @@ export const useMessagingProviderScopeStore = defineStore(
           typeof capabilities?.discordAccountId === 'string' &&
           capabilities.discordAccountId.trim().length > 0
             ? capabilities.discordAccountId
+            : null;
+        this.telegramAccountId =
+          typeof capabilities?.telegramAccountId === 'string' &&
+          capabilities.telegramAccountId.trim().length > 0
+            ? capabilities.telegramAccountId
             : null;
 
         if (!nextAvailableProviders.includes(this.selectedProvider)) {

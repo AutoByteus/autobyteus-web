@@ -49,6 +49,7 @@ export const useMessagingProviderFlowStore = defineStore('messagingProviderFlowS
           requiresPersonalSession,
           resolvedTransport,
           discordAccountId: providerScopeStore.discordAccountId,
+          telegramAccountId: providerScopeStore.telegramAccountId,
           sessionAccountLabel: gatewayStore.session?.accountLabel || null,
         }),
       );

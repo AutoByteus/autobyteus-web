@@ -105,6 +105,8 @@ describe('ChannelBindingSetupCard', () => {
       wecomAppEnabled: false,
       discordEnabled: true,
       discordAccountId: 'discord-acct-1',
+      telegramEnabled: false,
+      telegramAccountId: null,
     });
     providerScopeStore.setSelectedProvider('DISCORD');
 
@@ -139,6 +141,8 @@ describe('ChannelBindingSetupCard', () => {
       wecomAppEnabled: false,
       discordEnabled: true,
       discordAccountId: 'discord-acct-1',
+      telegramEnabled: false,
+      telegramAccountId: null,
     });
     providerScopeStore.setSelectedProvider('DISCORD');
 
@@ -175,7 +179,6 @@ describe('ChannelBindingSetupCard', () => {
         threadId: null,
         targetType: 'AGENT',
         targetId: 'agent-1',
-        allowTransportFallback: false,
         updatedAt: '2026-02-09T12:00:00.000Z',
       },
       {
@@ -187,7 +190,6 @@ describe('ChannelBindingSetupCard', () => {
         threadId: null,
         targetType: 'TEAM',
         targetId: 'team-1',
-        allowTransportFallback: false,
         updatedAt: '2026-02-09T11:00:00.000Z',
       },
     ];
@@ -197,5 +199,51 @@ describe('ChannelBindingSetupCard', () => {
 
     expect(wrapper.text()).toContain('WHATSAPP / PERSONAL_SESSION / home-whatsapp / wa-peer');
     expect(wrapper.text()).not.toContain('DISCORD / BUSINESS_API / discord-acct-1 / user:123456');
+  });
+
+  it('shows Telegram AGENT-only hint and refreshes Telegram peer candidates without session', async () => {
+    const gatewayStore = useGatewaySessionSetupStore();
+    gatewayStore.gatewayStatus = 'READY';
+    gatewayStore.session = null;
+
+    const providerScopeStore = useMessagingProviderScopeStore();
+    providerScopeStore.initialize({
+      wechatModes: [],
+      defaultWeChatMode: null,
+      wechatPersonalEnabled: false,
+      wecomAppEnabled: false,
+      discordEnabled: false,
+      discordAccountId: null,
+      telegramEnabled: true,
+      telegramAccountId: 'telegram-acct-1',
+    });
+    providerScopeStore.setSelectedProvider('TELEGRAM');
+
+    const optionsStore = useMessagingChannelBindingOptionsStore();
+    const loadPeerCandidatesSpy = vi
+      .spyOn(optionsStore, 'loadPeerCandidates')
+      .mockResolvedValue([]);
+
+    const wrapper = mountWithPinia();
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="telegram-target-policy-hint"]').exists()).toBe(true);
+
+    const targetTypeOptions = wrapper
+      .findAll('[data-testid="binding-target-type"] option')
+      .map((option) => option.text());
+    expect(targetTypeOptions).toEqual(['AGENT']);
+
+    const refreshButton = wrapper.get('[data-testid="refresh-peer-candidates-button"]');
+    expect(refreshButton.attributes('disabled')).toBeUndefined();
+
+    await refreshButton.trigger('click');
+    await flushPromises();
+
+    expect(loadPeerCandidatesSpy).toHaveBeenCalledWith(
+      'telegram-acct-1',
+      { includeGroups: true, limit: 50 },
+      'TELEGRAM',
+    );
   });
 });

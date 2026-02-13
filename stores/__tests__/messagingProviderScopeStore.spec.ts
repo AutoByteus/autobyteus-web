@@ -17,14 +17,23 @@ describe('messagingProviderScopeStore', () => {
       wecomAppEnabled: true,
       discordEnabled: true,
       discordAccountId: 'discord-acct-1',
+      telegramEnabled: true,
+      telegramAccountId: 'telegram-acct-1',
     });
 
-    expect(store.availableProviders).toEqual(['WHATSAPP', 'WECHAT', 'WECOM', 'DISCORD']);
+    expect(store.availableProviders).toEqual([
+      'WHATSAPP',
+      'WECHAT',
+      'WECOM',
+      'DISCORD',
+      'TELEGRAM',
+    ]);
     expect(store.options.map((entry) => entry.provider)).toEqual([
       'WHATSAPP',
       'WECHAT',
       'WECOM',
       'DISCORD',
+      'TELEGRAM',
     ]);
     expect(store.initialized).toBe(true);
   });
@@ -39,6 +48,8 @@ describe('messagingProviderScopeStore', () => {
       wecomAppEnabled: false,
       discordEnabled: false,
       discordAccountId: null,
+      telegramEnabled: false,
+      telegramAccountId: null,
     });
     store.setSelectedProvider('WECHAT');
 
@@ -49,6 +60,8 @@ describe('messagingProviderScopeStore', () => {
       wecomAppEnabled: false,
       discordEnabled: false,
       discordAccountId: null,
+      telegramEnabled: false,
+      telegramAccountId: null,
     });
 
     expect(store.selectedProvider).toBe('WHATSAPP');
@@ -64,6 +77,8 @@ describe('messagingProviderScopeStore', () => {
       wecomAppEnabled: true,
       discordEnabled: false,
       discordAccountId: null,
+      telegramEnabled: false,
+      telegramAccountId: null,
     });
     store.setSelectedProvider('WECOM');
 
@@ -81,10 +96,32 @@ describe('messagingProviderScopeStore', () => {
       wecomAppEnabled: false,
       discordEnabled: true,
       discordAccountId: 'discord-acct-1',
+      telegramEnabled: false,
+      telegramAccountId: null,
     });
     store.setSelectedProvider('DISCORD');
 
     expect(store.availableProviders).toContain('DISCORD');
+    expect(store.requiresPersonalSession).toBe(false);
+    expect(store.resolvedTransport).toBe('BUSINESS_API');
+  });
+
+  it('adds TELEGRAM provider when capability is enabled', () => {
+    const store = useMessagingProviderScopeStore();
+
+    store.initialize({
+      wechatModes: [],
+      defaultWeChatMode: null,
+      wechatPersonalEnabled: false,
+      wecomAppEnabled: false,
+      discordEnabled: false,
+      discordAccountId: null,
+      telegramEnabled: true,
+      telegramAccountId: 'telegram-acct-1',
+    });
+    store.setSelectedProvider('TELEGRAM');
+
+    expect(store.availableProviders).toContain('TELEGRAM');
     expect(store.requiresPersonalSession).toBe(false);
     expect(store.resolvedTransport).toBe('BUSINESS_API');
   });

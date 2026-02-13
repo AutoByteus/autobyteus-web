@@ -132,8 +132,13 @@
         class="rounded-md border border-gray-300 px-3 py-2 text-sm"
         data-testid="binding-target-type"
       >
-        <option value="AGENT">AGENT</option>
-        <option value="TEAM">TEAM</option>
+        <option
+          v-for="targetType in allowedTargetTypes"
+          :key="targetType"
+          :value="targetType"
+        >
+          {{ targetType }}
+        </option>
       </select>
 
       <div class="md:col-span-2 flex items-center justify-end">
@@ -235,8 +240,18 @@
     <p v-if="bindingStore.fieldErrors.targetId" class="mt-1 text-sm text-red-600">
       {{ bindingStore.fieldErrors.targetId }}
     </p>
+    <p v-if="bindingStore.fieldErrors.targetType" class="mt-1 text-sm text-red-600">
+      {{ bindingStore.fieldErrors.targetType }}
+    </p>
     <p v-if="bindingStore.fieldErrors.transport" class="mt-1 text-sm text-red-600">
       {{ bindingStore.fieldErrors.transport }}
+    </p>
+    <p
+      v-if="showTelegramAgentOnlyHint"
+      class="mt-1 text-xs text-gray-600"
+      data-testid="telegram-target-policy-hint"
+    >
+      Telegram setup currently supports AGENT targets only.
     </p>
     <p v-if="bindingStore.error" class="mt-2 text-sm text-red-600" data-testid="binding-error">
       {{ bindingStore.error }}
@@ -290,6 +305,7 @@ const {
   draft,
   effectiveManualPeerInput,
   filteredTargetOptions,
+  allowedTargetTypes,
   formatPeerCandidateLabel,
   onDeleteBinding,
   onRefreshPeerCandidates,
@@ -304,6 +320,7 @@ const {
   selectedPeerKey,
   selectedTargetId,
   showDiscordIdentityHint,
+  showTelegramAgentOnlyHint,
   showPeerDiscoveryInstruction,
   showTargetOptionsInstruction,
   supportsPeerDiscovery,

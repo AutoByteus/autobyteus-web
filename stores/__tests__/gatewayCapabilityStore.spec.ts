@@ -53,6 +53,8 @@ describe('gatewayCapabilityStore', () => {
       wechatPersonalEnabled: false,
       discordEnabled: true,
       discordAccountId: 'discord-acct-1',
+      telegramEnabled: true,
+      telegramAccountId: 'telegram-acct-1',
     });
 
     const sessionStore = useGatewaySessionSetupStore();
@@ -69,6 +71,8 @@ describe('gatewayCapabilityStore', () => {
     expect(store.capabilities?.defaultWeChatMode).toBe('WECOM_APP_BRIDGE');
     expect(store.capabilities?.discordEnabled).toBe(true);
     expect(store.capabilities?.discordAccountId).toBe('discord-acct-1');
+    expect(store.capabilities?.telegramEnabled).toBe(true);
+    expect(store.capabilities?.telegramAccountId).toBe('telegram-acct-1');
   });
 
   it('loads wecom accounts from gateway', async () => {
@@ -127,5 +131,7 @@ describe('gatewayCapabilityStore', () => {
 
     expect(capabilities.discordEnabled).toBe(false);
     expect(capabilities.discordAccountId).toBeNull();
+    expect(capabilities.telegramEnabled).toBe(false);
+    expect(capabilities.telegramAccountId).toBeNull();
   });
 });

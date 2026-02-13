@@ -4,8 +4,10 @@ import type {
   GatewayDiscordPeerCandidatesModel,
   GatewayHealthModel,
   GatewayPeerCandidatesModel,
+  GatewayTelegramPeerCandidatesModel,
   GatewayPersonalSessionModel,
   GatewayPersonalSessionQrModel,
+  GatewayRuntimeReliabilityStatusModel,
   GatewayWeComAccountListModel,
 } from '~/types/messaging';
 
@@ -174,6 +176,17 @@ export class MessagingGatewayClient {
     return this.request<GatewayCapabilitiesModel>(
       'GET',
       '/api/channel-admin/v1/capabilities',
+      undefined,
+      callOptions,
+    );
+  }
+
+  async getRuntimeReliabilityStatus(
+    callOptions?: GatewayCallOptions,
+  ): Promise<GatewayRuntimeReliabilityStatusModel> {
+    return this.request<GatewayRuntimeReliabilityStatusModel>(
+      'GET',
+      '/api/runtime-reliability/v1/status',
       undefined,
       callOptions,
     );
@@ -349,6 +362,30 @@ export class MessagingGatewayClient {
     return this.request<GatewayDiscordPeerCandidatesModel>(
       'GET',
       `/api/channel-admin/v1/discord/peer-candidates${querySuffix}`,
+      undefined,
+      callOptions,
+    );
+  }
+
+  async getTelegramPeerCandidates(
+    options?: GatewayPeerCandidateQueryOptions & { accountId?: string },
+    callOptions?: GatewayCallOptions,
+  ): Promise<GatewayTelegramPeerCandidatesModel> {
+    const query = new URLSearchParams();
+    if (typeof options?.limit === 'number') {
+      query.set('limit', String(options.limit));
+    }
+    if (typeof options?.includeGroups === 'boolean') {
+      query.set('includeGroups', options.includeGroups ? 'true' : 'false');
+    }
+    if (typeof options?.accountId === 'string' && options.accountId.trim().length > 0) {
+      query.set('accountId', options.accountId.trim());
+    }
+    const querySuffix = query.toString() ? `?${query.toString()}` : '';
+
+    return this.request<GatewayTelegramPeerCandidatesModel>(
+      'GET',
+      `/api/channel-admin/v1/telegram/peer-candidates${querySuffix}`,
       undefined,
       callOptions,
     );

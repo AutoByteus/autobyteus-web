@@ -212,6 +212,8 @@ describe('MessagingGatewayClient', () => {
           wechatPersonalEnabled: false,
           discordEnabled: true,
           discordAccountId: 'discord-acct-1',
+          telegramEnabled: true,
+          telegramAccountId: 'telegram-acct-1',
         },
       })
       .mockResolvedValueOnce({
@@ -236,6 +238,7 @@ describe('MessagingGatewayClient', () => {
 
     expect(capabilities.defaultWeChatMode).toBe('WECOM_APP_BRIDGE');
     expect(capabilities.discordEnabled).toBe(true);
+    expect(capabilities.telegramEnabled).toBe(true);
     expect(accounts.items).toHaveLength(1);
     expect(httpClient.request).toHaveBeenNthCalledWith(
       1,
@@ -310,6 +313,36 @@ describe('MessagingGatewayClient', () => {
       expect.objectContaining({
         method: 'GET',
         url: 'https://gateway.example.com/api/channel-admin/v1/discord/peer-candidates?limit=50&includeGroups=false&accountId=discord-acct-1',
+      }),
+    );
+  });
+
+  it('requests Telegram peer-candidates endpoint with query options', async () => {
+    const httpClient = createHttpClientMock();
+    httpClient.request.mockResolvedValue({
+      data: {
+        accountId: 'telegram-acct-1',
+        updatedAt: '2026-02-10T10:00:00.000Z',
+        items: [],
+      },
+    });
+
+    const client = new MessagingGatewayClient({
+      baseUrl: 'https://gateway.example.com',
+      httpClient,
+    });
+
+    const result = await client.getTelegramPeerCandidates({
+      accountId: 'telegram-acct-1',
+      limit: 50,
+      includeGroups: false,
+    });
+
+    expect(result.accountId).toBe('telegram-acct-1');
+    expect(httpClient.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: 'GET',
+        url: 'https://gateway.example.com/api/channel-admin/v1/telegram/peer-candidates?limit=50&includeGroups=false&accountId=telegram-acct-1',
       }),
     );
   });

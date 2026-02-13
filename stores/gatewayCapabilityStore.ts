@@ -39,6 +39,12 @@ function normalizeCapabilities(capabilities: GatewayCapabilitiesModel): GatewayC
       typeof capabilities.discordAccountId === 'string' && capabilities.discordAccountId.trim().length > 0
         ? capabilities.discordAccountId
         : null,
+    telegramEnabled: capabilities.telegramEnabled === true,
+    telegramAccountId:
+      typeof capabilities.telegramAccountId === 'string' &&
+      capabilities.telegramAccountId.trim().length > 0
+        ? capabilities.telegramAccountId
+        : null,
   };
 }
 

@@ -1,4 +1,4 @@
-export type MessagingProvider = 'WHATSAPP' | 'WECOM' | 'WECHAT' | 'DISCORD';
+export type MessagingProvider = 'WHATSAPP' | 'WECOM' | 'WECHAT' | 'DISCORD' | 'TELEGRAM';
 export type PersonalSessionProvider = 'WHATSAPP' | 'WECHAT';
 
 export type MessagingTransport = 'BUSINESS_API' | 'PERSONAL_SESSION';
@@ -49,12 +49,10 @@ export interface ExternalChannelBindingModel {
   threadId: string | null;
   targetType: ExternalChannelBindingTargetType;
   targetId: string;
-  allowTransportFallback: boolean;
   updatedAt: string;
 }
 
 export interface ExternalChannelBindingDraft {
-  id?: string;
   provider: MessagingProvider;
   transport: MessagingTransport;
   accountId: string;
@@ -62,7 +60,6 @@ export interface ExternalChannelBindingDraft {
   threadId: string | null;
   targetType: ExternalChannelBindingTargetType;
   targetId: string;
-  allowTransportFallback: boolean;
 }
 
 export interface ExternalChannelBindingTargetOption {
@@ -87,6 +84,8 @@ export interface GatewayCapabilitiesModel {
   wechatPersonalEnabled: boolean;
   discordEnabled: boolean;
   discordAccountId: string | null;
+  telegramEnabled: boolean;
+  telegramAccountId: string | null;
 }
 
 export type GatewayWeComAccountMode = 'APP' | 'LEGACY';
@@ -143,6 +142,55 @@ export interface GatewayDiscordPeerCandidatesModel {
   items: GatewayPeerCandidate[];
 }
 
+export interface GatewayTelegramPeerCandidatesModel {
+  accountId: string;
+  updatedAt: string;
+  items: GatewayPeerCandidate[];
+}
+
+export type GatewayRuntimeReliabilityState = 'HEALTHY' | 'CRITICAL_LOCK_LOST';
+
+export interface GatewayRuntimeReliabilityStatusModel {
+  runtime: {
+    state: GatewayRuntimeReliabilityState;
+    criticalCode: string | null;
+    updatedAt: string;
+    workers: {
+      inboundForwarder: {
+        running: boolean;
+        lastError: string | null;
+        lastErrorAt: string | null;
+      };
+      outboundSender: {
+        running: boolean;
+        lastError: string | null;
+        lastErrorAt: string | null;
+      };
+    };
+    locks: {
+      inbox: {
+        ownerId: string | null;
+        held: boolean;
+        lost: boolean;
+        lastHeartbeatAt: string | null;
+        lastError: string | null;
+      };
+      outbox: {
+        ownerId: string | null;
+        held: boolean;
+        lost: boolean;
+        lastHeartbeatAt: string | null;
+        lastError: string | null;
+      };
+    };
+  };
+  queue: {
+    inboundDeadLetterCount: number;
+    inboundCompletedUnboundCount: number;
+    outboundDeadLetterCount: number;
+  };
+}
+
 export interface SetupStepState {
   key: SetupStepKey;
   status: SetupStepStateStatus;
@@ -152,6 +200,7 @@ export interface SetupStepState {
 export interface SetupBlocker {
   code:
     | 'GATEWAY_UNREACHABLE'
+    | 'GATEWAY_RUNTIME_CRITICAL'
     | 'PERSONAL_MODE_DISABLED'
     | 'SESSION_NOT_READY'
     | 'SERVER_BINDING_API_UNAVAILABLE'
@@ -180,6 +229,8 @@ export interface BindingScopeInput {
 export interface GatewayReadinessSnapshot {
   gatewayReady: boolean;
   gatewayBlockedReason: string | null;
+  runtimeReliabilityState: GatewayRuntimeReliabilityState | null;
+  runtimeReliabilityCriticalReason: string | null;
   personalSessionReady: boolean;
   personalSessionBlockedReason: string | null;
 }

@@ -33,6 +33,7 @@ describe('messagingChannelBindingSetupStore', () => {
             'WECOM:BUSINESS_API',
             'WECHAT:PERSONAL_SESSION',
             'DISCORD:BUSINESS_API',
+            'TELEGRAM:BUSINESS_API',
           ],
         },
       },
@@ -84,7 +85,6 @@ describe('messagingChannelBindingSetupStore', () => {
         threadId: null,
         targetType: 'AGENT',
         targetId: '',
-        allowTransportFallback: false,
       }),
     ).rejects.toThrow('Binding validation failed');
 
@@ -108,7 +108,6 @@ describe('messagingChannelBindingSetupStore', () => {
       threadId: null,
       targetType: 'AGENT',
       targetId: 'agent-1',
-      allowTransportFallback: false,
     });
 
     expect(errors.transport).toBeUndefined();
@@ -130,7 +129,6 @@ describe('messagingChannelBindingSetupStore', () => {
       threadId: null,
       targetType: 'AGENT',
       targetId: 'agent-1',
-      allowTransportFallback: false,
     });
     const invalidWeChat = store.validateDraft({
       provider: 'WECHAT',
@@ -140,7 +138,6 @@ describe('messagingChannelBindingSetupStore', () => {
       threadId: null,
       targetType: 'AGENT',
       targetId: 'agent-1',
-      allowTransportFallback: false,
     });
     const invalidDiscord = store.validateDraft({
       provider: 'DISCORD',
@@ -150,7 +147,6 @@ describe('messagingChannelBindingSetupStore', () => {
       threadId: null,
       targetType: 'AGENT',
       targetId: 'agent-1',
-      allowTransportFallback: false,
     });
     const invalidDiscordBusinessApi = store.validateDraft({
       provider: 'DISCORD',
@@ -160,7 +156,6 @@ describe('messagingChannelBindingSetupStore', () => {
       threadId: null,
       targetType: 'AGENT',
       targetId: 'agent-1',
-      allowTransportFallback: false,
     });
 
     expect(invalidWeCom.transport).toContain('is not supported');
@@ -185,10 +180,34 @@ describe('messagingChannelBindingSetupStore', () => {
       threadId: '999888777',
       targetType: 'AGENT',
       targetId: 'agent-1',
-      allowTransportFallback: false,
     });
 
     expect(errors.threadId).toContain('can only be used with channel');
+  });
+
+  it('blocks TELEGRAM TEAM targets before mutation request', async () => {
+    const store = useMessagingChannelBindingSetupStore();
+    store.capabilities = {
+      bindingCrudEnabled: true,
+      reason: null,
+      acceptedProviderTransportPairs: ['TELEGRAM:BUSINESS_API'],
+    };
+
+    await expect(
+      store.upsertBinding({
+        provider: 'TELEGRAM',
+        transport: 'BUSINESS_API',
+        accountId: 'telegram-acct-1',
+        peerId: '100200300',
+        threadId: null,
+        targetType: 'TEAM',
+        targetId: 'team-1',
+      }),
+    ).rejects.toThrow('Binding validation failed');
+
+    expect(store.fieldErrors.targetType).toBe(
+      'Telegram bindings currently support AGENT targets only.',
+    );
   });
 
   it('upserts binding and updates list', async () => {
@@ -204,7 +223,6 @@ describe('messagingChannelBindingSetupStore', () => {
           threadId: null,
           targetType: 'AGENT',
           targetId: 'agent-1',
-          allowTransportFallback: true,
           updatedAt: '2026-02-09T10:00:00.000Z',
         },
       },
@@ -227,7 +245,6 @@ describe('messagingChannelBindingSetupStore', () => {
       threadId: null,
       targetType: 'AGENT',
       targetId: 'agent-1',
-      allowTransportFallback: true,
     });
 
     expect(binding.id).toBe('binding-1');
@@ -257,7 +274,6 @@ describe('messagingChannelBindingSetupStore', () => {
           threadId: null,
           targetType: 'AGENT',
           targetId: 'agent-1',
-          allowTransportFallback: false,
           updatedAt: '2026-02-09T12:00:00.000Z',
         },
       },
@@ -277,7 +293,6 @@ describe('messagingChannelBindingSetupStore', () => {
       threadId: null,
       targetType: 'AGENT',
       targetId: 'agent-1',
-      allowTransportFallback: false,
     });
 
     expect(binding.id).toBe('binding-2');
@@ -312,7 +327,6 @@ describe('messagingChannelBindingSetupStore', () => {
         threadId: null,
         targetType: 'AGENT',
         targetId: 'agent-1',
-        allowTransportFallback: false,
       }),
     ).rejects.toThrow('Binding API rollout not enabled');
 
@@ -343,7 +357,6 @@ describe('messagingChannelBindingSetupStore', () => {
         threadId: null,
         targetType: 'AGENT',
         targetId: 'agent-1',
-        allowTransportFallback: true,
       }),
     ).rejects.toThrow('Cannot query field');
 
@@ -385,7 +398,6 @@ describe('messagingChannelBindingSetupStore', () => {
         threadId: '999888777',
         targetType: 'AGENT',
         targetId: 'agent-1',
-        allowTransportFallback: false,
       }),
     ).rejects.toThrow('Discord threadId can only be used with channel:<snowflake> peerId targets.');
 
@@ -417,7 +429,6 @@ describe('messagingChannelBindingSetupStore', () => {
         threadId: null,
         targetType: 'AGENT',
         targetId: 'agent-1',
-        allowTransportFallback: false,
         updatedAt: '2026-02-09T11:00:00.000Z',
       },
     ];
