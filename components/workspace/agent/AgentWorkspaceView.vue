@@ -55,10 +55,12 @@ import AgentStatusDisplay from '~/components/workspace/agent/AgentStatusDisplay.
 import CopyButton from '~/components/common/CopyButton.vue';
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
+import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 
 const agentContextsStore = useAgentContextsStore();
 const runConfigStore = useAgentRunConfigStore();
+const teamRunConfigStore = useTeamRunConfigStore();
 const selectionStore = useAgentSelectionStore();
 
 const selectedAgent = computed(() => agentContextsStore.activeInstance);
@@ -115,11 +117,11 @@ const conversationText = computed(() => {
 });
 
 const createNewAgent = () => {
-  if (selectedAgent.value) {
-    const template = { ...selectedAgent.value.config, isLocked: false };
-    runConfigStore.setAgentConfig(template);
-  }
+  if (!selectedAgent.value) return;
+
+  const template = { ...selectedAgent.value.config, isLocked: false };
+  runConfigStore.setAgentConfig(template);
+  teamRunConfigStore.clearConfig();
   selectionStore.clearSelection();
-  agentContextsStore.createInstanceFromTemplate();
 };
 </script>
