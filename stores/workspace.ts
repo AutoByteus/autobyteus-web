@@ -37,6 +37,18 @@ interface WorkspaceState {
   fileSystemConnections: Map<string, FileExplorerStreamingService>;
 }
 
+const normalizeRootPath = (value: string | null | undefined): string => {
+  const source = (value || '').trim();
+  if (!source) {
+    return '';
+  }
+  const normalized = source.replace(/\\/g, '/');
+  if (normalized === '/') {
+    return normalized;
+  }
+  return normalized.replace(/\/+$/, '');
+};
+
 export const useWorkspaceStore = defineStore('workspace', {
   state: (): WorkspaceState => ({
     workspaces: {},
@@ -46,6 +58,27 @@ export const useWorkspaceStore = defineStore('workspace', {
     fileSystemConnections: new Map(),
   }),
   actions: {    
+    removeWorkspaceEntriesByRootPath(rootPath: string | null | undefined) {
+      const normalizedTarget = normalizeRootPath(rootPath);
+      if (!normalizedTarget) {
+        return;
+      }
+
+      for (const [workspaceId, workspace] of Object.entries(this.workspaces)) {
+        const normalizedWorkspaceRoot = normalizeRootPath(
+          workspace.absolutePath
+            || workspace.workspaceConfig?.root_path
+            || workspace.workspaceConfig?.rootPath
+            || null,
+        );
+        if (normalizedWorkspaceRoot !== normalizedTarget) {
+          continue;
+        }
+        this.disconnectFromFileSystemChanges(workspaceId);
+        delete this.workspaces[workspaceId];
+      }
+    },
+
     async createWorkspace(config: { root_path: string }): Promise<string> {
       this.loading = true;
       this.error = null;
@@ -66,6 +99,7 @@ export const useWorkspaceStore = defineStore('workspace', {
 
         if (data?.createWorkspace) {
           const newWorkspace = data.createWorkspace;
+          this.removeWorkspaceEntriesByRootPath(newWorkspace.absolutePath ?? config.root_path);
           
           const treeNode = convertJsonToTreeNode(newWorkspace.fileExplorer);
           const nodeIdToNode = createNodeIdToNodeDictionary(treeNode);
@@ -94,21 +128,54 @@ export const useWorkspaceStore = defineStore('workspace', {
         this.loading = false;
       }
     },
-    async fetchAllWorkspaces() {
-      if (this.workspacesFetched) return;
+    async fetchAllWorkspaces(force = false, expectedBindingRevision?: number) {
+      if (this.workspacesFetched && !force) return;
       this.loading = true;
       this.error = null;
       try {
         const windowNodeContextStore = useWindowNodeContextStore()
+        const bindingRevisionAtStart =
+          expectedBindingRevision ?? windowNodeContextStore.bindingRevision;
+
+        if (windowNodeContextStore.bindingRevision !== bindingRevisionAtStart) {
+          console.warn(
+            `[Workspace] Skipping workspace fetch due to stale binding revision ${bindingRevisionAtStart}. Current revision: ${windowNodeContextStore.bindingRevision}`,
+          );
+          return;
+        }
+
+        if (force) {
+          for (const workspaceId of Array.from(this.fileSystemConnections.keys())) {
+            this.disconnectFromFileSystemChanges(workspaceId);
+          }
+          this.workspaces = {};
+          this.workspacesFetched = false;
+        }
+
         const isReady = await windowNodeContextStore.waitForBoundBackendReady()
         if (!isReady) {
           throw new Error('Bound backend is not ready')
         }
+
+        if (windowNodeContextStore.bindingRevision !== bindingRevisionAtStart) {
+          console.warn(
+            `[Workspace] Discarding workspace fetch because binding revision changed to ${windowNodeContextStore.bindingRevision}`,
+          );
+          return;
+        }
+
         const client = getApolloClient()
         const { data, errors } = await client.query<GetAllWorkspacesQuery>({
           query: GetAllWorkspaces,
           fetchPolicy: 'network-only',
         });
+
+        if (windowNodeContextStore.bindingRevision !== bindingRevisionAtStart) {
+          console.warn(
+            `[Workspace] Ignoring workspace query result for stale revision ${bindingRevisionAtStart}; current revision is ${windowNodeContextStore.bindingRevision}`,
+          );
+          return;
+        }
 
         if (errors && errors.length > 0) {
           throw new Error(errors.map(e => e.message).join(', '));
@@ -138,6 +205,41 @@ export const useWorkspaceStore = defineStore('workspace', {
         throw error;
       } finally {
         this.loading = false;
+      }
+    },
+
+    async resetWorkspaceStateForBackendContextChange(options?: {
+      reason?: string;
+      reload?: boolean;
+    }) {
+      const windowNodeContextStore = useWindowNodeContextStore();
+      const bindingRevisionAtReset = windowNodeContextStore.bindingRevision;
+      const reason = options?.reason || 'backend_context_changed';
+      const reload = options?.reload ?? true;
+      console.info(`[Workspace] Resetting workspace state due to ${reason}`);
+
+      for (const workspaceId of Array.from(this.fileSystemConnections.keys())) {
+        this.disconnectFromFileSystemChanges(workspaceId);
+      }
+
+      this.workspaces = {};
+      this.workspacesFetched = false;
+      this.loading = false;
+      this.error = null;
+
+      const fileExplorerStore = useFileExplorerStore();
+      fileExplorerStore.fileExplorerStateByWorkspace.clear();
+
+      if (!reload) {
+        return;
+      }
+
+      try {
+        await this.fetchAllWorkspaces(true, bindingRevisionAtReset);
+      } catch (error) {
+        console.warn(
+          `[Workspace] Failed to reload workspaces after backend context reset: ${String(error)}`,
+        );
       }
     },
 

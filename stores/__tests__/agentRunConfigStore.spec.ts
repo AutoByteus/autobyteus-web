@@ -148,14 +148,23 @@ describe('agentRunConfigStore', () => {
     it('should return false if no model selected', () => {
       const store = useAgentRunConfigStore();
       store.setTemplate(mockAgentDef);
+      store.updateAgentConfig({ workspaceId: 'ws-1' });
 
       expect(store.isConfigured).toBe(false);
     });
 
-    it('should return true if model selected', () => {
+    it('should return false if workspace is missing', () => {
       const store = useAgentRunConfigStore();
       store.setTemplate(mockAgentDef);
       store.updateAgentConfig({ llmModelIdentifier: 'gpt-4' });
+
+      expect(store.isConfigured).toBe(false);
+    });
+
+    it('should return true if model and workspace are selected', () => {
+      const store = useAgentRunConfigStore();
+      store.setTemplate(mockAgentDef);
+      store.updateAgentConfig({ llmModelIdentifier: 'gpt-4', workspaceId: 'ws-1' });
 
       expect(store.isConfigured).toBe(true);
     });

@@ -5,6 +5,7 @@ import { AgentContext } from '~/types/agent/AgentContext';
 import { AgentRunState } from '~/types/agent/AgentRunState';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import type { Conversation } from '~/types/conversation';
+import { AgentStatus } from '~/types/agent/AgentStatus';
 
 interface AgentContextsStoreState {
   /** All running agent instances, keyed by agentId */
@@ -148,6 +149,64 @@ export const useAgentContextsStore = defineStore('agentContexts', {
       if (selectionStore.selectedType === 'agent' && selectionStore.selectedInstanceId === tempId) {
         selectionStore.selectInstance(permanentId, 'agent');
       }
+    },
+
+    /**
+     * Hydrate or replace an existing instance from persisted run projection data.
+     */
+    hydrateFromProjection(options: {
+      runId: string;
+      config: AgentRunConfig;
+      conversation: Conversation;
+      status?: AgentStatus;
+    }) {
+      this.upsertProjectionContext(options);
+    },
+
+    /**
+     * Upsert an instance from persisted projection data.
+     * This is the explicit state-ownership API for restore/hydration flows.
+     */
+    upsertProjectionContext(options: {
+      runId: string;
+      config: AgentRunConfig;
+      conversation: Conversation;
+      status?: AgentStatus;
+    }) {
+      const existing = this.instances.get(options.runId);
+      const nextStatus = options.status ?? AgentStatus.Idle;
+
+      if (existing) {
+        existing.config = {
+          ...options.config,
+        };
+        existing.state.agentId = options.runId;
+        existing.state.conversation = options.conversation;
+        existing.state.currentStatus = nextStatus;
+        return;
+      }
+
+      const state = new AgentRunState(options.runId, options.conversation);
+      state.currentStatus = nextStatus;
+      const context = new AgentContext(options.config, state);
+      this.instances.set(options.runId, context);
+    },
+
+    /**
+     * Patch only runtime config fields for an existing context without replacing
+     * conversation or status state.
+     */
+    patchConfigOnly(instanceId: string, patch: Partial<AgentRunConfig>): boolean {
+      const instance = this.instances.get(instanceId);
+      if (!instance) {
+        return false;
+      }
+
+      instance.config = {
+        ...instance.config,
+        ...patch,
+      };
+      return true;
     },
   },
 });

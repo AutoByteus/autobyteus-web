@@ -10,6 +10,14 @@ import { TreeNode } from '~/utils/fileExplorer/TreeNode';
 const mockMutate = vi.fn();
 const mockQuery = vi.fn();
 const mockWaitForBoundBackendReady = vi.fn().mockResolvedValue(true);
+const mockStreamingInstances: Array<{ connect: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }> = [];
+const mockWindowNodeContextStore = {
+  waitForBoundBackendReady: mockWaitForBoundBackendReady,
+  getBoundEndpoints: () => ({
+    fileExplorerWs: 'ws://mock',
+  }),
+  bindingRevision: 0,
+};
 
 vi.mock('~/utils/apolloClient', () => ({
   getApolloClient: () => ({
@@ -30,27 +38,28 @@ vi.mock('~/graphql/queries/file_explorer_queries', () => ({
 }));
 
 vi.mock('~/stores/windowNodeContextStore', () => ({
-    useWindowNodeContextStore: () => ({
-        waitForBoundBackendReady: mockWaitForBoundBackendReady,
-        getBoundEndpoints: () => ({
-            fileExplorerWs: 'ws://mock'
-        }),
-    }),
+    useWindowNodeContextStore: () => mockWindowNodeContextStore,
 }));
 
 // Mock FileExplorerStreamingService
 vi.mock('~/services/fileExplorerStreaming/FileExplorerStreamingService', () => {
     return {
-        FileExplorerStreamingService: vi.fn().mockImplementation(() => ({
-            connect: vi.fn(),
-            disconnect: vi.fn(),
-        }))
+        FileExplorerStreamingService: vi.fn(() => {
+            const instance = {
+                connect: vi.fn(),
+                disconnect: vi.fn(),
+            };
+            mockStreamingInstances.push(instance);
+            return instance;
+        }),
     }
 });
 
 describe('workspaceStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockStreamingInstances.length = 0;
+    mockWindowNodeContextStore.bindingRevision = 0;
   });
 
   describe('createWorkspace', () => {
@@ -95,6 +104,45 @@ describe('workspaceStore', () => {
         await expect(store.createWorkspace({ root_path: '/bad' })).rejects.toThrow('GraphQL Error');
         expect(store.error).toBeTruthy();
     });
+
+    it('should replace stale workspace entries with the same root path', async () => {
+      const pinia = createTestingPinia({ createSpy: vi.fn, stubActions: false });
+      setActivePinia(pinia);
+      const store = useWorkspaceStore();
+
+      const staleDisconnect = vi.fn();
+      store.workspaces['stale-ws'] = {
+        workspaceId: 'stale-ws',
+        name: 'Stale',
+        fileExplorer: new TreeNode('root', 'root', false, [], 'root-id'),
+        nodeIdToNode: {},
+        workspaceConfig: { root_path: '/tmp/test' },
+        absolutePath: '/tmp/test',
+      };
+      store.fileSystemConnections.set('stale-ws', {
+        connect: vi.fn(),
+        disconnect: staleDisconnect,
+      } as any);
+
+      mockMutate.mockResolvedValue({
+        data: {
+          createWorkspace: {
+            workspaceId: 'fresh-ws',
+            name: 'Fresh',
+            fileExplorer: JSON.stringify({ name: 'root', path: 'root', is_file: false, id: 'root-id' }),
+            absolutePath: '/tmp/test',
+            config: {},
+          },
+        },
+      });
+
+      const workspaceId = await store.createWorkspace({ root_path: '/tmp/test' });
+
+      expect(workspaceId).toBe('fresh-ws');
+      expect(store.workspaces['stale-ws']).toBeUndefined();
+      expect(store.workspaces['fresh-ws']).toBeDefined();
+      expect(staleDisconnect).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('fetchAllWorkspaces', () => {
@@ -130,6 +178,36 @@ describe('workspaceStore', () => {
         expect(store.workspaces['ws-1']).toBeDefined();
         expect(store.workspaces['ws-2']).toBeDefined();
         expect(store.workspacesFetched).toBe(true);
+      });
+
+      it('should ignore stale query results when backend binding revision changes mid-flight', async () => {
+        const pinia = createTestingPinia({ createSpy: vi.fn, stubActions: false });
+        setActivePinia(pinia);
+        const store = useWorkspaceStore();
+
+        mockWindowNodeContextStore.bindingRevision = 1;
+        mockQuery.mockImplementation(async () => {
+          mockWindowNodeContextStore.bindingRevision = 2;
+          return {
+            data: {
+              workspaces: [
+                {
+                  workspaceId: 'ws-stale',
+                  name: 'Stale',
+                  fileExplorer: JSON.stringify({ name: 'root', path: 'root', is_file: false, id: 'root-id' }),
+                  absolutePath: '/path/stale',
+                  config: {},
+                },
+              ],
+            },
+          };
+        });
+
+        await store.fetchAllWorkspaces(true, 1);
+
+        expect(store.workspacesFetched).toBe(false);
+        expect(Object.keys(store.workspaces)).toHaveLength(0);
+        expect(store.fileSystemConnections.size).toBe(0);
       });
   });
 
@@ -241,6 +319,38 @@ describe('workspaceStore', () => {
  
          expect(fileExplorerStore.invalidateFileContent).not.toHaveBeenCalled();
          expect(workspaceState.filesToIgnoreNextModify.has('root/file.txt')).toBe(false); // Should be consumed
+    });
+  });
+
+  describe('resetWorkspaceStateForBackendContextChange', () => {
+    it('disconnects all streams and clears workspace state without reload', async () => {
+      const pinia = createTestingPinia({ createSpy: vi.fn, stubActions: false });
+      setActivePinia(pinia);
+      const store = useWorkspaceStore();
+
+      store.workspaces = {
+        'ws-1': {
+          workspaceId: 'ws-1',
+          name: 'One',
+          fileExplorer: new TreeNode('root', 'root', false, [], 'root-id'),
+          nodeIdToNode: {},
+          workspaceConfig: {},
+          absolutePath: '/tmp/one',
+        },
+      };
+      store.workspacesFetched = true;
+      const disconnect = vi.fn();
+      store.fileSystemConnections.set('ws-1', {
+        connect: vi.fn(),
+        disconnect,
+      } as any);
+
+      await store.resetWorkspaceStateForBackendContextChange({ reload: false });
+
+      expect(disconnect).toHaveBeenCalledTimes(1);
+      expect(store.fileSystemConnections.size).toBe(0);
+      expect(Object.keys(store.workspaces)).toHaveLength(0);
+      expect(store.workspacesFetched).toBe(false);
     });
   });
 });

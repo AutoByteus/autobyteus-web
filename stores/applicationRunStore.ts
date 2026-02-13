@@ -198,7 +198,7 @@ export const useApplicationRunStore = defineStore('applicationRun', {
           input: {
             userInput: { content: text, contextFiles: contextPaths.map(cf => ({ path: cf.path, type: cf.type.toUpperCase() as ContextFileType })) },
             teamId: isTemporary ? null : teamContext.teamId,
-            targetNodeName: teamContext.focusedMemberName,
+            targetMemberName: teamContext.focusedMemberName,
             teamDefinitionId: isTemporary ? profile.teamDefinition.id : undefined,
             memberConfigs: memberConfigsForApi,
           }

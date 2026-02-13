@@ -41,7 +41,7 @@
 
     <section class="min-h-0 flex-1 border-b border-gray-200 bg-white">
       <div class="h-full overflow-y-auto">
-        <RunningAgentsPanel
+        <WorkspaceAgentRunsTreePanel
           @instance-selected="onRunningInstanceSelected"
           @instance-created="onRunningInstanceCreated"
         />
@@ -68,7 +68,7 @@
 import { computed } from 'vue';
 import { Icon } from '@iconify/vue';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
-import RunningAgentsPanel from '~/components/workspace/running/RunningAgentsPanel.vue';
+import WorkspaceAgentRunsTreePanel from '~/components/workspace/history/WorkspaceAgentRunsTreePanel.vue';
 import { useLeftPanel } from '~/composables/useLeftPanel';
 
 type PrimaryNavKey =

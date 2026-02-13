@@ -37,6 +37,8 @@
         :is-loading="workspaceLoadingState.isLoading"
         :error="workspaceLoadingState.error"
         :disabled="config.isLocked"
+        :workspace-locked="workspaceLocked"
+        workspace-locked-message="Workspace is fixed for existing runs."
         @select-existing="handleSelectExisting"
         @load-new="handleLoadNew"
     />
@@ -89,6 +91,11 @@
         <span class="i-heroicons-lock-closed-20-solid w-4 h-4 mr-1"></span>
         <span>Configuration locked because execution has started.</span>
     </div>
+
+    <div v-else-if="workspaceLocked" class="flex items-center text-xs text-amber-600 bg-amber-50 p-2 rounded">
+      <span class="i-heroicons-lock-closed-20-solid w-4 h-4 mr-1"></span>
+      <span>Existing run configuration can be changed, but workspace stays fixed.</span>
+    </div>
   </div>
 </template>
 
@@ -112,6 +119,7 @@ const props = defineProps<{
   agentDefinition: AgentDefinition;
   workspaceLoadingState: WorkspaceLoadingState;
   initialPath?: string;
+  workspaceLocked?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -120,6 +128,7 @@ const emit = defineEmits<{
 }>();
 
 const llmStore = useLLMProviderConfigStore();
+const workspaceLocked = computed(() => props.workspaceLocked === true);
 
 onMounted(() => {
   if (llmStore.providersWithModels.length === 0) {

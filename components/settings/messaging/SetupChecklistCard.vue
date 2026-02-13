@@ -12,7 +12,13 @@
           :class="connectorClass(step)"
           aria-hidden="true"
         ></div>
-        <div class="relative z-10 flex flex-col items-center text-center px-1">
+        <button
+          type="button"
+          class="relative z-10 flex w-full flex-col items-center text-center px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          :aria-current="isActive(step) ? 'step' : undefined"
+          :data-testid="`setup-step-${step.key}`"
+          @click="onSelectStep(step.key)"
+        >
           <div class="h-8 w-8 rounded-full border-2 flex items-center justify-center text-sm font-semibold" :class="stepCircleClass(step)">
             <span v-if="isCompleted(step)" class="i-heroicons-check-20-solid h-4 w-4"></span>
             <span v-else>{{ index + 1 }}</span>
@@ -21,7 +27,7 @@
           <p v-if="step.detail && isActive(step)" class="mt-1 text-[11px] text-gray-500 max-w-32 leading-4">
             {{ step.detail }}
           </p>
-        </div>
+        </button>
       </li>
     </ol>
   </section>
@@ -34,6 +40,9 @@ import type { SetupStepState, SetupStepKey } from '~/types/messaging';
 const props = defineProps<{
   steps: SetupStepState[];
   activeStep?: SetupStepKey;
+}>();
+const emit = defineEmits<{
+  (event: 'select-step', stepKey: SetupStepKey): void;
 }>();
 
 const resolvedActiveStep = computed<SetupStepKey>(() => {
@@ -103,5 +112,9 @@ function stepLabelClass(step: SetupStepState): string {
     return 'text-red-700';
   }
   return 'text-gray-500';
+}
+
+function onSelectStep(stepKey: SetupStepKey): void {
+  emit('select-step', stepKey);
 }
 </script>

@@ -23,7 +23,6 @@ export const EXTERNAL_CHANNEL_BINDINGS = gql`
       threadId
       targetType
       targetId
-      allowTransportFallback
       updatedAt
     }
   }

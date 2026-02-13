@@ -138,7 +138,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
                 })),
               },
               teamId: null,
-              targetNodeName: activeTeam.focusedMemberName,
+              targetMemberName: activeTeam.focusedMemberName,
               teamDefinitionId: activeTeam.config.teamDefinitionId,
               memberConfigs,
             }
@@ -154,7 +154,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
                 })),
               },
               teamId: activeTeam.teamId,
-              targetNodeName: activeTeam.focusedMemberName,
+              targetMemberName: activeTeam.focusedMemberName,
             }
           };
         }

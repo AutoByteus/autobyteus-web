@@ -17,6 +17,7 @@
   "scripts": {
     "dev": "nuxt dev --host 0.0.0.0",
     "build": "nuxt build",
+    "guard:web-boundary": "node ./scripts/guard-web-boundary.mjs",
     "test": "pnpm test:nuxt && pnpm test:electron",
     "test:nuxt": "cross-env NUXT_TEST=true vitest",
     "test:electron": "vitest --config ./electron/vitest.config.ts",
@@ -29,10 +30,10 @@
     "transpile-electron": "tsc -p electron/tsconfig.json",
     "transpile-build": "tsc -p build/tsconfig.json",
     "prepare-server": "chmod +x ./scripts/prepare-server.sh && ./scripts/prepare-server.sh",
-    "build:electron": "cross-env NODE_ENV=production pnpm prepare-server && pnpm generate:electron && pnpm transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js",
-    "build:electron:linux": "cross-env NODE_ENV=production pnpm prepare-server && pnpm generate:electron && pnpm transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --linux",
-    "build:electron:windows": "cross-env NODE_ENV=production pnpm prepare-server && pnpm generate:electron && pnpm transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --windows",
-    "build:electron:mac": "cross-env NODE_ENV=production pnpm prepare-server && pnpm generate:electron && pnpm transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --mac"
+    "build:electron": "cross-env NODE_ENV=production pnpm guard:web-boundary && pnpm prepare-server && pnpm generate:electron && pnpm transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js",
+    "build:electron:linux": "cross-env NODE_ENV=production pnpm guard:web-boundary && pnpm prepare-server && pnpm generate:electron && pnpm transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --linux",
+    "build:electron:windows": "cross-env NODE_ENV=production pnpm guard:web-boundary && pnpm prepare-server && pnpm generate:electron && pnpm transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --windows",
+    "build:electron:mac": "cross-env NODE_ENV=production pnpm guard:web-boundary && pnpm prepare-server && pnpm generate:electron && pnpm transpile-electron && tsc -p build/tsconfig.json && node build/dist/build.js --mac"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.7.2",

@@ -7,9 +7,20 @@ import {
   createPersonalSessionSyncPolicy,
   shouldContinuePolling,
 } from '~/services/sessionSync/personalSessionStatusSyncPolicy';
+import {
+  normalizeGatewayErrorMessage,
+  persistGatewayConfig,
+  readPersistedGatewayConfig,
+} from '~/stores/gatewaySessionSetup/config-health';
+import { mergeSessionWithStatusAwareQr } from '~/stores/gatewaySessionSetup/personal-session-lifecycle';
+import {
+  detachTimer,
+  nextAutoSyncStateForReason,
+} from '~/stores/gatewaySessionSetup/session-auto-sync';
 import type {
   PersonalSessionProvider,
   GatewayHealthModel,
+  GatewayRuntimeReliabilityStatusModel,
   GatewayPersonalSessionModel,
   GatewayPersonalSessionQrModel,
   GatewayReadinessSnapshot,
@@ -23,6 +34,8 @@ interface GatewaySessionSetupState {
   gatewayStatus: GatewayStepStatus;
   gatewayError: string | null;
   gatewayHealth: GatewayHealthModel | null;
+  runtimeReliabilityStatus: GatewayRuntimeReliabilityStatusModel | null;
+  runtimeReliabilityError: string | null;
   isGatewayChecking: boolean;
   isSessionLoading: boolean;
   sessionError: string | null;
@@ -38,120 +51,6 @@ interface GatewaySessionSetupState {
   sessionStatusAutoSyncTimer: ReturnType<typeof setTimeout> | null;
 }
 
-function normalizeErrorMessage(error: unknown): string {
-  if (error instanceof GatewayClientError) {
-    return error.message;
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return 'Gateway request failed';
-}
-
-function mergeSessionWithStatusAwareQr(
-  nextSession: GatewayPersonalSessionModel,
-  previousSession: GatewayPersonalSessionModel | null,
-): GatewayPersonalSessionModel {
-  // QR should only be shown while waiting for scan completion.
-  if (nextSession.status !== 'PENDING_QR') {
-    return {
-      ...nextSession,
-      qr: undefined,
-    };
-  }
-
-  if (nextSession.qr) {
-    return nextSession;
-  }
-
-  if (previousSession?.sessionId === nextSession.sessionId && previousSession.qr) {
-    return {
-      ...nextSession,
-      qr: previousSession.qr,
-    };
-  }
-
-  return nextSession;
-}
-
-function detachTimer(timer: ReturnType<typeof setTimeout>) {
-  if (typeof timer === 'object' && timer && 'unref' in timer && typeof timer.unref === 'function') {
-    timer.unref();
-  }
-}
-
-function nextAutoSyncStateForReason(reason: string): SessionStatusAutoSyncState {
-  if (reason === 'retry_budget_exhausted' || reason === 'timeout') {
-    return 'paused';
-  }
-  if (reason === 'restart') {
-    return 'running';
-  }
-  return 'stopped';
-}
-
-const GATEWAY_CONFIG_STORAGE_KEY = 'messaging_gateway_config_v1';
-
-interface PersistedGatewayConfig {
-  baseUrl: string;
-  adminToken: string;
-}
-
-function getLocalStorageSafely(): Storage | null {
-  if (!globalThis || !('localStorage' in globalThis)) {
-    return null;
-  }
-  const storage = (globalThis as { localStorage?: Storage }).localStorage;
-  return storage ?? null;
-}
-
-function readPersistedGatewayConfig(): PersistedGatewayConfig | null {
-  const storage = getLocalStorageSafely();
-  if (!storage) {
-    return null;
-  }
-
-  try {
-    const raw = storage.getItem(GATEWAY_CONFIG_STORAGE_KEY);
-    if (!raw) {
-      return null;
-    }
-
-    const parsed = JSON.parse(raw) as Partial<PersistedGatewayConfig>;
-    return {
-      baseUrl: typeof parsed.baseUrl === 'string' ? parsed.baseUrl : '',
-      adminToken: typeof parsed.adminToken === 'string' ? parsed.adminToken : '',
-    };
-  } catch {
-    return null;
-  }
-}
-
-function persistGatewayConfig(config: PersistedGatewayConfig): void {
-  const storage = getLocalStorageSafely();
-  if (!storage) {
-    return;
-  }
-
-  try {
-    const shouldClear = !config.baseUrl.trim() && !config.adminToken.trim();
-    if (shouldClear) {
-      storage.removeItem(GATEWAY_CONFIG_STORAGE_KEY);
-      return;
-    }
-
-    storage.setItem(
-      GATEWAY_CONFIG_STORAGE_KEY,
-      JSON.stringify({
-        baseUrl: config.baseUrl,
-        adminToken: config.adminToken,
-      }),
-    );
-  } catch {
-    // Ignore storage errors to avoid blocking setup flows.
-  }
-}
-
 export const useGatewaySessionSetupStore = defineStore('gatewaySessionSetupStore', {
   state: (): GatewaySessionSetupState => ({
     gatewayBaseUrl: '',
@@ -159,6 +58,8 @@ export const useGatewaySessionSetupStore = defineStore('gatewaySessionSetupStore
     gatewayStatus: 'UNKNOWN',
     gatewayError: null,
     gatewayHealth: null,
+    runtimeReliabilityStatus: null,
+    runtimeReliabilityError: null,
     isGatewayChecking: false,
     isSessionLoading: false,
     sessionError: null,
@@ -383,14 +284,41 @@ export const useGatewaySessionSetupStore = defineStore('gatewaySessionSetupStore
         this.gatewayStatus = health.status === 'error' ? 'BLOCKED' : 'READY';
         if (this.gatewayStatus === 'BLOCKED') {
           this.gatewayError = 'Gateway reported unhealthy status.';
+          this.runtimeReliabilityStatus = null;
+          this.runtimeReliabilityError = null;
+        } else {
+          await this.refreshRuntimeReliabilityStatus({ silent: true });
         }
         return health;
       } catch (error) {
         this.gatewayStatus = 'BLOCKED';
-        this.gatewayError = normalizeErrorMessage(error);
+        this.gatewayError = normalizeGatewayErrorMessage(error);
+        this.runtimeReliabilityStatus = null;
+        this.runtimeReliabilityError = null;
         throw error;
       } finally {
         this.isGatewayChecking = false;
+      }
+    },
+
+    async refreshRuntimeReliabilityStatus(options?: { silent?: boolean }) {
+      const runSilently = options?.silent === true;
+      if (!runSilently) {
+        this.runtimeReliabilityError = null;
+      }
+
+      try {
+        const status = await this.createClient().getRuntimeReliabilityStatus();
+        this.runtimeReliabilityStatus = status;
+        this.runtimeReliabilityError = null;
+        return status;
+      } catch (error) {
+        this.runtimeReliabilityStatus = null;
+        this.runtimeReliabilityError = normalizeGatewayErrorMessage(error);
+        if (!runSilently) {
+          throw error;
+        }
+        return null;
       }
     },
 
@@ -430,7 +358,7 @@ export const useGatewaySessionSetupStore = defineStore('gatewaySessionSetupStore
               'A personal session is already running, but gateway did not return its session id.';
           }
         }
-        this.sessionError = normalizeErrorMessage(error);
+        this.sessionError = normalizeGatewayErrorMessage(error);
         throw error;
       } finally {
         this.isSessionLoading = false;
@@ -493,7 +421,7 @@ export const useGatewaySessionSetupStore = defineStore('gatewaySessionSetupStore
             }
           }
         }
-        this.sessionError = normalizeErrorMessage(error);
+        this.sessionError = normalizeGatewayErrorMessage(error);
         throw error;
       }
     },
@@ -540,7 +468,7 @@ export const useGatewaySessionSetupStore = defineStore('gatewaySessionSetupStore
             this.stopSessionStatusAutoSync('session_not_found');
           }
         }
-        this.sessionError = normalizeErrorMessage(error);
+        this.sessionError = normalizeGatewayErrorMessage(error);
         throw error;
       } finally {
         if (!options?.silent) {
@@ -571,7 +499,7 @@ export const useGatewaySessionSetupStore = defineStore('gatewaySessionSetupStore
         this.personalModeBlockedReason = null;
         return response;
       } catch (error) {
-        this.sessionError = normalizeErrorMessage(error);
+        this.sessionError = normalizeGatewayErrorMessage(error);
         stopReason = 'stop_failed';
         throw error;
       } finally {
@@ -581,9 +509,18 @@ export const useGatewaySessionSetupStore = defineStore('gatewaySessionSetupStore
     },
 
     getReadinessSnapshot(): GatewayReadinessSnapshot {
+      const runtimeState = this.runtimeReliabilityStatus?.runtime.state ?? null;
+      const runtimeCriticalReason =
+        runtimeState === 'CRITICAL_LOCK_LOST'
+          ? 'Gateway reliability lock ownership was lost. Restart gateway to recover.'
+          : null;
+      const blockedReason =
+        this.gatewayStatus === 'BLOCKED' ? this.gatewayError : runtimeCriticalReason;
       return {
-        gatewayReady: this.gatewayStatus === 'READY',
-        gatewayBlockedReason: this.gatewayStatus === 'BLOCKED' ? this.gatewayError : null,
+        gatewayReady: this.gatewayStatus === 'READY' && !runtimeCriticalReason,
+        gatewayBlockedReason: blockedReason,
+        runtimeReliabilityState: runtimeState,
+        runtimeReliabilityCriticalReason: runtimeCriticalReason,
         personalSessionReady: this.session?.status === 'ACTIVE',
         personalSessionBlockedReason: this.personalModeBlockedReason,
       };

@@ -1,14 +1,27 @@
 import { defineStore } from 'pinia';
 import { getApolloClient } from '~/utils/apolloClient'
-import { SendAgentUserInput, TerminateAgentInstance } from '~/graphql/mutations/agentMutations';
+import { TerminateAgentInstance } from '~/graphql/mutations/agentMutations';
+import { ContinueRun } from '~/graphql/mutations/runHistoryMutations';
 import type {
-  SendAgentUserInputMutation,
-  SendAgentUserInputMutationVariables,
   ContextFileType,
 } from '~/generated/graphql';
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { AgentStreamingService } from '~/services/agentStreaming';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
+import { useWorkspaceStore } from '~/stores/workspace';
+import { useRunHistoryStore } from '~/stores/runHistoryStore';
+import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
+import { resolveRunnableModelIdentifier } from '~/utils/runLaunchPolicy';
+import { AgentStatus } from '~/types/agent/AgentStatus';
+
+interface ContinueRunMutationResultPayload {
+  continueRun: {
+    success: boolean;
+    message: string;
+    runId?: string | null;
+    ignoredConfigFields: string[];
+  };
+}
 
 // Maintain a map of streaming services per agent
 const streamingServices = new Map<string, AgentStreamingService>();
@@ -30,6 +43,8 @@ export const useAgentRunStore = defineStore('agentRun', {
      */
     async sendUserInputAndSubscribe(): Promise<void> {
       const agentContextsStore = useAgentContextsStore();
+      const runHistoryStore = useRunHistoryStore();
+      const workspaceStore = useWorkspaceStore();
       const currentAgent = agentContextsStore.activeInstance;
 
       if (!currentAgent) {
@@ -39,6 +54,29 @@ export const useAgentRunStore = defineStore('agentRun', {
       const { config, state } = currentAgent;
       const agentId = state.agentId;
       const isNewAgent = agentId.startsWith('temp-');
+      const resumeConfig = !isNewAgent ? runHistoryStore.getResumeConfig(agentId) : null;
+      const workspaceId = config.workspaceId;
+      const workspaceRootPath = workspaceId
+        ? (
+            workspaceStore.workspaces[workspaceId]?.absolutePath
+            || workspaceStore.workspaces[workspaceId]?.workspaceConfig?.root_path
+            || workspaceStore.workspaces[workspaceId]?.workspaceConfig?.rootPath
+            || null
+          )
+        : (resumeConfig?.manifestConfig.workspaceRootPath || null);
+
+      if (isNewAgent && !config.llmModelIdentifier) {
+        const llmProviderConfigStore = useLLMProviderConfigStore();
+        config.llmModelIdentifier = await resolveRunnableModelIdentifier({
+          candidateModels: [config.llmModelIdentifier],
+          getKnownModels: () => llmProviderConfigStore.models,
+          ensureModelsLoaded: async () => {
+            if (llmProviderConfigStore.models.length === 0) {
+              await llmProviderConfigStore.fetchProvidersWithModels();
+            }
+          },
+        });
+      }
 
       if (isNewAgent && !config.llmModelIdentifier) {
         throw new Error("Please select a model for the first message.");
@@ -62,17 +100,18 @@ export const useAgentRunStore = defineStore('agentRun', {
 
       try {
         const client = getApolloClient()
-        const { data, errors } = await client.mutate<SendAgentUserInputMutation, SendAgentUserInputMutationVariables>({
-          mutation: SendAgentUserInput,
+        const { data, errors } = await client.mutate<ContinueRunMutationResultPayload>({
+          mutation: ContinueRun,
           variables: {
             input: {
               userInput: {
                 content: currentAgent.requirement,
                 contextFiles: currentAgent.contextFilePaths.map(cf => ({ path: cf.path, type: cf.type.toUpperCase() as ContextFileType })),
               },
-              agentId: isNewAgent ? null : agentId,
-              agentDefinitionId: state.conversation.agentDefinitionId,
-              workspaceId: config.workspaceId,
+              runId: isNewAgent ? null : agentId,
+              agentDefinitionId: isNewAgent ? state.conversation.agentDefinitionId : undefined,
+              workspaceId: isNewAgent ? workspaceId : undefined,
+              workspaceRootPath: workspaceRootPath || undefined,
               llmModelIdentifier: config.llmModelIdentifier,
               autoExecuteTools: config.autoExecuteTools,
               llmConfig: config.llmConfig ?? null,
@@ -82,21 +121,21 @@ export const useAgentRunStore = defineStore('agentRun', {
         });
 
         if (errors && errors.length > 0) {
-          throw new Error(errors.map(e => e.message).join(', '));
+          throw new Error(errors.map((e: { message: string }) => e.message).join(', '));
         }
 
-        const result = data?.sendAgentUserInput;
+        const result = data?.continueRun;
         if (!result) {
-          throw new Error('Failed to send user input: No response returned.');
+          throw new Error('Failed to continue run: No response returned.');
         }
 
         if (!result.success) {
-          throw new Error(result.message || 'Failed to send user input.');
+          throw new Error(result.message || 'Failed to continue run.');
         }
 
-        const permanentAgentId = result.agentId;
+        const permanentAgentId = result.runId;
         if (!permanentAgentId) {
-          throw new Error('Failed to send user input: No agentId returned on success.');
+          throw new Error('Failed to continue run: No runId returned on success.');
         }
 
         let finalAgentId = agentId;
@@ -106,6 +145,8 @@ export const useAgentRunStore = defineStore('agentRun', {
         }
 
         agentContextsStore.lockConfig(finalAgentId);
+        runHistoryStore.markRunAsActive(finalAgentId);
+        runHistoryStore.refreshTreeQuietly();
 
         const finalAgent = agentContextsStore.getInstance(finalAgentId)!;
         finalAgent.requirement = '';
@@ -143,6 +184,10 @@ export const useAgentRunStore = defineStore('agentRun', {
      * @description Establishes a WebSocket connection to receive real-time events for a specific agent.
      */
     connectToAgentStream(agentId: string) {
+      if (streamingServices.has(agentId)) {
+        return;
+      }
+
       const agentContextsStore = useAgentContextsStore();
       const agent = agentContextsStore.getInstance(agentId);
 
@@ -187,6 +232,62 @@ export const useAgentRunStore = defineStore('agentRun', {
     },
 
     /**
+     * @action terminateRun
+     * @description Terminates a run while preserving its row in history view.
+     * This action owns runtime lifecycle teardown + backend termination orchestration.
+     */
+    async terminateRun(runId: string): Promise<boolean> {
+      const agentContextsStore = useAgentContextsStore();
+      const runHistoryStore = useRunHistoryStore();
+      const context = agentContextsStore.getInstance(runId);
+
+      const teardownLocalRuntime = () => {
+        if (context?.unsubscribe) {
+          context.unsubscribe();
+          context.isSubscribed = false;
+          context.unsubscribe = undefined;
+        }
+        streamingServices.delete(runId);
+
+        if (context) {
+          context.isSending = false;
+          context.state.currentStatus = AgentStatus.ShutdownComplete;
+        }
+      };
+
+      if (runId.startsWith('temp-')) {
+        teardownLocalRuntime();
+        runHistoryStore.markRunAsInactive(runId);
+        return true;
+      }
+
+      try {
+        const client = getApolloClient();
+        const { data, errors } = await client.mutate({
+          mutation: TerminateAgentInstance,
+          variables: { id: runId },
+        });
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map((e: { message: string }) => e.message).join(', '));
+        }
+
+        const result = (data as any)?.terminateAgentInstance;
+        if (!result?.success) {
+          throw new Error(result?.message || `Failed to terminate run '${runId}'.`);
+        }
+
+        teardownLocalRuntime();
+        runHistoryStore.markRunAsInactive(runId);
+        runHistoryStore.refreshTreeQuietly();
+        return true;
+      } catch (error) {
+        console.error(`Error terminating run '${runId}':`, error);
+        return false;
+      }
+    },
+
+    /**
      * @action closeAgent
      * @description Closes an agent instance in the workspace, disconnects WebSocket, and optionally terminates the backend instance.
      */
@@ -196,26 +297,21 @@ export const useAgentRunStore = defineStore('agentRun', {
 
       if (!agentToClose) return;
 
-      if (agentToClose.unsubscribe) {
-        agentToClose.unsubscribe();
-        agentToClose.isSubscribed = false;
-        agentToClose.unsubscribe = undefined;
-      }
-
-      streamingServices.delete(agentIdToClose);
-      agentContextsStore.removeInstance(agentIdToClose);
-
-      if (options.terminate && !agentIdToClose.startsWith('temp-')) {
-        try {
-          const client = getApolloClient()
-          await client.mutate({
-            mutation: TerminateAgentInstance,
-            variables: { id: agentIdToClose },
-          });
-        } catch (error) {
-          console.error('Error closing agent on backend:', error);
+      if (options.terminate) {
+        const terminated = await this.terminateRun(agentIdToClose);
+        if (!terminated) {
+          return;
         }
+      } else {
+        if (agentToClose.unsubscribe) {
+          agentToClose.unsubscribe();
+          agentToClose.isSubscribed = false;
+          agentToClose.unsubscribe = undefined;
+        }
+        streamingServices.delete(agentIdToClose);
       }
+
+      agentContextsStore.removeInstance(agentIdToClose);
     },
 
   },
