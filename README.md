@@ -93,13 +93,20 @@ pnpm dev
    - `GET /api/wechaty/v1/sessions/:sessionId/qr`
    - `GET /api/wechaty/v1/sessions/:sessionId/status`
    - `GET /api/wechaty/v1/sessions/:sessionId/peer-candidates`
+   - `POST /api/wechaty/v1/sessions/:sessionId/messages`
    - `DELETE /api/wechaty/v1/sessions/:sessionId`
+   - push inbound message events to gateway:
+     `POST /api/wechat-sidecar/v1/events` with
+     `x-autobyteus-sidecar-signature` and `x-autobyteus-sidecar-timestamp` headers
+   - reference implementation:
+     - `/Users/normy/autobyteus_org/autobyteus-message-gateway/tools/wechaty-sidecar/README.md`
 
 2. Start `autobyteus-message-gateway` with WeChat personal mode enabled:
 
 ```bash
 GATEWAY_WECHAT_PERSONAL_ENABLED=true \
 GATEWAY_WECHAT_PERSONAL_SIDECAR_BASE_URL=http://localhost:8788 \
+GATEWAY_WECHAT_PERSONAL_SIDECAR_SHARED_SECRET=<shared-secret> \
 GATEWAY_WECHAT_PERSONAL_STATE_ROOT=/Users/normy/autobyteus_org/autobyteus-message-gateway/memory/wechat-personal \
 GATEWAY_PORT=8010 \
 node /Users/normy/autobyteus_org/autobyteus-message-gateway/dist/index.js
