@@ -74,7 +74,18 @@
                     class="mr-1 h-3.5 w-3.5 text-gray-400 transition-transform"
                     :class="isAgentExpanded(workspaceNode.workspaceRootPath, agentNode.agentDefinitionId) ? 'rotate-0' : '-rotate-90'"
                   />
-                  <Icon icon="heroicons:user-circle-20-solid" class="mr-1.5 h-4 w-4 text-gray-500" />
+                  <span
+                    class="mr-1.5 inline-flex h-5 w-5 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-[10px] font-semibold text-gray-600"
+                  >
+                    <img
+                      v-if="showAgentAvatar(workspaceNode.workspaceRootPath, agentNode.agentDefinitionId, agentNode.agentAvatarUrl)"
+                      :src="agentNode.agentAvatarUrl || ''"
+                      :alt="`${agentNode.agentName} avatar`"
+                      class="h-full w-full object-cover"
+                      @error="onAgentAvatarError(workspaceNode.workspaceRootPath, agentNode.agentDefinitionId, agentNode.agentAvatarUrl)"
+                    >
+                    <span v-else>{{ getAgentInitials(agentNode.agentName) }}</span>
+                  </span>
                   <span class="truncate font-medium">{{ agentNode.agentName }}</span>
                   <span class="ml-1 text-xs text-gray-400">({{ agentNode.runs.length }})</span>
                 </button>
@@ -139,7 +150,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { Icon } from '@iconify/vue';
 import { useRunHistoryStore } from '~/stores/runHistoryStore';
 import { useWorkspaceStore } from '~/stores/workspace';
@@ -162,6 +173,7 @@ const { addToast } = useToasts();
 const expandedWorkspace = ref<Record<string, boolean>>({});
 const expandedAgents = ref<Record<string, boolean>>({});
 const terminatingRunIds = ref<Record<string, boolean>>({});
+const brokenAvatarByAgentKey = ref<Record<string, boolean>>({});
 const activeStatusClass = 'bg-blue-500 animate-pulse';
 
 const workspaceNodes = computed(() => {
@@ -178,6 +190,58 @@ const selectedRunId = computed(() => {
 const getAgentNodeKey = (workspaceRootPath: string, agentDefinitionId: string): string => {
   return `${workspaceRootPath}::${agentDefinitionId}`;
 };
+
+const getAgentAvatarKey = (
+  workspaceRootPath: string,
+  agentDefinitionId: string,
+  avatarUrl?: string | null,
+): string => {
+  return `${getAgentNodeKey(workspaceRootPath, agentDefinitionId)}::${(avatarUrl || '').trim()}`;
+};
+
+const getAgentInitials = (agentName: string): string => {
+  const tokens = (agentName || 'Agent')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (tokens.length === 0) {
+    return 'AG';
+  }
+  return tokens
+    .slice(0, 2)
+    .map((token) => token.charAt(0).toUpperCase())
+    .join('');
+};
+
+const showAgentAvatar = (
+  workspaceRootPath: string,
+  agentDefinitionId: string,
+  avatarUrl?: string | null,
+): boolean => {
+  const key = getAgentAvatarKey(workspaceRootPath, agentDefinitionId, avatarUrl);
+  return Boolean((avatarUrl || '').trim()) && !brokenAvatarByAgentKey.value[key];
+};
+
+const onAgentAvatarError = (
+  workspaceRootPath: string,
+  agentDefinitionId: string,
+  avatarUrl?: string | null,
+): void => {
+  const key = getAgentAvatarKey(workspaceRootPath, agentDefinitionId, avatarUrl);
+  brokenAvatarByAgentKey.value = {
+    ...brokenAvatarByAgentKey.value,
+    [key]: true,
+  };
+};
+
+watch(
+  () => runHistoryStore.loading,
+  (loading, previousLoading) => {
+    if (previousLoading && !loading) {
+      brokenAvatarByAgentKey.value = {};
+    }
+  },
+);
 
 const isWorkspaceExpanded = (workspaceRootPath: string): boolean => {
   return expandedWorkspace.value[workspaceRootPath] ?? true;

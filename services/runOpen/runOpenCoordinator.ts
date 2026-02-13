@@ -345,7 +345,7 @@ export const openRunWithCoordinator = async (
       runId: input.runId,
       config,
       conversation,
-      status: resumeConfig.isActive ? AgentStatus.Uninitialized : AgentStatus.Idle,
+      status: resumeConfig.isActive ? AgentStatus.Uninitialized : AgentStatus.ShutdownComplete,
     });
   }
 

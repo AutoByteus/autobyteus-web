@@ -18,6 +18,7 @@ export interface ProjectionRunItem {
 export interface ProjectionAgentGroup {
   agentDefinitionId: string;
   agentName: string;
+  agentAvatarUrl?: string | null;
   runs: ProjectionRunItem[];
 }
 
@@ -37,6 +38,7 @@ export interface DraftRunSnapshot {
   workspaceRootPath: string;
   agentDefinitionId: string;
   agentName: string;
+  agentAvatarUrl?: string | null;
   summary: string;
   lastActivityAt: string;
   lastKnownStatus: ProjectionRunKnownStatus;
@@ -51,6 +53,7 @@ export interface RunTreeRow extends ProjectionRunItem {
 export interface RunTreeAgentNode {
   agentDefinitionId: string;
   agentName: string;
+  agentAvatarUrl?: string | null;
   runs: RunTreeRow[];
 }
 
@@ -69,6 +72,7 @@ interface BuildRunTreeProjectionInput {
 interface MutableAgentNode {
   agentDefinitionId: string;
   agentName: string;
+  agentAvatarUrl: string | null;
   runs: RunTreeRow[];
 }
 
@@ -158,11 +162,15 @@ const ensureAgentNode = (
   workspaceNode: MutableWorkspaceNode,
   agentDefinitionId: string,
   agentName: string,
+  agentAvatarUrl?: string | null,
 ): MutableAgentNode => {
   const existing = workspaceNode.agentsById.get(agentDefinitionId);
   if (existing) {
     if (!existing.agentName && agentName) {
       existing.agentName = agentName;
+    }
+    if (!existing.agentAvatarUrl && agentAvatarUrl) {
+      existing.agentAvatarUrl = agentAvatarUrl;
     }
     return existing;
   }
@@ -170,6 +178,7 @@ const ensureAgentNode = (
   const created: MutableAgentNode = {
     agentDefinitionId,
     agentName: agentName || FALLBACK_AGENT_NAME,
+    agentAvatarUrl: agentAvatarUrl ?? null,
     runs: [],
   };
   workspaceNode.agentsById.set(agentDefinitionId, created);
@@ -208,6 +217,7 @@ export const buildRunTreeProjection = (input: BuildRunTreeProjectionInput): RunT
         workspaceNode,
         agent.agentDefinitionId,
         agent.agentName || FALLBACK_AGENT_NAME,
+        agent.agentAvatarUrl ?? null,
       );
 
       for (const run of agent.runs) {
@@ -241,6 +251,7 @@ export const buildRunTreeProjection = (input: BuildRunTreeProjectionInput): RunT
       workspaceNode,
       draft.agentDefinitionId,
       draft.agentName || FALLBACK_AGENT_NAME,
+      draft.agentAvatarUrl ?? null,
     );
 
     agentNode.runs.push({
@@ -259,6 +270,7 @@ export const buildRunTreeProjection = (input: BuildRunTreeProjectionInput): RunT
       .map((agentNode) => ({
         agentDefinitionId: agentNode.agentDefinitionId,
         agentName: agentNode.agentName || FALLBACK_AGENT_NAME,
+        agentAvatarUrl: agentNode.agentAvatarUrl ?? null,
         runs: dedupeAndSortRuns(agentNode.runs),
       }))
       .sort((a, b) => {

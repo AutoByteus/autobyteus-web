@@ -223,6 +223,7 @@ describe('runHistoryStore', () => {
     expect(store.error).toBeNull();
     expect(store.workspaceGroups).toHaveLength(1);
     expect(store.workspaceGroups[0]?.agents[0]?.runs[0]?.runId).toBe('run-1');
+    expect(store.agentAvatarByDefinitionId['agent-def-1']).toBe('https://a');
   });
 
   it('returns backend readiness error on fetchTree when backend is not ready', async () => {
@@ -319,6 +320,94 @@ describe('runHistoryStore', () => {
     expect(teamRunConfigStoreMock.clearConfig).toHaveBeenCalled();
     expect(agentRunStoreMock.connectToAgentStream).toHaveBeenCalledWith('run-1');
     expect(store.selectedRunId).toBe('run-1');
+  });
+
+  it('opens an inactive run and hydrates offline status without connecting stream', async () => {
+    queryMock.mockImplementation(async ({ query }: { query: string }) => {
+      if (query === 'GetRunProjection') {
+        return {
+          data: {
+            getRunProjection: {
+              runId: 'run-2',
+              summary: 'Historical run',
+              lastActivityAt: '2026-01-01T00:00:00.000Z',
+              conversation: [
+                { kind: 'message', role: 'user', content: 'hello', ts: 1700000000 },
+                { kind: 'message', role: 'assistant', content: 'hi', ts: 1700000010 },
+              ],
+            },
+          },
+          errors: [],
+        };
+      }
+      if (query === 'GetRunResumeConfig') {
+        return {
+          data: {
+            getRunResumeConfig: {
+              runId: 'run-2',
+              isActive: false,
+              manifestConfig: {
+                agentDefinitionId: 'agent-def-1',
+                workspaceRootPath: '/ws/a',
+                llmModelIdentifier: 'model-x',
+                llmConfig: { temperature: 0.3 },
+                autoExecuteTools: false,
+                skillAccessMode: 'PRELOADED_ONLY',
+              },
+              editableFields: {
+                llmModelIdentifier: true,
+                llmConfig: true,
+                autoExecuteTools: true,
+                skillAccessMode: true,
+                workspaceRootPath: false,
+              },
+            },
+          },
+          errors: [],
+        };
+      }
+      throw new Error(`Unexpected query: ${String(query)}`);
+    });
+
+    workspaceStoreMock.workspacesFetched = true;
+    workspaceStoreMock.allWorkspaces = [
+      { workspaceId: 'ws-1', absolutePath: '/ws/a', name: 'a' },
+    ];
+
+    const store = useRunHistoryStore();
+    store.workspaceGroups = [
+      {
+        workspaceRootPath: '/ws/a',
+        workspaceName: 'a',
+        agents: [
+          {
+            agentDefinitionId: 'agent-def-1',
+            agentName: 'SuperAgent',
+            runs: [
+              {
+                runId: 'run-2',
+                summary: 'Historical run',
+                lastActivityAt: '2026-01-01T00:00:00.000Z',
+                lastKnownStatus: 'IDLE',
+                isActive: false,
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    await store.openRun('run-2');
+
+    expect(agentContextsStoreMock.upsertProjectionContext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: 'run-2',
+        status: 'shutdown_complete',
+      }),
+    );
+    expect(agentRunStoreMock.connectToAgentStream).not.toHaveBeenCalled();
+    expect(selectionStoreMock.selectInstance).toHaveBeenCalledWith('run-2', 'agent');
+    expect(store.selectedRunId).toBe('run-2');
   });
 
   it('does not clobber live active context state when reopening an already subscribed run', async () => {
@@ -495,6 +584,9 @@ describe('runHistoryStore', () => {
 
   it('projects persisted history and temp drafts into workspace tree', () => {
     const store = useRunHistoryStore();
+    store.agentAvatarByDefinitionId = {
+      'agent-def-1': 'https://a',
+    };
     store.workspaceGroups = [
       {
         workspaceRootPath: '/ws/a',
@@ -549,6 +641,7 @@ describe('runHistoryStore', () => {
     expect(nodes[0]?.workspaceRootPath).toBe('/ws/a');
 
     const alphaAgent = nodes[0]?.agents[0];
+    expect(alphaAgent?.agentAvatarUrl).toBe('https://a');
     expect(alphaAgent?.runs.map(run => run.runId)).toEqual(['temp-1', 'run-1']);
     expect(alphaAgent?.runs[0]?.source).toBe('draft');
     expect(alphaAgent?.runs[1]?.source).toBe('history');
