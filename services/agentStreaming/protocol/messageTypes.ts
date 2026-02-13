@@ -95,6 +95,7 @@ export interface ToolApprovalRequestedPayload {
   tool_name: string;
   turn_id?: string | null;
   arguments: Record<string, any>;
+  approval_token?: ToolApprovalTokenPayload;
   agent_name?: string;
   agent_id?: string;
 }
@@ -116,6 +117,14 @@ export interface ToolDeniedPayload {
   error?: string | null;
   agent_name?: string;
   agent_id?: string;
+}
+
+export interface ToolApprovalTokenPayload {
+  teamRunId: string;
+  runVersion: number;
+  invocationId: string;
+  invocationVersion: number;
+  targetMemberName: string;
 }
 
 export interface ToolExecutionStartedPayload {
@@ -303,6 +312,7 @@ export interface ToolActionPayload {
   agent_name?: string;
   agent_id?: string;
   reason?: string;
+  approval_token?: ToolApprovalTokenPayload;
 }
 
 export type ClientMessage =

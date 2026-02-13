@@ -7,13 +7,13 @@
       <button
         type="button"
         @click="mode = 'existing'"
-        :disabled="existingDisabled || disabled"
+        :disabled="existingDisabled || isInteractionDisabled"
         class="flex-1 py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
         :class="[
           mode === 'existing' 
             ? 'bg-white text-blue-700 shadow-sm' 
             : 'text-gray-600 hover:text-gray-900',
-          existingDisabled || disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+          existingDisabled || isInteractionDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
         ]"
         role="tab"
         :aria-selected="mode === 'existing'"
@@ -26,13 +26,13 @@
       <button
         type="button"
         @click="mode = 'new'"
-        :disabled="disabled"
+        :disabled="isInteractionDisabled"
         class="flex-1 py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
         :class="[
           mode === 'new' 
             ? 'bg-white text-blue-700 shadow-sm' 
             : 'text-gray-600 hover:text-gray-900',
-          disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+          isInteractionDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
         ]"
         role="tab"
         :aria-selected="mode === 'new'"
@@ -50,7 +50,7 @@
         :model-value="workspaceId"
         @update:model-value="handleExistingSelect"
         :options="workspaceOptions"
-        :disabled="disabled"
+        :disabled="isInteractionDisabled"
         placeholder="Select a workspace..."
         search-placeholder="Search workspaces..."
         empty-message="No workspaces loaded yet."
@@ -65,7 +65,7 @@
             type="text"
             v-model="tempPath"
             @keydown.enter="handleLoad"
-            :disabled="isLoading || disabled"
+            :disabled="isLoading || isInteractionDisabled"
             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:text-gray-500 py-2.5 px-3"
             :class="{ 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500': error }"
             placeholder="/absolute/path/to/workspace"
@@ -76,7 +76,7 @@
           v-if="isEmbeddedWindow"
           type="button"
           @click="handleBrowse"
-          :disabled="isLoading || disabled"
+          :disabled="isLoading || isInteractionDisabled"
           class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
           title="Browse for folder"
         >
@@ -86,7 +86,7 @@
           v-else
           type="button"
           @click="handleLoad"
-          :disabled="isLoading || disabled || !tempPath.trim()"
+          :disabled="isLoading || isInteractionDisabled || !tempPath.trim()"
           class="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
           title="Load workspace"
         >
@@ -101,7 +101,12 @@
     
     <!-- Helper Text Area -->
     <div class="mt-2.5 min-h-[1.5em]">
-      <p v-if="error" class="text-sm text-red-600 flex items-center">
+      <p v-if="workspaceLocked && !error" class="text-sm text-amber-600 flex items-center">
+        <span class="i-heroicons-lock-closed-20-solid h-5 w-5 mr-2 flex-shrink-0"></span>
+        {{ workspaceLockedMessageToUse }}
+      </p>
+
+      <p v-else-if="error" class="text-sm text-red-600 flex items-center">
         <span class="i-heroicons-exclamation-circle-20-solid h-5 w-5 mr-2 flex-shrink-0"></span>
         {{ error }}
       </p>
@@ -141,6 +146,8 @@ const props = defineProps<{
   isLoading: boolean;
   error: string | null;
   disabled?: boolean;
+  workspaceLocked?: boolean;
+  workspaceLockedMessage?: string;
 }>();
 
 const emit = defineEmits<{
@@ -156,6 +163,11 @@ const { isEmbeddedWindow } = storeToRefs(windowNodeContextStore);
 const mode = ref<'existing' | 'new'>('new');
 const tempPath = ref('');
 const successMessage = ref<string | null>(null);
+const isInteractionDisabled = computed(() => (props.disabled ?? false) || (props.workspaceLocked ?? false));
+const workspaceLocked = computed(() => props.workspaceLocked === true);
+const workspaceLockedMessageToUse = computed(() => {
+  return props.workspaceLockedMessage || 'Workspace is fixed for this run.';
+});
 
 // Computed
 const workspaceOptions = computed(() => {
@@ -247,12 +259,13 @@ watch([mode, () => props.error], () => {
 
 // Handlers
 const handleExistingSelect = (workspaceId: string) => {
+  if (isInteractionDisabled.value) return;
   successMessage.value = null;
   emit('select-existing', workspaceId);
 };
 
 const handleLoad = () => {
-  if (props.isLoading || props.disabled || !tempPath.value.trim()) return;
+  if (props.isLoading || isInteractionDisabled.value || !tempPath.value.trim()) return;
   successMessage.value = null;
   emit('load-new', tempPath.value.trim());
 };

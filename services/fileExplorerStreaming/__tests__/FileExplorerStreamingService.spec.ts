@@ -52,6 +52,13 @@ class MockWebSocket {
       this.onerror(new Event('error'));
     }
   }
+
+  simulateClose(code: number, reason: string): void {
+    this.readyState = MockWebSocket.CLOSED;
+    if (this.onclose) {
+      this.onclose({ code, reason });
+    }
+  }
 }
 
 const WS_ENDPOINT = 'ws://localhost:8000/ws/file-explorer';
@@ -59,14 +66,17 @@ const WS_ENDPOINT = 'ws://localhost:8000/ws/file-explorer';
 describe('FileExplorerStreamingService', () => {
   let originalWebSocket: typeof WebSocket;
   let mockWs: MockWebSocket;
+  let sockets: MockWebSocket[];
 
   beforeEach(() => {
+    sockets = [];
     // Store original WebSocket
     originalWebSocket = global.WebSocket;
     
     // Replace with mock
     (global as any).WebSocket = vi.fn((url: string) => {
       mockWs = new MockWebSocket(url);
+      sockets.push(mockWs);
       return mockWs;
     });
   });
@@ -74,6 +84,7 @@ describe('FileExplorerStreamingService', () => {
   afterEach(() => {
     // Restore original WebSocket
     global.WebSocket = originalWebSocket;
+    vi.useRealTimers();
   });
 
   describe('constructor', () => {
@@ -256,6 +267,66 @@ describe('FileExplorerStreamingService', () => {
       });
       
       expect(service.state).toBe('connected');
+    });
+  });
+
+  describe('retry policy', () => {
+    it('does not retry when closed with non-retryable close code', () => {
+      vi.useFakeTimers();
+      const service = new FileExplorerStreamingService(WS_ENDPOINT);
+
+      service.connect('ws-1');
+      expect((global as any).WebSocket).toHaveBeenCalledTimes(1);
+
+      sockets[0].simulateOpen();
+      sockets[0].simulateClose(4004, 'Workspace not found');
+
+      vi.advanceTimersByTime(60000);
+      expect((global as any).WebSocket).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not retry when server sends non-retryable error code before close', () => {
+      vi.useFakeTimers();
+      const onError = vi.fn();
+      const service = new FileExplorerStreamingService(WS_ENDPOINT, { onError });
+
+      service.connect('ws-1');
+      expect((global as any).WebSocket).toHaveBeenCalledTimes(1);
+
+      sockets[0].simulateOpen();
+      sockets[0].simulateMessage({
+        type: 'ERROR',
+        payload: { code: 'WORKSPACE_NOT_FOUND', message: 'Workspace ws-1 not found' },
+      });
+      sockets[0].simulateClose(1011, 'Rejected');
+
+      vi.advanceTimersByTime(60000);
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect((global as any).WebSocket).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps backoff progression when transport opens but protocol never connects', () => {
+      vi.useFakeTimers();
+      const service = new FileExplorerStreamingService(WS_ENDPOINT);
+
+      service.connect('ws-1');
+      expect((global as any).WebSocket).toHaveBeenCalledTimes(1);
+
+      sockets[0].simulateOpen();
+      sockets[0].simulateClose(1011, 'Transient');
+
+      vi.advanceTimersByTime(1000);
+      expect((global as any).WebSocket).toHaveBeenCalledTimes(2);
+
+      sockets[1].simulateOpen();
+      sockets[1].simulateClose(1011, 'Transient again');
+
+      // If attempts reset on transport open, this would already reconnect.
+      vi.advanceTimersByTime(1000);
+      expect((global as any).WebSocket).toHaveBeenCalledTimes(2);
+
+      vi.advanceTimersByTime(1000);
+      expect((global as any).WebSocket).toHaveBeenCalledTimes(3);
     });
   });
 });

@@ -19,6 +19,7 @@ export class FileExplorerStreamingService {
   private wsEndpoint: string;
   private workspaceId: string | null = null;
   private sessionId: string | null = null;
+  private lastServerErrorCode: string | null = null;
   private options: FileExplorerStreamingServiceOptions;
   private reconnectAttempts = 0;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -26,6 +27,11 @@ export class FileExplorerStreamingService {
   private static readonly DEFAULT_RECONNECT_DELAY = 1000;
   private static readonly MAX_RECONNECT_DELAY = 30000;
   private static readonly MAX_RECONNECT_ATTEMPTS = 5;
+  private static readonly NON_RETRYABLE_CLOSE_CODES = new Set([4004, 4005]);
+  private static readonly NON_RETRYABLE_SERVER_ERROR_CODES = new Set([
+    'WORKSPACE_NOT_FOUND',
+    'WATCHER_UNAVAILABLE',
+  ]);
 
   /**
    * Create a FileExplorerStreamingService.
@@ -69,6 +75,7 @@ export class FileExplorerStreamingService {
 
     this.workspaceId = workspaceId;
     this.reconnectAttempts = 0;
+    this.lastServerErrorCode = null;
     this.doConnect();
   }
 
@@ -103,7 +110,6 @@ export class FileExplorerStreamingService {
 
     this.ws.onopen = () => {
       console.log('[FileExplorerStreaming] WebSocket connected');
-      this.reconnectAttempts = 0;
     };
 
     this.ws.onclose = (event) => {
@@ -131,6 +137,8 @@ export class FileExplorerStreamingService {
         case 'CONNECTED':
           this._state = 'connected';
           this.sessionId = message.payload.session_id;
+          this.reconnectAttempts = 0;
+          this.lastServerErrorCode = null;
           console.log(`[FileExplorerStreaming] Session established: ${this.sessionId}`);
           this.options.onConnect?.(this.sessionId);
           break;
@@ -144,6 +152,7 @@ export class FileExplorerStreamingService {
 
         case 'ERROR':
           console.error('[FileExplorerStreaming] Server error:', message.payload);
+          this.lastServerErrorCode = String(message.payload.code ?? '');
           this.options.onError?.(new Error(message.payload.message));
           break;
 
@@ -166,6 +175,8 @@ export class FileExplorerStreamingService {
     const previousState = this._state;
     this._state = 'disconnected';
     this.ws = null;
+    const serverErrorCode = this.lastServerErrorCode;
+    this.lastServerErrorCode = null;
 
     // Only notify disconnect if we were previously connected
     if (previousState === 'connected') {
@@ -173,9 +184,24 @@ export class FileExplorerStreamingService {
     }
 
     // Attempt reconnection if not intentionally disconnected
-    if (event.code !== 1000 && this.workspaceId) {
+    if (
+      event.code !== 1000 &&
+      this.workspaceId &&
+      !this.isNonRetryableCloseCode(event.code) &&
+      !this.isNonRetryableServerErrorCode(serverErrorCode)
+    ) {
       this.scheduleReconnect();
     }
+  }
+
+  private isNonRetryableCloseCode(code: number): boolean {
+    return FileExplorerStreamingService.NON_RETRYABLE_CLOSE_CODES.has(code);
+  }
+
+  private isNonRetryableServerErrorCode(code: string | null): boolean {
+    return Boolean(
+      code && FileExplorerStreamingService.NON_RETRYABLE_SERVER_ERROR_CODES.has(code),
+    );
   }
 
   /**
@@ -240,6 +266,7 @@ export class FileExplorerStreamingService {
     this._state = 'disconnected';
     this.workspaceId = null;
     this.sessionId = null;
+    this.lastServerErrorCode = null;
     console.log('[FileExplorerStreaming] Disconnected');
   }
 }

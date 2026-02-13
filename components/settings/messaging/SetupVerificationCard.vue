@@ -4,6 +4,18 @@
     <p class="mt-1 text-xs text-gray-500">
       Run readiness verification across gateway, session, and binding setup.
     </p>
+    <div
+      v-if="runtimeReliabilityStatus"
+      class="mt-2 rounded-md border px-2 py-1 text-xs"
+      :class="runtimeReliabilityStatus.runtime.state === 'CRITICAL_LOCK_LOST'
+        ? 'border-red-200 bg-red-50 text-red-700'
+        : 'border-green-200 bg-green-50 text-green-700'"
+      data-testid="runtime-reliability-summary"
+    >
+      Runtime reliability: {{ runtimeReliabilityStatus.runtime.state }}.
+      Inbound dead-letter {{ runtimeReliabilityStatus.queue.inboundDeadLetterCount }},
+      outbound dead-letter {{ runtimeReliabilityStatus.queue.outboundDeadLetterCount }}.
+    </div>
 
     <div class="mt-3 flex items-center gap-3">
       <button
@@ -38,6 +50,16 @@
           </span>
         </div>
         <p v-if="check.detail" class="mt-1 text-xs text-gray-600">{{ check.detail }}</p>
+        <div class="mt-2">
+          <button
+            type="button"
+            class="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700"
+            :data-testid="`verification-open-step-${check.key}`"
+            @click="onOpenStepFromCheck(check.key)"
+          >
+            Open Step
+          </button>
+        </div>
       </li>
     </ul>
 
@@ -49,6 +71,16 @@
       >
         <p class="text-sm text-red-700">{{ blocker.message }}</p>
         <p class="text-xs text-red-500 mt-1">{{ blocker.code }} ({{ blocker.step }})</p>
+        <div class="mt-2">
+          <button
+            type="button"
+            class="rounded border border-red-300 bg-white px-2 py-1 text-xs text-red-700"
+            :data-testid="`verification-open-step-blocker-${blocker.code}`"
+            @click="onOpenStep(blocker.step)"
+          >
+            Open Step
+          </button>
+        </div>
         <div v-if="blocker.actions?.length" class="mt-2 flex flex-wrap gap-2">
           <button
             v-for="action in blocker.actions"
@@ -70,18 +102,32 @@
 import { computed, inject } from 'vue';
 import { routerKey } from 'vue-router';
 import { useMessagingChannelBindingOptionsStore } from '~/stores/messagingChannelBindingOptionsStore';
+import { useMessagingProviderScopeStore } from '~/stores/messagingProviderScopeStore';
 import { useMessagingVerificationStore } from '~/stores/messagingVerificationStore';
-import type { SetupBlockerAction, VerificationCheckStatus } from '~/types/messaging';
+import { useGatewaySessionSetupStore } from '~/stores/gatewaySessionSetupStore';
+import type {
+  SetupBlockerAction,
+  SetupStepKey,
+  VerificationCheckKey,
+  VerificationCheckStatus,
+} from '~/types/messaging';
 
 const router = inject(routerKey, null);
 const optionsStore = useMessagingChannelBindingOptionsStore();
+const providerScopeStore = useMessagingProviderScopeStore();
 const verificationStore = useMessagingVerificationStore();
+const gatewayStore = useGatewaySessionSetupStore();
+const emit = defineEmits<{
+  (event: 'open-step', stepKey: SetupStepKey): void;
+}>();
 
 const checks = computed(() =>
   verificationStore.isVerifying || verificationStore.verificationChecks.length > 0
     ? verificationStore.verificationChecks
     : verificationStore.verificationResult?.checks || [],
 );
+
+const runtimeReliabilityStatus = computed(() => gatewayStore.runtimeReliabilityStatus);
 
 const verificationLabel = computed(() => {
   if (verificationStore.isVerifying) {
@@ -127,6 +173,29 @@ function checkBadgeClass(status: VerificationCheckStatus): string {
     return 'bg-amber-100 text-amber-700';
   }
   return 'bg-gray-200 text-gray-700';
+}
+
+function resolveStepFromCheckKey(checkKey: VerificationCheckKey): SetupStepKey {
+  if (checkKey === 'gateway') {
+    return 'gateway';
+  }
+  if (checkKey === 'session') {
+    return providerScopeStore.requiresPersonalSession
+      ? 'personal_session'
+      : 'verification';
+  }
+  if (checkKey === 'binding') {
+    return 'binding';
+  }
+  return 'verification';
+}
+
+function onOpenStep(stepKey: SetupStepKey): void {
+  emit('open-step', stepKey);
+}
+
+function onOpenStepFromCheck(checkKey: VerificationCheckKey): void {
+  onOpenStep(resolveStepFromCheckKey(checkKey));
 }
 
 async function onRunBlockerAction(action: SetupBlockerAction): Promise<void> {

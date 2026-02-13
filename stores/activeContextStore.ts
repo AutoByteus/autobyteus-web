@@ -5,6 +5,7 @@ import { useAgentContextsStore } from './agentContextsStore';
 import { useAgentTeamContextsStore } from './agentTeamContextsStore';
 import { useAgentRunStore } from './agentRunStore';
 import { useAgentTeamRunStore } from './agentTeamRunStore';
+import { useRunHistoryStore } from './runHistoryStore';
 import type { AgentContext } from '~/types/agent/AgentContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import type { ContextFilePath } from '~/types/conversation';
@@ -20,6 +21,7 @@ export const useActiveContextStore = defineStore('activeContext', () => {
   const agentTeamContextsStore = useAgentTeamContextsStore();
   const agentRunStore = useAgentRunStore();
   const agentTeamRunStore = useAgentTeamRunStore();
+  const runHistoryStore = useRunHistoryStore();
 
   const activeAgentContext = computed<AgentContext | null>(() => {
     if (selectionStore.selectedType === 'agent') {
@@ -68,8 +70,42 @@ export const useActiveContextStore = defineStore('activeContext', () => {
 
   const updateConfig = (configUpdate: Partial<AgentRunConfig>) => {
     const config = activeAgentContext.value?.config;
-    if (config && !config.isLocked) {
+    if (!config || config.isLocked) {
+      return;
+    }
+
+    if (selectionStore.selectedType !== 'agent' || !selectionStore.selectedInstanceId) {
       Object.assign(config, configUpdate);
+      return;
+    }
+
+    const selectedRunId = selectionStore.selectedInstanceId;
+    const editableFields = runHistoryStore.getEditableFields(selectedRunId);
+    if (!editableFields) {
+      Object.assign(config, configUpdate);
+      return;
+    }
+
+    for (const [key, value] of Object.entries(configUpdate)) {
+      const field = key as keyof AgentRunConfig;
+
+      if (field === 'workspaceId' && !editableFields.workspaceRootPath) {
+        continue;
+      }
+      if (field === 'llmModelIdentifier' && !editableFields.llmModelIdentifier) {
+        continue;
+      }
+      if (field === 'llmConfig' && !editableFields.llmConfig) {
+        continue;
+      }
+      if (field === 'autoExecuteTools' && !editableFields.autoExecuteTools) {
+        continue;
+      }
+      if (field === 'skillAccessMode' && !editableFields.skillAccessMode) {
+        continue;
+      }
+
+      (config as any)[field] = value;
     }
   };
 

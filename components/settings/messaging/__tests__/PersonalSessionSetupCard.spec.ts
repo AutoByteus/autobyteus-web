@@ -22,6 +22,8 @@ describe('PersonalSessionSetupCard', () => {
       wecomAppEnabled: true,
       discordEnabled: false,
       discordAccountId: null,
+      telegramEnabled: false,
+      telegramAccountId: null,
     });
     providerScopeStore.setSelectedProvider('WECOM');
 
@@ -69,6 +71,8 @@ describe('PersonalSessionSetupCard', () => {
       wecomAppEnabled: false,
       discordEnabled: true,
       discordAccountId: 'discord-acct-1',
+      telegramEnabled: false,
+      telegramAccountId: null,
     });
     providerScopeStore.setSelectedProvider('DISCORD');
 

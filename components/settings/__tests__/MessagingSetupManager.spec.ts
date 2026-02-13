@@ -16,6 +16,8 @@ describe('MessagingSetupManager', () => {
     wechatPersonalEnabled: true,
     discordEnabled: true,
     discordAccountId: 'discord-1',
+    telegramEnabled: true,
+    telegramAccountId: 'telegram-1',
   };
 
   beforeEach(() => {

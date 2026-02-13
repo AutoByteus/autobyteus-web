@@ -12,7 +12,7 @@
       >
         <div class="flex items-center gap-3">
           <div class="flex h-10 w-10 items-center justify-center rounded-md border" :class="providerIconShellClass(option.provider)">
-            <Icon :icon="providerIcon(option.provider)" class="h-6 w-6" />
+            <IconifyIcon :icon="providerIcon(option.provider)" class="h-6 w-6" />
           </div>
           <div class="min-w-0">
             <p class="text-base leading-5 font-medium">{{ option.label }}</p>
@@ -24,6 +24,7 @@
 </template>
 
 <script setup lang="ts">
+import { Icon as IconifyIcon } from '@iconify/vue';
 import { useMessagingProviderScopeStore } from '~/stores/messagingProviderScopeStore';
 import type { MessagingProvider } from '~/types/messaging';
 

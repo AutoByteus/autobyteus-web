@@ -12,7 +12,6 @@ export const UPSERT_EXTERNAL_CHANNEL_BINDING = gql`
       threadId
       targetType
       targetId
-      allowTransportFallback
       updatedAt
     }
   }

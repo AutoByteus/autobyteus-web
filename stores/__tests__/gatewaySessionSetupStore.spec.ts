@@ -9,6 +9,7 @@ const {
 } = vi.hoisted(() => {
   const client = {
     getHealth: vi.fn(),
+    getRuntimeReliabilityStatus: vi.fn(),
     startWhatsAppPersonalSession: vi.fn(),
     getWhatsAppPersonalQr: vi.fn(),
     getWhatsAppPersonalStatus: vi.fn(),
@@ -57,6 +58,46 @@ describe('gatewaySessionSetupStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    gatewayClientMock.getRuntimeReliabilityStatus.mockResolvedValue({
+      runtime: {
+        state: 'HEALTHY',
+        criticalCode: null,
+        updatedAt: '2026-02-12T00:00:00.000Z',
+        workers: {
+          inboundForwarder: {
+            running: true,
+            lastError: null,
+            lastErrorAt: null,
+          },
+          outboundSender: {
+            running: true,
+            lastError: null,
+            lastErrorAt: null,
+          },
+        },
+        locks: {
+          inbox: {
+            ownerId: 'owner-inbox',
+            held: true,
+            lost: false,
+            lastHeartbeatAt: '2026-02-12T00:00:00.000Z',
+            lastError: null,
+          },
+          outbox: {
+            ownerId: 'owner-outbox',
+            held: true,
+            lost: false,
+            lastHeartbeatAt: '2026-02-12T00:00:00.000Z',
+            lastError: null,
+          },
+        },
+      },
+      queue: {
+        inboundDeadLetterCount: 0,
+        inboundCompletedUnboundCount: 0,
+        outboundDeadLetterCount: 0,
+      },
+    });
     const storageState = new Map<string, string>();
     const localStorageMock = {
       getItem: vi.fn((key: string) => storageState.get(key) ?? null),

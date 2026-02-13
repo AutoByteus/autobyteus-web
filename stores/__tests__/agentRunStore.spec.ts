@@ -4,19 +4,34 @@ import { useAgentRunStore } from '../agentRunStore';
 import { useAgentContextsStore } from '../agentContextsStore';
 import { AgentStreamingService } from '~/services/agentStreaming';
 
+const { mutateMock, llmProviderConfigStoreMock, runHistoryStoreMock } = vi.hoisted(() => ({
+  mutateMock: vi.fn().mockResolvedValue({
+    data: {
+      continueRun: {
+        success: true,
+        runId: 'perm-agent-id',
+        message: 'Success',
+        ignoredConfigFields: [],
+      },
+    },
+    errors: [],
+  }),
+  llmProviderConfigStoreMock: {
+    models: ['gpt-4-fallback'],
+    fetchProvidersWithModels: vi.fn().mockResolvedValue(undefined),
+  },
+  runHistoryStoreMock: {
+    getResumeConfig: vi.fn().mockReturnValue(null),
+    markRunAsActive: vi.fn(),
+    markRunAsInactive: vi.fn(),
+    refreshTreeQuietly: vi.fn(),
+  },
+}));
+
 // Mocks
 vi.mock('~/utils/apolloClient', () => ({
   getApolloClient: vi.fn(() => ({
-    mutate: vi.fn().mockResolvedValue({
-      data: {
-        sendAgentUserInput: {
-          success: true,
-          agentId: 'perm-agent-id',
-          message: 'Success',
-        },
-      },
-      errors: [],
-    }),
+    mutate: mutateMock,
   })),
 }));
 
@@ -33,6 +48,14 @@ vi.mock('../agentContextsStore', () => ({
   useAgentContextsStore: vi.fn(),
 }));
 
+vi.mock('~/stores/llmProviderConfig', () => ({
+  useLLMProviderConfigStore: () => llmProviderConfigStoreMock,
+}));
+
+vi.mock('~/stores/runHistoryStore', () => ({
+  useRunHistoryStore: () => runHistoryStoreMock,
+}));
+
 describe('agentRunStore', () => {
     let mockAgentContext: any;
     let mockContextsStore: any;
@@ -40,6 +63,19 @@ describe('agentRunStore', () => {
     beforeEach(() => {
         setActivePinia(createPinia());
         vi.clearAllMocks();
+        llmProviderConfigStoreMock.models = ['gpt-4-fallback'];
+        llmProviderConfigStoreMock.fetchProvidersWithModels.mockResolvedValue(undefined);
+        mutateMock.mockResolvedValue({
+          data: {
+            continueRun: {
+              success: true,
+              runId: 'perm-agent-id',
+              message: 'Success',
+              ignoredConfigFields: [],
+            },
+          },
+          errors: [],
+        });
 
         mockAgentContext = {
             config: {
@@ -53,6 +89,7 @@ describe('agentRunStore', () => {
             },
             state: {
                 agentId: 'temp-1',
+                currentStatus: 'idle',
                 conversation: {
                     messages: [],
                     agentDefinitionId: 'def-1',
@@ -105,6 +142,27 @@ describe('agentRunStore', () => {
         expect(AgentStreamingService).toHaveBeenCalled(); 
     });
 
+    it('sendUserInputAndSubscribe should apply fallback model for new agent when missing', async () => {
+        mockAgentContext.config.llmModelIdentifier = '';
+        const store = useAgentRunStore();
+
+        await store.sendUserInputAndSubscribe();
+
+        expect(mockAgentContext.config.llmModelIdentifier).toBe('gpt-4-fallback');
+        expect(mockContextsStore.promoteTemporaryId).toHaveBeenCalledWith('temp-1', 'perm-agent-id');
+    });
+
+    it('sendUserInputAndSubscribe should throw when no model is available anywhere', async () => {
+        mockAgentContext.config.llmModelIdentifier = '';
+        llmProviderConfigStoreMock.models = [];
+        llmProviderConfigStoreMock.fetchProvidersWithModels.mockResolvedValue(undefined);
+        const store = useAgentRunStore();
+
+        await expect(store.sendUserInputAndSubscribe()).rejects.toThrowError(
+          'Please select a model for the first message.',
+        );
+    });
+
     it('sendUserInputAndSubscribe should throw if no agent selected', async () => {
         // @ts-ignore
         useAgentContextsStore.mockReturnValue({ activeInstance: null });
@@ -127,5 +185,82 @@ describe('agentRunStore', () => {
         expect(unsubscribeMock).toHaveBeenCalled();
         expect(mockAgentContext.isSubscribed).toBe(false);
         expect(mockContextsStore.removeInstance).toHaveBeenCalledWith('agent-1');
+    });
+
+    it('terminateRun should not teardown local runtime when persisted termination fails', async () => {
+        const store = useAgentRunStore();
+        const unsubscribeMock = vi.fn();
+        mockAgentContext.unsubscribe = unsubscribeMock;
+        mockAgentContext.isSubscribed = true;
+        mockAgentContext.state.currentStatus = 'processing_user_input';
+        mutateMock.mockResolvedValueOnce({
+            data: {
+                terminateAgentInstance: {
+                    success: false,
+                    message: 'failure'
+                }
+            },
+            errors: [],
+        });
+
+        const result = await store.terminateRun('run-1');
+
+        expect(result).toBe(false);
+        expect(unsubscribeMock).not.toHaveBeenCalled();
+        expect(runHistoryStoreMock.markRunAsInactive).not.toHaveBeenCalled();
+    });
+
+    it('terminateRun should teardown local runtime and mark history inactive on success', async () => {
+        const store = useAgentRunStore();
+        const unsubscribeMock = vi.fn();
+        mockAgentContext.unsubscribe = unsubscribeMock;
+        mockAgentContext.isSubscribed = true;
+        mutateMock.mockResolvedValueOnce({
+            data: {
+                terminateAgentInstance: {
+                    success: true,
+                    message: 'ok'
+                }
+            },
+            errors: [],
+        });
+
+        const result = await store.terminateRun('run-1');
+
+        expect(result).toBe(true);
+        expect(unsubscribeMock).toHaveBeenCalled();
+        expect(runHistoryStoreMock.markRunAsInactive).toHaveBeenCalledWith('run-1');
+        expect(runHistoryStoreMock.refreshTreeQuietly).toHaveBeenCalled();
+    });
+
+    it('terminateRun should teardown local runtime and skip backend for temp runs', async () => {
+        const store = useAgentRunStore();
+        const unsubscribeMock = vi.fn();
+        mockAgentContext.unsubscribe = unsubscribeMock;
+        mockAgentContext.isSubscribed = true;
+
+        const result = await store.terminateRun('temp-42');
+
+        expect(result).toBe(true);
+        expect(unsubscribeMock).toHaveBeenCalled();
+        expect(runHistoryStoreMock.markRunAsInactive).toHaveBeenCalledWith('temp-42');
+        expect(mutateMock).not.toHaveBeenCalled();
+    });
+
+    it('closeAgent should keep context when backend termination fails', async () => {
+        const store = useAgentRunStore();
+        mutateMock.mockResolvedValueOnce({
+            data: {
+                terminateAgentInstance: {
+                    success: false,
+                    message: 'failure'
+                }
+            },
+            errors: [],
+        });
+
+        await store.closeAgent('run-1', { terminate: true });
+
+        expect(mockContextsStore.removeInstance).not.toHaveBeenCalled();
     });
 });

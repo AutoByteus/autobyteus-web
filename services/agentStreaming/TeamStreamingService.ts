@@ -55,6 +55,7 @@ export class TeamStreamingService {
   private wsClient: IWebSocketClient;
   private teamContext: AgentTeamContext | null = null;
   private wsEndpoint: string;
+  private readonly approvalTokenByInvocationId = new Map<string, unknown>();
 
   /**
    * Create a TeamStreamingService.
@@ -94,6 +95,7 @@ export class TeamStreamingService {
 
     this.wsClient.disconnect();
     this.teamContext = null;
+    this.approvalTokenByInvocationId.clear();
   }
 
   sendMessage(content: string, targetMemberName?: string, contextFilePaths?: string[]): void {
@@ -109,19 +111,23 @@ export class TeamStreamingService {
   }
 
   approveTool(invocationId: string, agentName?: string, reason?: string): void {
+    const approvalToken = this.approvalTokenByInvocationId.get(invocationId);
     const message: ClientMessage = {
       type: 'APPROVE_TOOL',
-      payload: { invocation_id: invocationId, agent_name: agentName, reason },
+      payload: { invocation_id: invocationId, agent_name: agentName, reason, approval_token: approvalToken as any },
     };
     this.wsClient.send(serializeClientMessage(message));
+    this.approvalTokenByInvocationId.delete(invocationId);
   }
 
   denyTool(invocationId: string, agentName?: string, reason?: string): void {
+    const approvalToken = this.approvalTokenByInvocationId.get(invocationId);
     const message: ClientMessage = {
       type: 'DENY_TOOL',
-      payload: { invocation_id: invocationId, agent_name: agentName, reason },
+      payload: { invocation_id: invocationId, agent_name: agentName, reason, approval_token: approvalToken as any },
     };
     this.wsClient.send(serializeClientMessage(message));
+    this.approvalTokenByInvocationId.delete(invocationId);
   }
 
   stopGeneration(): void {
@@ -134,6 +140,7 @@ export class TeamStreamingService {
 
     try {
       const message = parseServerMessage(raw);
+      this.trackApprovalToken(message);
       this.logMessage(message);
       this.dispatchMessage(message, this.teamContext);
     } catch (e) {
@@ -181,6 +188,13 @@ export class TeamStreamingService {
         console.log('[stream][team][message]', { type: message.type, payload: message.payload });
         break;
     }
+  }
+
+  private trackApprovalToken(message: ServerMessage): void {
+    if (message.type !== 'TOOL_APPROVAL_REQUESTED') return;
+    const payload = message.payload as { invocation_id?: string; approval_token?: unknown };
+    if (!payload?.invocation_id || !payload.approval_token) return;
+    this.approvalTokenByInvocationId.set(payload.invocation_id, payload.approval_token);
   }
 
   /**
