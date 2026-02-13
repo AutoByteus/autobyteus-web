@@ -12,6 +12,51 @@
       </button>
     </div>
 
+    <form
+      v-if="showCreateWorkspaceInline"
+      class="border-t border-gray-100 px-3 py-2"
+      data-test="create-workspace-form"
+      @submit.prevent="confirmCreateWorkspace"
+    >
+      <div class="space-y-2">
+        <input
+          id="workspace-path-input"
+          ref="workspacePathInputRef"
+          v-model="workspacePathDraft"
+          data-test="workspace-path-input"
+          type="text"
+          class="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-200 disabled:cursor-not-allowed disabled:bg-gray-100"
+          :class="workspacePathError ? 'border-red-300 focus:border-red-300 focus:ring-red-200' : ''"
+          placeholder="/Users/you/project"
+          :disabled="creatingWorkspace"
+          @keydown.enter.prevent="confirmCreateWorkspace"
+          @keydown.esc.prevent="closeCreateWorkspaceInput"
+        >
+        <p v-if="workspacePathError" class="text-xs text-red-600">
+          {{ workspacePathError }}
+        </p>
+        <div class="flex items-center justify-end gap-2">
+          <button
+            data-test="cancel-create-workspace"
+            type="button"
+            class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="creatingWorkspace"
+            @click="closeCreateWorkspaceInput"
+          >
+            Cancel
+          </button>
+          <button
+            data-test="confirm-create-workspace"
+            type="submit"
+            class="rounded-md border border-indigo-200 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 transition-colors hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="creatingWorkspace"
+          >
+            {{ creatingWorkspace ? 'Adding...' : 'Add' }}
+          </button>
+        </div>
+      </div>
+    </form>
+
     <div class="min-h-0 flex-1 overflow-y-auto px-1 pb-2">
       <div v-if="runHistoryStore.loading" class="px-3 py-4 text-xs text-gray-500">
         Loading task history...
@@ -167,11 +212,12 @@
       @confirm="confirmDeleteRun"
       @cancel="closeDeleteConfirmation"
     />
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { Icon } from '@iconify/vue';
 import ConfirmationModal from '~/components/common/ConfirmationModal.vue';
 import { useRunHistoryStore } from '~/stores/runHistoryStore';
@@ -196,6 +242,11 @@ const expandedWorkspace = ref<Record<string, boolean>>({});
 const expandedAgents = ref<Record<string, boolean>>({});
 const terminatingRunIds = ref<Record<string, boolean>>({});
 const deletingRunIds = ref<Record<string, boolean>>({});
+const showCreateWorkspaceInline = ref(false);
+const workspacePathDraft = ref('');
+const workspacePathError = ref('');
+const creatingWorkspace = ref(false);
+const workspacePathInputRef = ref<HTMLInputElement | null>(null);
 const showDeleteConfirmation = ref(false);
 const pendingDeleteRunId = ref<string | null>(null);
 const brokenAvatarByAgentKey = ref<Record<string, boolean>>({});
@@ -388,25 +439,59 @@ const onCreateRun = async (workspaceRootPath: string, agentDefinitionId: string)
   }
 };
 
-const onCreateWorkspace = async (): Promise<void> => {
-  const input = typeof window !== 'undefined'
-    ? window.prompt('Workspace absolute path')
-    : null;
+const focusWorkspaceInput = async (): Promise<void> => {
+  await nextTick();
+  workspacePathInputRef.value?.focus();
+};
 
-  const rootPath = input?.trim();
+const onCreateWorkspace = async (): Promise<void> => {
+  if (showCreateWorkspaceInline.value) {
+    closeCreateWorkspaceInput();
+    return;
+  }
+  workspacePathError.value = '';
+  workspacePathDraft.value = '';
+  showCreateWorkspaceInline.value = true;
+  await focusWorkspaceInput();
+};
+
+const resetCreateWorkspaceInline = (): void => {
+  showCreateWorkspaceInline.value = false;
+  workspacePathDraft.value = '';
+  workspacePathError.value = '';
+};
+
+const closeCreateWorkspaceInput = (): void => {
+  if (creatingWorkspace.value) {
+    return;
+  }
+  resetCreateWorkspaceInline();
+};
+
+const confirmCreateWorkspace = async (): Promise<void> => {
+  const rootPath = workspacePathDraft.value.trim();
   if (!rootPath) {
+    workspacePathError.value = 'Workspace path is required.';
+    await focusWorkspaceInput();
     return;
   }
 
   try {
+    creatingWorkspace.value = true;
+    workspacePathError.value = '';
     const normalizedRootPath = await runHistoryStore.createWorkspace(rootPath);
     expandedWorkspace.value = {
       ...expandedWorkspace.value,
       [normalizedRootPath]: true,
     };
     await workspaceStore.fetchAllWorkspaces();
+    resetCreateWorkspaceInline();
   } catch (error) {
     console.error('Failed to add workspace:', error);
+    workspacePathError.value = 'Failed to add workspace. Please verify the path and try again.';
+    await focusWorkspaceInput();
+  } finally {
+    creatingWorkspace.value = false;
   }
 };
 

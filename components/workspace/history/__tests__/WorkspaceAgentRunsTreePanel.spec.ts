@@ -232,18 +232,37 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     ]);
   });
 
-  it('creates workspace from add workspace button prompt', async () => {
-    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('/ws/new');
+  it('creates workspace from inline input when user presses Enter', async () => {
     const wrapper = mountComponent();
     await flushPromises();
+    const vm = wrapper.vm as any;
 
-    const addWorkspaceButton = wrapper.find('button[title="Add workspace"]');
-    await addWorkspaceButton.trigger('click');
+    await vm.onCreateWorkspace();
+    await flushPromises();
+    expect(vm.showCreateWorkspaceInline).toBe(true);
+    vm.workspacePathDraft = '/ws/new';
+    await vm.confirmCreateWorkspace();
     await flushPromises();
 
     expect(runHistoryStoreMock.createWorkspace).toHaveBeenCalledWith('/ws/new');
     expect(workspaceStoreMock.fetchAllWorkspaces).toHaveBeenCalledTimes(2);
-    promptSpy.mockRestore();
+    expect(vm.showCreateWorkspaceInline).toBe(false);
+  });
+
+  it('closes inline add workspace input without creating workspace on cancel', async () => {
+    const wrapper = mountComponent();
+    await flushPromises();
+    const vm = wrapper.vm as any;
+
+    await vm.onCreateWorkspace();
+    await flushPromises();
+    expect(vm.showCreateWorkspaceInline).toBe(true);
+
+    vm.closeCreateWorkspaceInput();
+    await flushPromises();
+
+    expect(runHistoryStoreMock.createWorkspace).not.toHaveBeenCalled();
+    expect(vm.showCreateWorkspaceInline).toBe(false);
   });
 
   it('renders active status indicator for active runs', async () => {
