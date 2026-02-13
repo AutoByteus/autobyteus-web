@@ -10,3 +10,12 @@ export const ContinueRun = gql`
     }
   }
 `;
+
+export const DeleteRunHistory = gql`
+  mutation DeleteRunHistory($runId: String!) {
+    deleteRunHistory(runId: $runId) {
+      success
+      message
+    }
+  }
+`;

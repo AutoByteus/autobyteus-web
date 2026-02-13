@@ -108,7 +108,7 @@
                   v-for="run in agentNode.runs"
                   :key="run.runId"
                   type="button"
-                  class="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm transition-colors"
+                  class="group/run-row flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm transition-colors"
                   :class="selectedRunId === run.runId
                     ? 'bg-indigo-50 text-indigo-900'
                     : 'text-gray-700 hover:bg-gray-50'"
@@ -135,6 +135,16 @@
                     >
                       <Icon icon="heroicons:stop-20-solid" class="h-3.5 w-3.5" />
                     </button>
+                    <button
+                      v-if="run.source === 'history' && !run.isActive"
+                      type="button"
+                      class="inline-flex h-5 w-5 items-center justify-center rounded text-gray-400 transition-[opacity,color,background-color] duration-150 hover:bg-red-50 hover:text-red-600 md:opacity-0 md:group-hover/run-row:opacity-100 md:group-focus-within/run-row:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      title="Delete run permanently"
+                      :disabled="Boolean(deletingRunIds[run.runId])"
+                      @click.stop="onDeleteRun(run)"
+                    >
+                      <Icon icon="heroicons:trash-20-solid" class="h-3.5 w-3.5" />
+                    </button>
                     <span class="text-xs text-gray-400">
                       {{ runHistoryStore.formatRelativeTime(run.lastActivityAt) }}
                     </span>
@@ -146,12 +156,24 @@
         </section>
       </div>
     </div>
+
+    <ConfirmationModal
+      :show="showDeleteConfirmation"
+      title=""
+      message="Delete this history permanently. This cannot be undone."
+      confirm-button-text="Delete"
+      variant="danger"
+      typography-size="large"
+      @confirm="confirmDeleteRun"
+      @cancel="closeDeleteConfirmation"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { Icon } from '@iconify/vue';
+import ConfirmationModal from '~/components/common/ConfirmationModal.vue';
 import { useRunHistoryStore } from '~/stores/runHistoryStore';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
@@ -173,6 +195,9 @@ const { addToast } = useToasts();
 const expandedWorkspace = ref<Record<string, boolean>>({});
 const expandedAgents = ref<Record<string, boolean>>({});
 const terminatingRunIds = ref<Record<string, boolean>>({});
+const deletingRunIds = ref<Record<string, boolean>>({});
+const showDeleteConfirmation = ref(false);
+const pendingDeleteRunId = ref<string | null>(null);
 const brokenAvatarByAgentKey = ref<Record<string, boolean>>({});
 const activeStatusClass = 'bg-blue-500 animate-pulse';
 
@@ -302,6 +327,55 @@ const onTerminateRun = async (runId: string): Promise<void> => {
     const next = { ...terminatingRunIds.value };
     delete next[runId];
     terminatingRunIds.value = next;
+  }
+};
+
+const onDeleteRun = async (run: RunTreeRow): Promise<void> => {
+  if (run.source !== 'history' || run.isActive) {
+    return;
+  }
+
+  const runId = run.runId;
+  if (deletingRunIds.value[runId]) {
+    return;
+  }
+
+  pendingDeleteRunId.value = runId;
+  showDeleteConfirmation.value = true;
+};
+
+const closeDeleteConfirmation = (): void => {
+  showDeleteConfirmation.value = false;
+  pendingDeleteRunId.value = null;
+};
+
+const confirmDeleteRun = async (): Promise<void> => {
+  const deleteErrorMessage = 'Failed to delete run. Please try again.';
+  const runId = pendingDeleteRunId.value;
+  closeDeleteConfirmation();
+  if (!runId || deletingRunIds.value[runId]) {
+    return;
+  }
+
+  deletingRunIds.value = {
+    ...deletingRunIds.value,
+    [runId]: true,
+  };
+
+  try {
+    const deleted = await runHistoryStore.deleteRun(runId);
+    if (!deleted) {
+      addToast(deleteErrorMessage, 'error');
+      return;
+    }
+    addToast('Run deleted permanently.', 'success');
+  } catch (error) {
+    console.error('Failed to delete run:', error);
+    addToast(deleteErrorMessage, 'error');
+  } finally {
+    const next = { ...deletingRunIds.value };
+    delete next[runId];
+    deletingRunIds.value = next;
   }
 };
 
