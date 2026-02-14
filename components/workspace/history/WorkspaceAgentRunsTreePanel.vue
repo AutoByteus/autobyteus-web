@@ -218,13 +218,16 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { storeToRefs } from 'pinia';
 import { Icon } from '@iconify/vue';
 import ConfirmationModal from '~/components/common/ConfirmationModal.vue';
 import { useRunHistoryStore } from '~/stores/runHistoryStore';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 import { useAgentRunStore } from '~/stores/agentRunStore';
+import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import { useToasts } from '~/composables/useToasts';
+import { pickFolderPath } from '~/composables/useNativeFolderDialog';
 import type { RunTreeRow } from '~/utils/runTreeProjection';
 
 const emit = defineEmits<{
@@ -236,6 +239,8 @@ const runHistoryStore = useRunHistoryStore();
 const workspaceStore = useWorkspaceStore();
 const selectionStore = useAgentSelectionStore();
 const agentRunStore = useAgentRunStore();
+const windowNodeContextStore = useWindowNodeContextStore();
+const { isEmbeddedWindow } = storeToRefs(windowNodeContextStore);
 const { addToast } = useToasts();
 
 const expandedWorkspace = ref<Record<string, boolean>>({});
@@ -444,7 +449,46 @@ const focusWorkspaceInput = async (): Promise<void> => {
   workspacePathInputRef.value?.focus();
 };
 
+const createWorkspaceFromPath = async (rootPath: string): Promise<boolean> => {
+  try {
+    creatingWorkspace.value = true;
+    workspacePathError.value = '';
+    const normalizedRootPath = await runHistoryStore.createWorkspace(rootPath);
+    expandedWorkspace.value = {
+      ...expandedWorkspace.value,
+      [normalizedRootPath]: true,
+    };
+    await workspaceStore.fetchAllWorkspaces();
+    resetCreateWorkspaceInline();
+    return true;
+  } catch (error) {
+    console.error('Failed to add workspace:', error);
+    workspacePathDraft.value = rootPath;
+    workspacePathError.value = 'Failed to add workspace. Please verify the path and try again.';
+    showCreateWorkspaceInline.value = true;
+    await focusWorkspaceInput();
+    return false;
+  } finally {
+    creatingWorkspace.value = false;
+  }
+};
+
 const onCreateWorkspace = async (): Promise<void> => {
+  if (creatingWorkspace.value) {
+    return;
+  }
+
+  const hasNativePicker = Boolean(window.electronAPI?.showFolderDialog);
+  if (isEmbeddedWindow.value && hasNativePicker) {
+    workspacePathError.value = '';
+    const selectedPath = await pickFolderPath();
+    if (!selectedPath) {
+      return;
+    }
+    await createWorkspaceFromPath(selectedPath);
+    return;
+  }
+
   if (showCreateWorkspaceInline.value) {
     closeCreateWorkspaceInput();
     return;
@@ -476,23 +520,7 @@ const confirmCreateWorkspace = async (): Promise<void> => {
     return;
   }
 
-  try {
-    creatingWorkspace.value = true;
-    workspacePathError.value = '';
-    const normalizedRootPath = await runHistoryStore.createWorkspace(rootPath);
-    expandedWorkspace.value = {
-      ...expandedWorkspace.value,
-      [normalizedRootPath]: true,
-    };
-    await workspaceStore.fetchAllWorkspaces();
-    resetCreateWorkspaceInline();
-  } catch (error) {
-    console.error('Failed to add workspace:', error);
-    workspacePathError.value = 'Failed to add workspace. Please verify the path and try again.';
-    await focusWorkspaceInput();
-  } finally {
-    creatingWorkspace.value = false;
-  }
+  await createWorkspaceFromPath(rootPath);
 };
 
 onMounted(async () => {

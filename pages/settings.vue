@@ -43,6 +43,18 @@
               </button>
             </li>
             <li class="w-full">
+              <button
+                @click="activeSection = 'messaging'"
+                class="flex w-full items-center justify-start px-4 py-2 rounded-md transition-colors duration-200 text-gray-700 hover:bg-gray-100 hover:text-gray-900 group"
+                :class="{ 'bg-gray-100 text-gray-900': activeSection === 'messaging' }"
+              >
+                <div class="flex items-center min-w-[20px] mr-3">
+                  <span class="i-heroicons-chat-bubble-left-right-20-solid w-5 h-5"></span>
+                </div>
+                <span class="text-left">Messaging</span>
+              </button>
+            </li>
+            <li class="w-full">
               <button 
                 @click="selectServerSettings()"
                 data-testid="settings-nav-server-settings"
@@ -86,6 +98,7 @@
         <ProviderAPIKeyManager v-if="activeSection === 'api-keys'" />
         <TokenUsageStatistics v-if="activeSection === 'token-usage'" />
         <NodeManager v-if="activeSection === 'nodes'" />
+        <MessagingSetupManager v-if="activeSection === 'messaging'" />
         <ServerSettingsManager
           v-if="activeSection === 'server-settings'"
           :section-mode="serverSettingsMode"
@@ -109,8 +122,13 @@ import ProviderAPIKeyManager from '~/components/settings/ProviderAPIKeyManager.v
 import TokenUsageStatistics from '~/components/settings/TokenUsageStatistics.vue';
 import NodeManager from '~/components/settings/NodeManager.vue';
 import ServerSettingsManager from '~/components/settings/ServerSettingsManager.vue';
+import MessagingSetupManager from '~/components/settings/MessagingSetupManager.vue';
 
-type SettingsSection = 'api-keys' | 'token-usage' | 'nodes' | 'server-settings';
+definePageMeta({
+  layout: 'settings',
+});
+
+type SettingsSection = 'api-keys' | 'token-usage' | 'nodes' | 'messaging' | 'server-settings';
 type ServerSettingsMode = 'quick' | 'advanced';
 
 const route = useRoute();
@@ -119,7 +137,7 @@ const windowNodeContextStore = useWindowNodeContextStore();
 const activeSection = ref<SettingsSection>('api-keys');
 const serverSettingsMode = ref<ServerSettingsMode>('quick');
 const isEmbeddedWindow = computed(() => windowNodeContextStore.isEmbeddedWindow);
-const validSections = new Set<SettingsSection>(['api-keys', 'token-usage', 'nodes', 'server-settings']);
+const validSections = new Set<SettingsSection>(['api-keys', 'token-usage', 'nodes', 'messaging', 'server-settings']);
 
 const normalizeSection = (section: string | undefined): SettingsSection | null => {
   if (!section) {

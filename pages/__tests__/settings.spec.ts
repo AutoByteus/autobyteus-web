@@ -39,6 +39,7 @@ const mountSettings = () =>
         TokenUsageStatistics: { template: '<div data-testid="section-token-usage" />' },
         ConversationHistoryManager: { template: '<div data-testid="section-conversation-logs" />' },
         NodeManager: { template: '<div data-testid="section-nodes" />' },
+        MessagingSetupManager: { template: '<div data-testid="section-messaging" />' },
         ServerSettingsManager: { props: ['sectionMode'], template: '<div data-testid="section-server-settings">mode={{ sectionMode }}</div>' },
       },
     },
@@ -58,6 +59,7 @@ describe('settings page', () => {
 
     expect(wrapper.text()).toContain('API Keys');
     expect(wrapper.text()).toContain('Nodes');
+    expect(wrapper.text()).toContain('Messaging');
     expect(wrapper.text()).toContain('Server Settings');
   });
 
@@ -91,13 +93,13 @@ describe('settings page', () => {
     expect(setupState.activeSection).toBe('server-settings');
   });
 
-  it('ignores removed messaging section query and keeps default section', async () => {
+  it('supports messaging section query and activates messaging section', async () => {
     routeMock.query = { section: 'messaging' };
     const wrapper = mountSettings();
     await nextTick();
     const setupState = (wrapper.vm as any).$?.setupState;
 
-    expect(setupState.activeSection).toBe('api-keys');
+    expect(setupState.activeSection).toBe('messaging');
   });
 
 });
