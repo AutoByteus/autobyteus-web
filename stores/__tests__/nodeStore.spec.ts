@@ -76,6 +76,23 @@ describe('nodeStore', () => {
     });
     setActivePinia(createPinia());
     vi.restoreAllMocks();
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      writable: true,
+      value: vi.fn().mockImplementation(async (input: string | URL) => {
+        const url = String(input);
+        const baseUrl = url.replace('/rest/node-discovery/self', '');
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            nodeId: `node-${baseUrl.replace(/[^a-zA-Z0-9]/g, '_')}`,
+            nodeName: 'Resolved Remote Node',
+            baseUrl,
+          }),
+        };
+      }),
+    });
     setElectronApiMock(null);
     clearLocalStorage();
   });
@@ -269,6 +286,114 @@ describe('nodeStore', () => {
     expect(added.capabilityProbeState).toBe('degraded');
     expect(upsertNodeRegistry).toHaveBeenCalledTimes(1);
     expect(openNodeWindow).toHaveBeenCalledWith(added.id);
+  });
+
+  it('upserts discovered peer via electron registry path for existing node ids', async () => {
+    const upsertNodeRegistry = vi.fn().mockResolvedValue({
+      version: 2,
+      nodes: [
+        {
+          id: EMBEDDED_NODE_ID,
+          name: 'Embedded Node',
+          baseUrl: 'http://localhost:29695',
+          nodeType: 'embedded',
+          registrationSource: 'embedded',
+          isSystem: true,
+          createdAt: '2026-02-08T00:00:00.000Z',
+          updatedAt: '2026-02-08T00:00:00.000Z',
+          capabilityProbeState: 'ready',
+          capabilities: { terminal: true, fileExplorerStreaming: true },
+        },
+        {
+          id: 'remote-manual',
+          name: 'Manual Node',
+          baseUrl: 'http://localhost:8000',
+          nodeType: 'remote',
+          registrationSource: 'manual',
+          isSystem: false,
+          createdAt: '2026-02-08T00:00:00.000Z',
+          updatedAt: '2026-02-08T00:00:00.000Z',
+          capabilityProbeState: 'degraded',
+          capabilities: { terminal: true, fileExplorerStreaming: true },
+        },
+      ],
+    } satisfies NodeRegistrySnapshot);
+
+    setElectronApiMock({
+      getNodeRegistrySnapshot: vi.fn().mockResolvedValue({
+        version: 1,
+        nodes: [
+          {
+            id: EMBEDDED_NODE_ID,
+            name: 'Embedded Node',
+            baseUrl: 'http://localhost:29695',
+            nodeType: 'embedded',
+            registrationSource: 'embedded',
+            isSystem: true,
+            createdAt: '2026-02-08T00:00:00.000Z',
+            updatedAt: '2026-02-08T00:00:00.000Z',
+            capabilityProbeState: 'ready',
+            capabilities: { terminal: true, fileExplorerStreaming: true },
+          },
+          {
+            id: 'remote-manual',
+            name: 'Manual Node',
+            baseUrl: 'http://localhost:8000',
+            nodeType: 'remote',
+            registrationSource: 'manual',
+            isSystem: false,
+            createdAt: '2026-02-08T00:00:00.000Z',
+            updatedAt: '2026-02-08T00:00:00.000Z',
+            capabilityProbeState: 'ready',
+            capabilities: { terminal: true, fileExplorerStreaming: true },
+          },
+        ],
+      }),
+      onNodeRegistryUpdated: vi.fn().mockReturnValue(vi.fn()),
+      upsertNodeRegistry,
+    });
+
+    const store = useNodeStore();
+    await store.initializeRegistry();
+
+    const changed = await store.upsertDiscoveredNode({
+      nodeId: 'remote-manual',
+      nodeName: 'Discovered Name Should Not Override Manual',
+      baseUrl: 'http://localhost:8000',
+      status: 'degraded',
+      capabilities: {
+        terminal: true,
+        fileExplorerStreaming: true,
+      },
+    });
+
+    expect(changed).toBe(true);
+    expect(upsertNodeRegistry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'upsert_discovered',
+      }),
+    );
+    expect(store.getNodeById('remote-manual')?.name).toBe('Manual Node');
+    expect(store.getNodeById('remote-manual')?.capabilityProbeState).toBe('degraded');
+  });
+
+  it('rejects discovered baseUrl collisions with different node ids', async () => {
+    const store = useNodeStore();
+    await store.initializeRegistry();
+
+    await store.addRemoteNode({
+      name: 'Manual Node',
+      baseUrl: 'http://localhost:8011',
+    });
+
+    await expect(
+      store.upsertDiscoveredNode({
+        nodeId: 'discovered-other-id',
+        nodeName: 'Discovered Other',
+        baseUrl: 'http://localhost:8011',
+        status: 'ready',
+      }),
+    ).rejects.toThrow('REMOTE_IDENTITY_CONFLICT: discovered peer base URL maps to a different node ID');
   });
 
   it('rejects removing embedded node', async () => {

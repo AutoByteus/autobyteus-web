@@ -46,7 +46,12 @@ export class MacOSServerManager extends BaseServerManager {
       PORT: this.serverPort.toString(),
       SERVER_PORT: this.serverPort.toString(),
       // Explicitly provide the server with its public-facing URL.
-      AUTOBYTEUS_SERVER_HOST: publicServerUrl
+      AUTOBYTEUS_SERVER_HOST: publicServerUrl,
+      // Embedded Electron server is the default discovery registry node.
+      AUTOBYTEUS_NODE_DISCOVERY_ENABLED: process.env.AUTOBYTEUS_NODE_DISCOVERY_ENABLED ?? 'true',
+      AUTOBYTEUS_NODE_DISCOVERY_ROLE: process.env.AUTOBYTEUS_NODE_DISCOVERY_ROLE ?? 'registry',
+      AUTOBYTEUS_NODE_DISCOVERY_REGISTRY_URL:
+        process.env.AUTOBYTEUS_NODE_DISCOVERY_REGISTRY_URL ?? publicServerUrl,
     }
 
     const options = {

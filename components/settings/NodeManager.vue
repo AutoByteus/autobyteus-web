@@ -19,6 +19,61 @@
       </section>
 
       <section class="border border-gray-200 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-gray-900">Discovery Sync</h3>
+        <p class="mt-1 text-xs text-gray-500">
+          Auto-register nodes discovered from the registry node bound to this window.
+        </p>
+
+        <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+          <span
+            class="px-2 py-1 rounded"
+            :class="nodeDiscoveryStore.running ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'"
+            data-testid="discovery-running-state"
+          >
+            {{ nodeDiscoveryStore.running ? 'running' : 'stopped' }}
+          </span>
+          <span class="px-2 py-1 rounded bg-gray-100 text-gray-700" data-testid="discovery-known-count">
+            discovered nodes: {{ discoveredNodeCount }}
+          </span>
+        </div>
+
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            class="px-3 py-1.5 rounded-md border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            :disabled="nodeDiscoveryStore.running"
+            @click="onStartDiscovery"
+            data-testid="discovery-start-button"
+          >
+            Start
+          </button>
+          <button
+            class="px-3 py-1.5 rounded-md border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            :disabled="!nodeDiscoveryStore.running"
+            @click="onStopDiscovery"
+            data-testid="discovery-stop-button"
+          >
+            Stop
+          </button>
+          <button
+            class="px-3 py-1.5 rounded-md border border-blue-300 text-sm text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+            :disabled="isRefreshingDiscovery"
+            @click="onRefreshDiscovery"
+            data-testid="discovery-refresh-button"
+          >
+            {{ isRefreshingDiscovery ? 'Refreshing...' : 'Refresh Now' }}
+          </button>
+        </div>
+
+        <p
+          v-if="nodeDiscoveryStore.lastError"
+          class="mt-2 text-sm text-red-600"
+          data-testid="discovery-last-error"
+        >
+          {{ nodeDiscoveryStore.lastError }}
+        </p>
+      </section>
+
+      <section class="border border-gray-200 rounded-lg p-4">
         <h3 class="text-sm font-semibold text-gray-900">Add Remote Node</h3>
         <p class="text-xs text-gray-500 mt-1">
           Add a node and optionally bootstrap sync from this window's source node.
@@ -187,6 +242,9 @@
                 <span class="text-xs uppercase tracking-wide px-2 py-0.5 rounded bg-gray-100 text-gray-700">
                   {{ node.nodeType }}
                 </span>
+                <span class="text-xs uppercase tracking-wide px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">
+                  {{ node.registrationSource || (node.nodeType === 'remote' ? 'manual' : 'embedded') }}
+                </span>
                 <span
                   class="text-xs px-2 py-0.5 rounded"
                   :class="{
@@ -239,6 +297,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import NodeSyncReportPanel from '~/components/sync/NodeSyncReportPanel.vue';
+import { useNodeDiscoveryStore } from '~/stores/nodeDiscoveryStore';
 import { useNodeStore } from '~/stores/nodeStore';
 import { useNodeSyncStore } from '~/stores/nodeSyncStore';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
@@ -256,6 +315,7 @@ const scopeOptions: Array<{ value: SyncEntityType; label: string }> = [
 const defaultFullSyncScope: SyncEntityType[] = scopeOptions.map((option) => option.value);
 
 const nodeStore = useNodeStore();
+const nodeDiscoveryStore = useNodeDiscoveryStore();
 const nodeSyncStore = useNodeSyncStore();
 const windowNodeContextStore = useWindowNodeContextStore();
 
@@ -276,11 +336,15 @@ const fullSyncError = ref<string | null>(null);
 const fullSyncInfo = ref<string | null>(null);
 const fullSyncReport = ref<NodeSyncRunReport | null>(null);
 const bootstrapSyncOnAdd = ref(true);
+const isRefreshingDiscovery = ref(false);
 const fullSyncSourceNodeId = ref('');
 const fullSyncTargetNodeIds = ref<string[]>([]);
 const fullSyncScope = ref<SyncEntityType[]>([...defaultFullSyncScope]);
 
 const currentNode = computed(() => nodeStore.getNodeById(windowNodeContextStore.nodeId));
+const discoveredNodeCount = computed(() => {
+  return nodeStore.nodes.filter((node) => node.nodeType === 'remote' && node.registrationSource === 'discovered').length;
+});
 const availableTargetNodes = computed(() => {
   return nodeStore.nodes.filter((node) => node.id !== fullSyncSourceNodeId.value);
 });
@@ -428,6 +492,26 @@ async function onRunFullSync(): Promise<void> {
     fullSyncError.value = error instanceof Error ? error.message : String(error);
   } finally {
     isRunningFullSync.value = false;
+  }
+}
+
+async function onStartDiscovery(): Promise<void> {
+  await nodeDiscoveryStore.startAutoRegistration();
+}
+
+function onStopDiscovery(): void {
+  nodeDiscoveryStore.stopAutoRegistration();
+}
+
+async function onRefreshDiscovery(): Promise<void> {
+  if (isRefreshingDiscovery.value) {
+    return;
+  }
+  isRefreshingDiscovery.value = true;
+  try {
+    await nodeDiscoveryStore.syncOnce();
+  } finally {
+    isRefreshingDiscovery.value = false;
   }
 }
 

@@ -1,6 +1,7 @@
 export const EMBEDDED_NODE_ID = 'embedded-local';
 
 export type NodeType = 'embedded' | 'remote';
+export type NodeRegistrationSource = 'embedded' | 'manual' | 'discovered';
 
 export interface NodeCapabilities {
   terminal: boolean;
@@ -14,6 +15,7 @@ export interface NodeProfile {
   name: string;
   baseUrl: string;
   nodeType: NodeType;
+  registrationSource?: NodeRegistrationSource;
   capabilities?: NodeCapabilities;
   capabilityProbeState?: CapabilityProbeState;
   isSystem: boolean;
@@ -47,7 +49,13 @@ export interface RenameNodeRegistryChange {
   name: string;
 }
 
+export interface UpsertDiscoveredNodeRegistryChange {
+  type: 'upsert_discovered';
+  node: NodeProfile;
+}
+
 export type NodeRegistryChange =
   | AddNodeRegistryChange
   | RemoveNodeRegistryChange
-  | RenameNodeRegistryChange;
+  | RenameNodeRegistryChange
+  | UpsertDiscoveredNodeRegistryChange;

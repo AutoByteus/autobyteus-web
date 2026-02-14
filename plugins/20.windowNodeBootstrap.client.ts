@@ -1,4 +1,5 @@
 import { EMBEDDED_NODE_ID, type WindowNodeContext } from '~/types/node';
+import { useNodeDiscoveryStore } from '~/stores/nodeDiscoveryStore';
 import { useNodeStore } from '~/stores/nodeStore';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 
@@ -9,12 +10,13 @@ function defaultEmbeddedContext(): WindowNodeContext {
   };
 }
 
-export default defineNuxtPlugin(async () => {
+export default defineNuxtPlugin(async (nuxtApp) => {
   if (!process.client) {
     return;
   }
 
   const nodeStore = useNodeStore();
+  const nodeDiscoveryStore = useNodeDiscoveryStore();
   const windowNodeContextStore = useWindowNodeContextStore();
 
   await nodeStore.initializeRegistry();
@@ -34,5 +36,16 @@ export default defineNuxtPlugin(async () => {
   }
 
   windowNodeContextStore.initializeFromWindowContext(context, boundNode.baseUrl);
-});
 
+  nuxtApp.hook('app:mounted', () => {
+    void nodeDiscoveryStore.startAutoRegistration();
+  });
+
+  window.addEventListener(
+    'beforeunload',
+    () => {
+      nodeDiscoveryStore.stopAutoRegistration();
+    },
+    { once: true },
+  );
+});
