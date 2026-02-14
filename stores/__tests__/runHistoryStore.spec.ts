@@ -724,6 +724,40 @@ describe('runHistoryStore', () => {
     expect(runB?.lastActivityAt).toBe('2026-01-03T00:00:00.000Z');
   });
 
+  it('treats idle draft contexts as active in tree projection', () => {
+    const store = useRunHistoryStore();
+    workspaceStoreMock.allWorkspaces = [
+      { workspaceId: 'ws-1', absolutePath: '/ws/a', name: 'Alpha' },
+    ];
+    workspaceStoreMock.workspaces = {
+      'ws-1': { workspaceId: 'ws-1', absolutePath: '/ws/a', name: 'Alpha', workspaceConfig: {} },
+    };
+
+    agentContextsStoreMock.instances.set('temp-1', {
+      config: {
+        workspaceId: 'ws-1',
+        agentDefinitionId: 'agent-def-1',
+        agentDefinitionName: 'SuperAgent',
+      },
+      state: {
+        currentStatus: 'idle',
+        conversation: {
+          id: 'temp-1',
+          messages: [],
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-03T00:00:00.000Z',
+        },
+      },
+    });
+
+    const nodes = store.getTreeNodes();
+    const draft = nodes[0]?.agents[0]?.runs.find((run) => run.runId === 'temp-1');
+
+    expect(draft?.source).toBe('draft');
+    expect(draft?.isActive).toBe(true);
+    expect(draft?.lastKnownStatus).toBe('ACTIVE');
+  });
+
   it('selectTreeRun delegates to openRun for history rows', async () => {
     const store = useRunHistoryStore();
     const openRunSpy = vi.spyOn(store, 'openRun').mockResolvedValue(undefined);

@@ -91,6 +91,7 @@ function getEmbeddedNodeProfile(): NodeProfile {
     name: 'Embedded Node',
     baseUrl: `http://localhost:${INTERNAL_SERVER_PORT}`,
     nodeType: 'embedded',
+    registrationSource: 'embedded',
     capabilities: {
       terminal: true,
       fileExplorerStreaming: true,
@@ -422,10 +423,69 @@ function applyNodeRegistryChange(change: NodeRegistryChange): NodeRegistrySnapsh
     existingNodes.push({
       ...candidate,
       baseUrl: normalizedBaseUrl,
+      registrationSource: candidate.registrationSource ?? 'manual',
       isSystem: false,
       createdAt: candidate.createdAt || now,
       updatedAt: now,
     });
+  } else if (change.type === 'upsert_discovered') {
+    const candidate = change.node;
+    if (!candidate.id.trim()) {
+      throw new Error('Node id is required');
+    }
+    if (!candidate.name.trim()) {
+      throw new Error('Node name is required');
+    }
+    if (!candidate.baseUrl.trim()) {
+      throw new Error('Node baseUrl is required');
+    }
+    if (candidate.nodeType !== 'remote') {
+      throw new Error('Only remote nodes can be discovered');
+    }
+
+    const normalizedBaseUrl = sanitizeBaseUrl(candidate.baseUrl);
+    const existingByIdIndex = existingNodes.findIndex((node) => node.id === candidate.id);
+    const conflictingByBaseUrl = existingNodes.find((node) => {
+      if (node.id === candidate.id) {
+        return false;
+      }
+      return sanitizeBaseUrl(node.baseUrl).toLowerCase() === normalizedBaseUrl.toLowerCase();
+    });
+
+    if (conflictingByBaseUrl) {
+      throw new Error(`Node baseUrl already exists: ${candidate.baseUrl}`);
+    }
+
+    if (existingByIdIndex >= 0) {
+      const existing = existingNodes[existingByIdIndex];
+      if (sanitizeBaseUrl(existing.baseUrl).toLowerCase() !== normalizedBaseUrl.toLowerCase()) {
+        throw new Error(`Node id already exists with a different baseUrl: ${candidate.id}`);
+      }
+
+      const nextRegistrationSource = existing.registrationSource ?? candidate.registrationSource ?? 'discovered';
+      const nextName = nextRegistrationSource === 'manual'
+        ? existing.name
+        : candidate.name.trim();
+
+      existingNodes[existingByIdIndex] = {
+        ...existing,
+        name: nextName,
+        baseUrl: normalizedBaseUrl,
+        registrationSource: nextRegistrationSource,
+        capabilities: candidate.capabilities ?? existing.capabilities,
+        capabilityProbeState: candidate.capabilityProbeState ?? existing.capabilityProbeState,
+        updatedAt: now,
+      };
+    } else {
+      existingNodes.push({
+        ...candidate,
+        baseUrl: normalizedBaseUrl,
+        registrationSource: candidate.registrationSource ?? 'discovered',
+        isSystem: false,
+        createdAt: candidate.createdAt || now,
+        updatedAt: now,
+      });
+    }
   } else if (change.type === 'remove') {
     if (change.nodeId === EMBEDDED_NODE_ID) {
       throw new Error('Embedded node cannot be removed');

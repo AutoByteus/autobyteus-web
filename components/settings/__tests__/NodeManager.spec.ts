@@ -4,6 +4,7 @@ import NodeManager from '../NodeManager.vue';
 
 const {
   nodeStoreMock,
+  nodeDiscoveryStoreMock,
   nodeSyncStoreMock,
   validateServerHostConfigurationMock,
   probeNodeCapabilitiesMock,
@@ -100,8 +101,17 @@ const {
     }),
   };
 
+  const discoveryStore = {
+    running: true,
+    lastError: null as string | null,
+    startAutoRegistration: vi.fn().mockResolvedValue(undefined),
+    stopAutoRegistration: vi.fn(),
+    syncOnce: vi.fn().mockResolvedValue(undefined),
+  };
+
   return {
     nodeStoreMock: store,
+    nodeDiscoveryStoreMock: discoveryStore,
     nodeSyncStoreMock: syncStore,
     validateServerHostConfigurationMock: vi.fn(),
     probeNodeCapabilitiesMock: vi.fn(),
@@ -114,6 +124,10 @@ vi.mock('~/stores/nodeStore', () => ({
 
 vi.mock('~/stores/nodeSyncStore', () => ({
   useNodeSyncStore: () => nodeSyncStoreMock,
+}));
+
+vi.mock('~/stores/nodeDiscoveryStore', () => ({
+  useNodeDiscoveryStore: () => nodeDiscoveryStoreMock,
 }));
 
 vi.mock('~/stores/windowNodeContextStore', () => ({
@@ -134,6 +148,8 @@ vi.mock('~/utils/nodeCapabilityProbe', () => ({
 describe('NodeManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    nodeDiscoveryStoreMock.running = true;
+    nodeDiscoveryStoreMock.lastError = null;
     validateServerHostConfigurationMock.mockReturnValue({
       normalizedBaseUrl: 'http://node-b:8000',
       severity: 'ok',
@@ -241,5 +257,24 @@ describe('NodeManager', () => {
         },
       ],
     });
+  });
+
+  it('controls discovery loop and supports manual refresh', async () => {
+    nodeDiscoveryStoreMock.running = true;
+    const runningWrapper = mount(NodeManager);
+    await runningWrapper.vm.$nextTick();
+
+    await runningWrapper.get('[data-testid="discovery-stop-button"]').trigger('click');
+    expect(nodeDiscoveryStoreMock.stopAutoRegistration).toHaveBeenCalledTimes(1);
+
+    nodeDiscoveryStoreMock.running = false;
+    const stoppedWrapper = mount(NodeManager);
+    await stoppedWrapper.vm.$nextTick();
+
+    await stoppedWrapper.get('[data-testid="discovery-start-button"]').trigger('click');
+    expect(nodeDiscoveryStoreMock.startAutoRegistration).toHaveBeenCalledTimes(1);
+
+    await stoppedWrapper.get('[data-testid="discovery-refresh-button"]').trigger('click');
+    expect(nodeDiscoveryStoreMock.syncOnce).toHaveBeenCalledTimes(1);
   });
 });

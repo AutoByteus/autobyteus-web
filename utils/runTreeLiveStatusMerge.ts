@@ -16,7 +16,6 @@ const toRunStatusOverlay = (status: AgentStatus): LiveStatusOverlay => {
 
   if (
     status === AgentStatus.Uninitialized ||
-    status === AgentStatus.Idle ||
     status === AgentStatus.ShutdownComplete ||
     status === AgentStatus.ToolDenied
   ) {

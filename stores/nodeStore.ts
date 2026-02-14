@@ -9,6 +9,7 @@ import {
 } from '~/types/node';
 import { INTERNAL_SERVER_PORT } from '~/utils/serverConfig';
 import { normalizeNodeBaseUrl } from '~/utils/nodeEndpoints';
+import { resolveRemoteNodeIdentity } from '~/utils/remoteNodeIdentityResolver';
 
 function nowIsoString(): string {
   return new Date().toISOString();
@@ -40,6 +41,7 @@ function createEmbeddedNode(baseUrl: string): NodeProfile {
     name: 'Embedded Node',
     baseUrl,
     nodeType: 'embedded',
+    registrationSource: 'embedded',
     capabilities: {
       terminal: true,
       fileExplorerStreaming: true,
@@ -56,11 +58,6 @@ function createDefaultSnapshot(baseUrl: string): NodeRegistrySnapshot {
     version: 1,
     nodes: [createEmbeddedNode(baseUrl)],
   };
-}
-
-function generateRemoteNodeId(): string {
-  const randomId = globalThis.crypto?.randomUUID?.();
-  return randomId ? `remote-${randomId}` : `remote-${Date.now()}`;
 }
 
 function canUseLocalStorage(): boolean {
@@ -103,6 +100,10 @@ export const useNodeStore = defineStore('nodeStore', () => {
   });
 
   const remoteNodes = computed(() => nodes.value.filter((node) => node.nodeType === 'remote'));
+
+  function resolveProbeStateFromDiscoveryStatus(status: string): NodeProfile['capabilityProbeState'] {
+    return status === 'ready' ? 'ready' : 'degraded';
+  }
 
   function replaceSnapshot(snapshot: NodeRegistrySnapshot): void {
     registryVersion.value = snapshot.version;
@@ -227,20 +228,27 @@ export const useNodeStore = defineStore('nodeStore', () => {
     }
 
     const normalizedBaseUrl = normalizeNodeBaseUrl(input.baseUrl);
-    if (
-      nodes.value.some(
-        (node) => normalizeNodeBaseUrl(node.baseUrl).toLowerCase() === normalizedBaseUrl.toLowerCase(),
-      )
-    ) {
+    const resolvedIdentity = await resolveRemoteNodeIdentity(normalizedBaseUrl);
+
+    const existingById = getNodeById(resolvedIdentity.nodeId);
+    if (existingById) {
+      if (normalizeNodeBaseUrl(existingById.baseUrl).toLowerCase() !== normalizedBaseUrl.toLowerCase()) {
+        throw new Error('REMOTE_IDENTITY_CONFLICT: canonical node ID maps to a different base URL');
+      }
+      throw new Error('Node is already configured');
+    }
+
+    if (nodes.value.some((node) => normalizeNodeBaseUrl(node.baseUrl).toLowerCase() === normalizedBaseUrl.toLowerCase())) {
       throw new Error('Node with the same base URL already exists');
     }
 
     const now = nowIsoString();
     const node: NodeProfile = {
-      id: generateRemoteNodeId(),
+      id: resolvedIdentity.nodeId,
       name: trimmedName,
       baseUrl: normalizedBaseUrl,
       nodeType: 'remote',
+      registrationSource: 'manual',
       isSystem: false,
       createdAt: now,
       updatedAt: now,
@@ -258,6 +266,163 @@ export const useNodeStore = defineStore('nodeStore', () => {
     registryVersion.value += 1;
     persistCurrentSnapshotToLocalStorage();
     return node;
+  }
+
+  async function upsertDiscoveredNode(peer: {
+    nodeId: string;
+    nodeName: string;
+    baseUrl: string;
+    status: string;
+    capabilities?: {
+      terminal?: boolean | null;
+      fileExplorerStreaming?: boolean | null;
+    } | null;
+  }): Promise<boolean> {
+    if (!peer.nodeId || peer.nodeId === EMBEDDED_NODE_ID) {
+      return false;
+    }
+
+    const normalizedBaseUrl = normalizeNodeBaseUrl(peer.baseUrl);
+    const nextCapabilityProbeState = resolveProbeStateFromDiscoveryStatus(peer.status);
+    const nextCapabilities =
+      peer.capabilities && typeof peer.capabilities === 'object'
+        ? {
+          terminal: peer.capabilities.terminal !== false,
+          fileExplorerStreaming: peer.capabilities.fileExplorerStreaming !== false,
+        }
+        : undefined;
+
+    const existingById = getNodeById(peer.nodeId);
+    if (existingById) {
+      if (normalizeNodeBaseUrl(existingById.baseUrl).toLowerCase() !== normalizedBaseUrl.toLowerCase()) {
+        throw new Error('REMOTE_IDENTITY_CONFLICT: discovered peer id maps to a different base URL');
+      }
+
+      if (window.electronAPI?.getNodeRegistrySnapshot) {
+        await upsertRegistry({
+          type: 'upsert_discovered',
+          node: {
+            ...existingById,
+            name: peer.nodeName || existingById.name,
+            baseUrl: normalizedBaseUrl,
+            nodeType: 'remote',
+            registrationSource: existingById.registrationSource ?? 'discovered',
+            isSystem: false,
+            updatedAt: nowIsoString(),
+            capabilityProbeState: nextCapabilityProbeState,
+            capabilities: nextCapabilities ?? existingById.capabilities,
+          },
+        });
+        return true;
+      } else {
+        let changed = false;
+        const nextNodes = nodes.value.map((node) => {
+          if (node.id !== peer.nodeId) {
+            return node;
+          }
+          if (node.registrationSource === 'manual') {
+            if (node.capabilityProbeState === nextCapabilityProbeState) {
+              return node;
+            }
+            changed = true;
+            return {
+              ...node,
+              capabilityProbeState: nextCapabilityProbeState,
+              updatedAt: nowIsoString(),
+            };
+          }
+
+          const nextName = peer.nodeName || node.name;
+          const nextRegistrationSource = node.registrationSource ?? 'discovered';
+          const hasChanged =
+            node.name !== nextName ||
+            node.capabilityProbeState !== nextCapabilityProbeState ||
+            node.registrationSource !== nextRegistrationSource;
+          if (!hasChanged) {
+            return node;
+          }
+          changed = true;
+          return {
+            ...node,
+            name: nextName,
+            capabilityProbeState: nextCapabilityProbeState,
+            registrationSource: nextRegistrationSource,
+            updatedAt: nowIsoString(),
+          };
+        });
+        if (changed) {
+          nodes.value = nextNodes;
+          registryVersion.value += 1;
+          persistCurrentSnapshotToLocalStorage();
+        }
+        return changed;
+      }
+    }
+
+    const existingByBase = nodes.value.find(
+      (node) => normalizeNodeBaseUrl(node.baseUrl).toLowerCase() === normalizedBaseUrl.toLowerCase(),
+    );
+    if (existingByBase) {
+      throw new Error('REMOTE_IDENTITY_CONFLICT: discovered peer base URL maps to a different node ID');
+    }
+
+    const now = nowIsoString();
+    const discoveredNode: NodeProfile = {
+      id: peer.nodeId,
+      name: peer.nodeName || peer.nodeId,
+      baseUrl: normalizedBaseUrl,
+      nodeType: 'remote',
+      registrationSource: 'discovered',
+      isSystem: false,
+      createdAt: now,
+      updatedAt: now,
+      capabilityProbeState: nextCapabilityProbeState,
+      capabilities: nextCapabilities,
+    };
+
+    if (window.electronAPI) {
+      await upsertRegistry({ type: 'upsert_discovered', node: discoveredNode });
+      return true;
+    }
+
+    nodes.value = [...nodes.value, discoveredNode];
+    registryVersion.value += 1;
+    persistCurrentSnapshotToLocalStorage();
+    return true;
+  }
+
+  async function pruneDiscoveredNodes(nodeIds: string[]): Promise<number> {
+    let removedCount = 0;
+
+    for (const nodeId of nodeIds) {
+      const node = getNodeById(nodeId);
+      if (!node || node.nodeType !== 'remote' || node.registrationSource !== 'discovered') {
+        continue;
+      }
+
+      if (window.electronAPI) {
+        try {
+          await upsertRegistry({
+            type: 'remove',
+            nodeId,
+          });
+          removedCount += 1;
+        } catch {
+          // Ignore stale/remove races.
+        }
+        continue;
+      }
+
+      nodes.value = nodes.value.filter((entry) => entry.id !== nodeId);
+      removedCount += 1;
+    }
+
+    if (!window.electronAPI && removedCount > 0) {
+      registryVersion.value += 1;
+      persistCurrentSnapshotToLocalStorage();
+    }
+
+    return removedCount;
   }
 
   async function removeRemoteNode(nodeId: string): Promise<void> {
@@ -324,6 +489,8 @@ export const useNodeStore = defineStore('nodeStore', () => {
     getNodeBaseUrl,
     ensureNodeWindowReady,
     addRemoteNode,
+    upsertDiscoveredNode,
+    pruneDiscoveredNodes,
     removeRemoteNode,
     renameNode,
     teardownRegistryListener,

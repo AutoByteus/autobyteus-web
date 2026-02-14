@@ -175,7 +175,6 @@ const toRunStatus = (status: AgentStatus): Pick<RunHistoryItem, 'isActive' | 'la
 
   if (
     status === AgentStatus.Uninitialized ||
-    status === AgentStatus.Idle ||
     status === AgentStatus.ShutdownComplete ||
     status === AgentStatus.ToolDenied
   ) {

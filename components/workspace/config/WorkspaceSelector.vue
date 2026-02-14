@@ -140,6 +140,7 @@ import { useWorkspaceStore } from '~/stores/workspace';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import SearchableSelect from '~/components/common/SearchableSelect.vue';
 import { Icon } from '@iconify/vue';
+import { pickFolderPath } from '~/composables/useNativeFolderDialog';
 
 const props = defineProps<{
   workspaceId: string | null;
@@ -273,15 +274,11 @@ const handleLoad = () => {
 // Native folder picker (Electron only)
 const handleBrowse = async () => {
   if (!isEmbeddedWindow.value || !window.electronAPI?.showFolderDialog) return;
-  
-  try {
-    const result = await window.electronAPI.showFolderDialog();
-    if (!result.canceled && result.path) {
-      tempPath.value = result.path;
-      handleLoad();
-    }
-  } catch (error) {
-    console.error('Failed to open folder dialog:', error);
+
+  const selectedPath = await pickFolderPath();
+  if (selectedPath) {
+    tempPath.value = selectedPath;
+    handleLoad();
   }
 };
 </script>
