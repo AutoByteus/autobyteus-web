@@ -5,11 +5,15 @@ import SettingsPage from '../settings.vue';
 
 const {
   routeMock,
+  routerMock,
   serverStoreMock,
   windowNodeContextStoreMock,
 } = vi.hoisted(() => ({
   routeMock: {
     query: {} as Record<string, unknown>,
+  },
+  routerMock: {
+    push: vi.fn().mockResolvedValue(undefined),
   },
   serverStoreMock: {
     status: 'running',
@@ -21,6 +25,7 @@ const {
 
 vi.mock('vue-router', () => ({
   useRoute: () => routeMock,
+  useRouter: () => routerMock,
 }));
 
 vi.mock('~/stores/serverStore', () => ({
@@ -61,6 +66,7 @@ describe('settings page', () => {
     expect(wrapper.text()).toContain('Nodes');
     expect(wrapper.text()).toContain('Messaging');
     expect(wrapper.text()).toContain('Server Settings');
+    expect(wrapper.get('[data-testid="settings-nav-back"]').attributes('aria-label')).toBe('Back to workspace');
   });
 
   it('normalizes legacy server-status route query to server-settings in remote windows', async () => {
@@ -100,6 +106,13 @@ describe('settings page', () => {
     const setupState = (wrapper.vm as any).$?.setupState;
 
     expect(setupState.activeSection).toBe('messaging');
+  });
+
+  it('navigates back to workspace when back item is clicked', async () => {
+    const wrapper = mountSettings();
+    await wrapper.get('[data-testid="settings-nav-back"]').trigger('click');
+
+    expect(routerMock.push).toHaveBeenCalledWith('/workspace');
   });
 
 });

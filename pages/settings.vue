@@ -1,11 +1,22 @@
 <template>
-  <div class="flex h-full bg-gray-100">
+  <div class="flex h-full bg-white">
     <!-- Sidebar -->
-    <div class="w-64 bg-white border-r border-gray-100">
-      <div class="p-6">
-        <h2 class="text-xl font-semibold text-gray-800 mb-6">Settings</h2>
+    <div class="w-64 border-r border-gray-200 bg-white">
+      <div class="px-4 py-5">
         <nav class="w-full">
           <ul class="w-full space-y-2">
+            <li class="w-full border-b border-gray-100 pb-2">
+              <button
+                type="button"
+                aria-label="Back to workspace"
+                data-testid="settings-nav-back"
+                class="flex w-full items-center justify-start rounded-md px-4 py-2 text-gray-600 transition-colors duration-200 hover:bg-gray-100 hover:text-gray-800"
+                @click="goBackToWorkspace"
+              >
+                <Icon icon="heroicons:arrow-left-20-solid" class="h-5 w-5 flex-shrink-0" />
+                <span class="ml-2 text-sm font-medium">Back to Workspace</span>
+              </button>
+            </li>
             <li class="w-full">
               <button 
                 @click="activeSection = 'api-keys'"
@@ -93,7 +104,7 @@
     </div>
 
     <!-- Content section -->
-    <div class="flex-1 overflow-auto bg-white">
+    <div class="flex-1 overflow-auto bg-white pr-4 pt-4">
       <div class="h-full w-full flex flex-col">
         <ProviderAPIKeyManager v-if="activeSection === 'api-keys'" />
         <TokenUsageStatistics v-if="activeSection === 'token-usage'" />
@@ -115,7 +126,8 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { Icon } from '@iconify/vue';
 import { useServerStore } from '~/stores/serverStore';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import ProviderAPIKeyManager from '~/components/settings/ProviderAPIKeyManager.vue';
@@ -132,6 +144,7 @@ type SettingsSection = 'api-keys' | 'token-usage' | 'nodes' | 'messaging' | 'ser
 type ServerSettingsMode = 'quick' | 'advanced';
 
 const route = useRoute();
+const router = useRouter();
 const serverStore = useServerStore();
 const windowNodeContextStore = useWindowNodeContextStore();
 const activeSection = ref<SettingsSection>('api-keys');
@@ -153,6 +166,14 @@ const normalizeServerSettingsMode = (mode: string | undefined): ServerSettingsMo
 const selectServerSettings = (mode: ServerSettingsMode = 'quick') => {
   activeSection.value = 'server-settings';
   serverSettingsMode.value = mode;
+};
+
+const goBackToWorkspace = async (): Promise<void> => {
+  try {
+    await router.push('/workspace');
+  } catch (error) {
+    console.error('settings page back navigation error:', error);
+  }
 };
 
 onMounted(() => {
