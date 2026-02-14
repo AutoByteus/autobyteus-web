@@ -77,7 +77,6 @@ type PrimaryNavKey =
   | 'applications'
   | 'promptEngineering'
   | 'skills'
-  | 'tools'
   | 'memory'
   | 'media';
 
@@ -87,7 +86,6 @@ const primaryNavItems: Array<{ key: PrimaryNavKey; label: string; icon: string }
   { key: 'applications', label: 'Applications', icon: 'heroicons:squares-2x2' },
   { key: 'promptEngineering', label: 'Prompts', icon: 'heroicons:light-bulb' },
   { key: 'skills', label: 'Skills', icon: 'heroicons:sparkles' },
-  { key: 'tools', label: 'Tools', icon: 'heroicons:wrench-screwdriver' },
   { key: 'memory', label: 'Memory', icon: 'ph:brain' },
   { key: 'media', label: 'Media', icon: 'heroicons:photo' },
 ];
@@ -110,8 +108,6 @@ const resolvePrimaryRoute = (key: PrimaryNavKey): RouteLocationRaw => {
       return '/prompt-engineering';
     case 'skills':
       return '/skills';
-    case 'tools':
-      return '/tools';
     case 'memory':
       return '/memory';
     case 'media':
@@ -131,8 +127,6 @@ const isPrimaryNavActive = (key: PrimaryNavKey): boolean => {
       return route.path === '/prompt-engineering';
     case 'skills':
       return route.path.startsWith('/skills');
-    case 'tools':
-      return route.path.startsWith('/tools');
     case 'memory':
       return route.path.startsWith('/memory');
     case 'media':
