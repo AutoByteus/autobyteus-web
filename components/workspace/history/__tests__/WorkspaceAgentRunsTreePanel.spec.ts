@@ -14,6 +14,8 @@ const {
   workspaceStoreMock,
   selectionStoreMock,
   agentRunStoreMock,
+  windowNodeContextStoreMock,
+  pickFolderPathMock,
   addToastMock,
 } = vi.hoisted(() => {
   const state = {
@@ -94,6 +96,10 @@ const {
     agentRunStoreMock: {
       terminateRun: vi.fn().mockResolvedValue(true),
     },
+    windowNodeContextStoreMock: {
+      isEmbeddedWindow: { __v_isRef: true, value: false },
+    },
+    pickFolderPathMock: vi.fn().mockResolvedValue(null),
     addToastMock: vi.fn(),
   };
 });
@@ -114,6 +120,14 @@ vi.mock('~/stores/agentRunStore', () => ({
   useAgentRunStore: () => agentRunStoreMock,
 }));
 
+vi.mock('~/stores/windowNodeContextStore', () => ({
+  useWindowNodeContextStore: () => windowNodeContextStoreMock,
+}));
+
+vi.mock('~/composables/useNativeFolderDialog', () => ({
+  pickFolderPath: pickFolderPathMock,
+}));
+
 vi.mock('~/composables/useToasts', () => ({
   useToasts: () => ({
     addToast: addToastMock,
@@ -128,6 +142,9 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     runHistoryState.selectedRunId = null;
     selectionStoreMock.selectedType = null;
     selectionStoreMock.selectedInstanceId = null;
+    windowNodeContextStoreMock.isEmbeddedWindow.value = false;
+    pickFolderPathMock.mockResolvedValue(null);
+    delete (window as any).electronAPI;
   });
 
   const mountComponent = () => mount(WorkspaceAgentRunsTreePanel, {
@@ -246,6 +263,44 @@ describe('WorkspaceAgentRunsTreePanel', () => {
 
     expect(runHistoryStoreMock.createWorkspace).toHaveBeenCalledWith('/ws/new');
     expect(workspaceStoreMock.fetchAllWorkspaces).toHaveBeenCalledTimes(2);
+    expect(vm.showCreateWorkspaceInline).toBe(false);
+  });
+
+  it('opens native folder picker on embedded electron and creates workspace from selected path', async () => {
+    windowNodeContextStoreMock.isEmbeddedWindow.value = true;
+    (window as any).electronAPI = {
+      showFolderDialog: vi.fn(),
+    };
+    pickFolderPathMock.mockResolvedValue('/ws/from-picker');
+
+    const wrapper = mountComponent();
+    await flushPromises();
+    const vm = wrapper.vm as any;
+
+    await vm.onCreateWorkspace();
+    await flushPromises();
+
+    expect(pickFolderPathMock).toHaveBeenCalledTimes(1);
+    expect(runHistoryStoreMock.createWorkspace).toHaveBeenCalledWith('/ws/from-picker');
+    expect(vm.showCreateWorkspaceInline).toBe(false);
+  });
+
+  it('does not create workspace when embedded electron picker is canceled', async () => {
+    windowNodeContextStoreMock.isEmbeddedWindow.value = true;
+    (window as any).electronAPI = {
+      showFolderDialog: vi.fn(),
+    };
+    pickFolderPathMock.mockResolvedValue(null);
+
+    const wrapper = mountComponent();
+    await flushPromises();
+    const vm = wrapper.vm as any;
+
+    await vm.onCreateWorkspace();
+    await flushPromises();
+
+    expect(pickFolderPathMock).toHaveBeenCalledTimes(1);
+    expect(runHistoryStoreMock.createWorkspace).not.toHaveBeenCalled();
     expect(vm.showCreateWorkspaceInline).toBe(false);
   });
 
