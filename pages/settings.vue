@@ -66,6 +66,30 @@
               </button>
             </li>
             <li class="w-full">
+              <button
+                @click="activeSection = 'local-tools'"
+                class="flex w-full items-center justify-start px-4 py-2 rounded-md transition-colors duration-200 text-gray-700 hover:bg-gray-100 hover:text-gray-900 group"
+                :class="{ 'bg-gray-100 text-gray-900': activeSection === 'local-tools' }"
+              >
+                <div class="flex items-center min-w-[20px] mr-3">
+                  <span class="i-heroicons-wrench-screwdriver-20-solid w-5 h-5"></span>
+                </div>
+                <span class="text-left">Local Tools</span>
+              </button>
+            </li>
+            <li class="w-full">
+              <button
+                @click="activeSection = 'mcp-servers'"
+                class="flex w-full items-center justify-start px-4 py-2 rounded-md transition-colors duration-200 text-gray-700 hover:bg-gray-100 hover:text-gray-900 group"
+                :class="{ 'bg-gray-100 text-gray-900': activeSection === 'mcp-servers' }"
+              >
+                <div class="flex items-center min-w-[20px] mr-3">
+                  <span class="i-heroicons-puzzle-piece-20-solid w-5 h-5"></span>
+                </div>
+                <span class="text-left">MCP Servers</span>
+              </button>
+            </li>
+            <li class="w-full">
               <button 
                 @click="selectServerSettings()"
                 data-testid="settings-nav-server-settings"
@@ -110,6 +134,14 @@
         <TokenUsageStatistics v-if="activeSection === 'token-usage'" />
         <NodeManager v-if="activeSection === 'nodes'" />
         <MessagingSetupManager v-if="activeSection === 'messaging'" />
+        <ToolsManagementWorkspace
+          v-if="activeSection === 'local-tools'"
+          initial-root-section="local-tools"
+        />
+        <ToolsManagementWorkspace
+          v-if="activeSection === 'mcp-servers'"
+          initial-root-section="mcp-servers"
+        />
         <ServerSettingsManager
           v-if="activeSection === 'server-settings'"
           :section-mode="serverSettingsMode"
@@ -135,12 +167,20 @@ import TokenUsageStatistics from '~/components/settings/TokenUsageStatistics.vue
 import NodeManager from '~/components/settings/NodeManager.vue';
 import ServerSettingsManager from '~/components/settings/ServerSettingsManager.vue';
 import MessagingSetupManager from '~/components/settings/MessagingSetupManager.vue';
+import ToolsManagementWorkspace from '~/components/tools/ToolsManagementWorkspace.vue';
 
 definePageMeta({
   layout: 'settings',
 });
 
-type SettingsSection = 'api-keys' | 'token-usage' | 'nodes' | 'messaging' | 'server-settings';
+type SettingsSection =
+  | 'api-keys'
+  | 'token-usage'
+  | 'nodes'
+  | 'messaging'
+  | 'local-tools'
+  | 'mcp-servers'
+  | 'server-settings';
 type ServerSettingsMode = 'quick' | 'advanced';
 
 const route = useRoute();
@@ -150,7 +190,15 @@ const windowNodeContextStore = useWindowNodeContextStore();
 const activeSection = ref<SettingsSection>('api-keys');
 const serverSettingsMode = ref<ServerSettingsMode>('quick');
 const isEmbeddedWindow = computed(() => windowNodeContextStore.isEmbeddedWindow);
-const validSections = new Set<SettingsSection>(['api-keys', 'token-usage', 'nodes', 'messaging', 'server-settings']);
+const validSections = new Set<SettingsSection>([
+  'api-keys',
+  'token-usage',
+  'nodes',
+  'messaging',
+  'local-tools',
+  'mcp-servers',
+  'server-settings',
+]);
 
 const normalizeSection = (section: string | undefined): SettingsSection | null => {
   if (!section) {
