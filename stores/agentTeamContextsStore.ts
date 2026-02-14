@@ -204,5 +204,73 @@ export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
         this.activeTeamContext.focusedMemberName = memberName;
       }
     },
+
+    ensureSyntheticMemberContext(
+      teamId: string,
+      memberRouteKey: string,
+      options: { seedMemberName?: string | null; agentId?: string | null } = {},
+    ): AgentContext | null {
+      const team = this.teams.get(teamId);
+      if (!team) return null;
+      if (!memberRouteKey || !memberRouteKey.includes('/')) return null;
+
+      const existing = team.members.get(memberRouteKey);
+      if (existing) {
+        if (options.agentId) {
+          existing.state.agentId = options.agentId;
+        }
+        return existing;
+      }
+
+      const routeSegments = memberRouteKey
+        .split('/')
+        .map((segment) => segment.trim())
+        .filter((segment) => segment.length > 0);
+      if (routeSegments.length < 2) {
+        return null;
+      }
+      const leafName = routeSegments[routeSegments.length - 1] as string;
+      const parentRouteKey = routeSegments.slice(0, -1).join('/');
+
+      const seedCandidates = [
+        parentRouteKey,
+        leafName,
+        options.seedMemberName ?? null,
+      ].filter((candidate): candidate is string => !!candidate);
+
+      let seedContext: AgentContext | null = null;
+      for (const candidate of seedCandidates) {
+        const candidateContext = team.members.get(candidate);
+        if (candidateContext) {
+          seedContext = candidateContext;
+          break;
+        }
+      }
+      if (!seedContext) {
+        return null;
+      }
+
+      const seedConversation = seedContext.state.conversation;
+      const now = new Date().toISOString();
+      const syntheticConfig: AgentRunConfig = {
+        ...seedContext.config,
+        agentDefinitionName: leafName,
+        isLocked: seedContext.config.isLocked ?? false,
+      };
+      const conversation: Conversation = {
+        id: `${teamId}::${memberRouteKey}`,
+        messages: [],
+        createdAt: seedConversation.createdAt ?? now,
+        updatedAt: now,
+        agentDefinitionId: seedConversation.agentDefinitionId ?? seedContext.config.agentDefinitionId,
+        agentName: leafName,
+      };
+
+      const state = new AgentRunState(options.agentId ?? memberRouteKey, conversation);
+      state.currentStatus = seedContext.state.currentStatus;
+      const syntheticContext = new AgentContext(syntheticConfig, state);
+      team.members.set(memberRouteKey, syntheticContext);
+      return syntheticContext;
+    },
   },
 });

@@ -109,4 +109,46 @@ describe('agentTeamContextsStore', () => {
              expect(store.activeTeamContext?.teamId).toBe(teamId);
         });
     });
+
+    describe('ensureSyntheticMemberContext', () => {
+        it('creates nested member context from route key using parent seed member', async () => {
+            const store = useAgentTeamContextsStore();
+            const runConfigStore = useTeamRunConfigStore();
+            runConfigStore.setTemplate({
+                id: 'team-def-1',
+                name: 'Test Team',
+                coordinatorMemberName: 'agent-1',
+                nodes: [
+                    { memberName: 'agent-1', referenceType: 'AGENT', referenceId: 'def-1' },
+                    { memberName: 'agent-2', referenceType: 'AGENT', referenceId: 'def-2' }
+                ]
+            } as any);
+            runConfigStore.updateConfig({
+                workspaceId: 'ws-1',
+                llmModelIdentifier: 'gpt-4',
+                autoExecuteTools: false,
+                memberOverrides: {},
+            });
+
+            await store.createInstanceFromTemplate();
+            const [teamId] = Array.from(store.teams.keys());
+            const team = store.teams.get(teamId!);
+            expect(team).toBeDefined();
+
+            const seed = team!.members.get('agent-2');
+            team!.members.set('sub-team', seed!);
+
+            const synthetic = store.ensureSyntheticMemberContext(
+                teamId!,
+                'sub-team/worker-b',
+                { seedMemberName: 'worker-b', agentId: 'agent-worker-b' },
+            );
+
+            expect(synthetic).toBeTruthy();
+            expect(team!.members.has('sub-team/worker-b')).toBe(true);
+            expect(synthetic?.state.agentId).toBe('agent-worker-b');
+            expect(synthetic?.state.conversation.id).toContain('sub-team/worker-b');
+            expect(synthetic?.config.agentDefinitionName).toBe('worker-b');
+        });
+    });
 });
