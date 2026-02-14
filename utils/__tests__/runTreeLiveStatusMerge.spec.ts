@@ -73,7 +73,7 @@ describe('runTreeLiveStatusMerge', () => {
     expect(draft?.lastKnownStatus).toBe('ACTIVE');
   });
 
-  it('maps terminal statuses to idle/error for display', () => {
+  it('keeps idle live contexts active while preserving terminal status mapping', () => {
     const contexts = new Map<string, any>([
       [
         'run-history-a',
@@ -101,7 +101,7 @@ describe('runTreeLiveStatusMerge', () => {
 
     expect(runA?.isActive).toBe(false);
     expect(runA?.lastKnownStatus).toBe('ERROR');
-    expect(runB?.isActive).toBe(false);
-    expect(runB?.lastKnownStatus).toBe('IDLE');
+    expect(runB?.isActive).toBe(true);
+    expect(runB?.lastKnownStatus).toBe('ACTIVE');
   });
 });
