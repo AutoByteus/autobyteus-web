@@ -8,6 +8,18 @@ import { useNodeStore } from '~/stores/nodeStore';
 import { useNodeSyncStore } from '~/stores/nodeSyncStore';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 
+const { addToastMock } = vi.hoisted(() => ({
+  addToastMock: vi.fn(),
+}));
+
+vi.mock('~/composables/useToasts', () => ({
+  useToasts: () => ({
+    addToast: addToastMock,
+    removeToast: vi.fn(),
+    toasts: { value: [] },
+  }),
+}));
+
 const AgentCardStub = {
   name: 'AgentCard',
   template: '<div class="agent-card"></div>',
@@ -79,10 +91,15 @@ describe('AgentList', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    addToastMock.mockReset();
     setElectronApiMock(null);
   });
 
-  const mountComponent = async (options?: { nodes?: any[]; sourceNodeId?: string }) => {
+  const mountComponent = async (options?: {
+    nodes?: any[];
+    sourceNodeId?: string;
+    deleteResult?: { success: boolean; message: string } | null;
+  }) => {
     const pinia = createTestingPinia({
       createSpy: vi.fn,
       stubActions: true,
@@ -93,6 +110,7 @@ describe('AgentList', () => {
     store.agentDefinitions = mockAgentDefs as any;
     store.loading = false;
     store.error = null;
+    store.deleteResult = options?.deleteResult ?? null;
 
     const nodeStore = useNodeStore();
     nodeStore.nodes = (options?.nodes ?? defaultNodes) as any;
@@ -195,5 +213,20 @@ describe('AgentList', () => {
     await wrapper.vm.$nextTick();
 
     expect(readSetupRef<string | null>(wrapper, 'syncError')).toBe('sync failed for remote node');
+  });
+
+  it('routes existing delete result to global toaster on mount', async () => {
+    const message = 'Agent definition deleted successfully.';
+
+    await mountComponent({
+      deleteResult: {
+        success: true,
+        message,
+      },
+    });
+    const agentDefinitionStore = useAgentDefinitionStore();
+
+    expect(addToastMock).toHaveBeenCalledWith(message, 'success');
+    expect(agentDefinitionStore.clearDeleteResult).toHaveBeenCalledTimes(1);
   });
 });

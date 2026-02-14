@@ -56,41 +56,6 @@
         data-testid="agent-sync-report"
       />
 
-      <div v-if="deleteResult" class="mb-6">
-        <div 
-          class="rounded-lg border-l-4 p-4 shadow-sm" 
-          :class="deleteResult.success ? 'border-green-500 bg-green-50 text-green-700' : 'border-red-500 bg-red-50 text-red-700'"
-        >
-          <div class="flex items-start gap-3">
-            <div class="shrink-0">
-              <svg v-if="deleteResult.success" class="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-              </svg>
-              <svg v-else class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-              </svg>
-            </div>
-            <div class="min-w-0">
-              <p class="text-sm font-medium">{{ deleteResult.message }}</p>
-            </div>
-            <div class="ml-auto pl-3">
-              <div class="-mx-1.5 -my-1.5">
-                <button 
-                  @click="clearDeleteResult"
-                  class="inline-flex rounded-md bg-transparent p-1.5"
-                  :class="deleteResult.success ? 'text-green-600 hover:bg-green-100' : 'text-red-600 hover:bg-red-100'"
-                >
-                  <span class="sr-only">Dismiss</span>
-                  <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div v-if="loading && !reloading" class="rounded-lg border border-slate-200 bg-white py-20 text-center shadow-sm">
         <div class="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
         <p class="text-slate-600">Loading agent definitions...</p>
@@ -138,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useAgentDefinitionStore, type AgentDefinition } from '~/stores/agentDefinitionStore';
 import AgentCard from '~/components/agents/AgentCard.vue';
@@ -150,11 +115,13 @@ import { EMBEDDED_NODE_ID } from '~/types/node';
 import NodeSyncTargetPickerModal from '~/components/sync/NodeSyncTargetPickerModal.vue';
 import NodeSyncReportPanel from '~/components/sync/NodeSyncReportPanel.vue';
 import type { NodeSyncRunReport } from '~/types/nodeSync';
+import { useToasts } from '~/composables/useToasts';
 
 const emit = defineEmits(['navigate']);
 
 const agentDefinitionStore = useAgentDefinitionStore();
 const { prepareAgentRun } = useRunActions();
+const { addToast } = useToasts();
 const { deleteResult } = storeToRefs(agentDefinitionStore);
 const nodeStore = useNodeStore();
 const nodeSyncStore = useNodeSyncStore();
@@ -176,21 +143,13 @@ const lastAgentSyncReport = ref<NodeSyncRunReport | null>(null);
 const sourceNodeId = computed(() => windowNodeContextStore.nodeId || EMBEDDED_NODE_ID);
 const sourceNodeName = computed(() => nodeStore.getNodeById(sourceNodeId.value)?.name || 'Current Node');
 
-// Timer for auto-dismissing delete notification
-let deleteNotificationTimer: number | null = null;
-
-// Watch for delete result and auto-dismiss after 5 seconds
+// Watch for delete result and show it through the shared global toaster.
 watch(deleteResult, (newResult) => {
   if (newResult) {
-    if (deleteNotificationTimer) clearTimeout(deleteNotificationTimer);
-    deleteNotificationTimer = window.setTimeout(() => agentDefinitionStore.clearDeleteResult(), 5000);
+    addToast(newResult.message, newResult.success ? 'success' : 'error');
+    agentDefinitionStore.clearDeleteResult();
   }
-});
-
-const clearDeleteResult = () => {
-  if (deleteNotificationTimer) clearTimeout(deleteNotificationTimer);
-  agentDefinitionStore.clearDeleteResult();
-};
+}, { immediate: true });
 
 const filteredAgentDefinitions = computed(() => {
   if (!searchQuery.value) {
@@ -294,8 +253,4 @@ const confirmAgentSync = async (targetNodeIds: string[]): Promise<void> => {
     pendingSyncAgent.value = null;
   }
 };
-
-onBeforeUnmount(() => {
-  if (deleteNotificationTimer) clearTimeout(deleteNotificationTimer);
-});
 </script>
