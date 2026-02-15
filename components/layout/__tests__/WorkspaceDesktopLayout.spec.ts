@@ -48,9 +48,9 @@ describe('WorkspaceDesktopLayout', () => {
       agentSelection: { selectedType: 'agent', selectedInstanceId: '123' },
     });
 
-    expect(wrapper.findComponent({ name: 'AgentWorkspaceView' }).exists()).toBe(true);
-    expect(wrapper.findComponent({ name: 'TeamWorkspaceView' }).exists()).toBe(false);
-    expect(wrapper.findComponent({ name: 'RunConfigPanel' }).exists()).toBe(false);
+    expect(wrapper.find('.agent-view').exists()).toBe(true);
+    expect(wrapper.find('.team-view').exists()).toBe(false);
+    expect(wrapper.find('.run-config-view').exists()).toBe(false);
   });
 
   it('renders TeamWorkspaceView when team is selected', () => {
@@ -58,9 +58,9 @@ describe('WorkspaceDesktopLayout', () => {
       agentSelection: { selectedType: 'team', selectedInstanceId: '456' },
     });
 
-    expect(wrapper.findComponent({ name: 'TeamWorkspaceView' }).exists()).toBe(true);
-    expect(wrapper.findComponent({ name: 'AgentWorkspaceView' }).exists()).toBe(false);
-    expect(wrapper.findComponent({ name: 'RunConfigPanel' }).exists()).toBe(false);
+    expect(wrapper.find('.team-view').exists()).toBe(true);
+    expect(wrapper.find('.agent-view').exists()).toBe(false);
+    expect(wrapper.find('.run-config-view').exists()).toBe(false);
   });
 
   it('renders RunConfigPanel when no selection and pending agent config exists', () => {
@@ -77,9 +77,9 @@ describe('WorkspaceDesktopLayout', () => {
       teamRunConfig: { config: null },
     });
 
-    expect(wrapper.findComponent({ name: 'RunConfigPanel' }).exists()).toBe(true);
-    expect(wrapper.findComponent({ name: 'AgentWorkspaceView' }).exists()).toBe(false);
-    expect(wrapper.findComponent({ name: 'TeamWorkspaceView' }).exists()).toBe(false);
+    expect(wrapper.find('.run-config-view').exists()).toBe(true);
+    expect(wrapper.find('.agent-view').exists()).toBe(false);
+    expect(wrapper.find('.team-view').exists()).toBe(false);
   });
 
   it('renders placeholder when nothing is selected and no pending config exists', () => {

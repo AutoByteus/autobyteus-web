@@ -163,20 +163,11 @@ describe('WorkspaceSelector', () => {
     const input = wrapper.find('input[type="text"]');
     await input.setValue('/test/workspace/path');
 
-    const setupState = (wrapper.vm as any).$?.setupState;
-    if (setupState?.tempPath) {
-      setupState.tempPath.value = '/test/workspace/path';
-      setupState.handleLoad();
-    } else {
-      const loadButton = wrapper.find('button[title="Load workspace"]');
-      await loadButton.trigger('click');
-    }
+    const loadButton = wrapper.find('button[title="Load workspace"]');
+    await loadButton.trigger('click');
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    if (!wrapper.emitted('load-new')) {
-      wrapper.vm.$emit('load-new', '/test/workspace/path');
-    }
     expect(wrapper.emitted('load-new')).toBeTruthy();
     expect(wrapper.emitted('load-new')![0]).toEqual(['/test/workspace/path']);
   });

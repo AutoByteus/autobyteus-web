@@ -1,5 +1,8 @@
 <template>
-  <div class="fixed inset-0 bg-white z-50 overflow-auto">
+  <div
+    class="prompt-details-overlay fixed inset-y-0 right-0 bg-white z-50 overflow-auto"
+    :style="detailsOverlayStyle"
+  >
     <!-- Delete confirmation dialog -->
     <div v-if="showDeleteConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
       <div class="bg-white p-6 rounded-lg shadow-lg max-w-md">
@@ -278,11 +281,19 @@ import ModelBadge from '~/components/promptEngineering/ModelBadge.vue';
 import PromptCompare from '~/components/promptEngineering/PromptCompare.vue';
 import CanonicalModelSelector from './CanonicalModelSelector.vue';
 import { formatDate } from '~/utils/dateUtils';
+import { useLeftPanel } from '~/composables/useLeftPanel';
 
 const props = defineProps<{ promptId: string }>();
 
 const promptStore = usePromptStore();
 const viewStore = usePromptEngineeringViewStore();
+const { isLeftPanelVisible, leftPanelWidth } = useLeftPanel();
+
+const COLLAPSED_LEFT_PANEL_WIDTH = 50;
+
+const detailsOverlayStyle = computed(() => ({
+  '--prompt-details-left': `${isLeftPanelVisible.value ? leftPanelWidth.value : COLLAPSED_LEFT_PANEL_WIDTH}px`,
+}));
 
 const prompt = ref<any>(null);
 const loading = ref(true);
@@ -498,3 +509,15 @@ watch(
   { immediate: true },
 );
 </script>
+
+<style scoped>
+.prompt-details-overlay {
+  left: 0;
+}
+
+@media (min-width: 768px) {
+  .prompt-details-overlay {
+    left: var(--prompt-details-left);
+  }
+}
+</style>

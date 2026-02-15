@@ -72,7 +72,6 @@ describe('agent-team-definition integration', () => {
       memberName: 'writer_agent',
       referenceId: 'agent-1',
       referenceType: 'AGENT',
-      homeNodeId: 'embedded-local',
       requiredNodeId: 'node-host',
       preferredNodeId: 'node-worker',
     })

@@ -106,6 +106,68 @@ function ensureEmbeddedNode(snapshot: NodeRegistrySnapshot): NodeRegistrySnapsho
   };
 }
 
+function normalizeLoadedNode(rawNode: unknown): NodeProfile | null {
+  if (!rawNode || typeof rawNode !== 'object') {
+    return null;
+  }
+
+  const node = rawNode as Record<string, unknown>;
+  const id = typeof node.id === 'string' ? node.id.trim() : '';
+  const name = typeof node.name === 'string' ? node.name.trim() : '';
+  const baseUrlRaw = typeof node.baseUrl === 'string' ? node.baseUrl.trim() : '';
+  const nodeType = node.nodeType === 'embedded' || node.nodeType === 'remote' ? node.nodeType : null;
+
+  if (!id || !name || !baseUrlRaw || !nodeType) {
+    return null;
+  }
+
+  const legacyRegistrationSource = typeof node.registrationSource === 'string'
+    ? node.registrationSource
+    : null;
+
+  // Compatibility migration: do not carry forward previously auto-discovered nodes.
+  if (nodeType === 'remote' && legacyRegistrationSource === 'discovered') {
+    return null;
+  }
+
+  const capabilityProbeState = node.capabilityProbeState === 'unknown'
+    || node.capabilityProbeState === 'ready'
+    || node.capabilityProbeState === 'degraded'
+    ? node.capabilityProbeState
+    : undefined;
+
+  let capabilities: NodeProfile['capabilities'] | undefined;
+  if (node.capabilities && typeof node.capabilities === 'object') {
+    const rawCapabilities = node.capabilities as Record<string, unknown>;
+    if (typeof rawCapabilities.terminal === 'boolean' && typeof rawCapabilities.fileExplorerStreaming === 'boolean') {
+      capabilities = {
+        terminal: rawCapabilities.terminal,
+        fileExplorerStreaming: rawCapabilities.fileExplorerStreaming,
+      };
+    }
+  }
+
+  const now = nowIsoString();
+  const createdAt = typeof node.createdAt === 'string' && node.createdAt.trim()
+    ? node.createdAt
+    : now;
+  const updatedAt = typeof node.updatedAt === 'string' && node.updatedAt.trim()
+    ? node.updatedAt
+    : now;
+
+  return {
+    id,
+    name,
+    baseUrl: sanitizeBaseUrl(baseUrlRaw),
+    nodeType,
+    capabilities,
+    capabilityProbeState,
+    isSystem: nodeType === 'embedded',
+    createdAt,
+    updatedAt,
+  };
+}
+
 function loadNodeRegistrySnapshot(): NodeRegistrySnapshot {
   const filePath = getRegistryFilePath();
   if (!fsSync.existsSync(filePath)) {
@@ -125,7 +187,21 @@ function loadNodeRegistrySnapshot(): NodeRegistrySnapshot {
         nodes: [],
       });
     }
-    return ensureEmbeddedNode(parsed);
+
+    const normalizedNodes = parsed.nodes
+      .map((node) => normalizeLoadedNode(node))
+      .filter((node): node is NodeProfile => node !== null);
+
+    if (normalizedNodes.length !== parsed.nodes.length) {
+      logger.info(
+        `Node registry migration removed ${parsed.nodes.length - normalizedNodes.length} incompatible/legacy node record(s).`,
+      );
+    }
+
+    return ensureEmbeddedNode({
+      version: parsed.version,
+      nodes: normalizedNodes,
+    });
   } catch (error) {
     logger.error('Failed to read node registry file:', error);
     return ensureEmbeddedNode({
