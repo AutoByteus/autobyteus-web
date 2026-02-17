@@ -538,8 +538,6 @@ const addNodeFromLibrary = (item: LibraryItem) => {
     referenceType: item.referenceType,
     referenceId: item.id,
     homeNodeId: item.homeNodeId,
-    requiredNodeId: null,
-    preferredNodeId: null,
   };
 
   formData.nodes.push(newNode);
@@ -730,8 +728,6 @@ const handleSubmit = () => {
       referenceType: node.referenceType,
       referenceId: node.referenceId,
       homeNodeId: node.homeNodeId?.trim() || EMBEDDED_NODE_ID,
-      requiredNodeId: null,
-      preferredNodeId: null,
     })),
     avatarUrl: formData.avatarUrl,
   };
@@ -756,8 +752,6 @@ watch(
         referenceId: node.referenceId,
         referenceType: node.referenceType,
         homeNodeId: node.homeNodeId ?? EMBEDDED_NODE_ID,
-        requiredNodeId: null,
-        preferredNodeId: null,
       }));
       selectedNodeIndex.value = formData.nodes.length > 0 ? 0 : null;
     } else {

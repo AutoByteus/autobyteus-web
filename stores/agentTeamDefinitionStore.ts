@@ -12,8 +12,6 @@ export interface TeamMemberInput {
   referenceId: string;
   referenceType: 'AGENT' | 'AGENT_TEAM';
   homeNodeId?: string | null;
-  requiredNodeId?: string | null;
-  preferredNodeId?: string | null;
 }
 
 export interface AgentTeamDefinition {
@@ -31,8 +29,6 @@ export interface AgentTeamDefinition {
     referenceId: string;
     referenceType: 'AGENT' | 'AGENT_TEAM';
     homeNodeId?: string | null;
-    requiredNodeId?: string | null;
-    preferredNodeId?: string | null;
   }[];
 }
 
@@ -60,8 +56,6 @@ const normalizeTeamMember = (member: any): TeamMemberInput => ({
   referenceId: String(member?.referenceId ?? ''),
   referenceType: member?.referenceType === 'AGENT_TEAM' ? 'AGENT_TEAM' : 'AGENT',
   homeNodeId: String(member?.homeNodeId ?? '').trim() || EMBEDDED_NODE_ID,
-  requiredNodeId: member?.requiredNodeId ?? null,
-  preferredNodeId: member?.preferredNodeId ?? null,
 });
 
 const normalizeDefinition = (definition: any): AgentTeamDefinition => ({

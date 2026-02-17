@@ -95,7 +95,7 @@ describe('AgentTeamDefinitionForm', () => {
     vi.restoreAllMocks()
   })
 
-  it('does not render required/preferred node controls and submits null node hints', async () => {
+  it('does not render required/preferred node controls and submits ownership-only nodes', async () => {
     const wrapper = await mountComponent({
       initialData: {
         id: 'team-2',
@@ -108,8 +108,6 @@ describe('AgentTeamDefinitionForm', () => {
             referenceId: 'agent-1',
             referenceType: 'AGENT',
             homeNodeId: 'node-host',
-            requiredNodeId: null,
-            preferredNodeId: null,
           },
         ],
       },
@@ -127,15 +125,13 @@ describe('AgentTeamDefinitionForm', () => {
     expect(submitPayload.nodes[0]).toMatchObject({
       referenceId: 'agent-1',
       referenceType: 'AGENT',
-      requiredNodeId: null,
-      preferredNodeId: null,
       memberName: 'writer_agent',
       homeNodeId: 'node-host',
     })
     expect(submitPayload.coordinatorMemberName).toBe('writer_agent')
   })
 
-  it('clears legacy node hints from initialData on submit', async () => {
+  it('keeps ownership-only node payload even with legacy hint data in initialData', async () => {
     const wrapper = await mountComponent({
       initialData: {
         id: 'team-1',
@@ -160,10 +156,11 @@ describe('AgentTeamDefinitionForm', () => {
 
     await wrapper.get('form').trigger('submit.prevent')
     const submitPayload = wrapper.emitted('submit')?.[0]?.[0] as any
-    expect(submitPayload.nodes[0]).toMatchObject({
+    expect(submitPayload.nodes[0]).toEqual({
+      memberName: 'writer_agent',
+      referenceId: 'agent-1',
+      referenceType: 'AGENT',
       homeNodeId: 'node-host',
-      requiredNodeId: null,
-      preferredNodeId: null,
     })
   })
 })

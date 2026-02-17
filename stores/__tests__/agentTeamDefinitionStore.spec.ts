@@ -60,8 +60,6 @@ describe('agentTeamDefinitionStore', () => {
                 referenceId: 'agent-1',
                 referenceType: 'AGENT',
                 homeNodeId: 'remote-node-1',
-                requiredNodeId: 'embedded-local',
-                preferredNodeId: 'remote-node-1',
               },
             ],
           },
@@ -78,7 +76,5 @@ describe('agentTeamDefinitionStore', () => {
     expect(store.agentTeamDefinitions).toHaveLength(2);
     expect(store.agentTeamDefinitions[0].id).toBe('team-1');
     expect(store.agentTeamDefinitions[1].nodes[0]?.homeNodeId).toBe('remote-node-1');
-    expect(store.agentTeamDefinitions[1].nodes[0]?.requiredNodeId).toBe('embedded-local');
-    expect(store.agentTeamDefinitions[1].nodes[0]?.preferredNodeId).toBe('remote-node-1');
   });
 });
