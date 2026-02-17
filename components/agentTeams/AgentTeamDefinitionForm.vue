@@ -281,34 +281,6 @@
               </div>
 
               <div>
-                <label class="block text-xs font-medium text-slate-600">Required Node</label>
-                <select
-                  class="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  :value="selectedNode.requiredNodeId || ''"
-                  @change="updateSelectedRequiredNodeId(($event.target as HTMLSelectElement).value)"
-                >
-                  <option value="">Any node</option>
-                  <option v-for="node in availableNodes" :key="`required-${node.id}`" :value="node.id">
-                    {{ node.name }} ({{ node.id }})
-                  </option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-xs font-medium text-slate-600">Preferred Node</label>
-                <select
-                  class="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  :value="selectedNode.preferredNodeId || ''"
-                  @change="updateSelectedPreferredNodeId(($event.target as HTMLSelectElement).value)"
-                >
-                  <option value="">No preference</option>
-                  <option v-for="node in availableNodes" :key="`preferred-${node.id}`" :value="node.id">
-                    {{ node.name }} ({{ node.id }})
-                  </option>
-                </select>
-              </div>
-
-              <div>
                 <p class="text-xs font-medium text-slate-600">Coordinator</p>
                 <div class="mt-1 inline-flex items-center gap-2 text-sm text-slate-800" v-if="selectedNode.referenceType === 'AGENT'">
                   <span>{{ isCoordinator(selectedNode) ? 'Enabled' : 'Disabled' }}</span>
@@ -502,8 +474,6 @@ const selectedNode = computed(() => {
   return formData.nodes[selectedNodeIndex.value] || null;
 });
 
-const availableNodes = computed(() => nodeStore.nodes);
-
 const nameValid = computed(() => Boolean(formData.name.trim()));
 const descriptionValid = computed(() => Boolean(formData.description.trim()));
 const membersValid = computed(() => formData.nodes.length > 0);
@@ -652,25 +622,6 @@ const updateSelectedMemberName = (nextNameRaw: string) => {
   }
 };
 
-const normalizeNodeHint = (value: string): string | null => {
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
-
-const updateSelectedRequiredNodeId = (nextNodeId: string) => {
-  if (!selectedNode.value) {
-    return;
-  }
-  selectedNode.value.requiredNodeId = normalizeNodeHint(nextNodeId);
-};
-
-const updateSelectedPreferredNodeId = (nextNodeId: string) => {
-  if (!selectedNode.value) {
-    return;
-  }
-  selectedNode.value.preferredNodeId = normalizeNodeHint(nextNodeId);
-};
-
 const validateForm = () => {
   clearErrors();
   let valid = true;
@@ -779,8 +730,8 @@ const handleSubmit = () => {
       referenceType: node.referenceType,
       referenceId: node.referenceId,
       homeNodeId: node.homeNodeId?.trim() || EMBEDDED_NODE_ID,
-      requiredNodeId: node.requiredNodeId?.trim() || null,
-      preferredNodeId: node.preferredNodeId?.trim() || null,
+      requiredNodeId: null,
+      preferredNodeId: null,
     })),
     avatarUrl: formData.avatarUrl,
   };
@@ -805,8 +756,8 @@ watch(
         referenceId: node.referenceId,
         referenceType: node.referenceType,
         homeNodeId: node.homeNodeId ?? EMBEDDED_NODE_ID,
-        requiredNodeId: node.requiredNodeId ?? null,
-        preferredNodeId: node.preferredNodeId ?? null,
+        requiredNodeId: null,
+        preferredNodeId: null,
       }));
       selectedNodeIndex.value = formData.nodes.length > 0 ? 0 : null;
     } else {

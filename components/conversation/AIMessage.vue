@@ -51,6 +51,7 @@
             <InterAgentMessageSegment
               v-else-if="segment.type === 'inter_agent_message'"
               :segment="segment"
+              :sender-display-name="resolveInterAgentSenderDisplayName(segment.senderAgentId)"
             />
             <MediaSegment
               v-else-if="segment.type === 'media'"
@@ -86,6 +87,7 @@ const props = defineProps<{
   agentId: string;
   agentName?: string;
   agentAvatarUrl?: string | null;
+  interAgentSenderNameById?: Record<string, string>;
   messageIndex: number;
 }>();
 
@@ -108,6 +110,14 @@ const avatarInitials = computed(() => {
 watch(() => props.agentAvatarUrl, () => {
   avatarLoadError.value = false;
 });
+
+const resolveInterAgentSenderDisplayName = (senderAgentId: string): string | undefined => {
+  const normalizedSenderId = String(senderAgentId || '').trim();
+  if (!normalizedSenderId) {
+    return undefined;
+  }
+  return props.interAgentSenderNameById?.[normalizedSenderId];
+};
 
 </script>
 

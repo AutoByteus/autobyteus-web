@@ -5,7 +5,7 @@ import { useAgentContextsStore } from './agentContextsStore';
 import { useAgentTeamContextsStore } from './agentTeamContextsStore';
 import { useAgentRunStore } from './agentRunStore';
 import { useAgentTeamRunStore } from './agentTeamRunStore';
-import { useRunHistoryStore } from './runHistoryStore';
+import { useRunTreeStore } from './runTreeStore';
 import type { AgentContext } from '~/types/agent/AgentContext';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import type { ContextFilePath } from '~/types/conversation';
@@ -21,7 +21,7 @@ export const useActiveContextStore = defineStore('activeContext', () => {
   const agentTeamContextsStore = useAgentTeamContextsStore();
   const agentRunStore = useAgentRunStore();
   const agentTeamRunStore = useAgentTeamRunStore();
-  const runHistoryStore = useRunHistoryStore();
+  const runHistoryStore = useRunTreeStore();
 
   const activeAgentContext = computed<AgentContext | null>(() => {
     if (selectionStore.selectedType === 'agent') {
@@ -79,8 +79,8 @@ export const useActiveContextStore = defineStore('activeContext', () => {
       return;
     }
 
-    const selectedRunId = selectionStore.selectedInstanceId;
-    const editableFields = runHistoryStore.getEditableFields(selectedRunId);
+    const selectedAgentId = selectionStore.selectedInstanceId;
+    const editableFields = runHistoryStore.getEditableFields(selectedAgentId);
     if (!editableFields) {
       Object.assign(config, configUpdate);
       return;

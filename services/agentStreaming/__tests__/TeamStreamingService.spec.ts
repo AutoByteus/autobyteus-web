@@ -111,12 +111,54 @@ describe('TeamStreamingService', () => {
     const outbound = JSON.parse(wsClient.send.mock.calls[0][0]);
     expect(outbound.type).toBe('APPROVE_TOOL');
     expect(outbound.payload.invocation_id).toBe('inv-1');
+    expect(outbound.payload.agent_name).toBe('worker-a');
     expect(outbound.payload.approval_token).toMatchObject({
       teamRunId: 'run-1',
       runVersion: 2,
       invocationId: 'inv-1',
       targetMemberName: 'worker-a',
     });
+  });
+
+  it('uses token target member name for approval payload when caller passes a different agent name', () => {
+    const { wsClient, callbacks } = createWsClient();
+
+    const service = new TeamStreamingService('ws://localhost:8000/ws/agent-team', { wsClient });
+    const teamContext = {
+      focusedMemberName: 'sub-team/worker-a',
+      members: new Map([['sub-team/worker-a', createMember('agent-1')]]),
+      currentStatus: 'idle',
+    } as any;
+
+    service.connect('team-1', teamContext);
+    const onMessage = callbacks.get('onMessage');
+    expect(onMessage).toBeTruthy();
+
+    onMessage?.(
+      JSON.stringify({
+        type: 'TOOL_APPROVAL_REQUESTED',
+        payload: {
+          invocation_id: 'inv-2',
+          tool_name: 'run_bash',
+          arguments: { command: 'pwd' },
+          approval_token: {
+            teamRunId: 'run-1',
+            runVersion: 2,
+            invocationId: 'inv-2',
+            invocationVersion: 1,
+            targetMemberName: 'worker-a',
+          },
+        },
+      }),
+    );
+
+    service.approveTool('inv-2', 'sub-team/worker-a');
+
+    expect(wsClient.send).toHaveBeenCalledTimes(1);
+    const outbound = JSON.parse(wsClient.send.mock.calls[0][0]);
+    expect(outbound.type).toBe('APPROVE_TOOL');
+    expect(outbound.payload.invocation_id).toBe('inv-2');
+    expect(outbound.payload.agent_name).toBe('worker-a');
   });
 
   it('does not fallback to focused member for member-scoped events with missing identity', () => {

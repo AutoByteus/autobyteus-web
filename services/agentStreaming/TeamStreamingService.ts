@@ -64,6 +64,18 @@ type MessagePayloadMeta = TeamStreamRoutingMetadata & {
   agent_name?: string;
 };
 
+const resolveTokenTargetMemberName = (approvalToken: unknown): string | null => {
+  if (!approvalToken || typeof approvalToken !== 'object') {
+    return null;
+  }
+  const token = approvalToken as Record<string, unknown>;
+  const target =
+    (typeof token.targetMemberName === 'string' && token.targetMemberName.trim()) ||
+    (typeof token.target_member_name === 'string' && token.target_member_name.trim()) ||
+    '';
+  return target || null;
+};
+
 const MEMBER_SCOPED_MESSAGE_TYPES = new Set<ServerMessage['type']>([
   'SEGMENT_START',
   'SEGMENT_CONTENT',
@@ -159,9 +171,16 @@ export class TeamStreamingService {
 
   approveTool(invocationId: string, agentName?: string, reason?: string): void {
     const approvalToken = this.approvalTokenByInvocationId.get(invocationId);
+    const tokenTarget = resolveTokenTargetMemberName(approvalToken);
+    const resolvedAgentName = tokenTarget ?? agentName;
     const message: ClientMessage = {
       type: 'APPROVE_TOOL',
-      payload: { invocation_id: invocationId, agent_name: agentName, reason, approval_token: approvalToken as any },
+      payload: {
+        invocation_id: invocationId,
+        ...(resolvedAgentName ? { agent_name: resolvedAgentName } : {}),
+        reason,
+        approval_token: approvalToken as any,
+      },
     };
     this.wsClient.send(serializeClientMessage(message));
     this.approvalTokenByInvocationId.delete(invocationId);
@@ -169,9 +188,16 @@ export class TeamStreamingService {
 
   denyTool(invocationId: string, agentName?: string, reason?: string): void {
     const approvalToken = this.approvalTokenByInvocationId.get(invocationId);
+    const tokenTarget = resolveTokenTargetMemberName(approvalToken);
+    const resolvedAgentName = tokenTarget ?? agentName;
     const message: ClientMessage = {
       type: 'DENY_TOOL',
-      payload: { invocation_id: invocationId, agent_name: agentName, reason, approval_token: approvalToken as any },
+      payload: {
+        invocation_id: invocationId,
+        ...(resolvedAgentName ? { agent_name: resolvedAgentName } : {}),
+        reason,
+        approval_token: approvalToken as any,
+      },
     };
     this.wsClient.send(serializeClientMessage(message));
     this.approvalTokenByInvocationId.delete(invocationId);

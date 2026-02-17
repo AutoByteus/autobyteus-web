@@ -56,7 +56,7 @@ export const mergeRunTreeWithLiveContexts = (
           return row;
         }
 
-        const context = contexts.get(row.runId);
+        const context = contexts.get(row.agentId);
         if (!context) {
           return row;
         }

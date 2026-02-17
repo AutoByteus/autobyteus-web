@@ -57,4 +57,44 @@ describe('AIMessage.vue', () => {
     expect(wrapper.find('img').exists()).toBe(false);
     expect(wrapper.text()).toContain('SN');
   });
+
+  it('passes sender display name to inter-agent segment when mapping exists', () => {
+    const messageWithInterAgentSegment: AIMessageType = {
+      ...baseMessage,
+      segments: [
+        {
+          type: 'inter_agent_message',
+          senderAgentId: 'member_abc123',
+          recipientRoleName: 'Student',
+          messageType: 'task_assignment',
+          content: 'hello',
+        },
+      ],
+    };
+
+    const wrapper = mount(AIMessage, {
+      props: {
+        message: messageWithInterAgentSegment,
+        agentId: 'agent-1',
+        agentName: 'Reflective Storyteller',
+        interAgentSenderNameById: {
+          member_abc123: 'Professor',
+        },
+        messageIndex: 0,
+      },
+      global: {
+        stubs: {
+          ...globalStubs,
+          InterAgentMessageSegment: {
+            name: 'InterAgentMessageSegment',
+            props: ['segment', 'senderDisplayName'],
+            template: '<div data-test=\"inter-agent-stub\">{{ senderDisplayName }}</div>',
+          },
+        },
+      },
+    });
+
+    const interAgentSegment = wrapper.getComponent({ name: 'InterAgentMessageSegment' });
+    expect(interAgentSegment.props('senderDisplayName')).toBe('Professor');
+  });
 });

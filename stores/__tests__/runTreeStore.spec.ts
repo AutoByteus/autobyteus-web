@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { useRunHistoryStore } from '../runHistoryStore';
+import { useRunTreeStore } from '../runTreeStore';
 
 const {
   queryMock,
@@ -13,6 +13,9 @@ const {
   agentRunConfigStoreMock,
   teamRunConfigStoreMock,
   agentRunStoreMock,
+  agentTeamContextsStoreMock,
+  agentTeamRunStoreMock,
+  teamContextsMock,
   llmProviderConfigStoreMock,
 } = vi.hoisted(() => {
   const selection = {
@@ -29,6 +32,7 @@ const {
   };
 
   const instances = new Map<string, any>();
+  const teamContexts = new Map<string, any>();
 
   return {
     queryMock: vi.fn(),
@@ -58,26 +62,26 @@ const {
       instances,
       hydrateFromProjection: vi.fn(),
       upsertProjectionContext: vi.fn((options: any) => {
-        const existing = instances.get(options.runId);
+        const existing = instances.get(options.agentId);
         if (existing) {
           existing.config = { ...options.config };
-          existing.state.agentId = options.runId;
+          existing.state.agentId = options.agentId;
           existing.state.conversation = options.conversation;
           existing.state.currentStatus = options.status ?? 'idle';
           return;
         }
-        instances.set(options.runId, {
+        instances.set(options.agentId, {
           config: { ...options.config },
           state: {
-            agentId: options.runId,
+            agentId: options.agentId,
             conversation: options.conversation,
             currentStatus: options.status ?? 'idle',
           },
           isSubscribed: false,
         });
       }),
-      patchConfigOnly: vi.fn((runId: string, patch: any) => {
-        const context = instances.get(runId);
+      patchConfigOnly: vi.fn((agentId: string, patch: any) => {
+        const context = instances.get(agentId);
         if (!context) {
           return false;
         }
@@ -106,6 +110,29 @@ const {
     agentRunStoreMock: {
       connectToAgentStream: vi.fn(),
     },
+    agentTeamContextsStoreMock: {
+      teams: teamContexts,
+      get allTeamInstances() {
+        return Array.from(teamContexts.values());
+      },
+      addTeamContext: vi.fn((context: any) => {
+        teamContexts.set(context.teamId, context);
+      }),
+      getTeamContextById: vi.fn((teamId: string) => teamContexts.get(teamId)),
+      setFocusedMember: vi.fn((memberName: string) => {
+        const selected = selection.selectedInstanceId ? teamContexts.get(selection.selectedInstanceId) : null;
+        if (selected && selected.members?.has(memberName)) {
+          selected.focusedMemberName = memberName;
+        }
+      }),
+      removeTeamContext: vi.fn((teamId: string) => {
+        teamContexts.delete(teamId);
+      }),
+    },
+    teamContextsMock: teamContexts,
+    agentTeamRunStoreMock: {
+      connectToTeamStream: vi.fn(),
+    },
     llmProviderConfigStoreMock: {
       models: ['model-default'],
       fetchProvidersWithModels: vi.fn().mockResolvedValue(undefined),
@@ -122,8 +149,10 @@ vi.mock('~/utils/apolloClient', () => ({
 
 vi.mock('~/graphql/queries/runHistoryQueries', () => ({
   ListRunHistory: 'ListRunHistory',
+  ListTeamRunHistory: 'ListTeamRunHistory',
   GetRunProjection: 'GetRunProjection',
   GetRunResumeConfig: 'GetRunResumeConfig',
+  GetTeamRunResumeConfig: 'GetTeamRunResumeConfig',
 }));
 
 vi.mock('~/stores/windowNodeContextStore', () => ({
@@ -150,8 +179,16 @@ vi.mock('~/stores/agentRunConfigStore', () => ({
   useAgentRunConfigStore: () => agentRunConfigStoreMock,
 }));
 
+vi.mock('~/stores/agentTeamContextsStore', () => ({
+  useAgentTeamContextsStore: () => agentTeamContextsStoreMock,
+}));
+
 vi.mock('~/stores/teamRunConfigStore', () => ({
   useTeamRunConfigStore: () => teamRunConfigStoreMock,
+}));
+
+vi.mock('~/stores/agentTeamRunStore', () => ({
+  useAgentTeamRunStore: () => agentTeamRunStoreMock,
 }));
 
 vi.mock('~/stores/agentRunStore', () => ({
@@ -194,42 +231,62 @@ describe('runHistoryStore', () => {
     llmProviderConfigStoreMock.models = ['model-default'];
     llmProviderConfigStoreMock.fetchProvidersWithModels.mockResolvedValue(undefined);
     mutateMock.mockReset();
+    agentTeamContextsStoreMock.addTeamContext.mockClear();
+    agentTeamContextsStoreMock.getTeamContextById.mockClear();
+    agentTeamContextsStoreMock.setFocusedMember.mockClear();
+    agentTeamContextsStoreMock.removeTeamContext.mockClear();
+    teamContextsMock.clear();
+    agentTeamRunStoreMock.connectToTeamStream.mockClear();
   });
 
   it('fetches run history tree from GraphQL', async () => {
-    queryMock.mockResolvedValueOnce({
-      data: {
-        listRunHistory: [
-          {
-            workspaceRootPath: '/ws/a',
-            workspaceName: 'a',
-            agents: [
+    queryMock.mockImplementation(async ({ query }: { query: string }) => {
+      if (query === 'ListRunHistory') {
+        return {
+          data: {
+            listRunHistory: [
               {
-                agentDefinitionId: 'agent-def-1',
-                agentName: 'SuperAgent',
-                runs: [
+                workspaceRootPath: '/ws/a',
+                workspaceName: 'a',
+                agents: [
                   {
-                    runId: 'run-1',
-                    summary: 'Do a task',
-                    lastActivityAt: new Date().toISOString(),
-                    lastKnownStatus: 'IDLE',
-                    isActive: false,
+                    agentDefinitionId: 'agent-def-1',
+                    agentName: 'SuperAgent',
+                    runs: [
+                      {
+                        agentId: 'run-1',
+                        summary: 'Do a task',
+                        lastActivityAt: new Date().toISOString(),
+                        lastKnownStatus: 'IDLE',
+                        isActive: false,
+                      },
+                    ],
                   },
                 ],
               },
             ],
           },
-        ],
-      },
-      errors: [],
+          errors: [],
+        };
+      }
+      if (query === 'ListTeamRunHistory') {
+        return {
+          data: {
+            listTeamRunHistory: [],
+          },
+          errors: [],
+        };
+      }
+      throw new Error(`Unexpected query: ${String(query)}`);
     });
 
-    const store = useRunHistoryStore();
+    const store = useRunTreeStore();
     await store.fetchTree();
 
     expect(store.error).toBeNull();
     expect(store.workspaceGroups).toHaveLength(1);
-    expect(store.workspaceGroups[0]?.agents[0]?.runs[0]?.runId).toBe('run-1');
+    expect(store.teamRuns).toEqual([]);
+    expect(store.workspaceGroups[0]?.agents[0]?.runs[0]?.agentId).toBe('run-1');
     expect(store.agentAvatarByDefinitionId['agent-def-1']).toBe('https://a');
   });
 
@@ -237,7 +294,7 @@ describe('runHistoryStore', () => {
     windowNodeContextStoreMock.waitForBoundBackendReady.mockResolvedValueOnce(false);
     windowNodeContextStoreMock.lastReadyError = 'Backend down';
 
-    const store = useRunHistoryStore();
+    const store = useRunTreeStore();
     await store.fetchTree();
 
     expect(store.error).toContain('Backend down');
@@ -250,7 +307,7 @@ describe('runHistoryStore', () => {
         return {
           data: {
             getRunProjection: {
-              runId: 'run-1',
+              agentId: 'run-1',
               summary: 'Describe messaging bindings',
               lastActivityAt: '2026-01-01T00:00:00.000Z',
               conversation: [
@@ -266,7 +323,7 @@ describe('runHistoryStore', () => {
         return {
           data: {
             getRunResumeConfig: {
-              runId: 'run-1',
+              agentId: 'run-1',
               isActive: true,
               manifestConfig: {
                 agentDefinitionId: 'agent-def-1',
@@ -296,7 +353,7 @@ describe('runHistoryStore', () => {
       { workspaceId: 'ws-1', absolutePath: '/ws/a', name: 'a' },
     ];
 
-    const store = useRunHistoryStore();
+    const store = useRunTreeStore();
     store.workspaceGroups = [
       {
         workspaceRootPath: '/ws/a',
@@ -307,7 +364,7 @@ describe('runHistoryStore', () => {
             agentName: 'SuperAgent',
             runs: [
               {
-                runId: 'run-1',
+                agentId: 'run-1',
                 summary: 'Describe messaging bindings',
                 lastActivityAt: '2026-01-01T00:00:00.000Z',
                 lastKnownStatus: 'ACTIVE',
@@ -326,7 +383,7 @@ describe('runHistoryStore', () => {
     expect(agentRunConfigStoreMock.clearConfig).toHaveBeenCalled();
     expect(teamRunConfigStoreMock.clearConfig).toHaveBeenCalled();
     expect(agentRunStoreMock.connectToAgentStream).toHaveBeenCalledWith('run-1');
-    expect(store.selectedRunId).toBe('run-1');
+    expect(store.selectedAgentId).toBe('run-1');
   });
 
   it('opens an inactive run and hydrates offline status without connecting stream', async () => {
@@ -335,7 +392,7 @@ describe('runHistoryStore', () => {
         return {
           data: {
             getRunProjection: {
-              runId: 'run-2',
+              agentId: 'run-2',
               summary: 'Historical run',
               lastActivityAt: '2026-01-01T00:00:00.000Z',
               conversation: [
@@ -351,7 +408,7 @@ describe('runHistoryStore', () => {
         return {
           data: {
             getRunResumeConfig: {
-              runId: 'run-2',
+              agentId: 'run-2',
               isActive: false,
               manifestConfig: {
                 agentDefinitionId: 'agent-def-1',
@@ -381,7 +438,7 @@ describe('runHistoryStore', () => {
       { workspaceId: 'ws-1', absolutePath: '/ws/a', name: 'a' },
     ];
 
-    const store = useRunHistoryStore();
+    const store = useRunTreeStore();
     store.workspaceGroups = [
       {
         workspaceRootPath: '/ws/a',
@@ -392,7 +449,7 @@ describe('runHistoryStore', () => {
             agentName: 'SuperAgent',
             runs: [
               {
-                runId: 'run-2',
+                agentId: 'run-2',
                 summary: 'Historical run',
                 lastActivityAt: '2026-01-01T00:00:00.000Z',
                 lastKnownStatus: 'IDLE',
@@ -408,13 +465,13 @@ describe('runHistoryStore', () => {
 
     expect(agentContextsStoreMock.upsertProjectionContext).toHaveBeenCalledWith(
       expect.objectContaining({
-        runId: 'run-2',
+        agentId: 'run-2',
         status: 'shutdown_complete',
       }),
     );
     expect(agentRunStoreMock.connectToAgentStream).not.toHaveBeenCalled();
     expect(selectionStoreMock.selectInstance).toHaveBeenCalledWith('run-2', 'agent');
-    expect(store.selectedRunId).toBe('run-2');
+    expect(store.selectedAgentId).toBe('run-2');
   });
 
   it('does not clobber live active context state when reopening an already subscribed run', async () => {
@@ -423,7 +480,7 @@ describe('runHistoryStore', () => {
         return {
           data: {
             getRunProjection: {
-              runId: 'run-1',
+              agentId: 'run-1',
               summary: 'Describe messaging bindings',
               lastActivityAt: '2026-01-01T00:00:00.000Z',
               conversation: [
@@ -439,7 +496,7 @@ describe('runHistoryStore', () => {
         return {
           data: {
             getRunResumeConfig: {
-              runId: 'run-1',
+              agentId: 'run-1',
               isActive: true,
               manifestConfig: {
                 agentDefinitionId: 'agent-def-1',
@@ -495,7 +552,7 @@ describe('runHistoryStore', () => {
       },
     });
 
-    const store = useRunHistoryStore();
+    const store = useRunTreeStore();
     await store.openRun('run-1');
 
     expect(agentContextsStoreMock.upsertProjectionContext).not.toHaveBeenCalled();
@@ -518,7 +575,7 @@ describe('runHistoryStore', () => {
     workspaceStoreMock.workspacesFetched = true;
     workspaceStoreMock.createWorkspace.mockResolvedValueOnce('ws-1');
 
-    const store = useRunHistoryStore();
+    const store = useRunTreeStore();
     await store.createDraftRun({
       workspaceRootPath: '/ws/a',
       agentDefinitionId: 'agent-def-1',
@@ -532,7 +589,7 @@ describe('runHistoryStore', () => {
     expect(workspaceStoreMock.createWorkspace).toHaveBeenCalledWith({ root_path: '/ws/a' });
     expect(selectionStoreMock.clearSelection).toHaveBeenCalled();
     expect(agentContextsStoreMock.createInstanceFromTemplate).not.toHaveBeenCalled();
-    expect(store.selectedRunId).toBeNull();
+    expect(store.selectedAgentId).toBeNull();
   });
 
   it('reuses model from existing context when creating draft run', async () => {
@@ -559,7 +616,7 @@ describe('runHistoryStore', () => {
       },
     });
 
-    const store = useRunHistoryStore();
+    const store = useRunTreeStore();
     await store.createDraftRun({
       workspaceRootPath: '/ws/a',
       agentDefinitionId: 'agent-def-1',
@@ -583,7 +640,7 @@ describe('runHistoryStore', () => {
     ];
     workspaceStoreMock.createWorkspace.mockResolvedValueOnce('fresh-ws-id');
 
-    const store = useRunHistoryStore();
+    const store = useRunTreeStore();
     const workspaceId = await store.ensureWorkspaceByRootPath('/ws/a');
 
     expect(workspaceId).toBe('fresh-ws-id');
@@ -591,7 +648,7 @@ describe('runHistoryStore', () => {
   });
 
   it('projects persisted history and temp drafts into workspace tree', () => {
-    const store = useRunHistoryStore();
+    const store = useRunTreeStore();
     store.agentAvatarByDefinitionId = {
       'agent-def-1': 'https://a',
     };
@@ -605,7 +662,7 @@ describe('runHistoryStore', () => {
             agentName: 'SuperAgent',
             runs: [
               {
-                runId: 'run-1',
+                agentId: 'run-1',
                 summary: 'Persisted run',
                 lastActivityAt: '2026-01-01T00:00:00.000Z',
                 lastKnownStatus: 'IDLE',
@@ -650,7 +707,7 @@ describe('runHistoryStore', () => {
 
     const alphaAgent = nodes[0]?.agents[0];
     expect(alphaAgent?.agentAvatarUrl).toBe('https://a');
-    expect(alphaAgent?.runs.map(run => run.runId)).toEqual(['temp-1', 'run-1']);
+    expect(alphaAgent?.runs.map(run => run.agentId)).toEqual(['temp-1', 'run-1']);
     expect(alphaAgent?.runs[0]?.source).toBe('draft');
     expect(alphaAgent?.runs[1]?.source).toBe('history');
 
@@ -662,7 +719,7 @@ describe('runHistoryStore', () => {
   });
 
   it('overlays persisted run status with matching live context only', () => {
-    const store = useRunHistoryStore();
+    const store = useRunTreeStore();
     store.workspaceGroups = [
       {
         workspaceRootPath: '/ws/a',
@@ -673,14 +730,14 @@ describe('runHistoryStore', () => {
             agentName: 'SuperAgent',
             runs: [
               {
-                runId: 'run-a',
+                agentId: 'run-a',
                 summary: 'Run A',
                 lastActivityAt: '2026-01-01T00:00:00.000Z',
                 lastKnownStatus: 'IDLE',
                 isActive: false,
               },
               {
-                runId: 'run-b',
+                agentId: 'run-b',
                 summary: 'Run B',
                 lastActivityAt: '2026-01-01T00:00:00.000Z',
                 lastKnownStatus: 'IDLE',
@@ -714,8 +771,8 @@ describe('runHistoryStore', () => {
     });
 
     const nodes = store.getTreeNodes();
-    const runA = nodes[0]?.agents[0]?.runs.find((run) => run.runId === 'run-a');
-    const runB = nodes[0]?.agents[0]?.runs.find((run) => run.runId === 'run-b');
+    const runA = nodes[0]?.agents[0]?.runs.find((run) => run.agentId === 'run-a');
+    const runB = nodes[0]?.agents[0]?.runs.find((run) => run.agentId === 'run-b');
 
     expect(runA?.isActive).toBe(false);
     expect(runA?.lastKnownStatus).toBe('IDLE');
@@ -725,7 +782,7 @@ describe('runHistoryStore', () => {
   });
 
   it('treats idle draft contexts as active in tree projection', () => {
-    const store = useRunHistoryStore();
+    const store = useRunTreeStore();
     workspaceStoreMock.allWorkspaces = [
       { workspaceId: 'ws-1', absolutePath: '/ws/a', name: 'Alpha' },
     ];
@@ -751,19 +808,65 @@ describe('runHistoryStore', () => {
     });
 
     const nodes = store.getTreeNodes();
-    const draft = nodes[0]?.agents[0]?.runs.find((run) => run.runId === 'temp-1');
+    const draft = nodes[0]?.agents[0]?.runs.find((run) => run.agentId === 'temp-1');
 
     expect(draft?.source).toBe('draft');
     expect(draft?.isActive).toBe(true);
     expect(draft?.lastKnownStatus).toBe('ACTIVE');
   });
 
+  it('projects local temporary team contexts into team nodes before first message', () => {
+    const store = useRunTreeStore();
+    store.teamRuns = [];
+    workspaceStoreMock.workspaces = {
+      'ws-1': { workspaceId: 'ws-1', absolutePath: '/ws/a', name: 'Alpha', workspaceConfig: {} },
+    };
+
+    teamContextsMock.set('temp-team-1', {
+      teamId: 'temp-team-1',
+      config: {
+        teamDefinitionId: 'team-def-1',
+        teamDefinitionName: 'Movie Maker',
+      },
+      members: new Map([
+        [
+          'coordinator',
+          {
+            config: { agentDefinitionName: 'Coordinator', workspaceId: 'ws-1' },
+            state: {
+              agentId: 'member-1',
+              conversation: {
+                id: 'temp-team-1::coordinator',
+                messages: [],
+                createdAt: '2026-01-01T00:00:00.000Z',
+                updatedAt: '2026-01-02T00:00:00.000Z',
+              },
+            },
+          },
+        ],
+      ]),
+      focusedMemberName: 'coordinator',
+      currentStatus: 'idle',
+      isSubscribed: false,
+      taskPlan: null,
+      taskStatuses: null,
+    });
+
+    const nodes = store.getTeamNodes();
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0]?.teamId).toBe('temp-team-1');
+    expect(nodes[0]?.teamDefinitionName).toBe('Movie Maker');
+    expect(nodes[0]?.members[0]?.memberRouteKey).toBe('coordinator');
+    expect(nodes[0]?.members[0]?.workspaceRootPath).toBe('/ws/a');
+    expect(nodes[0]?.isActive).toBe(true);
+  });
+
   it('selectTreeRun delegates to openRun for history rows', async () => {
-    const store = useRunHistoryStore();
+    const store = useRunTreeStore();
     const openRunSpy = vi.spyOn(store, 'openRun').mockResolvedValue(undefined);
 
     await store.selectTreeRun({
-      runId: 'run-1',
+      agentId: 'run-1',
       summary: 'Persisted run',
       lastActivityAt: '2026-01-01T00:00:00.000Z',
       lastKnownStatus: 'IDLE',
@@ -775,15 +878,54 @@ describe('runHistoryStore', () => {
     expect(openRunSpy).toHaveBeenCalledWith('run-1');
   });
 
+  it('selectTreeRun uses local team context rows without reopening team history', async () => {
+    const store = useRunTreeStore();
+    teamContextsMock.set('team-1', {
+      teamId: 'team-1',
+      members: new Map([
+        ['coordinator', { config: {}, state: { conversation: { messages: [] } } }],
+      ]),
+      focusedMemberName: 'coordinator',
+      config: {
+        teamDefinitionId: 'team-def-1',
+        teamDefinitionName: 'Movie Maker',
+      },
+      currentStatus: 'idle',
+    });
+    const openTeamSpy = vi.spyOn(store, 'openTeamMemberRun').mockResolvedValue(undefined);
+
+    await store.selectTreeRun({
+      teamId: 'team-1',
+      memberRouteKey: 'coordinator',
+      memberName: 'Coordinator',
+      memberAgentId: 'member-1',
+      workspaceRootPath: null,
+      hostNodeId: null,
+      summary: '',
+      lastActivityAt: '2026-01-02T00:00:00.000Z',
+      lastKnownStatus: 'ACTIVE',
+      isActive: true,
+      deleteLifecycle: 'READY',
+    });
+
+    expect(openTeamSpy).not.toHaveBeenCalled();
+    expect(agentTeamContextsStoreMock.setFocusedMember).toHaveBeenCalledWith('coordinator');
+    expect(selectionStoreMock.selectInstance).toHaveBeenCalledWith('team-1', 'team');
+    expect(store.selectedTeamId).toBe('team-1');
+    expect(store.selectedTeamMemberRouteKey).toBe('coordinator');
+  });
+
   it('selectTreeRun selects local temp context for draft rows', async () => {
-    const store = useRunHistoryStore();
+    const store = useRunTreeStore();
+    store.selectedTeamId = 'team-previous';
+    store.selectedTeamMemberRouteKey = 'coordinator';
     agentContextsStoreMock.instances.set('temp-1', {
       config: { workspaceId: 'ws-1' },
       state: { conversation: { messages: [] } },
     });
 
     await store.selectTreeRun({
-      runId: 'temp-1',
+      agentId: 'temp-1',
       summary: 'New - SuperAgent',
       lastActivityAt: '2026-01-01T00:00:00.000Z',
       lastKnownStatus: 'IDLE',
@@ -793,7 +935,9 @@ describe('runHistoryStore', () => {
     });
 
     expect(selectionStoreMock.selectInstance).toHaveBeenCalledWith('temp-1', 'agent');
-    expect(store.selectedRunId).toBe('temp-1');
+    expect(store.selectedAgentId).toBe('temp-1');
+    expect(store.selectedTeamId).toBeNull();
+    expect(store.selectedTeamMemberRouteKey).toBeNull();
     expect(agentRunConfigStoreMock.clearConfig).toHaveBeenCalled();
     expect(teamRunConfigStoreMock.clearConfig).toHaveBeenCalled();
   });
@@ -809,7 +953,7 @@ describe('runHistoryStore', () => {
       errors: [],
     });
 
-    const store = useRunHistoryStore();
+    const store = useRunTreeStore();
     store.workspaceGroups = [
       {
         workspaceRootPath: '/ws/a',
@@ -820,7 +964,7 @@ describe('runHistoryStore', () => {
             agentName: 'SuperAgent',
             runs: [
               {
-                runId: 'run-1',
+                agentId: 'run-1',
                 summary: 'Persisted run',
                 lastActivityAt: '2026-01-01T00:00:00.000Z',
                 lastKnownStatus: 'IDLE',
@@ -831,9 +975,9 @@ describe('runHistoryStore', () => {
         ],
       },
     ];
-    store.resumeConfigByRunId = {
+    store.resumeConfigByAgentId = {
       'run-1': {
-        runId: 'run-1',
+        agentId: 'run-1',
         isActive: false,
         manifestConfig: {
           agentDefinitionId: 'agent-def-1',
@@ -852,7 +996,7 @@ describe('runHistoryStore', () => {
         },
       },
     };
-    store.selectedRunId = 'run-1';
+    store.selectedAgentId = 'run-1';
 
     selectionStoreMock.selectedType = 'agent';
     selectionStoreMock.selectedInstanceId = 'run-1';
@@ -867,8 +1011,8 @@ describe('runHistoryStore', () => {
     expect(deleted).toBe(true);
     expect(mutateMock).toHaveBeenCalledTimes(1);
     expect(agentContextsStoreMock.removeInstance).toHaveBeenCalledWith('run-1');
-    expect(store.selectedRunId).toBeNull();
-    expect(store.resumeConfigByRunId['run-1']).toBeUndefined();
+    expect(store.selectedAgentId).toBeNull();
+    expect(store.resumeConfigByAgentId['run-1']).toBeUndefined();
     expect(store.workspaceGroups).toEqual([]);
     expect(refreshSpy).toHaveBeenCalledTimes(1);
   });
@@ -884,7 +1028,7 @@ describe('runHistoryStore', () => {
       errors: [],
     });
 
-    const store = useRunHistoryStore();
+    const store = useRunTreeStore();
     store.workspaceGroups = [
       {
         workspaceRootPath: '/ws/a',
@@ -895,7 +1039,7 @@ describe('runHistoryStore', () => {
             agentName: 'SuperAgent',
             runs: [
               {
-                runId: 'run-1',
+                agentId: 'run-1',
                 summary: 'Persisted run',
                 lastActivityAt: '2026-01-01T00:00:00.000Z',
                 lastKnownStatus: 'IDLE',
@@ -910,15 +1054,186 @@ describe('runHistoryStore', () => {
     const deleted = await store.deleteRun('run-1');
 
     expect(deleted).toBe(false);
-    expect(store.workspaceGroups[0]?.agents[0]?.runs[0]?.runId).toBe('run-1');
+    expect(store.workspaceGroups[0]?.agents[0]?.runs[0]?.agentId).toBe('run-1');
     expect(agentContextsStoreMock.removeInstance).not.toHaveBeenCalled();
   });
 
   it('deleteRun rejects draft run IDs without backend mutation call', async () => {
-    const store = useRunHistoryStore();
+    const store = useRunTreeStore();
     const deleted = await store.deleteRun('temp-123');
 
     expect(deleted).toBe(false);
     expect(mutateMock).not.toHaveBeenCalled();
+  });
+
+  it('selectTreeRun opens historical team member row, hydrates member history, and selects team context', async () => {
+    queryMock.mockImplementation(async ({ query, variables }: { query: string; variables?: Record<string, string> }) => {
+      if (query === 'GetTeamRunResumeConfig') {
+        return {
+          data: {
+            getTeamRunResumeConfig: {
+              teamId: 'team-1',
+              isActive: false,
+              manifest: {
+                teamId: 'team-1',
+                teamDefinitionId: 'team-def-1',
+                teamDefinitionName: 'Classroom Team',
+                coordinatorMemberRouteKey: 'coordinator',
+                runVersion: 1,
+                createdAt: '2026-01-01T00:00:00.000Z',
+                updatedAt: '2026-01-01T00:00:00.000Z',
+                memberBindings: [
+                  {
+                    memberRouteKey: 'coordinator',
+                    memberName: 'Coordinator',
+                    memberAgentId: 'ag-1',
+                    agentDefinitionId: 'agent-def-1',
+                    llmModelIdentifier: 'model-x',
+                    autoExecuteTools: false,
+                    llmConfig: null,
+                    workspaceRootPath: '/ws/a',
+                    hostNodeId: 'node-a',
+                  },
+                  {
+                    memberRouteKey: 'student',
+                    memberName: 'Student',
+                    memberAgentId: 'ag-2',
+                    agentDefinitionId: 'agent-def-1',
+                    llmModelIdentifier: 'model-x',
+                    autoExecuteTools: false,
+                    llmConfig: null,
+                    workspaceRootPath: '/ws/a',
+                    hostNodeId: 'node-a',
+                  },
+                ],
+              },
+            },
+          },
+          errors: [],
+        };
+      }
+      if (query === 'GetRunProjection') {
+        if (variables?.agentId === 'ag-1') {
+          return {
+            data: {
+              getRunProjection: {
+                agentId: 'ag-1',
+                summary: 'Coordinator history',
+                lastActivityAt: '2026-01-01T00:01:00.000Z',
+                conversation: [
+                  { kind: 'message', role: 'user', content: 'hi coordinator', ts: 1700000000 },
+                  { kind: 'message', role: 'assistant', content: 'hello from coordinator', ts: 1700000010 },
+                ],
+              },
+            },
+            errors: [],
+          };
+        }
+        if (variables?.agentId === 'ag-2') {
+          return {
+            data: {
+              getRunProjection: {
+                agentId: 'ag-2',
+                summary: 'Student history',
+                lastActivityAt: '2026-01-01T00:02:00.000Z',
+                conversation: [
+                  { kind: 'message', role: 'user', content: 'hi student', ts: 1700000020 },
+                  { kind: 'message', role: 'assistant', content: 'hello from student', ts: 1700000030 },
+                ],
+              },
+            },
+            errors: [],
+          };
+        }
+      }
+      throw new Error(`Unexpected query: ${String(query)}`);
+    });
+    workspaceStoreMock.createWorkspace.mockResolvedValue('ws-team');
+
+    const store = useRunTreeStore();
+    await store.selectTreeRun({
+      teamId: 'team-1',
+      memberRouteKey: 'coordinator',
+      memberName: 'Coordinator',
+      memberAgentId: 'ag-1',
+      workspaceRootPath: '/ws/a',
+      hostNodeId: 'node-a',
+      summary: 'Team summary',
+      lastActivityAt: '2026-01-01T00:00:00.000Z',
+      lastKnownStatus: 'IDLE',
+      isActive: false,
+      deleteLifecycle: 'READY',
+    });
+
+    expect(agentTeamContextsStoreMock.addTeamContext).toHaveBeenCalledTimes(1);
+    expect(selectionStoreMock.selectInstance).toHaveBeenCalledWith('team-1', 'team');
+    expect(store.selectedTeamId).toBe('team-1');
+    expect(store.selectedTeamMemberRouteKey).toBe('coordinator');
+    expect(agentTeamRunStoreMock.connectToTeamStream).not.toHaveBeenCalled();
+
+    const teamContext = teamContextsMock.get('team-1');
+    expect(teamContext).toBeDefined();
+    expect(teamContext.focusedMemberName).toBe('coordinator');
+
+    const coordinatorMessages = teamContext.members.get('coordinator').state.conversation.messages;
+    expect(coordinatorMessages).toHaveLength(2);
+    expect(coordinatorMessages[0].type).toBe('user');
+    expect(coordinatorMessages[1].type).toBe('ai');
+    expect(coordinatorMessages[1].text).toContain('coordinator');
+
+    const studentMessages = teamContext.members.get('student').state.conversation.messages;
+    expect(studentMessages).toHaveLength(2);
+    expect(studentMessages[1].text).toContain('student');
+  });
+
+  it('deleteTeamRun removes local team state when backend succeeds', async () => {
+    mutateMock.mockResolvedValueOnce({
+      data: {
+        deleteTeamRunHistory: {
+          success: true,
+          message: 'Deleted',
+        },
+      },
+      errors: [],
+    });
+
+    const store = useRunTreeStore();
+    store.teamRuns = [
+      {
+        teamId: 'team-1',
+        teamDefinitionId: 'team-def-1',
+        teamDefinitionName: 'Classroom Team',
+        summary: 'summary',
+        lastActivityAt: '2026-01-01T00:00:00.000Z',
+        lastKnownStatus: 'IDLE',
+        deleteLifecycle: 'READY',
+        isActive: false,
+        members: [],
+      },
+    ];
+    store.teamResumeConfigByTeamId = {
+      'team-1': {
+        teamId: 'team-1',
+        isActive: false,
+        manifest: {
+          teamId: 'team-1',
+          teamDefinitionId: 'team-def-1',
+          teamDefinitionName: 'Classroom Team',
+          coordinatorMemberRouteKey: 'coordinator',
+          runVersion: 1,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          memberBindings: [],
+        },
+      },
+    };
+    const refreshSpy = vi.spyOn(store, 'refreshTreeQuietly').mockResolvedValue(undefined);
+
+    const deleted = await store.deleteTeamRun('team-1');
+    expect(deleted).toBe(true);
+    expect(store.teamRuns).toEqual([]);
+    expect(store.teamResumeConfigByTeamId['team-1']).toBeUndefined();
+    expect(agentTeamContextsStoreMock.removeTeamContext).toHaveBeenCalledWith('team-1');
+    expect(refreshSpy).toHaveBeenCalledTimes(1);
   });
 });

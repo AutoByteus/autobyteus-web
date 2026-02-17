@@ -8,7 +8,7 @@ import TeamRunConfigForm from '../TeamRunConfigForm.vue';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 
 // Hoisted state objects
-const { agentRunState, teamRunState, agentContextState, teamContextState } = vi.hoisted(() => ({
+const { agentRunState, teamRunState, agentContextState, teamContextState, runTreeState } = vi.hoisted(() => ({
     agentRunState: {
         config: null,
         workspaceLoadingState: { isLoading: false, error: null, loadedPath: null },
@@ -34,6 +34,10 @@ const { agentRunState, teamRunState, agentContextState, teamContextState } = vi.
     teamContextState: {
         activeTeamContext: null,
         createInstanceFromTemplate: vi.fn()
+    },
+    runTreeState: {
+        isWorkspaceLockedForRun: vi.fn(() => false),
+        markTeamDraftProjectionDirty: vi.fn(),
     }
 }));
 
@@ -56,6 +60,11 @@ vi.mock('~/stores/agentContextsStore', async () => {
 vi.mock('~/stores/agentTeamContextsStore', async () => {
     const { reactive } = await import('vue');
     return { useAgentTeamContextsStore: () => reactive(teamContextState) };
+});
+
+vi.mock('~/stores/runTreeStore', async () => {
+    const { reactive } = await import('vue');
+    return { useRunTreeStore: () => reactive(runTreeState) };
 });
 
 vi.mock('~/stores/workspace', () => ({
@@ -89,6 +98,8 @@ describe('RunConfigPanel', () => {
         teamRunState.config = null;
         agentContextState.activeInstance = null;
         teamContextState.activeTeamContext = null;
+        runTreeState.isWorkspaceLockedForRun.mockClear();
+        runTreeState.markTeamDraftProjectionDirty.mockClear();
     });
 
     it('renders placeholder when nothing selected', () => {
@@ -169,6 +180,7 @@ describe('RunConfigPanel', () => {
         const contextStore = useAgentTeamContextsStore();
         expect(contextStore.createInstanceFromTemplate).toHaveBeenCalled();
         expect(teamStore.clearConfig).toHaveBeenCalled();
+        expect(runTreeState.markTeamDraftProjectionDirty).toHaveBeenCalledTimes(1);
     });
 
     it('blocks agent run when workspace is missing (defensive path)', async () => {

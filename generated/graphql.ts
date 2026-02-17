@@ -165,7 +165,7 @@ export type ContinueRunInput = {
   autoExecuteTools?: InputMaybe<Scalars['Boolean']['input']>;
   llmConfig?: InputMaybe<Scalars['JSON']['input']>;
   llmModelIdentifier?: InputMaybe<Scalars['String']['input']>;
-  runId?: InputMaybe<Scalars['String']['input']>;
+  agentId?: InputMaybe<Scalars['String']['input']>;
   skillAccessMode?: InputMaybe<SkillAccessModeEnum>;
   userInput: AgentUserInput;
   workspaceId?: InputMaybe<Scalars['String']['input']>;
@@ -176,7 +176,7 @@ export type ContinueRunMutationResult = {
   __typename?: 'ContinueRunMutationResult';
   ignoredConfigFields: Array<Scalars['String']['output']>;
   message: Scalars['String']['output'];
-  runId?: Maybe<Scalars['String']['output']>;
+  agentId?: Maybe<Scalars['String']['output']>;
   success: Scalars['Boolean']['output'];
 };
 
@@ -1053,12 +1053,12 @@ export type QueryGetLlmProviderApiKeyArgs = {
 
 
 export type QueryGetRunProjectionArgs = {
-  runId: Scalars['String']['input'];
+  agentId: Scalars['String']['input'];
 };
 
 
 export type QueryGetRunResumeConfigArgs = {
-  runId: Scalars['String']['input'];
+  agentId: Scalars['String']['input'];
 };
 
 
@@ -1179,7 +1179,7 @@ export type RunHistoryItemObject = {
   isActive: Scalars['Boolean']['output'];
   lastActivityAt: Scalars['String']['output'];
   lastKnownStatus: Scalars['String']['output'];
-  runId: Scalars['String']['output'];
+  agentId: Scalars['String']['output'];
   summary: Scalars['String']['output'];
 };
 
@@ -1222,7 +1222,7 @@ export type RunProjectionPayload = {
   __typename?: 'RunProjectionPayload';
   conversation: Array<Scalars['JSON']['output']>;
   lastActivityAt?: Maybe<Scalars['String']['output']>;
-  runId: Scalars['String']['output'];
+  agentId: Scalars['String']['output'];
   summary?: Maybe<Scalars['String']['output']>;
 };
 
@@ -1231,7 +1231,7 @@ export type RunResumeConfigPayload = {
   editableFields: RunEditableFieldFlagsObject;
   isActive: Scalars['Boolean']['output'];
   manifestConfig: RunManifestConfigObject;
-  runId: Scalars['String']['output'];
+  agentId: Scalars['String']['output'];
 };
 
 export type SearchConfig = {
@@ -1809,7 +1809,7 @@ export type ContinueRunMutationVariables = Exact<{
 }>;
 
 
-export type ContinueRunMutation = { __typename?: 'Mutation', continueRun: { __typename?: 'ContinueRunMutationResult', success: boolean, message: string, runId?: string | null, ignoredConfigFields: Array<string> } };
+export type ContinueRunMutation = { __typename?: 'Mutation', continueRun: { __typename?: 'ContinueRunMutationResult', success: boolean, message: string, agentId?: string | null, ignoredConfigFields: Array<string> } };
 
 export type UpdateServerSettingMutationVariables = Exact<{
   key: Scalars['String']['input'];
@@ -2003,21 +2003,21 @@ export type ListRunHistoryQueryVariables = Exact<{
 }>;
 
 
-export type ListRunHistoryQuery = { __typename?: 'Query', listRunHistory: Array<{ __typename?: 'RunHistoryWorkspaceGroupObject', workspaceRootPath: string, workspaceName: string, agents: Array<{ __typename?: 'RunHistoryAgentGroupObject', agentDefinitionId: string, agentName: string, runs: Array<{ __typename?: 'RunHistoryItemObject', runId: string, summary: string, lastActivityAt: string, lastKnownStatus: string, isActive: boolean }> }> }> };
+export type ListRunHistoryQuery = { __typename?: 'Query', listRunHistory: Array<{ __typename?: 'RunHistoryWorkspaceGroupObject', workspaceRootPath: string, workspaceName: string, agents: Array<{ __typename?: 'RunHistoryAgentGroupObject', agentDefinitionId: string, agentName: string, runs: Array<{ __typename?: 'RunHistoryItemObject', agentId: string, summary: string, lastActivityAt: string, lastKnownStatus: string, isActive: boolean }> }> }> };
 
 export type GetRunProjectionQueryVariables = Exact<{
-  runId: Scalars['String']['input'];
+  agentId: Scalars['String']['input'];
 }>;
 
 
-export type GetRunProjectionQuery = { __typename?: 'Query', getRunProjection: { __typename?: 'RunProjectionPayload', runId: string, summary?: string | null, lastActivityAt?: string | null, conversation: Array<any> } };
+export type GetRunProjectionQuery = { __typename?: 'Query', getRunProjection: { __typename?: 'RunProjectionPayload', agentId: string, summary?: string | null, lastActivityAt?: string | null, conversation: Array<any> } };
 
 export type GetRunResumeConfigQueryVariables = Exact<{
-  runId: Scalars['String']['input'];
+  agentId: Scalars['String']['input'];
 }>;
 
 
-export type GetRunResumeConfigQuery = { __typename?: 'Query', getRunResumeConfig: { __typename?: 'RunResumeConfigPayload', runId: string, isActive: boolean, manifestConfig: { __typename?: 'RunManifestConfigObject', agentDefinitionId: string, workspaceRootPath: string, llmModelIdentifier: string, llmConfig?: any | null, autoExecuteTools: boolean, skillAccessMode?: SkillAccessModeEnum | null }, editableFields: { __typename?: 'RunEditableFieldFlagsObject', llmModelIdentifier: boolean, llmConfig: boolean, autoExecuteTools: boolean, skillAccessMode: boolean, workspaceRootPath: boolean } } };
+export type GetRunResumeConfigQuery = { __typename?: 'Query', getRunResumeConfig: { __typename?: 'RunResumeConfigPayload', agentId: string, isActive: boolean, manifestConfig: { __typename?: 'RunManifestConfigObject', agentDefinitionId: string, workspaceRootPath: string, llmModelIdentifier: string, llmConfig?: any | null, autoExecuteTools: boolean, skillAccessMode?: SkillAccessModeEnum | null }, editableFields: { __typename?: 'RunEditableFieldFlagsObject', llmModelIdentifier: boolean, llmConfig: boolean, autoExecuteTools: boolean, skillAccessMode: boolean, workspaceRootPath: boolean } } };
 
 export type GetServerSettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -3378,7 +3378,7 @@ export const ContinueRunDocument = gql`
   continueRun(input: $input) {
     success
     message
-    runId
+    agentId
     ignoredConfigFields
   }
 }
@@ -4472,7 +4472,7 @@ export const ListRunHistoryDocument = gql`
       agentDefinitionId
       agentName
       runs {
-        runId
+        agentId
         summary
         lastActivityAt
         lastKnownStatus
@@ -4506,9 +4506,9 @@ export function useListRunHistoryLazyQuery(variables: ListRunHistoryQueryVariabl
 }
 export type ListRunHistoryQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<ListRunHistoryQuery, ListRunHistoryQueryVariables>;
 export const GetRunProjectionDocument = gql`
-    query GetRunProjection($runId: String!) {
-  getRunProjection(runId: $runId) {
-    runId
+    query GetRunProjection($agentId: String!) {
+  getRunProjection(agentId: $agentId) {
+    agentId
     summary
     lastActivityAt
     conversation
@@ -4528,7 +4528,7 @@ export const GetRunProjectionDocument = gql`
  *
  * @example
  * const { result, loading, error } = useGetRunProjectionQuery({
- *   runId: // value for 'runId'
+ *   agentId: // value for 'agentId'
  * });
  */
 export function useGetRunProjectionQuery(variables: GetRunProjectionQueryVariables | VueCompositionApi.Ref<GetRunProjectionQueryVariables> | ReactiveFunction<GetRunProjectionQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetRunProjectionQuery, GetRunProjectionQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetRunProjectionQuery, GetRunProjectionQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetRunProjectionQuery, GetRunProjectionQueryVariables>> = {}) {
@@ -4539,9 +4539,9 @@ export function useGetRunProjectionLazyQuery(variables?: GetRunProjectionQueryVa
 }
 export type GetRunProjectionQueryCompositionFunctionResult = VueApolloComposable.UseQueryReturn<GetRunProjectionQuery, GetRunProjectionQueryVariables>;
 export const GetRunResumeConfigDocument = gql`
-    query GetRunResumeConfig($runId: String!) {
-  getRunResumeConfig(runId: $runId) {
-    runId
+    query GetRunResumeConfig($agentId: String!) {
+  getRunResumeConfig(agentId: $agentId) {
+    agentId
     isActive
     manifestConfig {
       agentDefinitionId
@@ -4574,7 +4574,7 @@ export const GetRunResumeConfigDocument = gql`
  *
  * @example
  * const { result, loading, error } = useGetRunResumeConfigQuery({
- *   runId: // value for 'runId'
+ *   agentId: // value for 'agentId'
  * });
  */
 export function useGetRunResumeConfigQuery(variables: GetRunResumeConfigQueryVariables | VueCompositionApi.Ref<GetRunResumeConfigQueryVariables> | ReactiveFunction<GetRunResumeConfigQueryVariables>, options: VueApolloComposable.UseQueryOptions<GetRunResumeConfigQuery, GetRunResumeConfigQueryVariables> | VueCompositionApi.Ref<VueApolloComposable.UseQueryOptions<GetRunResumeConfigQuery, GetRunResumeConfigQueryVariables>> | ReactiveFunction<VueApolloComposable.UseQueryOptions<GetRunResumeConfigQuery, GetRunResumeConfigQueryVariables>> = {}) {

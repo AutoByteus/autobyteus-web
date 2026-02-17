@@ -9,7 +9,7 @@ const { mutateMock, llmProviderConfigStoreMock, runHistoryStoreMock } = vi.hoist
     data: {
       continueRun: {
         success: true,
-        runId: 'perm-agent-id',
+        agentId: 'perm-agent-id',
         message: 'Success',
         ignoredConfigFields: [],
       },
@@ -52,8 +52,8 @@ vi.mock('~/stores/llmProviderConfig', () => ({
   useLLMProviderConfigStore: () => llmProviderConfigStoreMock,
 }));
 
-vi.mock('~/stores/runHistoryStore', () => ({
-  useRunHistoryStore: () => runHistoryStoreMock,
+vi.mock('~/stores/runTreeStore', () => ({
+  useRunTreeStore: () => runHistoryStoreMock,
 }));
 
 describe('agentRunStore', () => {
@@ -69,7 +69,7 @@ describe('agentRunStore', () => {
           data: {
             continueRun: {
               success: true,
-              runId: 'perm-agent-id',
+              agentId: 'perm-agent-id',
               message: 'Success',
               ignoredConfigFields: [],
             },

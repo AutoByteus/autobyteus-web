@@ -155,7 +155,7 @@ export const useAgentContextsStore = defineStore('agentContexts', {
      * Hydrate or replace an existing instance from persisted run projection data.
      */
     hydrateFromProjection(options: {
-      runId: string;
+      agentId: string;
       config: AgentRunConfig;
       conversation: Conversation;
       status?: AgentStatus;
@@ -168,28 +168,28 @@ export const useAgentContextsStore = defineStore('agentContexts', {
      * This is the explicit state-ownership API for restore/hydration flows.
      */
     upsertProjectionContext(options: {
-      runId: string;
+      agentId: string;
       config: AgentRunConfig;
       conversation: Conversation;
       status?: AgentStatus;
     }) {
-      const existing = this.instances.get(options.runId);
+      const existing = this.instances.get(options.agentId);
       const nextStatus = options.status ?? AgentStatus.Idle;
 
       if (existing) {
         existing.config = {
           ...options.config,
         };
-        existing.state.agentId = options.runId;
+        existing.state.agentId = options.agentId;
         existing.state.conversation = options.conversation;
         existing.state.currentStatus = nextStatus;
         return;
       }
 
-      const state = new AgentRunState(options.runId, options.conversation);
+      const state = new AgentRunState(options.agentId, options.conversation);
       state.currentStatus = nextStatus;
       const context = new AgentContext(options.config, state);
-      this.instances.set(options.runId, context);
+      this.instances.set(options.agentId, context);
     },
 
     /**

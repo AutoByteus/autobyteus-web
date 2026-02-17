@@ -60,7 +60,7 @@ import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
 import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
 import { useWorkspaceStore } from '~/stores/workspace';
-import { useRunHistoryStore } from '~/stores/runHistoryStore';
+import { useRunTreeStore } from '~/stores/runTreeStore';
 import { useRightSideTabs } from '~/composables/useRightSideTabs';
 import AgentRunConfigForm from './AgentRunConfigForm.vue';
 import TeamRunConfigForm from './TeamRunConfigForm.vue';
@@ -75,7 +75,7 @@ const teamContextsStore = useAgentTeamContextsStore();
 const definitionStore = useAgentDefinitionStore();
 const teamDefinitionStore = useAgentTeamDefinitionStore();
 const workspaceStore = useWorkspaceStore();
-const runHistoryStore = useRunHistoryStore();
+const runHistoryStore = useRunTreeStore();
 const { setActiveTab } = useRightSideTabs();
 
 // Mode Detection
@@ -275,6 +275,8 @@ const handleRun = () => {
     if (!isSelectionMode.value) {
         if (effectiveTeamConfig.value) {
             teamContextsStore.createInstanceFromTemplate();
+            // Notify tree projection so draft teams are visible immediately.
+            runHistoryStore.markTeamDraftProjectionDirty();
             teamRunConfigStore.clearConfig();
         } else if (effectiveAgentConfig.value) {
             if (!effectiveAgentConfig.value.workspaceId) {

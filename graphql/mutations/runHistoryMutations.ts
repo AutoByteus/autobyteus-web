@@ -5,15 +5,24 @@ export const ContinueRun = gql`
     continueRun(input: $input) {
       success
       message
-      runId
+      agentId
       ignoredConfigFields
     }
   }
 `;
 
 export const DeleteRunHistory = gql`
-  mutation DeleteRunHistory($runId: String!) {
-    deleteRunHistory(runId: $runId) {
+  mutation DeleteRunHistory($agentId: String!) {
+    deleteRunHistory(agentId: $agentId) {
+      success
+      message
+    }
+  }
+`;
+
+export const DeleteTeamRunHistory = gql`
+  mutation DeleteTeamRunHistory($teamId: String!) {
+    deleteTeamRunHistory(teamId: $teamId) {
       success
       message
     }

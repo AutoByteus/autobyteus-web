@@ -10,8 +10,9 @@ import type {
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useAgentActivityStore } from '~/stores/agentActivityStore';
 import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
-import { TeamStreamingService } from '~/services/agentStreaming';
+import { ConnectionState, TeamStreamingService } from '~/services/agentStreaming';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
+import { useRunTreeStore } from '~/stores/runTreeStore';
 
 // Maintain a map of streaming services per team
 const teamStreamingServices = new Map<string, TeamStreamingService>();
@@ -22,6 +23,38 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
   }),
 
   actions: {
+    ensureTeamStreamSubscribed(teamId: string) {
+      const teamContextsStore = useAgentTeamContextsStore();
+      const teamContext = teamContextsStore.getTeamContextById(teamId);
+      if (!teamContext) {
+        return;
+      }
+
+      const existingService = teamStreamingServices.get(teamId);
+      const isHealthyConnection =
+        !!existingService &&
+        (existingService.connectionState === ConnectionState.CONNECTED ||
+          existingService.connectionState === ConnectionState.CONNECTING ||
+          existingService.connectionState === ConnectionState.RECONNECTING);
+
+      if (teamContext.isSubscribed && isHealthyConnection) {
+        return;
+      }
+
+      if (existingService) {
+        existingService.disconnect();
+        teamStreamingServices.delete(teamId);
+        teamContext.unsubscribe = undefined;
+        teamContext.isSubscribed = false;
+      } else if (teamContext.unsubscribe) {
+        teamContext.unsubscribe();
+        teamContext.unsubscribe = undefined;
+        teamContext.isSubscribed = false;
+      }
+
+      this.connectToTeamStream(teamId);
+    },
+
     /**
      * Establish WebSocket connection for a team.
      */
@@ -32,6 +65,12 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       if (!teamContext) {
         console.warn(`Could not find team context for ID ${teamId} to connect stream.`);
         return;
+      }
+
+      const existingService = teamStreamingServices.get(teamId);
+      if (existingService) {
+        existingService.disconnect();
+        teamStreamingServices.delete(teamId);
       }
 
       const windowNodeContextStore = useWindowNodeContextStore();
@@ -65,6 +104,8 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
       }
 
       teamContextsStore.removeTeamContext(teamId);
+      const runHistoryStore = useRunTreeStore();
+      runHistoryStore.markTeamAsInactive(teamId);
 
       if (teamId.startsWith('temp-')) return;
 
@@ -76,6 +117,8 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
         });
       } catch (error) {
         console.error(`Error terminating team ${teamId} on backend:`, error);
+      } finally {
+        await runHistoryStore.refreshTreeQuietly();
       }
     },
 
@@ -176,8 +219,11 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
         if (isTemporary) {
           teamContextsStore.promoteTemporaryTeamId(activeTeam.teamId, permanentId);
           teamContextsStore.lockConfig(permanentId);
-          this.connectToTeamStream(permanentId);
         }
+        this.ensureTeamStreamSubscribed(permanentId);
+        const runHistoryStore = useRunTreeStore();
+        runHistoryStore.markTeamAsActive(permanentId);
+        await runHistoryStore.refreshTreeQuietly();
       } catch (error: any) {
         console.error(`Failed to send message to member ${focusedMember.state.agentId}:`, error);
         throw new Error(`Failed to send message: ${error.message}`);
