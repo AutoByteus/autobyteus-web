@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
 import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
+import { useFederatedCatalogStore } from '~/stores/federatedCatalogStore';
 import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
 import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import type { TeamRunConfig } from '~/types/agent/TeamRunConfig';
@@ -11,6 +12,7 @@ import { AgentRunState } from '~/types/agent/AgentRunState';
 import { AgentTeamStatus } from '~/types/agent/AgentTeamStatus';
 import type { Conversation } from '~/types/conversation';
 import { resolveWorkspaceIdForTeamMember } from '~/utils/teamMemberWorkspaceRouting';
+import { EMBEDDED_NODE_ID } from '~/types/node';
 
 interface AgentTeamContextsState {
   /** All active agent team instances, indexed by their unique team ID. */
@@ -67,6 +69,7 @@ export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
       const selectionStore = useAgentSelectionStore();
       const teamDefinitionStore = useAgentTeamDefinitionStore();
       const agentDefinitionStore = useAgentDefinitionStore();
+      const federatedCatalogStore = useFederatedCatalogStore();
       const runConfigStore = useTeamRunConfigStore();
 
       const template = runConfigStore.config;
@@ -87,8 +90,15 @@ export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
       for (const node of teamDef.nodes) {
         if (node.referenceType !== 'AGENT') continue;
 
-        const agentDef = agentDefinitionStore.getAgentDefinitionById(node.referenceId);
-        const defName = agentDef?.name || node.memberName;
+        const homeNodeId = node.homeNodeId?.trim() || EMBEDDED_NODE_ID;
+        let defName = node.memberName;
+        if (homeNodeId === EMBEDDED_NODE_ID) {
+          const agentDef = agentDefinitionStore.getAgentDefinitionById(node.referenceId);
+          defName = agentDef?.name || node.memberName;
+        } else {
+          const federatedAgent = federatedCatalogStore.findAgentByNodeAndId(homeNodeId, node.referenceId);
+          defName = federatedAgent?.name || node.memberName;
+        }
         const override = template.memberOverrides[node.memberName];
 
         const memberConfig: AgentRunConfig = {

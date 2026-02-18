@@ -125,7 +125,13 @@
                   </div>
                   <div class="min-w-0">
                     <p class="truncate text-sm font-semibold text-slate-900">{{ node.memberName }}</p>
-                    <p class="truncate text-xs text-slate-500">Blueprint: {{ getBlueprintName(node.referenceType, node.referenceId) }}</p>
+                    <p class="truncate text-xs text-slate-500">Blueprint: {{ getBlueprintName(node) }}</p>
+                    <p
+                      class="mt-1 inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                      :class="getMemberSourceChipClass(node)"
+                    >
+                      <span class="truncate">{{ getMemberSourceNodeLabel(node) }}</span>
+                    </p>
                   </div>
                 </div>
 
@@ -175,8 +181,11 @@
 import { computed, onMounted, ref, toRefs, watch } from 'vue';
 import { useAgentTeamDefinitionStore, type AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
 import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
+import { useFederatedCatalogStore } from '~/stores/federatedCatalogStore';
+import { useNodeStore } from '~/stores/nodeStore';
 import { useRunActions } from '~/composables/useRunActions';
 import AgentDeleteConfirmDialog from '~/components/agents/AgentDeleteConfirmDialog.vue';
+import { EMBEDDED_NODE_ID } from '~/types/node';
 
 const props = defineProps<{ teamId: string }>();
 const { teamId } = toRefs(props);
@@ -185,6 +194,8 @@ const emit = defineEmits(['navigate']);
 
 const teamStore = useAgentTeamDefinitionStore();
 const agentDefStore = useAgentDefinitionStore();
+const federatedCatalogStore = useFederatedCatalogStore();
+const nodeStore = useNodeStore();
 const { prepareTeamRun } = useRunActions();
 const router = useRouter();
 
@@ -227,9 +238,13 @@ const agentCount = computed(() => teamDef.value?.nodes.filter((node) => node.ref
 
 onMounted(async () => {
   loading.value = true;
-  await Promise.all([
+  await Promise.allSettled([
     teamStore.fetchAllAgentTeamDefinitions(),
     agentDefStore.fetchAllAgentDefinitions(),
+    (async () => {
+      await nodeStore.initializeRegistry();
+      await federatedCatalogStore.loadCatalog();
+    })(),
   ]);
   loading.value = false;
 });
@@ -249,11 +264,45 @@ const memberInitials = (memberName: string): string => {
 const getMemberAvatarErrorKey = (node: TeamMemberNode): string =>
   `${node.referenceType}:${node.referenceId}:${node.memberName}`;
 
-const getMemberAvatarUrl = (node: TeamMemberNode): string => {
-  if (node.referenceType === 'AGENT') {
-    return (agentDefStore.getAgentDefinitionById(node.referenceId)?.avatarUrl || '').trim();
+const resolveHomeNodeId = (node: TeamMemberNode): string =>
+  node.homeNodeId?.trim() || EMBEDDED_NODE_ID;
+
+const getNodeDisplayName = (homeNodeId: string): string => {
+  if (homeNodeId === EMBEDDED_NODE_ID) {
+    return 'Embedded Node';
   }
-  return (teamStore.getAgentTeamDefinitionById(node.referenceId)?.avatarUrl || '').trim();
+  return nodeStore.getNodeById(homeNodeId)?.name?.trim() || homeNodeId;
+};
+
+const isRemoteMemberNode = (node: TeamMemberNode): boolean =>
+  resolveHomeNodeId(node) !== EMBEDDED_NODE_ID;
+
+const getMemberSourceNodeLabel = (node: TeamMemberNode): string =>
+  `Node: ${getNodeDisplayName(resolveHomeNodeId(node))}`;
+
+const getMemberSourceChipClass = (node: TeamMemberNode): string =>
+  isRemoteMemberNode(node)
+    ? 'bg-amber-50 text-amber-700'
+    : 'bg-slate-100 text-slate-600';
+
+const getMemberAvatarUrl = (node: TeamMemberNode): string => {
+  const homeNodeId = resolveHomeNodeId(node);
+  if (node.referenceType === 'AGENT') {
+    const federatedAgent = federatedCatalogStore.findAgentByNodeAndId(homeNodeId, node.referenceId);
+    if (federatedAgent?.avatarUrl) {
+      return federatedAgent.avatarUrl.trim();
+    }
+    return homeNodeId === EMBEDDED_NODE_ID
+      ? (agentDefStore.getAgentDefinitionById(node.referenceId)?.avatarUrl || '').trim()
+      : '';
+  }
+  const federatedTeam = federatedCatalogStore.findTeamByNodeAndId(homeNodeId, node.referenceId);
+  if (federatedTeam?.avatarUrl) {
+    return federatedTeam.avatarUrl.trim();
+  }
+  return homeNodeId === EMBEDDED_NODE_ID
+    ? (teamStore.getAgentTeamDefinitionById(node.referenceId)?.avatarUrl || '').trim()
+    : '';
 };
 
 const showMemberAvatarImage = (node: TeamMemberNode): boolean => {
@@ -271,11 +320,28 @@ const handleMemberAvatarError = (node: TeamMemberNode): void => {
   };
 };
 
-const getBlueprintName = (type: 'AGENT' | 'AGENT_TEAM', id: string): string => {
-  if (type === 'AGENT') {
-    return agentDefStore.getAgentDefinitionById(id)?.name || `Unknown Agent (${id})`;
+const getBlueprintName = (node: TeamMemberNode): string => {
+  const homeNodeId = resolveHomeNodeId(node);
+  if (node.referenceType === 'AGENT') {
+    const federatedAgent = federatedCatalogStore.findAgentByNodeAndId(homeNodeId, node.referenceId);
+    if (federatedAgent?.name) {
+      return federatedAgent.name;
+    }
+    if (homeNodeId === EMBEDDED_NODE_ID) {
+      return agentDefStore.getAgentDefinitionById(node.referenceId)?.name || `Unknown Agent (${node.referenceId})`;
+    }
+    const nodeName = getNodeDisplayName(homeNodeId);
+    return `Unknown Agent (${node.referenceId} @ ${nodeName})`;
   }
-  return teamStore.getAgentTeamDefinitionById(id)?.name || `Unknown Team (${id})`;
+  const federatedTeam = federatedCatalogStore.findTeamByNodeAndId(homeNodeId, node.referenceId);
+  if (federatedTeam?.name) {
+    return federatedTeam.name;
+  }
+  if (homeNodeId === EMBEDDED_NODE_ID) {
+    return teamStore.getAgentTeamDefinitionById(node.referenceId)?.name || `Unknown Team (${node.referenceId})`;
+  }
+  const nodeName = getNodeDisplayName(homeNodeId);
+  return `Unknown Team (${node.referenceId} @ ${nodeName})`;
 };
 
 const runTeam = () => {
