@@ -10,6 +10,7 @@ import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import { AgentRunState } from '~/types/agent/AgentRunState';
 import { AgentTeamStatus } from '~/types/agent/AgentTeamStatus';
 import type { Conversation } from '~/types/conversation';
+import { resolveWorkspaceIdForTeamMember } from '~/utils/teamMemberWorkspaceRouting';
 
 interface AgentTeamContextsState {
   /** All active agent team instances, indexed by their unique team ID. */
@@ -94,7 +95,7 @@ export const useAgentTeamContextsStore = defineStore('agentTeamContexts', {
           agentDefinitionId: node.referenceId,
           agentDefinitionName: defName,
           llmModelIdentifier: override?.llmModelIdentifier || template.llmModelIdentifier,
-          workspaceId: template.workspaceId,
+          workspaceId: resolveWorkspaceIdForTeamMember(node.homeNodeId ?? null, template.workspaceId),
           autoExecuteTools: override?.autoExecuteTools ?? template.autoExecuteTools,
           skillAccessMode: 'PRELOADED_ONLY',
           isLocked: false,

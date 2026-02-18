@@ -26,6 +26,22 @@
       />
     </div>
 
+    <div v-if="isRemoteMember" class="mb-3">
+      <label class="block text-xs text-gray-500 mb-1">Remote Workspace Path (Required)</label>
+      <input
+        :id="`remote-workspace-${memberName}`"
+        type="text"
+        :value="override?.workspaceRootPath || ''"
+        @input="handleWorkspacePathInput"
+        :disabled="disabled"
+        placeholder="e.g. /home/autobyteus/data/temp_workspace"
+        class="block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50"
+      />
+      <p class="mt-1 text-[11px] text-gray-500">
+        Path must exist on the remote node filesystem.
+      </p>
+    </div>
+
     <!-- Auto-execute Override -->
     <div class="flex items-center">
       <input
@@ -67,6 +83,7 @@ const props = defineProps<{
   globalLlmModel: string;
   options: GroupedOption[];
   isCoordinator?: boolean;
+  isRemoteMember?: boolean;
   disabled: boolean;
 }>();
 
@@ -105,9 +122,15 @@ const emitOverrideWithConfig = (nextConfig: Record<string, unknown> | null | und
         llmModelIdentifier: props.override?.llmModelIdentifier,
         autoExecuteTools: props.override?.autoExecuteTools,
         llmConfig: nextConfig ?? undefined,
+        workspaceRootPath: props.override?.workspaceRootPath,
     };
 
-    if (!newOverride.llmModelIdentifier && newOverride.autoExecuteTools === undefined && (!newOverride.llmConfig || Object.keys(newOverride.llmConfig).length === 0)) {
+    if (
+      !newOverride.llmModelIdentifier &&
+      newOverride.autoExecuteTools === undefined &&
+      (!newOverride.llmConfig || Object.keys(newOverride.llmConfig).length === 0) &&
+      !newOverride.workspaceRootPath
+    ) {
         emit('update:override', props.memberName, null);
     } else {
         emit('update:override', props.memberName, newOverride);
@@ -120,11 +143,17 @@ const handleModelChange = (value: string) => {
     llmModelIdentifier: value || undefined,
     autoExecuteTools: props.override?.autoExecuteTools,
     llmConfig: props.override?.llmConfig, // Persist config? Might differ if model changes... ideally verify schema match.
+    workspaceRootPath: props.override?.workspaceRootPath,
     // For simplicity, we keep it. If incompatible, it won't be shown in UI (schema mismatch).
   };
   
   // If no overrides set, remove entirely
-  if (!newOverride.llmModelIdentifier && newOverride.autoExecuteTools === undefined && (!newOverride.llmConfig || Object.keys(newOverride.llmConfig).length === 0)) {
+  if (
+    !newOverride.llmModelIdentifier &&
+    newOverride.autoExecuteTools === undefined &&
+    (!newOverride.llmConfig || Object.keys(newOverride.llmConfig).length === 0) &&
+    !newOverride.workspaceRootPath
+  ) {
     emit('update:override', props.memberName, null);
   } else {
     emit('update:override', props.memberName, newOverride);
@@ -149,12 +178,40 @@ const handleAutoExecuteChange = (event: Event) => {
     llmModelIdentifier: props.override?.llmModelIdentifier,
     autoExecuteTools: newValue,
     llmConfig: props.override?.llmConfig,
+    workspaceRootPath: props.override?.workspaceRootPath,
   };
   
-  if (!newOverride.llmModelIdentifier && newOverride.autoExecuteTools === undefined && (!newOverride.llmConfig || Object.keys(newOverride.llmConfig).length === 0)) {
+  if (
+    !newOverride.llmModelIdentifier &&
+    newOverride.autoExecuteTools === undefined &&
+    (!newOverride.llmConfig || Object.keys(newOverride.llmConfig).length === 0) &&
+    !newOverride.workspaceRootPath
+  ) {
     emit('update:override', props.memberName, null);
   } else {
     emit('update:override', props.memberName, newOverride);
   }
+};
+
+const handleWorkspacePathInput = (event: Event) => {
+  const nextPath = (event.target as HTMLInputElement).value.trim();
+  const newOverride: MemberConfigOverride = {
+    agentDefinitionId: props.agentDefinitionId,
+    llmModelIdentifier: props.override?.llmModelIdentifier,
+    autoExecuteTools: props.override?.autoExecuteTools,
+    llmConfig: props.override?.llmConfig,
+    workspaceRootPath: nextPath || undefined,
+  };
+
+  if (
+    !newOverride.llmModelIdentifier &&
+    newOverride.autoExecuteTools === undefined &&
+    (!newOverride.llmConfig || Object.keys(newOverride.llmConfig).length === 0) &&
+    !newOverride.workspaceRootPath
+  ) {
+    emit('update:override', props.memberName, null);
+    return;
+  }
+  emit('update:override', props.memberName, newOverride);
 };
 </script>

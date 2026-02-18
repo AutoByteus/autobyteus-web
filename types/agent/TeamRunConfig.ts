@@ -5,6 +5,7 @@ export interface MemberConfigOverride {
     llmModelIdentifier?: string;
     autoExecuteTools?: boolean;
     llmConfig?: Record<string, unknown> | null;
+    workspaceRootPath?: string;
 }
 
 export interface TeamRunConfig {
@@ -14,7 +15,7 @@ export interface TeamRunConfig {
     /** The name of the Team Definition */
     teamDefinitionName: string;
     
-    /** Global workspace ID (shared by all members) */
+    /** Default workspace ID for embedded-node members */
     workspaceId: string | null;
     
     /** Default LLM model for the team (can be overridden per member) */

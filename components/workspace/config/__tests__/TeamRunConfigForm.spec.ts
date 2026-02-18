@@ -12,8 +12,8 @@ const mockTeamDef = {
     id: 'team-1',
     name: 'Test Team',
     nodes: [
-        { memberName: 'Member A', referenceType: 'AGENT', referenceId: 'agent-a' },
-        { memberName: 'Member B', referenceType: 'AGENT', referenceId: 'agent-b' }
+        { memberName: 'Member A', referenceType: 'AGENT', referenceId: 'agent-a', homeNodeId: 'embedded-local' },
+        { memberName: 'Member B', referenceType: 'AGENT', referenceId: 'agent-b', homeNodeId: 'node-docker-8001' }
     ],
     coordinatorMemberName: 'Member A'
 };
@@ -53,7 +53,7 @@ describe('TeamRunConfigForm', () => {
                     MemberOverrideItem: {
                         name: 'MemberOverrideItem',
                         template: '<div class="member-override-item-stub"></div>',
-                        props: ['memberName', 'override', 'isCoordinator', 'options', 'disabled', 'globalLlmModel'],
+                        props: ['memberName', 'override', 'isCoordinator', 'isRemoteMember', 'options', 'disabled', 'globalLlmModel'],
                         emits: ['update:override']
                     }
                 }
@@ -73,8 +73,10 @@ describe('TeamRunConfigForm', () => {
         // Check props passed to items
         expect(items[0].props('memberName')).toBe('Member A');
         expect(items[0].props('isCoordinator')).toBe(true);
+        expect(items[0].props('isRemoteMember')).toBe(false);
         expect(items[1].props('memberName')).toBe('Member B');
         expect(items[1].props('isCoordinator')).toBe(false);
+        expect(items[1].props('isRemoteMember')).toBe(true);
     });
 
     it('passes global model to member overrides', () => {
@@ -92,7 +94,7 @@ describe('TeamRunConfigForm', () => {
                     MemberOverrideItem: {
                         name: 'MemberOverrideItem',
                         template: '<div class="member-override-item-stub"></div>',
-                        props: ['memberName', 'override', 'isCoordinator', 'options', 'disabled', 'globalLlmModel'],
+                        props: ['memberName', 'override', 'isCoordinator', 'isRemoteMember', 'options', 'disabled', 'globalLlmModel'],
                         emits: ['update:override']
                     }
                 }

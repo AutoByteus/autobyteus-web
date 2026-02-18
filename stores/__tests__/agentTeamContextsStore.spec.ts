@@ -13,8 +13,8 @@ vi.mock('~/stores/agentTeamDefinitionStore', () => ({
                 name: 'Test Team',
                 coordinatorMemberName: 'agent-1',
                 nodes: [
-                    { memberName: 'agent-1', referenceType: 'AGENT', referenceId: 'def-1' },
-                    { memberName: 'agent-2', referenceType: 'AGENT', referenceId: 'def-2' }
+                    { memberName: 'agent-1', referenceType: 'AGENT', referenceId: 'def-1', homeNodeId: 'embedded-local' },
+                    { memberName: 'agent-2', referenceType: 'AGENT', referenceId: 'def-2', homeNodeId: 'node-docker-8001' }
                 ]
             };
             return null;
@@ -70,9 +70,11 @@ describe('agentTeamContextsStore', () => {
              const agent1 = team?.members.get('agent-1');
              expect(agent1?.config.agentDefinitionId).toBe('def-1');
              expect(agent1?.config.llmModelIdentifier).toBe('gpt-4'); // Inherited
+             expect(agent1?.config.workspaceId).toBe('ws-1');
              
              const agent2 = team?.members.get('agent-2');
              expect(agent2?.config.llmModelIdentifier).toBe('claude-3'); // Override
+             expect(agent2?.config.workspaceId).toBeNull();
 
              expect(selectionStore.selectedInstanceId).toBe(teamId);
              expect(selectionStore.selectedType).toBe('team');

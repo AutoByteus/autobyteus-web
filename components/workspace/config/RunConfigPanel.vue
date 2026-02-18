@@ -46,6 +46,12 @@
         >
             <span>Run {{ isTeamActive ? 'Team' : 'Agent' }}</span>
         </button>
+        <p
+            v-if="missingRemoteWorkspaceMembers.length > 0"
+            class="mt-2 text-xs text-amber-700"
+        >
+            Remote workspace path required for: {{ missingRemoteWorkspaceMembers.join(', ') }}.
+        </p>
     </div>
   </div>
 </template>
@@ -66,6 +72,8 @@ import AgentRunConfigForm from './AgentRunConfigForm.vue';
 import TeamRunConfigForm from './TeamRunConfigForm.vue';
 import type { AgentRunConfig } from '~/types/agent/AgentRunConfig';
 import type { TeamRunConfig } from '~/types/agent/TeamRunConfig';
+import { resolveWorkspaceIdForTeamMember } from '~/utils/teamMemberWorkspaceRouting';
+import { EMBEDDED_NODE_ID, isEmbeddedNode } from '~/types/node';
 
 const selectionStore = useAgentSelectionStore();
 const runConfigStore = useAgentRunConfigStore();
@@ -105,6 +113,18 @@ const effectiveTeamConfig = computed((): TeamRunConfig | null => {
 
 const isTeamActive = computed(() => !!effectiveTeamConfig.value);
 
+const missingRemoteWorkspaceMembers = computed<string[]>(() => {
+    if (!effectiveTeamConfig.value || !activeTeamDefinition.value) return [];
+    return activeTeamDefinition.value.nodes
+        .filter((node) => node.referenceType === 'AGENT')
+        .filter((node) => !isEmbeddedNode(node.homeNodeId || EMBEDDED_NODE_ID))
+        .filter((node) => {
+            const override = effectiveTeamConfig.value?.memberOverrides?.[node.memberName];
+            return !String(override?.workspaceRootPath || '').trim();
+        })
+        .map((node) => node.memberName);
+});
+
 // Definitions
 const activeAgentDefinition = computed(() => {
     if (!effectiveAgentConfig.value?.agentDefinitionId) return null;
@@ -134,6 +154,24 @@ const resolveWorkspacePath = (workspaceId: string | null): string => {
     if (!workspaceId) return '';
     const workspace = workspaceStore.workspaces[workspaceId];
     return workspace?.absolutePath || workspace?.workspaceConfig?.root_path || workspace?.workspaceConfig?.rootPath || '';
+};
+
+const applyWorkspaceToTeamMembers = (teamContext: any, selectedWorkspaceId: string | null) => {
+    const definitionId = teamContext?.config?.teamDefinitionId;
+    if (!definitionId) return;
+    const teamDefinition = teamDefinitionStore.getAgentTeamDefinitionById(definitionId);
+    if (!teamDefinition) return;
+    const homeNodeByMember = new Map(
+        teamDefinition.nodes.map((node) => [node.memberName, node.homeNodeId ?? null]),
+    );
+
+    teamContext.members?.forEach((member: any, memberName: string) => {
+        if (member.config?.isLocked) return;
+        member.config.workspaceId = resolveWorkspaceIdForTeamMember(
+            homeNodeByMember.get(memberName) ?? null,
+            selectedWorkspaceId,
+        );
+    });
 };
 
 // Workspace State
@@ -182,11 +220,7 @@ const handleSelectExisting = (workspaceId: string) => {
             const teamContext = teamContextsStore.activeTeamContext;
             if (!teamContext || teamContext.config?.isLocked) return;
             teamContext.config.workspaceId = workspaceId;
-            teamContext.members?.forEach((member) => {
-                if (!member.config?.isLocked) {
-                    member.config.workspaceId = workspaceId;
-                }
-            });
+            applyWorkspaceToTeamMembers(teamContext, workspaceId);
         } else if (selectionStore.isAgentSelected) {
             const agentContext = contextsStore.activeInstance;
             if (!agentContext || agentContext.config?.isLocked) return;
@@ -213,11 +247,7 @@ const handleLoadNew = async (path: string) => {
             try {
                 const workspaceId = await workspaceStore.createWorkspace({ root_path: path });
                 teamContext.config.workspaceId = workspaceId;
-                teamContext.members?.forEach((member) => {
-                    if (!member.config?.isLocked) {
-                        member.config.workspaceId = workspaceId;
-                    }
-                });
+                applyWorkspaceToTeamMembers(teamContext, workspaceId);
                 setActiveTab('files');
             } catch (error: any) {
                 console.error('Failed to load workspace for team:', error);
@@ -265,7 +295,9 @@ const handleLoadNew = async (path: string) => {
 
 const isRunDisabled = computed(() => {
     if (!isSelectionMode.value) {
-        if (effectiveTeamConfig.value) return !teamRunConfigStore.isConfigured;
+        if (effectiveTeamConfig.value) {
+            return !teamRunConfigStore.isConfigured || missingRemoteWorkspaceMembers.value.length > 0;
+        }
         if (effectiveAgentConfig.value) return !runConfigStore.isConfigured;
     }
     return (effectiveAgentConfig.value?.isLocked || effectiveTeamConfig.value?.isLocked);
@@ -274,6 +306,12 @@ const isRunDisabled = computed(() => {
 const handleRun = () => {
     if (!isSelectionMode.value) {
         if (effectiveTeamConfig.value) {
+            if (missingRemoteWorkspaceMembers.value.length > 0) {
+                teamRunConfigStore.setWorkspaceError(
+                    `Remote workspace path is required for: ${missingRemoteWorkspaceMembers.value.join(', ')}`,
+                );
+                return;
+            }
             teamContextsStore.createInstanceFromTemplate();
             // Notify tree projection so draft teams are visible immediately.
             runHistoryStore.markTeamDraftProjectionDirty();

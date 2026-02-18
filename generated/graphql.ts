@@ -1405,6 +1405,7 @@ export type TeamMemberConfigInput = {
   llmConfig?: InputMaybe<Scalars['JSON']['input']>;
   llmModelIdentifier: Scalars['String']['input'];
   memberName: Scalars['String']['input'];
+  workspaceRootPath?: InputMaybe<Scalars['String']['input']>;
   workspaceId?: InputMaybe<Scalars['String']['input']>;
 };
 

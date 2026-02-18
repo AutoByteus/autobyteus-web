@@ -287,4 +287,119 @@ describe('agentTeamRunStore', () => {
     expect(connectMock).toHaveBeenCalledWith('team-perm-1', expect.objectContaining({ teamId: 'team-perm-1' }));
     expect(markTeamAsActiveMock).toHaveBeenCalledWith('team-perm-1');
   });
+
+  it('does not propagate host workspace to remote members during temporary team bootstrap', async () => {
+    const focusedMember = buildFocusedMember('member-professor');
+    const teamContext = {
+      teamId: 'temp-team-2',
+      focusedMemberName: 'professor',
+      isSubscribed: false,
+      unsubscribe: undefined as undefined | (() => void),
+      config: {
+        teamDefinitionId: 'team-def-2',
+        workspaceId: 'ws-host',
+        llmModelIdentifier: 'gpt-4o-mini',
+        autoExecuteTools: false,
+        memberOverrides: {
+          student: {
+            agentDefinitionId: 'agent-def-remote',
+            workspaceRootPath: '/home/autobyteus/data/temp_workspace',
+          },
+        },
+      },
+      members: new Map([['professor', focusedMember]]),
+    };
+    activeTeamRef.value = teamContext;
+    focusedMemberRef.value = focusedMember;
+    getAgentTeamDefinitionByIdMock.mockReturnValue({
+      id: 'team-def-2',
+      nodes: [
+        {
+          memberName: 'professor',
+          referenceType: 'AGENT',
+          referenceId: 'agent-def-local',
+          homeNodeId: 'embedded-local',
+        },
+        {
+          memberName: 'student',
+          referenceType: 'AGENT',
+          referenceId: 'agent-def-remote',
+          homeNodeId: 'node-docker-8001',
+        },
+      ],
+    });
+    mutateMock.mockResolvedValue({
+      data: {
+        sendMessageToTeam: {
+          success: true,
+          message: 'ok',
+          teamId: 'team-perm-2',
+        },
+      },
+      errors: [],
+    });
+
+    const store = useAgentTeamRunStore();
+    await store.sendMessageToFocusedMember('hello', []);
+
+    const payload = mutateMock.mock.calls[0]?.[0]?.variables?.input;
+    const memberConfigs = payload?.memberConfigs;
+    expect(memberConfigs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          memberName: 'professor',
+          workspaceId: 'ws-host',
+          workspaceRootPath: null,
+        }),
+        expect.objectContaining({
+          memberName: 'student',
+          workspaceId: null,
+          workspaceRootPath: '/home/autobyteus/data/temp_workspace',
+        }),
+      ]),
+    );
+  });
+
+  it('throws when remote member workspace path is missing', async () => {
+    const focusedMember = buildFocusedMember('member-professor');
+    const teamContext = {
+      teamId: 'temp-team-3',
+      focusedMemberName: 'professor',
+      isSubscribed: false,
+      unsubscribe: undefined as undefined | (() => void),
+      config: {
+        teamDefinitionId: 'team-def-3',
+        workspaceId: 'ws-host',
+        llmModelIdentifier: 'gpt-4o-mini',
+        autoExecuteTools: false,
+        memberOverrides: {},
+      },
+      members: new Map([['professor', focusedMember]]),
+    };
+    activeTeamRef.value = teamContext;
+    focusedMemberRef.value = focusedMember;
+    getAgentTeamDefinitionByIdMock.mockReturnValue({
+      id: 'team-def-3',
+      nodes: [
+        {
+          memberName: 'professor',
+          referenceType: 'AGENT',
+          referenceId: 'agent-def-local',
+          homeNodeId: 'embedded-local',
+        },
+        {
+          memberName: 'student',
+          referenceType: 'AGENT',
+          referenceId: 'agent-def-remote',
+          homeNodeId: 'node-docker-8001',
+        },
+      ],
+    });
+
+    const store = useAgentTeamRunStore();
+    await expect(store.sendMessageToFocusedMember('hello', [])).rejects.toThrow(
+      'Remote workspace path is required for: student',
+    );
+    expect(mutateMock).not.toHaveBeenCalled();
+  });
 });

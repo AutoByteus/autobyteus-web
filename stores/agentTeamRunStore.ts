@@ -13,6 +13,8 @@ import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
 import { ConnectionState, TeamStreamingService } from '~/services/agentStreaming';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import { useRunTreeStore } from '~/stores/runTreeStore';
+import { resolveWorkspaceIdForTeamMember } from '~/utils/teamMemberWorkspaceRouting';
+import { EMBEDDED_NODE_ID, isEmbeddedNode } from '~/types/node';
 
 // Maintain a map of streaming services per team
 const teamStreamingServices = new Map<string, TeamStreamingService>();
@@ -157,6 +159,20 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
           const teamDef = teamDefinitionStore.getAgentTeamDefinitionById(activeTeam.config.teamDefinitionId);
           if (!teamDef) throw new Error(`Team definition ${activeTeam.config.teamDefinitionId} not found.`);
 
+          const missingRemoteWorkspaceMembers = teamDef.nodes
+            .filter(node => node.referenceType === 'AGENT')
+            .filter(node => !isEmbeddedNode(node.homeNodeId || EMBEDDED_NODE_ID))
+            .filter((node) => {
+              const override = activeTeam.config.memberOverrides[node.memberName];
+              return !String(override?.workspaceRootPath || '').trim();
+            })
+            .map(node => node.memberName);
+          if (missingRemoteWorkspaceMembers.length > 0) {
+            throw new Error(
+              `Remote workspace path is required for: ${missingRemoteWorkspaceMembers.join(', ')}`,
+            );
+          }
+
           const memberConfigs: TeamMemberConfigInput[] = teamDef.nodes
             .filter(node => node.referenceType === 'AGENT')
             .map((node) => {
@@ -165,7 +181,11 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
                 memberName: node.memberName,
                 agentDefinitionId: node.referenceId,
                 llmModelIdentifier: override?.llmModelIdentifier || activeTeam.config.llmModelIdentifier,
-                workspaceId: activeTeam.config.workspaceId,
+                workspaceId: resolveWorkspaceIdForTeamMember(
+                  node.homeNodeId ?? null,
+                  activeTeam.config.workspaceId,
+                ),
+                workspaceRootPath: String(override?.workspaceRootPath || '').trim() || null,
                 autoExecuteTools: override?.autoExecuteTools ?? activeTeam.config.autoExecuteTools,
                 llmConfig: override?.llmConfig ?? null,
               };
