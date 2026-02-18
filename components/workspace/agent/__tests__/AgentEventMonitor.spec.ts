@@ -34,6 +34,9 @@ describe('AgentEventMonitor.vue', () => {
         conversation,
         agentName: 'Slide Narrator',
         agentAvatarUrl: 'https://example.com/slide-narrator.png',
+        interAgentSenderNameById: {
+          'member-1': 'Professor',
+        },
       },
       global: {
         stubs: {
@@ -46,7 +49,7 @@ describe('AgentEventMonitor.vue', () => {
           },
           AIMessage: {
             name: 'AIMessage',
-            props: ['message', 'agentId', 'agentName', 'agentAvatarUrl', 'messageIndex'],
+            props: ['message', 'agentId', 'agentName', 'agentAvatarUrl', 'interAgentSenderNameById', 'messageIndex'],
             template: '<div class="ai-message-stub">{{ agentName }}</div>',
           },
         },
@@ -62,6 +65,7 @@ describe('AgentEventMonitor.vue', () => {
     expect(ai.props('agentId')).toBe('agent-42');
     expect(ai.props('agentName')).toBe('Slide Narrator');
     expect(ai.props('agentAvatarUrl')).toBe('https://example.com/slide-narrator.png');
+    expect(ai.props('interAgentSenderNameById')).toEqual({ 'member-1': 'Professor' });
     expect(ai.props('messageIndex')).toBe(1);
   });
 

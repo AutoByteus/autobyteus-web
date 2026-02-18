@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { EMBEDDED_NODE_ID, NODE_REGISTRY_STORAGE_KEY, type NodeRegistrySnapshot } from '~/types/node';
+import { EMBEDDED_NODE_ID, type NodeRegistrySnapshot } from '~/types/node';
 import { useNodeStore } from '../nodeStore';
 
 function setElectronApiMock(mock: Partial<Window['electronAPI']> | null): void {
@@ -107,7 +107,7 @@ describe('nodeStore', () => {
     expect(store.nodes[0].nodeType).toBe('embedded');
   });
 
-  it('initializes from localStorage snapshot in browser fallback mode', async () => {
+  it('ignores localStorage snapshot in browser fallback mode', async () => {
     const snapshot: NodeRegistrySnapshot = {
       version: 3,
       nodes: [
@@ -135,14 +135,14 @@ describe('nodeStore', () => {
         },
       ],
     };
-    window.localStorage.setItem(NODE_REGISTRY_STORAGE_KEY, JSON.stringify(snapshot));
+    window.localStorage.setItem('autobyteus.node_registry.v1', JSON.stringify(snapshot));
 
     const store = useNodeStore();
     await store.initializeRegistry();
 
-    expect(store.registryVersion).toBe(3);
-    expect(store.nodes).toHaveLength(2);
-    expect(store.getNodeById('remote-1')?.name).toBe('Remote One');
+    expect(store.registryVersion).toBe(1);
+    expect(store.nodes).toHaveLength(1);
+    expect(store.getNodeById('remote-1')).toBeNull();
   });
 
   it('applies only newer registry snapshots', async () => {
@@ -405,7 +405,7 @@ describe('nodeStore', () => {
     );
   });
 
-  it('persists non-electron node changes to localStorage', async () => {
+  it('keeps non-electron node changes in memory during session', async () => {
     const store = useNodeStore();
     await store.initializeRegistry();
 
@@ -415,13 +415,10 @@ describe('nodeStore', () => {
     });
     await store.renameNode(added.id, 'Docker Node Renamed');
 
-    const afterRename = JSON.parse(window.localStorage.getItem(NODE_REGISTRY_STORAGE_KEY) || '{}');
-    expect(Array.isArray(afterRename.nodes)).toBe(true);
-    expect(afterRename.nodes.some((node: any) => node.name === 'Docker Node Renamed')).toBe(true);
+    expect(store.getNodeById(added.id)?.name).toBe('Docker Node Renamed');
 
     await store.removeRemoteNode(added.id);
-    const afterRemove = JSON.parse(window.localStorage.getItem(NODE_REGISTRY_STORAGE_KEY) || '{}');
-    expect(afterRemove.nodes.some((node: any) => node.id === added.id)).toBe(false);
+    expect(store.getNodeById(added.id)).toBeNull();
   });
 
   it('ensures node window is ready in electron runtime', async () => {

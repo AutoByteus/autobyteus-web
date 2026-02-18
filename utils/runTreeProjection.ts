@@ -8,7 +8,7 @@ export type ProjectionRunKnownStatus = 'ACTIVE' | 'IDLE' | 'ERROR';
 export type RunTreeRowSource = 'history' | 'draft';
 
 export interface ProjectionRunItem {
-  runId: string;
+  agentId: string;
   summary: string;
   lastActivityAt: string;
   lastKnownStatus: ProjectionRunKnownStatus;
@@ -34,7 +34,7 @@ export interface ProjectionWorkspaceDescriptor {
 }
 
 export interface DraftRunSnapshot {
-  runId: string;
+  agentId: string;
   workspaceRootPath: string;
   agentDefinitionId: string;
   agentName: string;
@@ -110,30 +110,30 @@ const compareRuns = (a: RunTreeRow, b: RunTreeRow): number => {
     return a.isDraft ? -1 : 1;
   }
 
-  return a.runId.localeCompare(b.runId);
+  return a.agentId.localeCompare(b.agentId);
 };
 
 const dedupeAndSortRuns = (rows: RunTreeRow[]): RunTreeRow[] => {
-  const byRunId = new Map<string, RunTreeRow>();
+  const byAgentId = new Map<string, RunTreeRow>();
 
   for (const row of rows) {
-    const existing = byRunId.get(row.runId);
+    const existing = byAgentId.get(row.agentId);
     if (!existing) {
-      byRunId.set(row.runId, row);
+      byAgentId.set(row.agentId, row);
       continue;
     }
 
     if (existing.source === 'draft' && row.source === 'history') {
-      byRunId.set(row.runId, row);
+      byAgentId.set(row.agentId, row);
       continue;
     }
 
     if (existing.source === row.source && compareRuns(row, existing) < 0) {
-      byRunId.set(row.runId, row);
+      byAgentId.set(row.agentId, row);
     }
   }
 
-  return Array.from(byRunId.values()).sort(compareRuns);
+  return Array.from(byAgentId.values()).sort(compareRuns);
 };
 
 const ensureWorkspaceNode = (
@@ -222,7 +222,7 @@ export const buildRunTreeProjection = (input: BuildRunTreeProjectionInput): RunT
 
       for (const run of agent.runs) {
         agentNode.runs.push({
-          runId: run.runId,
+          agentId: run.agentId,
           summary: run.summary,
           lastActivityAt: run.lastActivityAt,
           lastKnownStatus: run.lastKnownStatus,
@@ -237,7 +237,7 @@ export const buildRunTreeProjection = (input: BuildRunTreeProjectionInput): RunT
   for (const draft of input.draftRuns) {
     const normalizedWorkspace = normalizeRootPath(draft.workspaceRootPath);
     if (!normalizedWorkspace) {
-      console.warn(INVALID_DRAFT_WORKSPACE_WARNING, { runId: draft.runId });
+      console.warn(INVALID_DRAFT_WORKSPACE_WARNING, { agentId: draft.agentId });
       continue;
     }
 
@@ -255,7 +255,7 @@ export const buildRunTreeProjection = (input: BuildRunTreeProjectionInput): RunT
     );
 
     agentNode.runs.push({
-      runId: draft.runId,
+      agentId: draft.agentId,
       summary: draft.summary,
       lastActivityAt: draft.lastActivityAt,
       lastKnownStatus: draft.lastKnownStatus,

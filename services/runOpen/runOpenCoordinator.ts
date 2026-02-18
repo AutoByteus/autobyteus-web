@@ -24,7 +24,7 @@ export interface RunProjectionConversationEntry {
 }
 
 export interface RunProjectionPayload {
-  runId: string;
+  agentId: string;
   conversation: RunProjectionConversationEntry[];
   summary?: string | null;
   lastActivityAt?: string | null;
@@ -48,7 +48,7 @@ export interface RunManifestConfigPayload {
 }
 
 export interface RunResumeConfigPayload {
-  runId: string;
+  agentId: string;
   isActive: boolean;
   manifestConfig: RunManifestConfigPayload;
   editableFields: RunEditableFieldFlags;
@@ -63,13 +63,13 @@ interface GetRunResumeConfigQueryData {
 }
 
 interface OpenRunWithCoordinatorInput {
-  runId: string;
+  agentId: string;
   fallbackAgentName: string | null;
   ensureWorkspaceByRootPath: (rootPath: string) => Promise<string | null>;
 }
 
 export interface OpenRunWithCoordinatorResult {
-  runId: string;
+  agentId: string;
   resumeConfig: RunResumeConfigPayload;
 }
 
@@ -123,8 +123,8 @@ const inferToolStatus = (entry: RunProjectionConversationEntry): ToolInvocationS
   return 'parsed';
 };
 
-const buildConversationFromProjection = (
-  runId: string,
+export const buildConversationFromProjection = (
+  agentId: string,
   entries: RunProjectionConversationEntry[],
   defaults: {
     agentDefinitionId: string;
@@ -178,7 +178,7 @@ const buildConversationFromProjection = (
       const segments: AIResponseSegment[] = [
         {
           type: 'tool_call',
-          invocationId: `history-${runId}-${index}`,
+          invocationId: `history-${agentId}-${index}`,
           toolName: entry.toolName || 'tool',
           arguments: asRecord(entry.toolArgs),
           status: inferToolStatus(entry),
@@ -234,7 +234,7 @@ const buildConversationFromProjection = (
     : new Date().toISOString();
 
   return {
-    id: runId,
+    id: agentId,
     messages,
     createdAt,
     updatedAt,
@@ -251,12 +251,12 @@ export const openRunWithCoordinator = async (
   const [projectionResponse, resumeResponse] = await Promise.all([
     client.query<GetRunProjectionQueryData>({
       query: GetRunProjection,
-      variables: { runId: input.runId },
+      variables: { agentId: input.agentId },
       fetchPolicy: 'network-only',
     }),
     client.query<GetRunResumeConfigQueryData>({
       query: GetRunResumeConfig,
-      variables: { runId: input.runId },
+      variables: { agentId: input.agentId },
       fetchPolicy: 'network-only',
     }),
   ]);
@@ -301,7 +301,7 @@ export const openRunWithCoordinator = async (
     'Agent';
 
   const conversation = buildConversationFromProjection(
-    input.runId,
+    input.agentId,
     projection.conversation || [],
     {
       agentDefinitionId: resumeConfig.manifestConfig.agentDefinitionId,
@@ -328,7 +328,7 @@ export const openRunWithCoordinator = async (
   };
 
   const agentContextsStore = useAgentContextsStore();
-  const existingContext = agentContextsStore.getInstance(input.runId);
+  const existingContext = agentContextsStore.getInstance(input.agentId);
   const strategy = decideRunOpenStrategy({
     isRunActive: resumeConfig.isActive,
     hasExistingContext: Boolean(existingContext),
@@ -336,30 +336,30 @@ export const openRunWithCoordinator = async (
   });
 
   if (strategy === 'KEEP_LIVE_CONTEXT') {
-    agentContextsStore.patchConfigOnly(input.runId, {
+    agentContextsStore.patchConfigOnly(input.agentId, {
       ...config,
       isLocked: true,
     });
   } else {
     agentContextsStore.upsertProjectionContext({
-      runId: input.runId,
+      agentId: input.agentId,
       config,
       conversation,
       status: resumeConfig.isActive ? AgentStatus.Uninitialized : AgentStatus.ShutdownComplete,
     });
   }
 
-  useAgentSelectionStore().selectInstance(input.runId, 'agent');
+  useAgentSelectionStore().selectInstance(input.agentId, 'agent');
   useTeamRunConfigStore().clearConfig();
   useAgentRunConfigStore().clearConfig();
 
   if (resumeConfig.isActive) {
     const { useAgentRunStore } = await import('~/stores/agentRunStore');
-    useAgentRunStore().connectToAgentStream(input.runId);
+    useAgentRunStore().connectToAgentStream(input.agentId);
   }
 
   return {
-    runId: input.runId,
+    agentId: input.agentId,
     resumeConfig,
   };
 };

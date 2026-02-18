@@ -23,6 +23,7 @@
               :agent-id="agentId"
               :agent-name="agentName"
               :agent-avatar-url="agentAvatarUrl"
+              :inter-agent-sender-name-by-id="interAgentSenderNameById"
               :message-index="index"
             />
           </div>
@@ -61,6 +62,7 @@ const props = defineProps<{
   conversation: Conversation;
   agentName?: string;
   agentAvatarUrl?: string | null;
+  interAgentSenderNameById?: Record<string, string>;
 }>();
 
 const agentId = computed(() => props.conversation.id);

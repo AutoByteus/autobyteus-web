@@ -13,7 +13,7 @@ const baseTree = (): RunTreeWorkspaceNode[] => [
         agentName: 'Agent One',
         runs: [
           {
-            runId: 'run-history-a',
+            agentId: 'run-history-a',
             summary: 'A',
             lastActivityAt: '2026-01-01T00:00:00.000Z',
             lastKnownStatus: 'IDLE',
@@ -22,7 +22,7 @@ const baseTree = (): RunTreeWorkspaceNode[] => [
             isDraft: false,
           },
           {
-            runId: 'run-history-b',
+            agentId: 'run-history-b',
             summary: 'B',
             lastActivityAt: '2026-01-01T00:00:00.000Z',
             lastKnownStatus: 'IDLE',
@@ -31,7 +31,7 @@ const baseTree = (): RunTreeWorkspaceNode[] => [
             isDraft: false,
           },
           {
-            runId: 'temp-1',
+            agentId: 'temp-1',
             summary: 'draft',
             lastActivityAt: '2026-01-01T00:00:00.000Z',
             lastKnownStatus: 'ACTIVE',
@@ -60,9 +60,9 @@ describe('runTreeLiveStatusMerge', () => {
     ]);
 
     const merged = mergeRunTreeWithLiveContexts(baseTree(), contexts as Map<string, any>);
-    const runA = merged[0]?.agents[0]?.runs.find((run) => run.runId === 'run-history-a');
-    const runB = merged[0]?.agents[0]?.runs.find((run) => run.runId === 'run-history-b');
-    const draft = merged[0]?.agents[0]?.runs.find((run) => run.runId === 'temp-1');
+    const runA = merged[0]?.agents[0]?.runs.find((run) => run.agentId === 'run-history-a');
+    const runB = merged[0]?.agents[0]?.runs.find((run) => run.agentId === 'run-history-b');
+    const draft = merged[0]?.agents[0]?.runs.find((run) => run.agentId === 'temp-1');
 
     expect(runA?.isActive).toBe(false);
     expect(runA?.lastKnownStatus).toBe('IDLE');
@@ -96,8 +96,8 @@ describe('runTreeLiveStatusMerge', () => {
     ]);
 
     const merged = mergeRunTreeWithLiveContexts(baseTree(), contexts as Map<string, any>);
-    const runA = merged[0]?.agents[0]?.runs.find((run) => run.runId === 'run-history-a');
-    const runB = merged[0]?.agents[0]?.runs.find((run) => run.runId === 'run-history-b');
+    const runA = merged[0]?.agents[0]?.runs.find((run) => run.agentId === 'run-history-a');
+    const runB = merged[0]?.agents[0]?.runs.find((run) => run.agentId === 'run-history-b');
 
     expect(runA?.isActive).toBe(false);
     expect(runA?.lastKnownStatus).toBe('ERROR');

@@ -16,8 +16,6 @@ export const GetAgentTeamDefinitions = gql`
         referenceId
         referenceType
         homeNodeId
-        requiredNodeId
-        preferredNodeId
       }
     }
   }

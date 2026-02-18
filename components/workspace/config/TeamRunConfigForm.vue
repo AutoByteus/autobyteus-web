@@ -32,6 +32,12 @@
         @select-existing="handleSelectExisting"
         @load-new="handleLoadNew"
     />
+    <p class="mt-1 text-xs text-gray-500">
+      This workspace applies to embedded-node members only. Remote members use their node-local workspace.
+    </p>
+    <p class="mt-1 text-xs text-amber-600">
+      For remote members, set a Remote Workspace Path in Team Members Override.
+    </p>
     </div>
 
 
@@ -62,6 +68,7 @@
                 :global-llm-model="config.llmModelIdentifier"
                 :options="groupedModelOptions"
                 :is-coordinator="node.memberName === teamDefinition.coordinatorMemberName"
+                :is-remote-member="!isEmbeddedNode(node.homeNodeId || EMBEDDED_NODE_ID)"
                 :disabled="config.isLocked"
                 @update:override="handleOverrideUpdate"
             />
@@ -102,6 +109,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import type { TeamRunConfig, MemberConfigOverride } from '~/types/agent/TeamRunConfig';
 import type { AgentTeamDefinition } from '~/stores/agentTeamDefinitionStore';
+import { EMBEDDED_NODE_ID, isEmbeddedNode } from '~/types/node';
 import WorkspaceSelector from './WorkspaceSelector.vue';
 import MemberOverrideItem from './MemberOverrideItem.vue';
 import SearchableGroupedSelect, { type GroupedOption } from '~/components/agentTeams/SearchableGroupedSelect.vue';

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { useRunHistoryStore } from '~/stores/runHistoryStore';
+import { useRunTreeStore } from '~/stores/runTreeStore';
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { useAgentRunStore } from '~/stores/agentRunStore';
 
@@ -108,7 +108,7 @@ describe('workspace history + draft send integration', () => {
         continueRun: {
           success: true,
           message: 'ok',
-          runId: 'run-001',
+          agentId: 'run-001',
           ignoredConfigFields: [],
         },
       },
@@ -117,7 +117,7 @@ describe('workspace history + draft send integration', () => {
   });
 
   it('supports tree-plus draft creation and first send promotion with a resolved model', async () => {
-    const runHistoryStore = useRunHistoryStore();
+    const runHistoryStore = useRunTreeStore();
     const contextsStore = useAgentContextsStore();
     const runStore = useAgentRunStore();
     const tempRunIdFromConfig = await runHistoryStore.createDraftRun({

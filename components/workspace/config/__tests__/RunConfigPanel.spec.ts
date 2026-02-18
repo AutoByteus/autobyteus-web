@@ -8,7 +8,7 @@ import TeamRunConfigForm from '../TeamRunConfigForm.vue';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 
 // Hoisted state objects
-const { agentRunState, teamRunState, agentContextState, teamContextState } = vi.hoisted(() => ({
+const { agentRunState, teamRunState, agentContextState, teamContextState, runTreeState, teamDefinitionsById } = vi.hoisted(() => ({
     agentRunState: {
         config: null,
         workspaceLoadingState: { isLoading: false, error: null, loadedPath: null },
@@ -34,7 +34,12 @@ const { agentRunState, teamRunState, agentContextState, teamContextState } = vi.
     teamContextState: {
         activeTeamContext: null,
         createInstanceFromTemplate: vi.fn()
-    }
+    },
+    runTreeState: {
+        isWorkspaceLockedForRun: vi.fn(() => false),
+        markTeamDraftProjectionDirty: vi.fn(),
+    },
+    teamDefinitionsById: {} as Record<string, any>,
 }));
 
 // Mocks
@@ -58,6 +63,11 @@ vi.mock('~/stores/agentTeamContextsStore', async () => {
     return { useAgentTeamContextsStore: () => reactive(teamContextState) };
 });
 
+vi.mock('~/stores/runTreeStore', async () => {
+    const { reactive } = await import('vue');
+    return { useRunTreeStore: () => reactive(runTreeState) };
+});
+
 vi.mock('~/stores/workspace', () => ({
     useWorkspaceStore: () => ({
         createWorkspace: vi.fn(),
@@ -77,7 +87,7 @@ vi.mock('~/stores/agentDefinitionStore', () => ({
 
 vi.mock('~/stores/agentTeamDefinitionStore', () => ({
   useAgentTeamDefinitionStore: () => ({
-    getAgentTeamDefinitionById: (id: string) => ({ id, name: 'Team ' + id, nodes: [] })
+    getAgentTeamDefinitionById: (id: string) => teamDefinitionsById[id] ?? ({ id, name: 'Team ' + id, nodes: [] })
   })
 }));
 
@@ -89,6 +99,15 @@ describe('RunConfigPanel', () => {
         teamRunState.config = null;
         agentContextState.activeInstance = null;
         teamContextState.activeTeamContext = null;
+        Object.keys(teamDefinitionsById).forEach((key) => delete teamDefinitionsById[key]);
+        runTreeState.isWorkspaceLockedForRun.mockClear();
+        runTreeState.markTeamDraftProjectionDirty.mockClear();
+        agentContextState.createInstanceFromTemplate.mockClear();
+        teamContextState.createInstanceFromTemplate.mockClear();
+        agentRunState.setWorkspaceError.mockClear();
+        teamRunState.setWorkspaceError.mockClear();
+        agentRunState.clearConfig.mockClear();
+        teamRunState.clearConfig.mockClear();
     });
 
     it('renders placeholder when nothing selected', () => {
@@ -118,7 +137,15 @@ describe('RunConfigPanel', () => {
     it('renders Team Form when Team Template set', async () => {
         const { useTeamRunConfigStore } = await import('~/stores/teamRunConfigStore');
         const store = useTeamRunConfigStore();
-        store.config = { teamDefinitionId: 'team-def-1', workspaceId: null } as any;
+        store.config = {
+            teamDefinitionId: 'team-def-1',
+            teamDefinitionName: 'Team team-def-1',
+            workspaceId: null,
+            llmModelIdentifier: '',
+            autoExecuteTools: false,
+            memberOverrides: {},
+            isLocked: false,
+        } as any;
         store.isConfigured = true;
         
         const selectionStore = useAgentSelectionStore();
@@ -139,7 +166,18 @@ describe('RunConfigPanel', () => {
         
         const { useAgentTeamContextsStore } = await import('~/stores/agentTeamContextsStore');
         const store = useAgentTeamContextsStore();
-        store.activeTeamContext = { config: { teamDefinitionId: 'team-def-1' }, teamId: 'team-1' } as any;
+        store.activeTeamContext = {
+            config: {
+                teamDefinitionId: 'team-def-1',
+                teamDefinitionName: 'Team team-def-1',
+                workspaceId: null,
+                llmModelIdentifier: '',
+                autoExecuteTools: false,
+                memberOverrides: {},
+                isLocked: false,
+            },
+            teamId: 'team-1'
+        } as any;
 
         const wrapper = mount(RunConfigPanel, {
             global: {
@@ -153,8 +191,21 @@ describe('RunConfigPanel', () => {
     it('triggers team run on button click', async () => {
          const { useTeamRunConfigStore } = await import('~/stores/teamRunConfigStore');
          const teamStore = useTeamRunConfigStore();
-         teamStore.config = { teamDefinitionId: 'team-def-1', workspaceId: 'ws-1' } as any;
+         teamStore.config = {
+            teamDefinitionId: 'team-def-1',
+            teamDefinitionName: 'Team team-def-1',
+            workspaceId: 'ws-1',
+            llmModelIdentifier: '',
+            autoExecuteTools: false,
+            memberOverrides: {},
+            isLocked: false,
+         } as any;
          teamStore.isConfigured = true;
+         teamDefinitionsById['team-def-1'] = {
+            id: 'team-def-1',
+            name: 'Team team-def-1',
+            nodes: [{ memberName: 'coordinator', referenceType: 'AGENT', referenceId: 'agent-coordinator', homeNodeId: 'embedded-local' }],
+         };
          
          const wrapper = mount(RunConfigPanel, {
             global: {
@@ -169,6 +220,43 @@ describe('RunConfigPanel', () => {
         const contextStore = useAgentTeamContextsStore();
         expect(contextStore.createInstanceFromTemplate).toHaveBeenCalled();
         expect(teamStore.clearConfig).toHaveBeenCalled();
+        expect(runTreeState.markTeamDraftProjectionDirty).toHaveBeenCalledTimes(1);
+    });
+
+    it('blocks team run when remote member workspace path is missing', async () => {
+        const { useTeamRunConfigStore } = await import('~/stores/teamRunConfigStore');
+        const { useAgentTeamContextsStore } = await import('~/stores/agentTeamContextsStore');
+        const teamStore = useTeamRunConfigStore();
+        const teamContexts = useAgentTeamContextsStore();
+        teamStore.config = {
+            teamDefinitionId: 'team-def-remote',
+            teamDefinitionName: 'Remote Team',
+            workspaceId: 'ws-host',
+            llmModelIdentifier: '',
+            autoExecuteTools: false,
+            memberOverrides: {},
+            isLocked: false,
+        } as any;
+        teamStore.isConfigured = true;
+        teamDefinitionsById['team-def-remote'] = {
+            id: 'team-def-remote',
+            name: 'Remote Team',
+            nodes: [
+                { memberName: 'professor', referenceType: 'AGENT', referenceId: 'agent-professor', homeNodeId: 'embedded-local' },
+                { memberName: 'student', referenceType: 'AGENT', referenceId: 'agent-student', homeNodeId: 'node-docker-8001' },
+            ],
+        };
+
+        const wrapper = mount(RunConfigPanel, {
+            global: {
+                stubs: { AgentRunConfigForm: true, TeamRunConfigForm: true }
+            }
+        });
+
+        expect(wrapper.text()).toContain('Remote workspace path required for: student.');
+        expect(wrapper.find('.run-btn').attributes('disabled')).toBeDefined();
+
+        expect(teamContexts.createInstanceFromTemplate).not.toHaveBeenCalled();
     });
 
     it('blocks agent run when workspace is missing (defensive path)', async () => {

@@ -42,6 +42,24 @@ export type SegmentType =
   | 'edit_file'
   | 'media';
 
+export type EventScope = 'member_scoped' | 'team_scoped';
+
+export interface TeamStreamEventEnvelopePayload {
+  team_run_id: string;
+  run_version: string | number;
+  sequence: number;
+  source_node_id: string;
+  origin: 'local' | 'remote';
+  event_type: string;
+  received_at: string;
+}
+
+export interface TeamStreamRoutingMetadata {
+  event_scope?: EventScope;
+  member_route_key?: string;
+  team_stream_event_envelope?: TeamStreamEventEnvelopePayload;
+}
+
 // --- Payload Types ---
 
 export interface ConnectedPayload {

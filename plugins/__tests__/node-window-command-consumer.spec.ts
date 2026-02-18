@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
+import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import {
   handleStartAgentRunCommand,
   handleStartTeamRunCommand,
@@ -11,6 +12,12 @@ import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
 import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
 import { useUiErrorStore } from '~/stores/uiErrorStore';
 import type { NodeWindowCommand, StartAgentRunCommand, StartTeamRunCommand } from '~/types/node-window-command';
+
+const { navigateToMock } = vi.hoisted(() => ({
+  navigateToMock: vi.fn().mockResolvedValue(undefined),
+}));
+
+mockNuxtImport('navigateTo', () => navigateToMock);
 
 function setElectronApiMock(mock: Partial<Window['electronAPI']> | null): void {
   Object.defineProperty(window, 'electronAPI', {
@@ -52,7 +59,8 @@ describe('node window command consumer', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.restoreAllMocks();
-    vi.stubGlobal('navigateTo', vi.fn().mockResolvedValue(undefined));
+    navigateToMock.mockReset();
+    navigateToMock.mockResolvedValue(undefined);
     setElectronApiMock(null);
   });
 

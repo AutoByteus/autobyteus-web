@@ -9,7 +9,7 @@ export const ListRunHistory = gql`
         agentDefinitionId
         agentName
         runs {
-          runId
+          agentId
           summary
           lastActivityAt
           lastKnownStatus
@@ -20,10 +20,32 @@ export const ListRunHistory = gql`
   }
 `;
 
+export const ListTeamRunHistory = gql`
+  query ListTeamRunHistory {
+    listTeamRunHistory {
+      teamId
+      teamDefinitionId
+      teamDefinitionName
+      summary
+      lastActivityAt
+      lastKnownStatus
+      deleteLifecycle
+      isActive
+      members {
+        memberRouteKey
+        memberName
+        memberAgentId
+        workspaceRootPath
+        hostNodeId
+      }
+    }
+  }
+`;
+
 export const GetRunProjection = gql`
-  query GetRunProjection($runId: String!) {
-    getRunProjection(runId: $runId) {
-      runId
+  query GetRunProjection($agentId: String!) {
+    getRunProjection(agentId: $agentId) {
+      agentId
       summary
       lastActivityAt
       conversation
@@ -32,9 +54,9 @@ export const GetRunProjection = gql`
 `;
 
 export const GetRunResumeConfig = gql`
-  query GetRunResumeConfig($runId: String!) {
-    getRunResumeConfig(runId: $runId) {
-      runId
+  query GetRunResumeConfig($agentId: String!) {
+    getRunResumeConfig(agentId: $agentId) {
+      agentId
       isActive
       manifestConfig {
         agentDefinitionId
@@ -51,6 +73,16 @@ export const GetRunResumeConfig = gql`
         skillAccessMode
         workspaceRootPath
       }
+    }
+  }
+`;
+
+export const GetTeamRunResumeConfig = gql`
+  query GetTeamRunResumeConfig($teamId: String!) {
+    getTeamRunResumeConfig(teamId: $teamId) {
+      teamId
+      isActive
+      manifest
     }
   }
 `;

@@ -18,7 +18,7 @@ describe('agent-team-definition integration', () => {
     vi.clearAllMocks()
   })
 
-  it('persists required/preferred placement hints in create flow', async () => {
+  it('persists ownership node in create flow', async () => {
     mockMutate.mockResolvedValue({
       data: {
         createAgentTeamDefinition: { id: 'team-42' },
@@ -40,8 +40,6 @@ describe('agent-team-definition integration', () => {
                 referenceId: 'agent-1',
                 referenceType: 'AGENT',
                 homeNodeId: 'embedded-local',
-                requiredNodeId: 'node-host',
-                preferredNodeId: 'node-worker',
               },
             ],
           },
@@ -61,8 +59,7 @@ describe('agent-team-definition integration', () => {
           memberName: 'writer_agent',
           referenceId: 'agent-1',
           referenceType: 'AGENT',
-          requiredNodeId: 'node-host',
-          preferredNodeId: 'node-worker',
+          homeNodeId: 'embedded-local',
         } as any,
       ],
     })
@@ -73,10 +70,7 @@ describe('agent-team-definition integration', () => {
       referenceId: 'agent-1',
       referenceType: 'AGENT',
       homeNodeId: 'embedded-local',
-      requiredNodeId: 'node-host',
-      preferredNodeId: 'node-worker',
     })
-    expect(created?.nodes?.[0]?.requiredNodeId).toBe('node-host')
-    expect(created?.nodes?.[0]?.preferredNodeId).toBe('node-worker')
+    expect(created?.nodes?.[0]?.homeNodeId).toBe('embedded-local')
   })
 })

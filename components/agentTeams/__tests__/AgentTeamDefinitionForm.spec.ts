@@ -95,7 +95,7 @@ describe('AgentTeamDefinitionForm', () => {
     vi.restoreAllMocks()
   })
 
-  it('submits placement hints for selected member', async () => {
+  it('does not render required/preferred node controls and submits ownership-only nodes', async () => {
     const wrapper = await mountComponent({
       initialData: {
         id: 'team-2',
@@ -108,17 +108,13 @@ describe('AgentTeamDefinitionForm', () => {
             referenceId: 'agent-1',
             referenceType: 'AGENT',
             homeNodeId: 'node-host',
-            requiredNodeId: null,
-            preferredNodeId: null,
           },
         ],
       },
     })
 
-    const selects = wrapper.findAll('select')
-    expect(selects.length).toBeGreaterThanOrEqual(2)
-    await selects[0]!.setValue('node-host')
-    await selects[1]!.setValue('node-worker')
+    expect(wrapper.text()).not.toContain('Required Node')
+    expect(wrapper.text()).not.toContain('Preferred Node')
 
     await wrapper.get('form').trigger('submit.prevent')
 
@@ -129,15 +125,13 @@ describe('AgentTeamDefinitionForm', () => {
     expect(submitPayload.nodes[0]).toMatchObject({
       referenceId: 'agent-1',
       referenceType: 'AGENT',
-      requiredNodeId: 'node-host',
-      preferredNodeId: 'node-worker',
       memberName: 'writer_agent',
       homeNodeId: 'node-host',
     })
     expect(submitPayload.coordinatorMemberName).toBe('writer_agent')
   })
 
-  it('hydrates existing placement hints from initialData and keeps them on submit', async () => {
+  it('keeps ownership-only node payload even with legacy hint data in initialData', async () => {
     const wrapper = await mountComponent({
       initialData: {
         id: 'team-1',
@@ -157,17 +151,16 @@ describe('AgentTeamDefinitionForm', () => {
       },
     })
 
-    const selects = wrapper.findAll('select')
-    expect(selects.length).toBeGreaterThanOrEqual(2)
-    expect((selects[0]!.element as HTMLSelectElement).value).toBe('node-host')
-    expect((selects[1]!.element as HTMLSelectElement).value).toBe('node-worker')
+    expect(wrapper.text()).not.toContain('Required Node')
+    expect(wrapper.text()).not.toContain('Preferred Node')
 
     await wrapper.get('form').trigger('submit.prevent')
     const submitPayload = wrapper.emitted('submit')?.[0]?.[0] as any
-    expect(submitPayload.nodes[0]).toMatchObject({
+    expect(submitPayload.nodes[0]).toEqual({
+      memberName: 'writer_agent',
+      referenceId: 'agent-1',
+      referenceType: 'AGENT',
       homeNodeId: 'node-host',
-      requiredNodeId: 'node-host',
-      preferredNodeId: 'node-worker',
     })
   })
 })

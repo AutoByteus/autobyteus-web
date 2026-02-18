@@ -9,7 +9,7 @@ import { useAgentContextsStore } from '~/stores/agentContextsStore';
 import { AgentStreamingService } from '~/services/agentStreaming';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import { useWorkspaceStore } from '~/stores/workspace';
-import { useRunHistoryStore } from '~/stores/runHistoryStore';
+import { useRunTreeStore } from '~/stores/runTreeStore';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import { resolveRunnableModelIdentifier } from '~/utils/runLaunchPolicy';
 import { AgentStatus } from '~/types/agent/AgentStatus';
@@ -18,7 +18,7 @@ interface ContinueRunMutationResultPayload {
   continueRun: {
     success: boolean;
     message: string;
-    runId?: string | null;
+    agentId?: string | null;
     ignoredConfigFields: string[];
   };
 }
@@ -43,7 +43,7 @@ export const useAgentRunStore = defineStore('agentRun', {
      */
     async sendUserInputAndSubscribe(): Promise<void> {
       const agentContextsStore = useAgentContextsStore();
-      const runHistoryStore = useRunHistoryStore();
+      const runHistoryStore = useRunTreeStore();
       const workspaceStore = useWorkspaceStore();
       const currentAgent = agentContextsStore.activeInstance;
 
@@ -108,7 +108,7 @@ export const useAgentRunStore = defineStore('agentRun', {
                 content: currentAgent.requirement,
                 contextFiles: currentAgent.contextFilePaths.map(cf => ({ path: cf.path, type: cf.type.toUpperCase() as ContextFileType })),
               },
-              runId: isNewAgent ? null : agentId,
+              agentId: isNewAgent ? null : agentId,
               agentDefinitionId: isNewAgent ? state.conversation.agentDefinitionId : undefined,
               workspaceId: isNewAgent ? workspaceId : undefined,
               workspaceRootPath: workspaceRootPath || undefined,
@@ -133,9 +133,9 @@ export const useAgentRunStore = defineStore('agentRun', {
           throw new Error(result.message || 'Failed to continue run.');
         }
 
-        const permanentAgentId = result.runId;
+        const permanentAgentId = result.agentId;
         if (!permanentAgentId) {
-          throw new Error('Failed to continue run: No runId returned on success.');
+          throw new Error('Failed to continue run: No agentId returned on success.');
         }
 
         let finalAgentId = agentId;
@@ -236,10 +236,10 @@ export const useAgentRunStore = defineStore('agentRun', {
      * @description Terminates a run while preserving its row in history view.
      * This action owns runtime lifecycle teardown + backend termination orchestration.
      */
-    async terminateRun(runId: string): Promise<boolean> {
+    async terminateRun(agentId: string): Promise<boolean> {
       const agentContextsStore = useAgentContextsStore();
-      const runHistoryStore = useRunHistoryStore();
-      const context = agentContextsStore.getInstance(runId);
+      const runHistoryStore = useRunTreeStore();
+      const context = agentContextsStore.getInstance(agentId);
 
       const teardownLocalRuntime = () => {
         if (context?.unsubscribe) {
@@ -247,7 +247,7 @@ export const useAgentRunStore = defineStore('agentRun', {
           context.isSubscribed = false;
           context.unsubscribe = undefined;
         }
-        streamingServices.delete(runId);
+        streamingServices.delete(agentId);
 
         if (context) {
           context.isSending = false;
@@ -255,9 +255,9 @@ export const useAgentRunStore = defineStore('agentRun', {
         }
       };
 
-      if (runId.startsWith('temp-')) {
+      if (agentId.startsWith('temp-')) {
         teardownLocalRuntime();
-        runHistoryStore.markRunAsInactive(runId);
+        runHistoryStore.markRunAsInactive(agentId);
         return true;
       }
 
@@ -265,7 +265,7 @@ export const useAgentRunStore = defineStore('agentRun', {
         const client = getApolloClient();
         const { data, errors } = await client.mutate({
           mutation: TerminateAgentInstance,
-          variables: { id: runId },
+          variables: { id: agentId },
         });
 
         if (errors && errors.length > 0) {
@@ -274,15 +274,15 @@ export const useAgentRunStore = defineStore('agentRun', {
 
         const result = (data as any)?.terminateAgentInstance;
         if (!result?.success) {
-          throw new Error(result?.message || `Failed to terminate run '${runId}'.`);
+          throw new Error(result?.message || `Failed to terminate run '${agentId}'.`);
         }
 
         teardownLocalRuntime();
-        runHistoryStore.markRunAsInactive(runId);
+        runHistoryStore.markRunAsInactive(agentId);
         runHistoryStore.refreshTreeQuietly();
         return true;
       } catch (error) {
-        console.error(`Error terminating run '${runId}':`, error);
+        console.error(`Error terminating run '${agentId}':`, error);
         return false;
       }
     },
