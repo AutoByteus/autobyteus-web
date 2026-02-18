@@ -81,7 +81,7 @@ describe('useVncSession', () => {
     vi.clearAllMocks();
   });
 
-  it('temporarily enables control mode to request initial remote resize', () => {
+  it('does not request remote resize on connect', () => {
     const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
     const session = useVncSession({
       url: 'ws://localhost:6080/websockify',
@@ -97,17 +97,17 @@ describe('useVncSession', () => {
 
     rfb.emit('connect');
     expect(session.connectionStatus.value).toBe('connected');
-    expect(rfb.viewOnly).toBe(false);
-    expect(rfb.resizeSession).toBe(true);
+    expect(rfb.viewOnly).toBe(true);
+    expect(rfb.resizeSession).toBe(false);
 
     vi.advanceTimersByTime(350);
 
     expect(rfb.viewOnly).toBe(true);
     expect(rfb.resizeSession).toBe(false);
-    expect(dispatchSpy).toHaveBeenCalled();
+    expect(dispatchSpy).not.toHaveBeenCalled();
   });
 
-  it('restores fullscreen-fit strategy after the initial resize handshake', () => {
+  it('keeps remote resize disabled in fullscreen-fit mode', () => {
     const session = useVncSession({
       url: 'ws://localhost:6080/websockify',
       password: 'secret',
@@ -124,6 +124,6 @@ describe('useVncSession', () => {
 
     expect(session.viewOnly.value).toBe(false);
     expect(rfb.viewOnly).toBe(false);
-    expect(rfb.resizeSession).toBe(true);
+    expect(rfb.resizeSession).toBe(false);
   });
 });

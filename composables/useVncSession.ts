@@ -9,8 +9,8 @@ interface VncSessionOptions {
 }
 
 export function useVncSession(options: VncSessionOptions) {
-  const INITIAL_RESIZE_RETRY_DELAY_MS = 120;
-  const INITIAL_RESIZE_RESTORE_DELAY_MS = 320;
+  // Keep server-side desktop resolution stable for automation coordinate consistency.
+  const REMOTE_RESIZE_ENABLED = false;
   const connectionStatus = ref<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const errorMessage = ref('');
   const rfb = shallowRef<RFB | null>(null);
@@ -18,8 +18,6 @@ export function useVncSession(options: VncSessionOptions) {
   const viewOnly = ref(options.viewOnly ?? true);
   const fullscreenFitEnabled = ref(false);
   let restoreViewOnlyAfterFullscreen: boolean | null = null;
-  let initialResizeRetryTimer: ReturnType<typeof setTimeout> | null = null;
-  let initialResizeRestoreTimer: ReturnType<typeof setTimeout> | null = null;
 
   const url = computed(() => String(unref(options.url) ?? '').trim());
   const password = computed(() => String(unref(options.password) ?? ''));
@@ -58,45 +56,11 @@ export function useVncSession(options: VncSessionOptions) {
 
   const applyViewportStrategy = (session: RFB | null = rfb.value) => {
     if (!session) return;
-    // Keep client-side fit as universal fallback; enable remote resize when fullscreen-fit mode is active.
+    // Keep client-side fit as universal fallback while preserving fixed remote desktop resolution.
     session.scaleViewport = true;
     session.clipViewport = false;
-    session.resizeSession = fullscreenFitEnabled.value;
+    session.resizeSession = REMOTE_RESIZE_ENABLED && fullscreenFitEnabled.value;
     session.viewOnly = viewOnly.value;
-  };
-
-  const clearInitialResizeTimers = () => {
-    if (initialResizeRetryTimer !== null) {
-      clearTimeout(initialResizeRetryTimer);
-      initialResizeRetryTimer = null;
-    }
-    if (initialResizeRestoreTimer !== null) {
-      clearTimeout(initialResizeRestoreTimer);
-      initialResizeRestoreTimer = null;
-    }
-  };
-
-  const triggerInitialRemoteResize = (session: RFB) => {
-    clearInitialResizeTimers();
-
-    // noVNC skips remote resize requests while viewOnly=true, so briefly enable control mode.
-    session.viewOnly = false;
-    session.resizeSession = true;
-    window.dispatchEvent(new Event('resize'));
-
-    // Retry once shortly after first layout pass in case container dimensions were late to settle.
-    initialResizeRetryTimer = setTimeout(() => {
-      if (rfb.value !== session) return;
-      window.dispatchEvent(new Event('resize'));
-      initialResizeRetryTimer = null;
-    }, INITIAL_RESIZE_RETRY_DELAY_MS);
-
-    // Restore the intended user mode and fullscreen policy.
-    initialResizeRestoreTimer = setTimeout(() => {
-      if (rfb.value !== session) return;
-      applyViewportStrategy(session);
-      initialResizeRestoreTimer = null;
-    }, INITIAL_RESIZE_RESTORE_DELAY_MS);
   };
 
   const connect = () => {
@@ -160,7 +124,6 @@ export function useVncSession(options: VncSessionOptions) {
         console.log(`[vncSession${label}] connected`);
         if (rfb.value) {
           applyViewportStrategy(rfb.value);
-          triggerInitialRemoteResize(rfb.value);
         }
       });
 
@@ -218,7 +181,6 @@ export function useVncSession(options: VncSessionOptions) {
   };
 
   const cleanupConnection = () => {
-    clearInitialResizeTimers();
     if (rfb.value) {
       rfb.value = null;
     }

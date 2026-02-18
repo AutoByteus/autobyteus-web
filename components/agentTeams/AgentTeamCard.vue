@@ -66,7 +66,7 @@
       <span v-if="teamDef.nodes.length === 0" class="text-xs italic text-slate-500">No members defined</span>
     </div>
 
-    <div class="mt-4 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs text-slate-600 sm:grid-cols-4">
+    <div class="mt-4 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs text-slate-600 sm:grid-cols-3">
       <div>
         <p class="font-medium text-slate-500">Coordinator</p>
         <p class="mt-0.5 truncate text-sm text-slate-800">{{ coordinatorLabel }}</p>
@@ -78,10 +78,6 @@
       <div>
         <p class="font-medium text-slate-500">Nested Teams</p>
         <p class="mt-0.5 text-sm font-semibold text-slate-800">{{ nestedTeamCount }}</p>
-      </div>
-      <div>
-        <p class="font-medium text-slate-500">Updated</p>
-        <p class="mt-0.5 text-sm text-slate-800">{{ updatedLabel }}</p>
       </div>
     </div>
   </div>
@@ -128,47 +124,4 @@ const avatarInitials = computed(() => {
 });
 
 const coordinatorLabel = computed(() => teamDef.value.coordinatorMemberName || 'Not assigned');
-
-const updatedLabel = computed(() => {
-  const value = teamDef.value.updatedAt?.trim();
-  if (!value) {
-    return 'Not tracked';
-  }
-
-  const updatedDate = new Date(value);
-  if (Number.isNaN(updatedDate.getTime())) {
-    return 'Not tracked';
-  }
-
-  const now = Date.now();
-  const diffMs = now - updatedDate.getTime();
-  if (diffMs < 0) {
-    return updatedDate.toLocaleDateString();
-  }
-
-  const minuteMs = 60 * 1000;
-  const hourMs = 60 * minuteMs;
-  const dayMs = 24 * hourMs;
-
-  if (diffMs < minuteMs) {
-    return 'Just now';
-  }
-  if (diffMs < hourMs) {
-    const minutes = Math.floor(diffMs / minuteMs);
-    return `${minutes}m ago`;
-  }
-  if (diffMs < dayMs) {
-    const hours = Math.floor(diffMs / hourMs);
-    return `${hours}h ago`;
-  }
-  if (diffMs < 2 * dayMs) {
-    return 'Yesterday';
-  }
-  if (diffMs < 7 * dayMs) {
-    const days = Math.floor(diffMs / dayMs);
-    return `${days}d ago`;
-  }
-
-  return updatedDate.toLocaleDateString();
-});
 </script>

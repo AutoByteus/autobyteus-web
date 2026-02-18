@@ -21,7 +21,6 @@ export interface AgentTeamDefinition {
   description: string;
   role?: string | null;
   avatarUrl?: string | null;
-  updatedAt?: string | null;
   coordinatorMemberName: string;
   nodes: {
     __typename?: 'TeamMember';
@@ -65,7 +64,6 @@ const normalizeDefinition = (definition: any): AgentTeamDefinition => ({
   description: String(definition?.description ?? ''),
   role: definition?.role ?? null,
   avatarUrl: definition?.avatarUrl ?? null,
-  updatedAt: definition?.updatedAt ?? null,
   coordinatorMemberName: String(definition?.coordinatorMemberName ?? ''),
   nodes: Array.isArray(definition?.nodes)
     ? definition.nodes.map(normalizeTeamMember)

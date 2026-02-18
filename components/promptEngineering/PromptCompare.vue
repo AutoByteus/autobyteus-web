@@ -1,5 +1,5 @@
 <template>
-  <div class="prompt-compare-modal">
+  <div class="prompt-compare-modal" :style="compareModalStyle">
     <div class="h-full flex flex-col">
       <!-- Header with controls -->
       <div class="bg-white border-b p-4 flex justify-between items-center">
@@ -138,6 +138,7 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { diff_match_patch } from 'diff-match-patch';
 import { usePromptStore } from '~/stores/promptStore';
 import ModelBadge from '~/components/promptEngineering/ModelBadge.vue';
+import { useLeftPanel } from '~/composables/useLeftPanel';
 
 const props = defineProps<{  promptIds: string[];
   promptCategory: string;
@@ -148,6 +149,13 @@ const emit = defineEmits<{  (e: 'close'): void;
 }>();
 
 const promptStore = usePromptStore();
+const { isLeftPanelVisible, leftPanelWidth } = useLeftPanel();
+
+const COLLAPSED_LEFT_PANEL_WIDTH = 50;
+
+const compareModalStyle = computed(() => ({
+  '--prompt-compare-left': `${isLeftPanelVisible.value ? leftPanelWidth.value : COLLAPSED_LEFT_PANEL_WIDTH}px`,
+}));
 
 // Local state
 const leftPromptId = ref('');
@@ -337,14 +345,11 @@ watch([leftPromptId, rightPromptId, viewMode], () => {
   z-index: 50;
   background-color: white;
   overflow: auto;
-  /* Add left margin to respect the sidebar */
-  margin-left: 50px; /* Adjust this value based on your sidebar width */
 }
 
-/* Mobile responsiveness */
-@media (max-width: 768px) {
+@media (min-width: 768px) {
   .prompt-compare-modal {
-    margin-left: 0; /* No margin on mobile */
+    left: var(--prompt-compare-left);
   }
 }
 
