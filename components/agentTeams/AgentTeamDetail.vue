@@ -21,6 +21,11 @@
         <p class="text-slate-600">Loading Agent Team Details...</p>
       </div>
 
+      <div v-else-if="deleteSuccessRedirecting" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700">
+        <h3 class="font-bold">Agent Team Deleted</h3>
+        <p>The agent team definition was deleted successfully. Returning to all teams...</p>
+      </div>
+
       <div v-else-if="!teamDef" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
         <h3 class="font-bold">Agent Team Not Found</h3>
         <p>The agent team definition with the specified ID could not be found.</p>
@@ -203,11 +208,13 @@ const notification = ref<{ type: 'success' | 'error'; message: string } | null>(
 const showDeleteConfirm = ref(false);
 const teamIdToDelete = ref<string | null>(null);
 const memberAvatarLoadErrors = ref<Record<string, boolean>>({});
+const deleteSuccessRedirecting = ref(false);
 
 type TeamMemberNode = AgentTeamDefinition['nodes'][number];
 
 watch(teamId, () => {
   memberAvatarLoadErrors.value = {};
+  deleteSuccessRedirecting.value = false;
 });
 
 const teamInitials = computed(() => {
@@ -296,6 +303,7 @@ const onDeleteConfirmed = async () => {
     try {
       const success = await teamStore.deleteAgentTeamDefinition(teamIdToDelete.value);
       if (success) {
+        deleteSuccessRedirecting.value = true;
         showNotification('Agent team definition deleted successfully.', 'success');
         setTimeout(() => emit('navigate', { view: 'team-list' }), 1200);
       } else {
