@@ -227,22 +227,24 @@ export const useAgentTeamDefinitionStore = defineStore('agentTeamDefinition', ()
           cache.modify({
             fields: {
               agentTeamDefinitions(existingDefs: any[], { readField }) {
-                const newDefs = existingDefs.filter(defRef => readField('id', defRef) !== id);
-                agentTeamDefinitions.value = newDefs; // Update local state
-                return newDefs;
-              }
-            }
+                return existingDefs.filter((defRef) => readField('id', defRef) !== id);
+              },
+            },
           });
           cache.evict({ id: cache.identify({ __typename: 'AgentTeamDefinition', id }) });
           cache.gc();
-        }
+        },
       });
 
       if (errors && errors.length > 0) {
-        throw new Error(errors.map(e => e.message).join(', '));
+        throw new Error(errors.map((e) => e.message).join(', '));
       }
 
-      return !!data?.deleteAgentTeamDefinition?.success;
+      const success = !!data?.deleteAgentTeamDefinition?.success;
+      if (success) {
+        agentTeamDefinitions.value = agentTeamDefinitions.value.filter((def) => def.id !== id);
+      }
+      return success;
     } catch (e) {
       error.value = e;
       console.error("Failed to delete agent team definition:", e);

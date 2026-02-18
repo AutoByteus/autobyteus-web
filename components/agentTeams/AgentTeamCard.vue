@@ -63,7 +63,7 @@
       <span v-if="remainingNodesCount > 0" class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
         +{{ remainingNodesCount }} more
       </span>
-      <span v-if="teamDef.nodes.length === 0" class="text-xs italic text-slate-500">No members defined</span>
+      <span v-if="teamNodes.length === 0" class="text-xs italic text-slate-500">No members defined</span>
     </div>
 
     <div class="mt-4 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs text-slate-600 sm:grid-cols-3">
@@ -73,7 +73,7 @@
       </div>
       <div>
         <p class="font-medium text-slate-500">Members</p>
-        <p class="mt-0.5 text-sm font-semibold text-slate-800">{{ teamDef.nodes.length }}</p>
+        <p class="mt-0.5 text-sm font-semibold text-slate-800">{{ teamNodes.length }}</p>
       </div>
       <div>
         <p class="font-medium text-slate-500">Nested Teams</p>
@@ -98,9 +98,12 @@ const avatarLoadError = ref(false);
 
 const MAX_MEMBER_PREVIEW = 4;
 
-const previewNodes = computed(() => teamDef.value.nodes.slice(0, MAX_MEMBER_PREVIEW));
-const remainingNodesCount = computed(() => Math.max(0, teamDef.value.nodes.length - MAX_MEMBER_PREVIEW));
-const nestedTeamCount = computed(() => teamDef.value.nodes.filter((node) => node.referenceType === 'AGENT_TEAM').length);
+const teamNodes = computed(() =>
+  Array.isArray(teamDef.value.nodes) ? teamDef.value.nodes : [],
+);
+const previewNodes = computed(() => teamNodes.value.slice(0, MAX_MEMBER_PREVIEW));
+const remainingNodesCount = computed(() => Math.max(0, teamNodes.value.length - MAX_MEMBER_PREVIEW));
+const nestedTeamCount = computed(() => teamNodes.value.filter((node) => node.referenceType === 'AGENT_TEAM').length);
 
 const avatarUrl = computed(() => (teamDef.value.avatarUrl || '').trim());
 const showAvatarImage = computed(() => Boolean(avatarUrl.value) && !avatarLoadError.value);
