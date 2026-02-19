@@ -2,6 +2,7 @@ import { build, Configuration, Platform, Arch } from 'electron-builder'
 import { generateIcons } from './generateIcons'
 import * as dotenv from 'dotenv'
 import * as path from 'path'
+import { execSync } from 'child_process'
 
 // Load environment variables from .env.local (for Apple credentials)
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
@@ -13,6 +14,7 @@ if (process.env.NO_TIMESTAMP) {
 }
 
 type PlatformType = 'LINUX' | 'WINDOWS' | 'MAC' | 'ALL'
+type BuildFlavor = 'personal' | 'enterprise'
 
 interface BuildConfig {
   config: Configuration,
@@ -37,9 +39,88 @@ function getPlatform(): PlatformType {
 
 const platform: PlatformType = getPlatform()
 
+function normalizeBuildFlavor(value?: string): BuildFlavor | null {
+  if (!value) return null
+
+  const normalized = value.trim().toLowerCase().replace(/[\s_-]+/g, '')
+  if (normalized === 'personal' || normalized === 'autobyteuspersonal') return 'personal'
+  if (normalized === 'enterprise' || normalized === 'autobyteusenterprise') return 'enterprise'
+
+  return null
+}
+
+function resolveFlavorFromBranchName(branchName?: string): BuildFlavor | null {
+  const normalized = branchName?.trim().toLowerCase()
+  if (!normalized) return null
+  if (normalized === 'personal') return 'personal'
+  if (normalized === 'enterprise' || normalized === 'main' || normalized === 'master') return 'enterprise'
+  return null
+}
+
+function resolveFlavorFromGitContext(): BuildFlavor | null {
+  try {
+    const currentRef = execSync('git rev-parse --abbrev-ref HEAD', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim()
+
+    const currentRefFlavor = resolveFlavorFromBranchName(currentRef)
+    if (currentRefFlavor) return currentRefFlavor
+
+    // Detached-head fallback: inspect local/remote branches that contain HEAD.
+    const branches = execSync('git branch --contains HEAD --format="%(refname:short)"', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    })
+      .split('\n')
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+
+    for (const candidate of branches) {
+      const terminalName = candidate.split('/').pop()
+      const inferred = resolveFlavorFromBranchName(terminalName)
+      if (inferred === 'personal') return inferred
+    }
+
+    for (const candidate of branches) {
+      const terminalName = candidate.split('/').pop()
+      const inferred = resolveFlavorFromBranchName(terminalName)
+      if (inferred === 'enterprise') return inferred
+    }
+  } catch {
+    // Intentionally ignore git lookup errors and use deterministic fallback.
+  }
+
+  return null
+}
+
+function resolveBuildFlavor(): BuildFlavor {
+  const explicit = process.env.AUTOBYTEUS_BUILD_FLAVOR
+  if (explicit != null && explicit.trim() !== '') {
+    const normalized = normalizeBuildFlavor(explicit)
+    if (!normalized) {
+      throw new Error(
+        `Unsupported AUTOBYTEUS_BUILD_FLAVOR: "${explicit}". Use "personal" or "enterprise".`
+      )
+    }
+    return normalized
+  }
+
+  return resolveFlavorFromGitContext() ?? 'enterprise'
+}
+
+function resolveArtifactBaseName(flavor: BuildFlavor): string {
+  return flavor === 'personal' ? 'AutoByteus_personal' : 'AutoByteus_enterprise'
+}
+
+const buildFlavor: BuildFlavor = resolveBuildFlavor()
+const artifactBaseName = resolveArtifactBaseName(buildFlavor)
+
 // Log environment information
 console.log('Building with environment:', process.env.NODE_ENV)
 console.log('Using environment file:', process.env.NODE_ENV === 'production' ? '.env.production' : '.env')
+console.log('Resolved build flavor:', buildFlavor)
+console.log('Artifact base name:', artifactBaseName)
 
 const options: Configuration = {
   appId: 'com.autobyteus.app',
@@ -75,11 +156,11 @@ const options: Configuration = {
     }
   ],
   // Default artifact name pattern
-  artifactName: '${productName}_${platform}-${version}.${ext}',
+  artifactName: `${artifactBaseName}_\${platform}-\${version}.\${ext}`,
   win: {
     target: ['nsis'],
     icon: 'build/icons/icon.ico',
-    artifactName: '${productName}_windows-${version}.${ext}'
+    artifactName: `${artifactBaseName}_windows-\${version}.\${ext}`
   },
   nsis: {
     oneClick: false,                    // Allow user to customize installation
@@ -97,7 +178,7 @@ const options: Configuration = {
     target: ['dmg'],
     icon: 'build/icons/icon.icns',
     // Custom naming for macOS builds based on architecture
-    artifactName: '${productName}_macos-${arch}-${version}.${ext}',
+    artifactName: `${artifactBaseName}_macos-\${arch}-\${version}.\${ext}`,
     // Code signing configuration (reads from .env.local)
     identity: process.env.APPLE_SIGNING_IDENTITY || null,
     hardenedRuntime: true,
@@ -118,7 +199,7 @@ const options: Configuration = {
   linux: {
     target: ['AppImage'],
     icon: 'build/icons', // Linux will use the icons directory containing multiple sizes
-    artifactName: '${productName}_linux-${version}.${ext}'
+    artifactName: `${artifactBaseName}_linux-\${version}.\${ext}`
   }
 }
 
@@ -220,7 +301,7 @@ async function main(): Promise<void> {
           ...options,
           mac: {
             ...options.mac,
-            artifactName: `\${productName}_macos-${archName}-\${version}.\${ext}`
+            artifactName: `${artifactBaseName}_macos-${archName}-\${version}.\${ext}`
           }
         });
 
