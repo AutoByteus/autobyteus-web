@@ -67,6 +67,7 @@ export class MacOSServerManager extends BaseServerManager {
     
     const args = [
       serverEntry,
+      `--host`, `0.0.0.0`,
       `--port`, `${this.serverPort}`,
       `--data-dir`, `${this.appDataDir}`
     ]
