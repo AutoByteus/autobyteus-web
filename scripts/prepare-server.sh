@@ -60,6 +60,7 @@ if [ -f "${SERVER_REPO_DIR}/pnpm-lock.yaml" ]; then
 else
   pnpm -C "$SERVER_REPO_DIR" install --no-frozen-lockfile
 fi
+pnpm -C "$SERVER_REPO_DIR" exec prisma generate --schema prisma/schema.prisma
 pnpm -C "$SERVER_REPO_DIR" build
 
 echo -e "\n${YELLOW}Deploying server package into Electron resources...${NC}"
