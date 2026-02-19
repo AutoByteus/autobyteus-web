@@ -16,7 +16,7 @@
         <!-- Title & ID -->
         <div class="flex items-center gap-2">
           <span class="font-bold text-gray-800 text-sm">{{ activity.toolName }}</span>
-          <span class="font-mono text-xs text-gray-600">#{{ shortId }}</span>
+          <span v-if="shortId" class="font-mono text-xs text-gray-600">#{{ shortId }}</span>
         </div>
       </div>
 
@@ -145,7 +145,13 @@ const toggleSection = (section: keyof typeof sectionStates) => {
   sectionStates[section] = !sectionStates[section];
 };
 
-const shortId = computed(() => props.activity.invocationId.slice(0, 6));
+const shortId = computed(() => {
+  const invocationId = props.activity?.invocationId;
+  if (typeof invocationId !== 'string' || invocationId.trim().length === 0) {
+    return null;
+  }
+  return invocationId.slice(0, 6);
+});
 
 const hasInterestingArgs = computed(() => {
   const args = props.activity.arguments;

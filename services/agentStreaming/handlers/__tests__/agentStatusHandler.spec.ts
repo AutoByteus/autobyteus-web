@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleAgentStatus, handleAssistantComplete, handleError } from '../agentStatusHandler';
+import { handleAgentStatus, handleAssistantChunk, handleAssistantComplete, handleError } from '../agentStatusHandler';
 import { AgentStatus } from '~/types/agent/AgentStatus';
 import type { AgentStatusPayload, AssistantCompletePayload, ErrorPayload } from '../../protocol/messageTypes';
 
@@ -82,6 +82,72 @@ describe('agentStatusHandler', () => {
       handleAssistantComplete(payload, mockContext);
 
       expect(aiMsg.isComplete).toBe(true);
+    });
+
+    it('hydrates text segment from assistant-complete payload when no segment stream exists', () => {
+      const payload: AssistantCompletePayload = { content: 'Hello from complete payload' };
+      handleAssistantComplete(payload, mockContext);
+
+      const lastMsg = mockContext.conversation.messages[0];
+      expect(lastMsg).toBeDefined();
+      expect(lastMsg.isComplete).toBe(true);
+      expect(lastMsg.segments).toEqual([
+        {
+          type: 'text',
+          content: 'Hello from complete payload',
+        },
+      ]);
+    });
+
+    it('does not duplicate text segment when streamed text already exists', () => {
+      const aiMsg = {
+        type: 'ai',
+        isComplete: false,
+        segments: [{ type: 'text', content: 'streamed text' }],
+      };
+      mockContext.conversation.messages.push(aiMsg);
+
+      const payload: AssistantCompletePayload = { content: 'fallback text should not duplicate' };
+      handleAssistantComplete(payload, mockContext);
+
+      expect(aiMsg.segments).toEqual([{ type: 'text', content: 'streamed text' }]);
+      expect(aiMsg.isComplete).toBe(true);
+    });
+  });
+
+  describe('handleAssistantChunk', () => {
+    it('appends chunk content into a streaming text segment when no segment stream exists', () => {
+      handleAssistantChunk({ content: 'Hello ', is_complete: false }, mockContext as any);
+      handleAssistantChunk({ content: 'world', is_complete: false }, mockContext as any);
+
+      const aiMsg = mockContext.conversation.messages[0];
+      expect(aiMsg.segments).toEqual([{ type: 'text', content: 'Hello world' }]);
+      expect(aiMsg.isComplete).toBe(false);
+    });
+
+    it('ignores chunk fallback when text segment stream is active', () => {
+      const aiMsg = { type: 'ai', isComplete: false, segments: [{ type: 'text', content: '', _segmentId: 'seg-1' }] };
+      mockContext.conversation.messages.push(aiMsg);
+
+      handleAssistantChunk({ content: 'should-ignore', is_complete: false }, mockContext as any);
+
+      expect(aiMsg.segments).toEqual([{ type: 'text', content: '', _segmentId: 'seg-1' }]);
+    });
+
+    it('continues chunk streaming when only tool segments are stream-tagged', () => {
+      const aiMsg = {
+        type: 'ai',
+        isComplete: false,
+        segments: [{ type: 'tool_call', invocationId: 'inv-1', _segmentId: 'seg-tool-1' }],
+      };
+      mockContext.conversation.messages.push(aiMsg);
+
+      handleAssistantChunk({ content: 'Hello from chunk', is_complete: false }, mockContext as any);
+
+      expect(aiMsg.segments).toEqual([
+        { type: 'tool_call', invocationId: 'inv-1', _segmentId: 'seg-tool-1' },
+        { type: 'text', content: 'Hello from chunk' },
+      ]);
     });
   });
 

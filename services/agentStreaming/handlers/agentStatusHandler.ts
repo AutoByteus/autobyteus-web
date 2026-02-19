@@ -6,10 +6,11 @@
  */
 
 import type { AgentContext } from '~/types/agent/AgentContext';
-import type { ErrorSegment, ToolInvocationLifecycle } from '~/types/segments';
+import type { ErrorSegment, ToolInvocationLifecycle, MediaSegment } from '~/types/segments';
 import type { 
   AgentStatusPayload, 
   ErrorPayload,
+  AssistantChunkPayload,
   AssistantCompletePayload,
 } from '../protocol/messageTypes';
 import { findOrCreateAIMessage, findSegmentById } from './segmentHandler';
@@ -51,12 +52,51 @@ export function handleAgentStatus(
  * Marks the current AI message as complete so the next response starts a new message.
  */
 export function handleAssistantComplete(
-  _payload: AssistantCompletePayload,
+  payload: AssistantCompletePayload,
   context: AgentContext
 ): void {
+  hydrateAssistantCompleteFallbackSegments(payload, context);
   const lastMessage = context.conversation.messages[context.conversation.messages.length - 1];
   if (lastMessage?.type === 'ai') {
     lastMessage.isComplete = true;
+  }
+}
+
+/**
+ * Handle ASSISTANT_CHUNK event.
+ * Uses chunk text for incremental rendering when segment stream is absent.
+ */
+export function handleAssistantChunk(
+  payload: AssistantChunkPayload,
+  context: AgentContext
+): void {
+  const content = typeof payload.content === 'string' ? payload.content : '';
+  const isComplete = payload.is_complete === true;
+
+  if (!content && !isComplete) {
+    return;
+  }
+
+  const aiMessage = findOrCreateAIMessage(context);
+  if (hasSegmentStreamedText(aiMessage)) {
+    // If text itself is segment-streamed, segment events remain authoritative.
+    return;
+  }
+
+  if (content) {
+    const lastSegment = aiMessage.segments[aiMessage.segments.length - 1] as any;
+    if (lastSegment?.type === 'text') {
+      lastSegment.content = `${lastSegment.content ?? ''}${content}`;
+    } else {
+      aiMessage.segments.push({
+        type: 'text',
+        content,
+      });
+    }
+  }
+
+  if (isComplete) {
+    aiMessage.isComplete = true;
   }
 }
 
@@ -154,4 +194,82 @@ function markConversationComplete(context: AgentContext): void {
     lastMessage.isComplete = true;
   }
   context.isSending = false;
+}
+
+function hasSegmentStreamedText(message: { segments: Array<Record<string, unknown>> }): boolean {
+  return message.segments.some((segment) => {
+    const type = (segment as any).type;
+    return (
+      (type === 'text' || type === 'think') &&
+      typeof (segment as any)._segmentId === 'string'
+    );
+  });
+}
+
+function hydrateAssistantCompleteFallbackSegments(
+  payload: AssistantCompletePayload,
+  context: AgentContext,
+): void {
+  const textContent =
+    typeof payload.content === 'string' && payload.content.trim().length > 0
+      ? payload.content
+      : null;
+  const imageUrls = normalizeUrlList(payload.image_urls);
+  const audioUrls = normalizeUrlList(payload.audio_urls);
+  const videoUrls = normalizeUrlList(payload.video_urls);
+
+  if (!textContent && imageUrls.length === 0 && audioUrls.length === 0 && videoUrls.length === 0) {
+    return;
+  }
+
+  const aiMessage = findOrCreateAIMessage(context);
+
+  if (textContent && !hasNonEmptyTextSegment(aiMessage.segments)) {
+    aiMessage.segments.push({
+      type: 'text',
+      content: textContent,
+    });
+  }
+
+  appendMediaSegmentIfMissing(aiMessage.segments, 'image', imageUrls);
+  appendMediaSegmentIfMissing(aiMessage.segments, 'audio', audioUrls);
+  appendMediaSegmentIfMissing(aiMessage.segments, 'video', videoUrls);
+}
+
+function hasNonEmptyTextSegment(segments: Array<{ type: string; content?: string }>): boolean {
+  return segments.some(
+    (segment) => segment.type === 'text' && typeof segment.content === 'string' && segment.content.trim().length > 0,
+  );
+}
+
+function normalizeUrlList(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
+
+function appendMediaSegmentIfMissing(
+  segments: Array<{ type: string; mediaType?: string; urls?: string[] }>,
+  mediaType: MediaSegment['mediaType'],
+  urls: string[],
+): void {
+  if (urls.length === 0) {
+    return;
+  }
+  const alreadyPresent = segments.some(
+    (segment) =>
+      segment.type === 'media' &&
+      segment.mediaType === mediaType &&
+      Array.isArray(segment.urls) &&
+      segment.urls.length > 0,
+  );
+  if (alreadyPresent) {
+    return;
+  }
+  segments.push({
+    type: 'media',
+    mediaType,
+    urls,
+  });
 }

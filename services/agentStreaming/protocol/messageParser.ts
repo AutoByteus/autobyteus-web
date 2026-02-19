@@ -7,6 +7,52 @@
 
 import type { ServerMessage, ClientMessage } from './messageTypes';
 
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
+
+const getPayloadObject = (msg: Record<string, unknown>): Record<string, unknown> => {
+  if (!msg.payload || typeof msg.payload !== 'object' || Array.isArray(msg.payload)) {
+    throw new Error('Message missing object "payload" field');
+  }
+  return msg.payload as Record<string, unknown>;
+};
+
+const validateServerMessageShape = (msg: Record<string, unknown>): void => {
+  if (!isNonEmptyString(msg.type)) {
+    throw new Error('Message missing "type" field');
+  }
+
+  const type = msg.type;
+  if (type === 'SEGMENT_START' || type === 'SEGMENT_CONTENT' || type === 'SEGMENT_END') {
+    const payload = getPayloadObject(msg);
+    if (!isNonEmptyString(payload.id)) {
+      throw new Error(`${type} payload missing non-empty "id"`);
+    }
+    if (type === 'SEGMENT_CONTENT' && typeof payload.delta !== 'string') {
+      throw new Error('SEGMENT_CONTENT payload missing "delta"');
+    }
+  }
+};
+
+const normalizeSegmentIdentifierAlias = (msg: Record<string, unknown>): void => {
+  if (
+    msg.type !== 'SEGMENT_START' &&
+    msg.type !== 'SEGMENT_CONTENT' &&
+    msg.type !== 'SEGMENT_END'
+  ) {
+    return;
+  }
+
+  const payload = getPayloadObject(msg);
+  if (isNonEmptyString(payload.id)) {
+    return;
+  }
+
+  if (isNonEmptyString(payload.segment_id)) {
+    payload.id = payload.segment_id;
+  }
+};
+
 /**
  * Parse a raw JSON string from the WebSocket into a typed ServerMessage.
  * 
@@ -29,12 +75,8 @@ export function parseServerMessage(raw: string): ServerMessage {
 
   const msg = data as Record<string, unknown>;
 
-  if (typeof msg.type !== 'string') {
-    throw new Error('Message missing "type" field');
-  }
-
-  // We trust the backend to send valid payloads matching the type
-  // Runtime validation can be added here if needed
+  normalizeSegmentIdentifierAlias(msg);
+  validateServerMessageShape(msg);
   return msg as unknown as ServerMessage;
 }
 

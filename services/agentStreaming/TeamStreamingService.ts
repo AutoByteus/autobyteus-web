@@ -31,6 +31,7 @@ import {
   handleToolExecutionFailed,
   handleToolLog,
   handleAgentStatus,
+  handleAssistantChunk,
   handleAssistantComplete,
   handleTodoListUpdate,
   handleError,
@@ -217,7 +218,7 @@ export class TeamStreamingService {
       this.logMessage(message);
       this.dispatchMessage(message, this.teamContext);
     } catch (e) {
-      console.error('Failed to parse WebSocket message:', e);
+      console.error('Failed to parse WebSocket message:', e, { raw });
     }
   };
 
@@ -498,7 +499,7 @@ export class TeamStreamingService {
         handleAgentStatus(message.payload, memberContext);
         break;
       case 'ASSISTANT_CHUNK':
-        // Team stream keeps parity with protocol even when chunk events are not rendered.
+        handleAssistantChunk(message.payload, memberContext);
         break;
       case 'ASSISTANT_COMPLETE':
         handleAssistantComplete(message.payload, memberContext);

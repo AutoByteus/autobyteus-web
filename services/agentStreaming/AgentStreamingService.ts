@@ -20,6 +20,7 @@ import {
   handleToolExecutionFailed,
   handleToolLog,
   handleAgentStatus,
+  handleAssistantChunk,
   handleAssistantComplete,
   handleTodoListUpdate,
   handleError,
@@ -156,7 +157,7 @@ export class AgentStreamingService {
       this.logMessage(message);
       this.dispatchMessage(message, this.context);
     } catch (e) {
-      console.error('Failed to parse WebSocket message:', e);
+      console.error('Failed to parse WebSocket message:', e, { raw });
     }
   };
 
@@ -251,6 +252,10 @@ export class AgentStreamingService {
 
       case 'AGENT_STATUS':
         handleAgentStatus(message.payload, context);
+        break;
+
+      case 'ASSISTANT_CHUNK':
+        handleAssistantChunk(message.payload, context);
         break;
 
       case 'ASSISTANT_COMPLETE':
