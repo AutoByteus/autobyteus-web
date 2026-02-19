@@ -12,6 +12,7 @@ import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
 import {
   GetRunProjection,
+  GetTeamMemberRunProjection,
   GetTeamRunResumeConfig,
   ListRunHistory,
   ListTeamRunHistory,
@@ -183,6 +184,10 @@ interface ListTeamRunHistoryQueryData {
 
 interface GetRunProjectionQueryData {
   getRunProjection: RunProjectionPayload;
+}
+
+interface GetTeamMemberRunProjectionQueryData {
+  getTeamMemberRunProjection: RunProjectionPayload;
 }
 
 interface GetTeamRunResumeConfigQueryData {
@@ -1056,18 +1061,21 @@ export const useRunTreeStore = defineStore('runHistory', {
 
         const teamContextStore = useAgentTeamContextsStore();
         const selectionStore = useAgentSelectionStore();
-        const projectionByMemberAgentId = new Map<string, RunProjectionPayload | null>();
+        const projectionByMemberRouteKey = new Map<string, RunProjectionPayload | null>();
         await Promise.all(
           manifest.memberBindings.map(async (binding) => {
-            const memberAgentId = binding.memberAgentId?.trim();
-            if (!memberAgentId) {
+            const normalizedMemberRouteKey = toTeamMemberKey(binding).trim();
+            if (!normalizedMemberRouteKey) {
               return;
             }
 
             try {
-              const projectionResponse = await client.query<GetRunProjectionQueryData>({
-                query: GetRunProjection,
-                variables: { agentId: memberAgentId },
+              const projectionResponse = await client.query<GetTeamMemberRunProjectionQueryData>({
+                query: GetTeamMemberRunProjection,
+                variables: {
+                  teamId,
+                  memberRouteKey: normalizedMemberRouteKey,
+                },
                 fetchPolicy: 'network-only',
               });
 
@@ -1077,16 +1085,16 @@ export const useRunTreeStore = defineStore('runHistory', {
                 );
               }
 
-              projectionByMemberAgentId.set(
-                memberAgentId,
-                projectionResponse.data?.getRunProjection || null,
+              projectionByMemberRouteKey.set(
+                normalizedMemberRouteKey,
+                projectionResponse.data?.getTeamMemberRunProjection || null,
               );
             } catch (projectionError) {
               console.warn(
-                `[runTreeStore] Failed to fetch projection for team member '${binding.memberRouteKey}'`,
+                `[runTreeStore] Failed to fetch team-member projection for '${binding.memberRouteKey}'`,
                 projectionError,
               );
-              projectionByMemberAgentId.set(memberAgentId, null);
+              projectionByMemberRouteKey.set(normalizedMemberRouteKey, null);
             }
           }),
         );
@@ -1112,9 +1120,8 @@ export const useRunTreeStore = defineStore('runHistory', {
             isLocked: resumeConfig.isActive,
           };
           const memberAgentId = binding.memberAgentId || binding.memberRouteKey;
-          const projection = binding.memberAgentId
-            ? projectionByMemberAgentId.get(binding.memberAgentId) || null
-            : null;
+          const projection =
+            projectionByMemberRouteKey.get(toTeamMemberKey(binding)) || null;
           const conversation = projection
             ? buildConversationFromProjection(
               memberAgentId,
@@ -1155,9 +1162,8 @@ export const useRunTreeStore = defineStore('runHistory', {
           const fallbackMember = manifest.memberBindings.find((member) => toTeamMemberKey(member) === memberRouteKey);
           if (fallbackMember) {
             const fallbackMemberAgentId = fallbackMember.memberAgentId || memberRouteKey;
-            const fallbackProjection = fallbackMember.memberAgentId
-              ? projectionByMemberAgentId.get(fallbackMember.memberAgentId) || null
-              : null;
+            const fallbackProjection =
+              projectionByMemberRouteKey.get(toTeamMemberKey(fallbackMember)) || null;
             const fallbackConversation = fallbackProjection
               ? buildConversationFromProjection(
                 fallbackMemberAgentId,
