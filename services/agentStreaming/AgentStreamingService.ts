@@ -20,7 +20,6 @@ import {
   handleToolExecutionFailed,
   handleToolLog,
   handleAgentStatus,
-  handleAssistantChunk,
   handleAssistantComplete,
   handleTodoListUpdate,
   handleError,
@@ -252,10 +251,6 @@ export class AgentStreamingService {
 
       case 'AGENT_STATUS':
         handleAgentStatus(message.payload, context);
-        break;
-
-      case 'ASSISTANT_CHUNK':
-        handleAssistantChunk(message.payload, context);
         break;
 
       case 'ASSISTANT_COMPLETE':

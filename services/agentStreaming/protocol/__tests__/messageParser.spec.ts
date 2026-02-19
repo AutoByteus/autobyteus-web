@@ -26,7 +26,7 @@ describe('messageParser', () => {
     expect(() => parseServerMessage(raw)).toThrow('SEGMENT_START payload missing non-empty "id"');
   });
 
-  it('accepts SEGMENT_START when only legacy segment_id is present', () => {
+  it('throws when SEGMENT_START only provides segment_id', () => {
     const raw = JSON.stringify({
       type: 'SEGMENT_START',
       payload: {
@@ -35,9 +35,7 @@ describe('messageParser', () => {
       },
     });
 
-    const parsed = parseServerMessage(raw);
-    expect(parsed.type).toBe('SEGMENT_START');
-    expect((parsed as any).payload.id).toBe('seg-legacy');
+    expect(() => parseServerMessage(raw)).toThrow('SEGMENT_START payload missing non-empty "id"');
   });
 
   it('throws when SEGMENT_CONTENT delta is missing', () => {

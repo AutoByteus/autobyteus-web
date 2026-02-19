@@ -23,7 +23,6 @@ export type ServerMessageType =
   | 'TOOL_EXECUTION_SUCCEEDED'
   | 'TOOL_EXECUTION_FAILED'
   | 'TOOL_LOG'
-  | 'ASSISTANT_CHUNK'
   | 'ASSISTANT_COMPLETE'
   | 'TODO_LIST_UPDATE'
   | 'TASK_PLAN_EVENT'
@@ -180,18 +179,6 @@ export interface ToolLogPayload {
   agent_id?: string;
 }
 
-export interface AssistantChunkPayload {
-  content?: string | null;
-  reasoning?: string | null;
-  is_complete: boolean;
-  usage?: Record<string, any>;
-  image_urls?: string[];
-  audio_urls?: string[];
-  video_urls?: string[];
-  agent_name?: string;
-  agent_id?: string;
-}
-
 export interface AssistantCompletePayload {
   content?: string | null;
   reasoning?: string | null;
@@ -298,7 +285,6 @@ export type ServerMessage =
   | { type: 'TOOL_EXECUTION_SUCCEEDED'; payload: ToolExecutionSucceededPayload }
   | { type: 'TOOL_EXECUTION_FAILED'; payload: ToolExecutionFailedPayload }
   | { type: 'TOOL_LOG'; payload: ToolLogPayload }
-  | { type: 'ASSISTANT_CHUNK'; payload: AssistantChunkPayload }
   | { type: 'ASSISTANT_COMPLETE'; payload: AssistantCompletePayload }
   | { type: 'TODO_LIST_UPDATE'; payload: TodoListUpdatePayload }
   | { type: 'TASK_PLAN_EVENT'; payload: TaskPlanEventPayload }

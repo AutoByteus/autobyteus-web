@@ -10,7 +10,6 @@ import type { ErrorSegment, ToolInvocationLifecycle, MediaSegment } from '~/type
 import type { 
   AgentStatusPayload, 
   ErrorPayload,
-  AssistantChunkPayload,
   AssistantCompletePayload,
 } from '../protocol/messageTypes';
 import { findOrCreateAIMessage, findSegmentById } from './segmentHandler';
@@ -61,46 +60,6 @@ export function handleAssistantComplete(
     lastMessage.isComplete = true;
   }
 }
-
-/**
- * Handle ASSISTANT_CHUNK event.
- * Uses chunk text for incremental rendering when segment stream is absent.
- */
-export function handleAssistantChunk(
-  payload: AssistantChunkPayload,
-  context: AgentContext
-): void {
-  const content = typeof payload.content === 'string' ? payload.content : '';
-  const isComplete = payload.is_complete === true;
-
-  if (!content && !isComplete) {
-    return;
-  }
-
-  const aiMessage = findOrCreateAIMessage(context);
-  if (hasSegmentStreamedText(aiMessage)) {
-    // If text itself is segment-streamed, segment events remain authoritative.
-    return;
-  }
-
-  if (content) {
-    const lastSegment = aiMessage.segments[aiMessage.segments.length - 1] as any;
-    if (lastSegment?.type === 'text') {
-      lastSegment.content = `${lastSegment.content ?? ''}${content}`;
-    } else {
-      aiMessage.segments.push({
-        type: 'text',
-        content,
-      });
-    }
-  }
-
-  if (isComplete) {
-    aiMessage.isComplete = true;
-  }
-}
-
-
 
 /**
  * Handle ERROR event.
@@ -194,16 +153,6 @@ function markConversationComplete(context: AgentContext): void {
     lastMessage.isComplete = true;
   }
   context.isSending = false;
-}
-
-function hasSegmentStreamedText(message: { segments: Array<Record<string, unknown>> }): boolean {
-  return message.segments.some((segment) => {
-    const type = (segment as any).type;
-    return (
-      (type === 'text' || type === 'think') &&
-      typeof (segment as any)._segmentId === 'string'
-    );
-  });
 }
 
 function hydrateAssistantCompleteFallbackSegments(

@@ -18,7 +18,6 @@ export {
 
 export {
   handleAgentStatus,
-  handleAssistantChunk,
   handleAssistantComplete,
   handleError,
 } from './agentStatusHandler';

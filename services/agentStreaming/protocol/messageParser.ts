@@ -34,25 +34,6 @@ const validateServerMessageShape = (msg: Record<string, unknown>): void => {
   }
 };
 
-const normalizeSegmentIdentifierAlias = (msg: Record<string, unknown>): void => {
-  if (
-    msg.type !== 'SEGMENT_START' &&
-    msg.type !== 'SEGMENT_CONTENT' &&
-    msg.type !== 'SEGMENT_END'
-  ) {
-    return;
-  }
-
-  const payload = getPayloadObject(msg);
-  if (isNonEmptyString(payload.id)) {
-    return;
-  }
-
-  if (isNonEmptyString(payload.segment_id)) {
-    payload.id = payload.segment_id;
-  }
-};
-
 /**
  * Parse a raw JSON string from the WebSocket into a typed ServerMessage.
  * 
@@ -75,7 +56,6 @@ export function parseServerMessage(raw: string): ServerMessage {
 
   const msg = data as Record<string, unknown>;
 
-  normalizeSegmentIdentifierAlias(msg);
   validateServerMessageShape(msg);
   return msg as unknown as ServerMessage;
 }
