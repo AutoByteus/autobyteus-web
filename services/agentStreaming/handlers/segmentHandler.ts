@@ -41,6 +41,10 @@ export function handleSegmentStart(
   payload: SegmentStartPayload,
   context: AgentContext
 ): void {
+  if (typeof payload.id !== 'string' || payload.id.trim().length === 0) {
+    console.warn('[SegmentHandler] Dropping SEGMENT_START with invalid id', payload);
+    return;
+  }
   const aiMessage = findOrCreateAIMessage(context);
   const segment = createSegmentFromPayload(payload);
 
@@ -117,6 +121,10 @@ export function handleSegmentContent(
   payload: SegmentContentPayload,
   context: AgentContext
 ): void {
+  if (typeof payload.id !== 'string' || payload.id.trim().length === 0) {
+    console.warn('[SegmentHandler] Dropping SEGMENT_CONTENT with invalid id', payload);
+    return;
+  }
   const segment = findSegmentById(context, payload.id);
   if (!segment) {
     console.warn(`Segment not found for content event: ${payload.id}`);
@@ -139,6 +147,10 @@ export function handleSegmentEnd(
   payload: SegmentEndPayload,
   context: AgentContext
 ): void {
+  if (typeof payload.id !== 'string' || payload.id.trim().length === 0) {
+    console.warn('[SegmentHandler] Dropping SEGMENT_END with invalid id', payload);
+    return;
+  }
   const segment = findSegmentById(context, payload.id);
   if (!segment) {
     console.warn(`Segment not found for end event: ${payload.id}`);

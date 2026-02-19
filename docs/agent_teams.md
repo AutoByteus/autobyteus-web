@@ -238,6 +238,17 @@ Handles team execution and real-time communication:
 | `terminateTeamInstance(teamId)`   | Stop running team instance          |
 | `sendMessageToFocusedMember(...)` | Send message to specific member     |
 
+### Historical Team Member Hydration
+
+When opening team history from the workspace run tree, member conversations are now hydrated through a
+team-aware projection query (`getTeamMemberRunProjection(teamId, memberRouteKey)`), not a raw agent-id query.
+
+Why this matters:
+
+- Local members still resolve from host-local memory projection.
+- Remote members can resolve via host-mediated remote node fallback.
+- The UX is consistent for mixed teams (local + remote members) when restoring historical runs.
+
 ## User Flows
 
 ### Create Agent Team

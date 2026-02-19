@@ -88,7 +88,6 @@ const MEMBER_SCOPED_MESSAGE_TYPES = new Set<ServerMessage['type']>([
   'TOOL_EXECUTION_FAILED',
   'TOOL_LOG',
   'AGENT_STATUS',
-  'ASSISTANT_CHUNK',
   'ASSISTANT_COMPLETE',
   'TODO_LIST_UPDATE',
   'ERROR',
@@ -217,7 +216,7 @@ export class TeamStreamingService {
       this.logMessage(message);
       this.dispatchMessage(message, this.teamContext);
     } catch (e) {
-      console.error('Failed to parse WebSocket message:', e);
+      console.error('Failed to parse WebSocket message:', e, { raw });
     }
   };
 
@@ -496,9 +495,6 @@ export class TeamStreamingService {
         break;
       case 'AGENT_STATUS':
         handleAgentStatus(message.payload, memberContext);
-        break;
-      case 'ASSISTANT_CHUNK':
-        // Team stream keeps parity with protocol even when chunk events are not rendered.
         break;
       case 'ASSISTANT_COMPLETE':
         handleAssistantComplete(message.payload, memberContext);

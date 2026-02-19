@@ -156,7 +156,7 @@ export class AgentStreamingService {
       this.logMessage(message);
       this.dispatchMessage(message, this.context);
     } catch (e) {
-      console.error('Failed to parse WebSocket message:', e);
+      console.error('Failed to parse WebSocket message:', e, { raw });
     }
   };
 

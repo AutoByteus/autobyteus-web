@@ -16,7 +16,7 @@
         <!-- Title & ID -->
         <div class="flex items-center gap-2">
           <span class="font-bold text-gray-800 text-sm">{{ activity.toolName }}</span>
-          <span class="font-mono text-xs text-gray-600">#{{ shortId }}</span>
+          <span v-if="shortId" class="font-mono text-xs text-gray-600">#{{ shortId }}</span>
         </div>
       </div>
 
@@ -145,7 +145,13 @@ const toggleSection = (section: keyof typeof sectionStates) => {
   sectionStates[section] = !sectionStates[section];
 };
 
-const shortId = computed(() => props.activity.invocationId.slice(0, 6));
+const shortId = computed(() => {
+  const invocationId = props.activity?.invocationId;
+  if (typeof invocationId !== 'string' || invocationId.trim().length === 0) {
+    return null;
+  }
+  return invocationId.slice(0, 6);
+});
 
 const hasInterestingArgs = computed(() => {
   const args = props.activity.arguments;
@@ -210,7 +216,7 @@ const containerClasses = computed(() => {
             glowClass = 'ring-2 ring-red-500 ring-inset shadow-[inset_0_0_20px_rgba(239,68,68,0.6),inset_0_0_40px_rgba(239,68,68,0.4),inset_0_0_80px_rgba(239,68,68,0.2)] bg-red-50/50';
             break;
         case 'awaiting-approval':
-            glowClass = 'ring-2 ring-amber-500 ring-inset shadow-[inset_0_0_20px_rgba(245,158,11,0.6),inset_0_0_40px_rgba(245,158,11,0.4),inset_0_0_80px_rgba(245,158,11,0.2)] bg-amber-50/50';
+            glowClass = 'ring-2 ring-amber-500 ring-inset shadow-none bg-white';
             break;
         case 'approved':
             glowClass = 'ring-2 ring-cyan-500 ring-inset shadow-[inset_0_0_20px_rgba(6,182,212,0.6),inset_0_0_40px_rgba(6,182,212,0.4),inset_0_0_80px_rgba(6,182,212,0.2)] bg-cyan-50/50';

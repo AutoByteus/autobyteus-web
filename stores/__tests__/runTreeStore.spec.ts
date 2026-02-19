@@ -151,6 +151,7 @@ vi.mock('~/graphql/queries/runHistoryQueries', () => ({
   ListRunHistory: 'ListRunHistory',
   ListTeamRunHistory: 'ListTeamRunHistory',
   GetRunProjection: 'GetRunProjection',
+  GetTeamMemberRunProjection: 'GetTeamMemberRunProjection',
   GetRunResumeConfig: 'GetRunResumeConfig',
   GetTeamRunResumeConfig: 'GetTeamRunResumeConfig',
 }));
@@ -1112,11 +1113,11 @@ describe('runHistoryStore', () => {
           errors: [],
         };
       }
-      if (query === 'GetRunProjection') {
-        if (variables?.agentId === 'ag-1') {
+      if (query === 'GetTeamMemberRunProjection') {
+        if (variables?.teamId === 'team-1' && variables?.memberRouteKey === 'coordinator') {
           return {
             data: {
-              getRunProjection: {
+              getTeamMemberRunProjection: {
                 agentId: 'ag-1',
                 summary: 'Coordinator history',
                 lastActivityAt: '2026-01-01T00:01:00.000Z',
@@ -1129,10 +1130,10 @@ describe('runHistoryStore', () => {
             errors: [],
           };
         }
-        if (variables?.agentId === 'ag-2') {
+        if (variables?.teamId === 'team-1' && variables?.memberRouteKey === 'student') {
           return {
             data: {
-              getRunProjection: {
+              getTeamMemberRunProjection: {
                 agentId: 'ag-2',
                 summary: 'Student history',
                 lastActivityAt: '2026-01-01T00:02:00.000Z',

@@ -28,6 +28,23 @@ vi.mock('~/stores/agentDefinitionStore', () => ({
     })
 }));
 
+vi.mock('~/stores/federatedCatalogStore', () => ({
+    useFederatedCatalogStore: () => ({
+        findAgentByNodeAndId: (homeNodeId: string, id: string) => {
+            if (homeNodeId === 'node-docker-8001' && id === 'def-2') {
+                return {
+                    homeNodeId,
+                    definitionId: id,
+                    name: 'Student',
+                    role: 'Student',
+                    description: 'Remote student',
+                };
+            }
+            return null;
+        },
+    }),
+}));
+
 describe('agentTeamContextsStore', () => {
     beforeEach(() => {
         setActivePinia(createPinia());
@@ -75,6 +92,7 @@ describe('agentTeamContextsStore', () => {
              const agent2 = team?.members.get('agent-2');
              expect(agent2?.config.llmModelIdentifier).toBe('claude-3'); // Override
              expect(agent2?.config.workspaceId).toBeNull();
+             expect(agent2?.config.agentDefinitionName).toBe('Student');
 
              expect(selectionStore.selectedInstanceId).toBe(teamId);
              expect(selectionStore.selectedType).toBe('team');

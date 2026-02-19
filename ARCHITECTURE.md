@@ -11,7 +11,7 @@ The system follows a modern client-server architecture, packaged as a desktop ap
 ```mermaid
 graph TD
     User[User] -->|Interacts| Client[Frontend Client (Nuxt/Vue)]
-    Client -->|GraphQL/REST| Server[Backend Server (Python)]
+    Client -->|GraphQL/REST| Server[Backend Server (TypeScript/Fastify)]
     Client -->|WebSocket| Server
     Client -->|IPC| Electron[Electron Main Process]
     
@@ -38,7 +38,7 @@ Built with **Nuxt 3** and **Vue 3**, the frontend is responsible for state manag
 *   **Real-time Updates**: heavily relies on WebSockets for streaming agent responses and file system events.
 
 ### 2. Backend Server
-A Python-based server that handles the heavy lifting: LLM inference (via providers), tool execution, and workspace management.
+A TypeScript/Fastify server that handles the heavy lifting: LLM inference (via providers), tool execution, and workspace management.
 *   **Communication**: Exposes GraphQL (for CRUD) and WebSocket endpoints.
 *   **Execution**: Manages the lifecycle of agents and teams.
 

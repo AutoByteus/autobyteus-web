@@ -5,6 +5,8 @@ import { setActivePinia } from 'pinia';
 import AgentTeamDetail from '../AgentTeamDetail.vue';
 import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
 import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
+import { useFederatedCatalogStore } from '~/stores/federatedCatalogStore';
+import { useNodeStore } from '~/stores/nodeStore';
 
 const AgentDeleteConfirmDialogStub = {
   name: 'AgentDeleteConfirmDialog',
@@ -19,7 +21,13 @@ function setRouterMock(): void {
   }));
 }
 
-async function mountComponent(options?: { memberAvatarUrl?: string | null }) {
+async function mountComponent(options?: {
+  memberAvatarUrl?: string | null;
+  memberHomeNodeId?: string;
+  memberDefinitionName?: string;
+  federatedAgentName?: string | null;
+  remoteNodeName?: string;
+}) {
   const pinia = createTestingPinia({
     createSpy: vi.fn,
     stubActions: true,
@@ -40,6 +48,7 @@ async function mountComponent(options?: { memberAvatarUrl?: string | null }) {
           memberName: 'superagent',
           referenceId: 'agent-1',
           referenceType: 'AGENT',
+          homeNodeId: options?.memberHomeNodeId ?? 'embedded-local',
         },
       ],
     },
@@ -49,7 +58,7 @@ async function mountComponent(options?: { memberAvatarUrl?: string | null }) {
   agentStore.agentDefinitions = [
     {
       id: 'agent-1',
-      name: 'SuperAgent',
+      name: options?.memberDefinitionName ?? 'SuperAgent',
       role: 'Coordinator',
       description: 'Lead coordinator',
       avatarUrl: options?.memberAvatarUrl ?? null,
@@ -64,6 +73,41 @@ async function mountComponent(options?: { memberAvatarUrl?: string | null }) {
       prompts: [],
     },
   ] as any;
+
+  const federatedCatalogStore = useFederatedCatalogStore();
+  (federatedCatalogStore.findAgentByNodeAndId as any).mockImplementation((homeNodeId: string, definitionId: string) => {
+    if (
+      options?.federatedAgentName &&
+      homeNodeId === (options.memberHomeNodeId ?? 'embedded-local') &&
+      definitionId === 'agent-1'
+    ) {
+      return {
+        homeNodeId,
+        definitionId,
+        name: options.federatedAgentName,
+        role: 'Remote role',
+        description: 'Remote description',
+      };
+    }
+    return null;
+  });
+
+  const nodeStore = useNodeStore();
+  vi.spyOn(nodeStore, 'getNodeById').mockImplementation((nodeId: string) => {
+    if (nodeId === 'embedded-local') {
+      return {
+        id: 'embedded-local',
+        name: 'Embedded Node',
+      } as any;
+    }
+    if (nodeId === (options?.memberHomeNodeId ?? 'node-docker-8001')) {
+      return {
+        id: nodeId,
+        name: options?.remoteNodeName ?? 'Docker 8001',
+      } as any;
+    }
+    return null;
+  });
 
   const wrapper = mount(AgentTeamDetail, {
     props: {
@@ -110,5 +154,34 @@ describe('AgentTeamDetail', () => {
     const memberInitials = wrapper.find('article .h-9.w-9 span');
     expect(memberInitials.exists()).toBe(true);
     expect(memberInitials.text()).toBe('SU');
+  });
+
+  it('shows embedded member source node label', async () => {
+    const wrapper = await mountComponent({
+      memberHomeNodeId: 'embedded-local',
+    });
+
+    expect(wrapper.text()).toContain('Node: Embedded Node');
+  });
+
+  it('shows remote member source node label', async () => {
+    const wrapper = await mountComponent({
+      memberHomeNodeId: 'node-docker-8001',
+      remoteNodeName: 'Docker 8001',
+      federatedAgentName: 'Student',
+    });
+
+    expect(wrapper.text()).toContain('Node: Docker 8001');
+  });
+
+  it('prefers federated member name for remote members over local id-colliding definition name', async () => {
+    const wrapper = await mountComponent({
+      memberHomeNodeId: 'node-docker-8001',
+      memberDefinitionName: 'Reflective Storyteller',
+      federatedAgentName: 'Student',
+    });
+
+    expect(wrapper.text()).toContain('Blueprint: Student');
+    expect(wrapper.text()).not.toContain('Blueprint: Reflective Storyteller');
   });
 });

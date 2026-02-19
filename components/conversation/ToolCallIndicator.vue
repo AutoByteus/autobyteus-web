@@ -132,7 +132,7 @@ const statusClasses = computed(() => {
     case 'approved':
       return 'bg-white border-cyan-200';
     case 'awaiting-approval':
-      return 'bg-amber-50 border-amber-200';
+      return 'bg-white border-amber-200';
     case 'denied':
       return 'bg-white border-gray-200 opacity-75';
     default:

@@ -61,6 +61,15 @@ const warnSegmentMissing = (eventType: string, invocationId: string): void => {
   console.warn(`[toolLifecycleHandler] Segment not found for ${eventType}: ${invocationId}`);
 };
 
+const syncActivityToolName = (
+  context: AgentContext,
+  invocationId: string,
+  toolName: string,
+): void => {
+  const activityStore = useAgentActivityStore();
+  activityStore.updateActivityToolName(context.state.agentId, invocationId, toolName);
+};
+
 const mergeArguments = (
   segment: ToolCallSegment | WriteFileSegment | TerminalCommandSegment | EditFileSegment,
   argumentsPayload: Record<string, any>,
@@ -109,6 +118,7 @@ export function handleToolApprovalRequested(
 
   const transitioned = applyApprovalRequestedState(segment);
   const activityStore = useAgentActivityStore();
+  syncActivityToolName(context, parsed.invocationId, parsed.toolName);
   activityStore.updateActivityArguments(context.state.agentId, parsed.invocationId, parsed.arguments);
   if (transitioned) {
     activityStore.updateActivityStatus(context.state.agentId, parsed.invocationId, 'awaiting-approval');
@@ -132,6 +142,7 @@ export function handleToolApproved(payload: ToolApprovedPayload, context: AgentC
   if (!segment.toolName) {
     segment.toolName = parsed.toolName;
   }
+  syncActivityToolName(context, parsed.invocationId, parsed.toolName);
 
   const transitioned = applyApprovedState(segment);
   if (transitioned) {
@@ -157,6 +168,7 @@ export function handleToolDenied(payload: ToolDeniedPayload, context: AgentConte
   if (!segment.toolName) {
     segment.toolName = parsed.toolName;
   }
+  syncActivityToolName(context, parsed.invocationId, parsed.toolName);
 
   const transitioned = applyDeniedState(segment, parsed.reason, parsed.error);
   if (transitioned) {
@@ -191,6 +203,7 @@ export function handleToolExecutionStarted(
 
   const transitioned = applyExecutionStartedState(segment);
   const activityStore = useAgentActivityStore();
+  syncActivityToolName(context, parsed.invocationId, parsed.toolName);
   activityStore.updateActivityArguments(context.state.agentId, parsed.invocationId, parsed.arguments);
   if (transitioned) {
     activityStore.updateActivityStatus(context.state.agentId, parsed.invocationId, 'executing');
@@ -219,6 +232,7 @@ export function handleToolExecutionSucceeded(
   if (!segment.toolName) {
     segment.toolName = parsed.toolName;
   }
+  syncActivityToolName(context, parsed.invocationId, parsed.toolName);
 
   const transitioned = applyExecutionSucceededState(segment, parsed.result);
   if (transitioned) {
@@ -247,6 +261,7 @@ export function handleToolExecutionFailed(
   if (!segment.toolName) {
     segment.toolName = parsed.toolName;
   }
+  syncActivityToolName(context, parsed.invocationId, parsed.toolName);
 
   const transitioned = applyExecutionFailedState(segment, parsed.error);
   if (transitioned) {
@@ -271,5 +286,6 @@ export function handleToolLog(payload: ToolLogPayload, context: AgentContext): v
 
   appendLog(segment, parsed.logEntry);
   const activityStore = useAgentActivityStore();
+  syncActivityToolName(context, parsed.invocationId, parsed.toolName);
   activityStore.addActivityLog(context.state.agentId, parsed.invocationId, parsed.logEntry);
 }

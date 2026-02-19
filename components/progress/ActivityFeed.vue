@@ -34,8 +34,8 @@
       
       <div v-else>
         <ActivityItem 
-          v-for="activity in activities" 
-          :key="activity.invocationId" 
+          v-for="(activity, index) in activities" 
+          :key="activity.invocationId || `activity-${index}`" 
           :activity="activity"
           :isHighlighted="activity.invocationId === highlightedId"
           :ref="(el) => setItemRef(activity.invocationId, el)"
@@ -76,6 +76,7 @@ const feedContainer = ref<HTMLElement | null>(null);
 const itemRefs = ref<Record<string, any>>({});
 
 const setItemRef = (id: string, el: any) => {
+  if (!id) return;
   if (el) itemRefs.value[id] = el;
 };
 

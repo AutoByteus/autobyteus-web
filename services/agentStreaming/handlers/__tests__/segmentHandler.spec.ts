@@ -38,6 +38,25 @@ describe('segmentHandler', () => {
   });
 
   describe('handleSegmentStart', () => {
+
+
+    it('should drop SEGMENT_START when id is missing', () => {
+      const payload = {
+        id: '',
+        segment_type: 'tool_call',
+        metadata: { tool_name: 'read_file' },
+      } as unknown as SegmentStartPayload;
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      handleSegmentStart(payload, mockContext);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[SegmentHandler] Dropping SEGMENT_START with invalid id',
+        payload,
+      );
+      expect(mockActivityStore.addActivity).not.toHaveBeenCalled();
+    });
+
     it('should correctly set toolName from metadata for tool_call segments', () => {
       const payload: SegmentStartPayload = {
         id: 'test-id',

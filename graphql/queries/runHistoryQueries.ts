@@ -86,3 +86,14 @@ export const GetTeamRunResumeConfig = gql`
     }
   }
 `;
+
+export const GetTeamMemberRunProjection = gql`
+  query GetTeamMemberRunProjection($teamId: String!, $memberRouteKey: String!) {
+    getTeamMemberRunProjection(teamId: $teamId, memberRouteKey: $memberRouteKey) {
+      agentId
+      summary
+      lastActivityAt
+      conversation
+    }
+  }
+`;

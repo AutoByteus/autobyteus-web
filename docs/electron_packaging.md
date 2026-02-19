@@ -257,9 +257,18 @@ const options: Configuration = {
 
 | Platform | Target         | Artifact Pattern                        |
 | -------- | -------------- | --------------------------------------- |
-| Linux    | AppImage       | `AutoByteus_linux-{version}.AppImage`   |
-| Windows  | NSIS installer | `AutoByteus_windows-{version}.exe`      |
-| macOS    | ZIP archive    | `AutoByteus_macos-{arch}-{version}.zip` |
+| Linux    | AppImage       | `AutoByteus_<flavor>_linux-{version}.AppImage`   |
+| Windows  | NSIS installer | `AutoByteus_<flavor>_windows-{version}.exe`      |
+| macOS    | DMG archive    | `AutoByteus_<flavor>_macos-{arch}-{version}.dmg` |
+
+Flavor resolution:
+
+- `personal` -> `AutoByteus_personal`
+- `enterprise` -> `AutoByteus_enterprise`
+- Resolution order in `build/scripts/build.ts`:
+  1. `AUTOBYTEUS_BUILD_FLAVOR` env override (`personal` or `enterprise`)
+  2. Git context inference (`personal` / `enterprise` branch detection)
+  3. Safe fallback: `enterprise`
 
 ### Build Commands
 

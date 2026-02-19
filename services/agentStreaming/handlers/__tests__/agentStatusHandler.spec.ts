@@ -83,6 +83,36 @@ describe('agentStatusHandler', () => {
 
       expect(aiMsg.isComplete).toBe(true);
     });
+
+    it('hydrates text segment from assistant-complete payload when no segment stream exists', () => {
+      const payload: AssistantCompletePayload = { content: 'Hello from complete payload' };
+      handleAssistantComplete(payload, mockContext);
+
+      const lastMsg = mockContext.conversation.messages[0];
+      expect(lastMsg).toBeDefined();
+      expect(lastMsg.isComplete).toBe(true);
+      expect(lastMsg.segments).toEqual([
+        {
+          type: 'text',
+          content: 'Hello from complete payload',
+        },
+      ]);
+    });
+
+    it('does not duplicate text segment when streamed text already exists', () => {
+      const aiMsg = {
+        type: 'ai',
+        isComplete: false,
+        segments: [{ type: 'text', content: 'streamed text' }],
+      };
+      mockContext.conversation.messages.push(aiMsg);
+
+      const payload: AssistantCompletePayload = { content: 'fallback text should not duplicate' };
+      handleAssistantComplete(payload, mockContext);
+
+      expect(aiMsg.segments).toEqual([{ type: 'text', content: 'streamed text' }]);
+      expect(aiMsg.isComplete).toBe(true);
+    });
   });
 
   describe('handleError', () => {
