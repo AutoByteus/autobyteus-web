@@ -216,7 +216,7 @@ const containerClasses = computed(() => {
             glowClass = 'ring-2 ring-red-500 ring-inset shadow-[inset_0_0_20px_rgba(239,68,68,0.6),inset_0_0_40px_rgba(239,68,68,0.4),inset_0_0_80px_rgba(239,68,68,0.2)] bg-red-50/50';
             break;
         case 'awaiting-approval':
-            glowClass = 'ring-2 ring-amber-500 ring-inset shadow-[inset_0_0_20px_rgba(245,158,11,0.6),inset_0_0_40px_rgba(245,158,11,0.4),inset_0_0_80px_rgba(245,158,11,0.2)] bg-amber-50/50';
+            glowClass = 'ring-2 ring-amber-500 ring-inset shadow-none bg-white';
             break;
         case 'approved':
             glowClass = 'ring-2 ring-cyan-500 ring-inset shadow-[inset_0_0_20px_rgba(6,182,212,0.6),inset_0_0_40px_rgba(6,182,212,0.4),inset_0_0_80px_rgba(6,182,212,0.2)] bg-cyan-50/50';
