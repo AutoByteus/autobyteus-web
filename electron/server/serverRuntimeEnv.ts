@@ -13,8 +13,7 @@ export function buildServerRuntimeEnv(
   const dbPath = path.join(appDataDir, 'db', 'production.db')
 
   return {
-    // Ensure Prisma initializes against the runtime data dir, not packaged .env defaults.
-    DB_NAME: dbPath,
+    // Ensure Prisma uses runtime server-data DB path from process start.
     DATABASE_URL: toPrismaSqliteUrl(dbPath),
     PERSISTENCE_PROVIDER: baseEnv.PERSISTENCE_PROVIDER ?? 'sqlite',
     DB_TYPE: baseEnv.DB_TYPE ?? 'sqlite',

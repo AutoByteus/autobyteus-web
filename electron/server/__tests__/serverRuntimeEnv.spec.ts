@@ -9,7 +9,6 @@ describe('buildServerRuntimeEnv', () => {
       {}
     )
 
-    expect(env.DB_NAME).toBe('/Users/tester/.autobyteus/server-data/db/production.db')
     expect(env.DATABASE_URL).toBe('file:/Users/tester/.autobyteus/server-data/db/production.db')
     expect(env.PERSISTENCE_PROVIDER).toBe('sqlite')
     expect(env.DB_TYPE).toBe('sqlite')
@@ -23,7 +22,6 @@ describe('buildServerRuntimeEnv', () => {
       {}
     )
 
-    expect(env.DB_NAME).toContain('production.db')
     expect(env.DATABASE_URL).toBe('file:/C:/Users/tester/.autobyteus/server-data/db/production.db')
   })
 
