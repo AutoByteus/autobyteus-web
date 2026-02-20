@@ -7,6 +7,7 @@ import { BaseServerManager } from './baseServerManager'
 import { logger } from '../logger'
 import { getLocalIp } from '../utils/networkUtils'
 import { getLoginShellPath } from '../utils/shellEnv'
+import { buildServerRuntimeEnv } from './serverRuntimeEnv'
 
 export class MacOSServerManager extends BaseServerManager {
   /**
@@ -45,6 +46,7 @@ export class MacOSServerManager extends BaseServerManager {
       ELECTRON_RUN_AS_NODE: '1',
       PORT: this.serverPort.toString(),
       SERVER_PORT: this.serverPort.toString(),
+      ...buildServerRuntimeEnv(this.appDataDir, process.env),
       // Explicitly provide the server with its public-facing URL.
       AUTOBYTEUS_SERVER_HOST: publicServerUrl,
       // Embedded Electron server is the default discovery registry node.
