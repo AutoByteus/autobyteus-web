@@ -5,6 +5,7 @@ import isDev from 'electron-is-dev'
 import { BaseServerManager } from './baseServerManager'
 import { logger } from '../logger'
 import { getLocalIp } from '../utils/networkUtils'
+import { buildServerRuntimeEnv } from './serverRuntimeEnv'
 
 export class WindowsServerManager extends BaseServerManager {
   private async waitForProcessExit(proc: ChildProcess, timeoutMs: number): Promise<boolean> {
@@ -57,8 +58,7 @@ export class WindowsServerManager extends BaseServerManager {
       ELECTRON_RUN_AS_NODE: '1',
       PORT: this.serverPort.toString(),
       SERVER_PORT: this.serverPort.toString(),
-      // Explicitly provide the server with its public-facing URL.
-      AUTOBYTEUS_SERVER_HOST: publicServerUrl
+      ...buildServerRuntimeEnv(this.appDataDir, publicServerUrl, process.env)
     }
 
     const options = {

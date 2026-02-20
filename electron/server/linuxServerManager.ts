@@ -7,6 +7,7 @@ import { BaseServerManager } from './baseServerManager'
 import { logger } from '../logger'
 import { getLocalIp } from '../utils/networkUtils'
 import { getLoginShellPath } from '../utils/shellEnv'
+import { buildServerRuntimeEnv } from './serverRuntimeEnv'
 
 export class LinuxServerManager extends BaseServerManager {
   /**
@@ -43,8 +44,7 @@ export class LinuxServerManager extends BaseServerManager {
       ELECTRON_RUN_AS_NODE: '1',
       PORT: this.serverPort.toString(),
       SERVER_PORT: this.serverPort.toString(),
-      // Explicitly provide the server with its public-facing URL.
-      AUTOBYTEUS_SERVER_HOST: publicServerUrl
+      ...buildServerRuntimeEnv(this.appDataDir, publicServerUrl, process.env)
     }
     const options = {
       cwd: this.serverDir,
