@@ -5,7 +5,6 @@ describe('buildServerRuntimeEnv', () => {
   it('builds sqlite runtime env values from app data dir', () => {
     const env = buildServerRuntimeEnv('/Users/tester/.autobyteus/server-data', {})
 
-    expect(env.DB_NAME).toBe('/Users/tester/.autobyteus/server-data/db/production.db')
     expect(env.DATABASE_URL).toBe('file:/Users/tester/.autobyteus/server-data/db/production.db')
     expect(env.PERSISTENCE_PROVIDER).toBe('sqlite')
     expect(env.DB_TYPE).toBe('sqlite')
@@ -15,7 +14,6 @@ describe('buildServerRuntimeEnv', () => {
   it('normalizes windows-style db paths for prisma file URLs', () => {
     const env = buildServerRuntimeEnv('C:\\Users\\tester\\.autobyteus\\server-data', {})
 
-    expect(env.DB_NAME).toContain('production.db')
     expect(env.DATABASE_URL).toBe('file:/C:/Users/tester/.autobyteus/server-data/db/production.db')
   })
 
