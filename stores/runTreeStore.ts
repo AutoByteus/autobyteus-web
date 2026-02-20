@@ -174,6 +174,10 @@ export interface TeamTreeNode {
   members: TeamMemberTreeRow[];
 }
 
+export interface WorkspaceHistoryTreeNode extends RunTreeWorkspaceNode {
+  teams: TeamTreeNode[];
+}
+
 interface ListRunHistoryQueryData {
   listRunHistory: RunHistoryWorkspaceGroup[];
 }
@@ -216,6 +220,9 @@ const FALSE_EDITABLE_FIELDS: RunEditableFieldFlags = {
   workspaceRootPath: false,
 };
 
+const UNASSIGNED_TEAM_WORKSPACE_KEY = 'unassigned-team-workspace';
+const UNASSIGNED_TEAM_WORKSPACE_LABEL = 'Unassigned Team Workspace';
+
 const normalizeRootPath = (value: string | null | undefined): string => {
   const source = (value || '').trim();
   if (!source) {
@@ -229,6 +236,9 @@ const normalizeRootPath = (value: string | null | undefined): string => {
 };
 
 const displayWorkspaceName = (workspaceRootPath: string): string => {
+  if (workspaceRootPath === UNASSIGNED_TEAM_WORKSPACE_KEY) {
+    return UNASSIGNED_TEAM_WORKSPACE_LABEL;
+  }
   const normalized = normalizeRootPath(workspaceRootPath);
   if (!normalized) {
     return 'workspace';
@@ -336,6 +346,13 @@ const parseTeamRunManifest = (value: unknown): TeamRunManifestPayload => {
 
 const toTeamMemberKey = (member: { memberRouteKey: string; memberName: string }): string =>
   member.memberRouteKey || member.memberName;
+
+const resolveTeamWorkspaceRootPath = (team: TeamTreeNode): string => {
+  const roots = team.members
+    .map((member) => normalizeRootPath(member.workspaceRootPath))
+    .filter((root) => root.length > 0);
+  return roots[0] || UNASSIGNED_TEAM_WORKSPACE_KEY;
+};
 
 const toRunStatus = (status: AgentStatus): Pick<RunHistoryItem, 'isActive' | 'lastKnownStatus'> => {
   if (status === AgentStatus.Error) {
@@ -845,7 +862,7 @@ export const useRunTreeStore = defineStore('runHistory', {
       }
     },
 
-    getTreeNodes(): RunTreeWorkspaceNode[] {
+    getTreeNodes(): WorkspaceHistoryTreeNode[] {
       const workspaceStore = useWorkspaceStore();
       const agentContextsStore = useAgentContextsStore();
       const workspaceDescriptors = new Map<string, string>();
@@ -945,7 +962,46 @@ export const useRunTreeStore = defineStore('runHistory', {
         draftRuns,
       });
 
-      return mergeRunTreeWithLiveContexts(projectedTree, agentContextsStore.instances);
+      const mergedAgentTree = mergeRunTreeWithLiveContexts(projectedTree, agentContextsStore.instances);
+      const teams = this.getTeamNodes();
+      const workspaceNodesByRootPath = new Map<string, WorkspaceHistoryTreeNode>(
+        mergedAgentTree.map((workspaceNode) => [
+          workspaceNode.workspaceRootPath,
+          {
+            ...workspaceNode,
+            teams: [],
+          },
+        ]),
+      );
+
+      for (const teamNode of teams) {
+        const workspaceRootPath = resolveTeamWorkspaceRootPath(teamNode);
+        const existing = workspaceNodesByRootPath.get(workspaceRootPath);
+        if (existing) {
+          existing.teams.push(teamNode);
+          continue;
+        }
+
+        workspaceNodesByRootPath.set(workspaceRootPath, {
+          workspaceRootPath,
+          workspaceName: displayWorkspaceName(workspaceRootPath),
+          agents: [],
+          teams: [teamNode],
+        });
+      }
+
+      return Array.from(workspaceNodesByRootPath.values())
+        .map((workspaceNode) => ({
+          ...workspaceNode,
+          teams: [...workspaceNode.teams].sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt)),
+        }))
+        .sort((a, b) => {
+          const byName = a.workspaceName.localeCompare(b.workspaceName);
+          if (byName !== 0) {
+            return byName;
+          }
+          return a.workspaceRootPath.localeCompare(b.workspaceRootPath);
+        });
     },
 
     getTeamNodes(): TeamTreeNode[] {

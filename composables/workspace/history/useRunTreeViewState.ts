@@ -5,7 +5,6 @@ export const useRunTreeViewState = () => {
   const expandedWorkspace = ref<Record<string, boolean>>({});
   const expandedAgents = ref<Record<string, boolean>>({});
   const expandedTeams = ref<Record<string, boolean>>({});
-  const teamsSectionExpanded = ref(true);
   const brokenAvatarByAgentKey = ref<Record<string, boolean>>({});
 
   const isWorkspaceExpanded = (workspaceRootPath: string): boolean => {
@@ -41,10 +40,6 @@ export const useRunTreeViewState = () => {
       ...expandedAgents.value,
       [key]: !isAgentExpanded(workspaceRootPath, agentDefinitionId),
     };
-  };
-
-  const toggleTeamsSection = (): void => {
-    teamsSectionExpanded.value = !teamsSectionExpanded.value;
   };
 
   const toggleTeam = (teamId: string): void => {
@@ -83,14 +78,12 @@ export const useRunTreeViewState = () => {
     expandedWorkspace,
     expandedAgents,
     expandedTeams,
-    teamsSectionExpanded,
     isWorkspaceExpanded,
     isAgentExpanded,
     isTeamExpanded,
     toggleWorkspace,
     expandWorkspace,
     toggleAgent,
-    toggleTeamsSection,
     toggleTeam,
     showAgentAvatar,
     markAvatarBroken,

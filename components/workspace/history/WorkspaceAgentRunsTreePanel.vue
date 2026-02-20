@@ -31,7 +31,7 @@
       </div>
 
       <div
-        v-else-if="workspaceNodes.length === 0 && teamNodes.length === 0"
+        v-else-if="workspaceNodes.length === 0"
         class="px-3 py-4 text-xs text-gray-500"
       >
         No run history yet.
@@ -41,35 +41,28 @@
         <WorkspaceRunsSection
           :workspace-nodes="workspaceNodes"
           :selected-agent-id="selectedAgentId"
+          :selected-team-id="selectedTeamId"
+          :selected-team-member-route-key="selectedTeamMemberRouteKey"
           :expanded-workspace="viewState.expandedWorkspace.value"
           :expanded-agents="viewState.expandedAgents.value"
+          :expanded-teams="viewState.expandedTeams.value"
           :terminating-agent-ids="actions.terminatingAgentIds.value"
+          :terminating-team-ids="actions.terminatingTeamIds.value"
           :deleting-agent-ids="actions.deletingAgentIds.value"
+          :deleting-team-ids="actions.deletingTeamIds.value"
           :show-agent-avatar="viewState.showAgentAvatar"
           :format-relative-time="runTreeStore.formatRelativeTime"
           @toggle-workspace="viewState.toggleWorkspace"
           @toggle-agent="viewState.toggleAgent"
+          @toggle-team="viewState.toggleTeam"
           @select-run="actions.selectRun"
+          @select-member="actions.selectTeamMember"
           @create-run="actions.createDraftRun"
           @terminate-run="actions.terminateRun"
-          @delete-run="actions.requestDeleteRun"
-          @avatar-error="viewState.markAvatarBroken"
-        />
-
-        <TeamRunsSection
-          :team-nodes="teamNodes"
-          :selected-team-id="selectedTeamId"
-          :selected-team-member-route-key="selectedTeamMemberRouteKey"
-          :teams-section-expanded="viewState.teamsSectionExpanded.value"
-          :expanded-teams="viewState.expandedTeams.value"
-          :terminating-team-ids="actions.terminatingTeamIds.value"
-          :deleting-team-ids="actions.deletingTeamIds.value"
-          :format-relative-time="runTreeStore.formatRelativeTime"
-          @toggle-teams-section="viewState.toggleTeamsSection"
-          @toggle-team="viewState.toggleTeam"
-          @select-member="actions.selectTeamMember"
           @terminate-team="actions.terminateTeam"
+          @delete-run="actions.requestDeleteRun"
           @delete-team="actions.requestDeleteTeam"
+          @avatar-error="viewState.markAvatarBroken"
         />
       </div>
     </div>
@@ -94,7 +87,6 @@ import { Icon } from '@iconify/vue';
 import ConfirmationModal from '~/components/common/ConfirmationModal.vue';
 import WorkspaceCreateInlineForm from '~/components/workspace/history/WorkspaceCreateInlineForm.vue';
 import WorkspaceRunsSection from '~/components/workspace/history/WorkspaceRunsSection.vue';
-import TeamRunsSection from '~/components/workspace/history/TeamRunsSection.vue';
 import { useRunTreeStore } from '~/stores/runTreeStore';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
@@ -136,10 +128,6 @@ const actions = useRunTreeActions({
 
 const workspaceNodes = computed(() => {
   return runTreeStore.getTreeNodes();
-});
-
-const teamNodes = computed(() => {
-  return runTreeStore.getTeamNodes();
 });
 
 const selectedAgentId = computed(() => {

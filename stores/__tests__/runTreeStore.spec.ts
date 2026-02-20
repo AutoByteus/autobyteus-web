@@ -716,6 +716,7 @@ describe('runHistoryStore', () => {
       workspaceRootPath: '/ws/b',
       workspaceName: 'Beta',
       agents: [],
+      teams: [],
     });
   });
 
@@ -860,6 +861,90 @@ describe('runHistoryStore', () => {
     expect(nodes[0]?.members[0]?.memberRouteKey).toBe('coordinator');
     expect(nodes[0]?.members[0]?.workspaceRootPath).toBe('/ws/a');
     expect(nodes[0]?.isActive).toBe(true);
+  });
+
+  it('groups team history under workspace nodes in tree projection', () => {
+    const store = useRunTreeStore();
+    store.workspaceGroups = [
+      {
+        workspaceRootPath: '/ws/a',
+        workspaceName: 'Alpha',
+        agents: [
+          {
+            agentDefinitionId: 'agent-def-1',
+            agentName: 'SuperAgent',
+            runs: [
+              {
+                agentId: 'run-1',
+                summary: 'Persisted run',
+                lastActivityAt: '2026-01-01T00:00:00.000Z',
+                lastKnownStatus: 'IDLE',
+                isActive: false,
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    store.teamRuns = [
+      {
+        teamId: 'team-1',
+        teamDefinitionId: 'team-def-1',
+        teamDefinitionName: 'Classroom Team',
+        summary: 'summary',
+        lastActivityAt: '2026-01-02T00:00:00.000Z',
+        lastKnownStatus: 'IDLE',
+        deleteLifecycle: 'READY',
+        isActive: false,
+        members: [
+          {
+            memberRouteKey: 'coordinator',
+            memberName: 'Coordinator',
+            memberAgentId: 'member-1',
+            workspaceRootPath: '/ws/a',
+            hostNodeId: null,
+          },
+        ],
+      },
+    ];
+
+    const tree = store.getTreeNodes();
+    const alpha = tree.find((node) => node.workspaceRootPath === '/ws/a');
+    expect(alpha).toBeTruthy();
+    expect(alpha?.teams).toHaveLength(1);
+    expect(alpha?.teams[0]?.teamId).toBe('team-1');
+  });
+
+  it('routes team history with missing workspace root into fallback workspace bucket', () => {
+    const store = useRunTreeStore();
+    store.workspaceGroups = [];
+    store.teamRuns = [
+      {
+        teamId: 'team-missing',
+        teamDefinitionId: 'team-def-1',
+        teamDefinitionName: 'Orphan Team',
+        summary: 'summary',
+        lastActivityAt: '2026-01-02T00:00:00.000Z',
+        lastKnownStatus: 'IDLE',
+        deleteLifecycle: 'READY',
+        isActive: false,
+        members: [
+          {
+            memberRouteKey: 'coordinator',
+            memberName: 'Coordinator',
+            memberAgentId: 'member-1',
+            workspaceRootPath: null,
+            hostNodeId: null,
+          },
+        ],
+      },
+    ];
+
+    const tree = store.getTreeNodes();
+    const fallbackWorkspace = tree.find((node) => node.workspaceRootPath === 'unassigned-team-workspace');
+    expect(fallbackWorkspace).toBeTruthy();
+    expect(fallbackWorkspace?.workspaceName).toBe('Unassigned Team Workspace');
+    expect(fallbackWorkspace?.teams.map((team) => team.teamId)).toEqual(['team-missing']);
   });
 
   it('selectTreeRun delegates to openRun for history rows', async () => {

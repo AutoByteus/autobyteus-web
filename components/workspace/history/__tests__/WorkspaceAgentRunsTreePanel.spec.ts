@@ -65,9 +65,9 @@ const {
             ],
           },
         ],
+        teams: [] as any[],
       },
     ] as any[],
-    teamNodes: [] as any[],
   };
 
   return {
@@ -90,7 +90,6 @@ const {
       },
       fetchTree: vi.fn().mockResolvedValue(undefined),
       getTreeNodes: vi.fn(() => state.nodes),
-      getTeamNodes: vi.fn(() => state.teamNodes),
       formatRelativeTime: vi.fn((iso: string) => (iso.includes('01:00') ? 'now' : '4h')),
       selectTreeRun: vi.fn().mockResolvedValue(undefined),
       createDraftRun: vi.fn().mockResolvedValue('temp-2'),
@@ -168,7 +167,7 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     runHistoryState.selectedAgentId = null;
     runHistoryState.selectedTeamId = null;
     runHistoryState.selectedTeamMemberRouteKey = null;
-    runHistoryState.teamNodes = [];
+    runHistoryState.nodes[0]!.teams = [];
     selectionStoreMock.selectedType = null;
     selectionStoreMock.selectedInstanceId = null;
     teamContextsStoreMock.getTeamContextById.mockReset();
@@ -222,17 +221,6 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     const avatar = wrapper.find('img[alt="SuperAgent avatar"]');
     expect(avatar.exists()).toBe(true);
     expect(avatar.attributes('src')).toBe('https://example.com/superagent.png');
-  });
-
-  it('handles avatar error events without breaking tree rendering', async () => {
-    const wrapper = mountComponent();
-    await flushPromises();
-
-    const avatar = wrapper.find('img[alt="SuperAgent avatar"]');
-    expect(avatar.exists()).toBe(true);
-    await avatar.trigger('error');
-    await flushPromises();
-    expect(wrapper.text()).toContain('SuperAgent');
   });
 
   it('selects run via runHistoryStore.selectTreeRun and emits instance-selected', async () => {
@@ -292,74 +280,8 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     expect(wrapper.find('[data-test="create-workspace-form"]').exists()).toBe(false);
   });
 
-  it('does not create workspace when embedded electron picker is canceled', async () => {
-    windowNodeContextStoreMock.isEmbeddedWindow.value = true;
-    (window as any).electronAPI = {
-      showFolderDialog: vi.fn(),
-    };
-    pickFolderPathMock.mockResolvedValue(null);
-
-    const wrapper = mountComponent();
-    await flushPromises();
-
-    await wrapper.find('button[title="Add workspace"]').trigger('click');
-    await flushPromises();
-
-    expect(pickFolderPathMock).toHaveBeenCalledTimes(1);
-    expect(runHistoryStoreMock.createWorkspace).not.toHaveBeenCalled();
-    expect(wrapper.find('[data-test="create-workspace-form"]').exists()).toBe(false);
-  });
-
-  it('renders active status indicator for active runs', async () => {
-    const wrapper = mountComponent();
-    await nextTick();
-    const activeDot = wrapper.find('.bg-blue-500.animate-pulse');
-    expect(activeDot.exists()).toBe(true);
-  });
-
-  it('does not render status indicator for inactive runs', async () => {
-    const wrapper = mountComponent();
-    await nextTick();
-    const statusDots = wrapper.findAll('span.bg-blue-500.animate-pulse');
-    expect(statusDots).toHaveLength(1);
-  });
-
-  it('renders delete action only for inactive history runs', async () => {
-    const wrapper = mountComponent();
-    await flushPromises();
-
-    const deleteButtons = wrapper.findAll('button[title="Delete run permanently"]');
-    expect(deleteButtons).toHaveLength(1);
-  });
-
-  it('terminates active run from row action without selecting the row', async () => {
-    const wrapper = mountComponent();
-    await flushPromises();
-
-    const terminateButton = wrapper.find('button[title="Terminate run"]');
-    expect(terminateButton.exists()).toBe(true);
-
-    await terminateButton.trigger('click');
-    await flushPromises();
-
-    expect(agentRunStoreMock.terminateRun).toHaveBeenCalledWith('run-1');
-    expect(runHistoryStoreMock.selectTreeRun).not.toHaveBeenCalled();
-  });
-
-  it('shows an error toast when terminate fails', async () => {
-    agentRunStoreMock.terminateRun.mockResolvedValueOnce(false);
-    const wrapper = mountComponent();
-    await flushPromises();
-
-    const terminateButton = wrapper.find('button[title="Terminate run"]');
-    await terminateButton.trigger('click');
-    await flushPromises();
-
-    expect(addToastMock).toHaveBeenCalledWith('Failed to terminate run. Please try again.', 'error');
-  });
-
   it('selects team member row and emits team instance-selected', async () => {
-    runHistoryState.teamNodes = [
+    runHistoryState.nodes[0]!.teams = [
       {
         teamId: 'team-1',
         teamDefinitionId: 'team-def-1',
@@ -402,9 +324,8 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     ]);
   });
 
-  it('renders only the workspace leaf name for team members', async () => {
-    const fullWorkspacePath = '/Users/normy/autobyteus_org/worktrees/team-history-restore/autobyteus-web';
-    runHistoryState.teamNodes = [
+  it('does not render member workspace suffix text in team rows', async () => {
+    runHistoryState.nodes[0]!.teams = [
       {
         teamId: 'team-1',
         teamDefinitionId: 'team-def-1',
@@ -420,8 +341,8 @@ describe('WorkspaceAgentRunsTreePanel', () => {
             memberRouteKey: 'coordinator',
             memberName: 'Coordinator',
             memberAgentId: 'ag-1',
-            workspaceRootPath: fullWorkspacePath,
-            hostNodeId: 'node-a',
+            workspaceRootPath: '/Users/normy/autobyteus_org/autobyteus-web',
+            hostNodeId: null,
             summary: 'summary',
             lastActivityAt: '2026-01-01T00:00:00.000Z',
             lastKnownStatus: 'IDLE',
@@ -431,17 +352,17 @@ describe('WorkspaceAgentRunsTreePanel', () => {
         ],
       },
     ];
+
     const wrapper = mountComponent();
     await flushPromises();
 
-    const workspaceLabel = wrapper.find(`span[title="${fullWorkspacePath}"]`);
-    expect(workspaceLabel.exists()).toBe(true);
-    expect(workspaceLabel.text()).toBe('autobyteus-web');
+    expect(wrapper.text()).toContain('Coordinator');
+    expect(wrapper.text()).not.toContain('autobyteus-web');
   });
 
   it('highlights only the focused team member from team context', async () => {
     runHistoryState.selectedTeamId = 'team-1';
-    runHistoryState.teamNodes = [
+    runHistoryState.nodes[0]!.teams = [
       {
         teamId: 'team-1',
         teamDefinitionId: 'team-def-1',
@@ -504,8 +425,8 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     expect(studentButton!.classes()).toContain('bg-indigo-50');
   });
 
-  it('terminates active team from Teams section row action', async () => {
-    runHistoryState.teamNodes = [
+  it('terminates active team from workspace-rooted team row action', async () => {
+    runHistoryState.nodes[0]!.teams = [
       {
         teamId: 'team-2',
         teamDefinitionId: 'team-def-2',

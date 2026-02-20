@@ -18,10 +18,6 @@ describe('useRunTreeViewState', () => {
     expect(viewState.isTeamExpanded('team-1')).toBe(true);
     viewState.toggleTeam('team-1');
     expect(viewState.isTeamExpanded('team-1')).toBe(false);
-
-    expect(viewState.teamsSectionExpanded.value).toBe(true);
-    viewState.toggleTeamsSection();
-    expect(viewState.teamsSectionExpanded.value).toBe(false);
   });
 
   it('tracks broken avatar state by avatar key', () => {
