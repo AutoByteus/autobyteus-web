@@ -339,21 +339,23 @@
                           @click="deleteIndividualSetting(setting.key)"
                           :disabled="isRemoving[setting.key] || store.isUpdating"
                           :data-testid="`server-setting-remove-${setting.key}`"
-                          :class="removeButtonClass"
+                          :class="iconRemoveButtonClass"
+                          :aria-label="`Remove ${setting.key}`"
+                          :title="`Remove ${setting.key}`"
                         >
                           <span v-if="isRemoving[setting.key]" class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 inline-block"></span>
-                          <span v-else class="i-heroicons-trash-20-solid w-4 h-4"></span>
-                          <span>Remove</span>
+                          <Icon v-else icon="heroicons:trash" class="w-4 h-4" />
                         </button>
                         <button
                           @click="saveIndividualSetting(setting.key)"
                           :disabled="!isSettingChanged(setting.key) || store.isUpdating"
                           :data-testid="`server-setting-save-${setting.key}`"
-                          :class="saveButtonClass"
+                          :class="iconSaveButtonClass"
+                          :aria-label="`Save ${setting.key}`"
+                          :title="`Save ${setting.key}`"
                         >
                           <span v-if="isUpdating[setting.key]" class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 inline-block"></span>
-                          <span v-else class="i-heroicons-check-20-solid w-4 h-4"></span>
-                          <span>Save</span>
+                          <Icon v-else icon="heroicons:check" class="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -482,12 +484,12 @@ const searchProviderOptions: Array<{ value: SearchProvider; label: string }> = [
 
 const saveButtonClass =
   'inline-flex items-center gap-1.5 h-10 px-4 text-sm font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:bg-slate-50 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed transition-colors duration-150'
-const removeButtonClass =
-  'inline-flex items-center gap-1.5 h-10 px-4 text-sm font-semibold rounded-lg border border-red-200 bg-white text-red-700 hover:bg-red-50 disabled:bg-slate-50 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed transition-colors duration-150'
 const iconActionButtonClass =
   'inline-flex items-center justify-center h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-100 transition-colors duration-150'
 const iconSaveButtonClass =
   'inline-flex items-center justify-center h-9 w-9 rounded-lg border border-slate-200 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-100 disabled:bg-slate-50 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed transition-colors duration-150'
+const iconRemoveButtonClass =
+  'inline-flex items-center justify-center h-9 w-9 rounded-lg border border-red-200 bg-white text-red-700 hover:bg-red-50 hover:border-red-100 disabled:bg-slate-50 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed transition-colors duration-150'
 
 const props = withDefaults(defineProps<{ sectionMode?: SettingsTab }>(), {
   sectionMode: 'quick',
