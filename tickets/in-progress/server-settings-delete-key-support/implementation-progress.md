@@ -20,6 +20,7 @@
 - 2026-02-20: Added backend E2E GraphQL lifecycle test for server settings (update -> list -> delete -> list).
 - 2026-02-20: E2E validation passed:
   - `pnpm -C autobyteus-server-ts exec vitest run tests/e2e/server-settings/server-settings-graphql.e2e.test.ts --no-watch`
+- 2026-02-20: Refined Advanced settings row actions to icon-style controls (`Save`/`Remove`) for consistency with existing Iconify usage.
 
 ## File Tracking
 
