@@ -70,6 +70,7 @@ const mountComponent = async (
   })
   store.setSearchConfig = vi.fn().mockResolvedValue(true)
   store.updateServerSetting = vi.fn().mockResolvedValue(true)
+  store.deleteServerSetting = vi.fn().mockResolvedValue(true)
 
   const wrapper = mount(ServerSettingsManager, {
     props: {
@@ -304,5 +305,24 @@ describe('ServerSettingsManager', () => {
     expect(wrapper.text()).not.toContain('Add one or more endpoints per provider. No commas needed.')
     expect(wrapper.text()).not.toContain('Embedded server settings are unavailable for remote node windows.')
     expect(wrapper.findAll('button').some((button) => button.text().trim() === 'Server Status & Logs')).toBe(false)
+  })
+
+  it('removes custom server settings from advanced table', async () => {
+    const { wrapper, store } = await mountComponent([
+      { key: 'AUTOBYTEUS_LLM_SERVER_URL', value: 'https://legacy-host', description: 'Custom user-defined setting' },
+      { key: 'AUTOBYTEUS_SERVER_HOST', value: 'http://localhost:8000', description: 'Public URL of this server' },
+    ], { sectionMode: 'advanced' })
+    const setupState = (wrapper.vm as any).$?.setupState
+
+    setMaybeRef(setupState, 'advancedPanel', 'raw-settings')
+    await wrapper.vm.$nextTick()
+    await flushPromises()
+
+    const removeButton = wrapper.get('[data-testid="server-setting-remove-AUTOBYTEUS_LLM_SERVER_URL"]')
+    await removeButton.trigger('click')
+    await flushPromises()
+
+    expect(store.deleteServerSetting).toHaveBeenCalledWith('AUTOBYTEUS_LLM_SERVER_URL')
+    expect(wrapper.find('[data-testid="server-setting-remove-AUTOBYTEUS_SERVER_HOST"]').exists()).toBe(false)
   })
 })
