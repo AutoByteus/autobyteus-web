@@ -45,6 +45,7 @@ A flexible key-value store for backend configurations.
 
 - **View & Edit:** precise control over server-side flags and parameters.
 - **Custom Settings:** Users can add new custom key-value pairs to configure plugins or experimental features.
+- **Custom Setting Cleanup:** Advanced table rows for custom keys include a remove action to delete obsolete entries.
 
 ### 4. Server Status
 

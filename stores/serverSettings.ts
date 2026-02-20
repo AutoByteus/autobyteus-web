@@ -1,7 +1,11 @@
 import { defineStore } from 'pinia'
 import { getApolloClient } from '~/utils/apolloClient'
 import { GET_SEARCH_CONFIG, GET_SERVER_SETTINGS } from '~/graphql/queries/server_settings_queries'
-import { SET_SEARCH_CONFIG, UPDATE_SERVER_SETTING } from '~/graphql/mutations/server_settings_mutations'
+import {
+  DELETE_SERVER_SETTING,
+  SET_SEARCH_CONFIG,
+  UPDATE_SERVER_SETTING,
+} from '~/graphql/mutations/server_settings_mutations'
 
 export interface ServerSetting {
   key: string
@@ -190,6 +194,39 @@ export const useServerSettingsStore = defineStore('serverSettings', {
       } catch (error: any) {
         this.error = error.message
         console.error(`Failed to update server setting ${key}:`, error)
+        throw error
+      } finally {
+        this.isUpdating = false
+      }
+    },
+
+    async deleteServerSetting(key: string) {
+      this.isUpdating = true
+      this.error = null
+
+      const client = getApolloClient()
+      try {
+        const { data, errors } = await client.mutate({
+          mutation: DELETE_SERVER_SETTING,
+          variables: { key }
+        })
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map((e: any) => e.message).join(', '))
+        }
+
+        const responseMessage = data?.deleteServerSetting
+
+        if (responseMessage && responseMessage.includes('successfully')) {
+          await this.reloadServerSettings()
+          return true
+        }
+
+        this.error = responseMessage || 'Failed to delete server setting'
+        throw new Error(responseMessage || 'Failed to delete server setting')
+      } catch (error: any) {
+        this.error = error.message
+        console.error(`Failed to delete server setting ${key}:`, error)
         throw error
       } finally {
         this.isUpdating = false

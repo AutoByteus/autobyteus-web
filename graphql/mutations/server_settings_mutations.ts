@@ -6,6 +6,12 @@ export const UPDATE_SERVER_SETTING = gql`
   }
 `
 
+export const DELETE_SERVER_SETTING = gql`
+  mutation DeleteServerSetting($key: String!) {
+    deleteServerSetting(key: $key)
+  }
+`
+
 export const SET_SEARCH_CONFIG = gql`
   mutation SetSearchConfig(
     $provider: String!
