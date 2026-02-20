@@ -92,6 +92,7 @@
     "dotenv": "^16.4.5",
     "electron": "^38.1.2",
     "electron-builder": "^25.1.8",
+    "electron-rebuild": "3.2.9",
     "happy-dom": "^15.7.4",
     "jsdom": "^25.0.1",
     "nuxt": "^3.21.0",
