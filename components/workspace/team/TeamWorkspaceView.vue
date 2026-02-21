@@ -4,10 +4,10 @@
     <div class="flex items-center justify-between px-4 py-2 border-b border-gray-200 flex-shrink-0">
       <div class="flex items-center space-x-3 min-w-0">
         <span class="text-xl">👥</span>
-        <h4 v-if="activeTeamContext" class="text-base font-medium text-gray-800 truncate" :title="activeTeamContext.config.teamDefinitionName">
-          {{ activeTeamContext.config.teamDefinitionName }}
+        <h4 v-if="activeTeamContext" class="text-base font-medium text-gray-800 truncate" :title="headerTitle">
+          {{ headerTitle }}
         </h4>
-        <TeamStatusDisplay v-if="activeTeamContext" :status="activeTeamContext.currentStatus" />
+        <AgentStatusDisplay v-if="activeTeamContext" :status="headerStatus" />
       </div>
       <WorkspaceHeaderActions @new-agent="createNewTeamInstance" />
     </div>
@@ -37,7 +37,8 @@ import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
 import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
-import TeamStatusDisplay from '~/components/workspace/team/TeamStatusDisplay.vue';
+import { AgentStatus } from '~/types/agent/AgentStatus';
+import AgentStatusDisplay from '~/components/workspace/agent/AgentStatusDisplay.vue';
 import AgentTeamEventMonitor from '~/components/workspace/team/AgentTeamEventMonitor.vue';
 import WorkspaceHeaderActions from '~/components/workspace/common/WorkspaceHeaderActions.vue';
 
@@ -47,6 +48,48 @@ const agentRunConfigStore = useAgentRunConfigStore();
 const selectionStore = useAgentSelectionStore();
 
 const activeTeamContext = computed(() => teamContextsStore.activeTeamContext);
+const focusedMemberContext = computed(() => {
+  const team = activeTeamContext.value;
+  if (!team?.focusedMemberName) {
+    return null;
+  }
+  return team.members.get(team.focusedMemberName) ?? null;
+});
+
+const headerStatus = computed(() => {
+  return focusedMemberContext.value?.state.currentStatus
+    ?? activeTeamContext.value?.currentStatus
+    ?? AgentStatus.Uninitialized;
+});
+
+const headerTitle = computed(() => {
+  const team = activeTeamContext.value;
+  if (!team) {
+    return '';
+  }
+
+  const focusedMemberRouteKey = team.focusedMemberName?.trim();
+  if (!focusedMemberRouteKey) {
+    return team.config.teamDefinitionName || 'Team';
+  }
+
+  const focusedContext = team.members.get(focusedMemberRouteKey);
+  const routeSegments = focusedMemberRouteKey
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0);
+  const routeLeaf = routeSegments.length > 0
+    ? routeSegments[routeSegments.length - 1]
+    : focusedMemberRouteKey;
+
+  const focusedMemberName =
+    focusedContext?.config.agentDefinitionName?.trim()
+    || focusedContext?.state.conversation.agentName?.trim()
+    || routeLeaf
+    || focusedMemberRouteKey;
+
+  return focusedMemberName || team.config.teamDefinitionName || 'Team';
+});
 
 const createNewTeamInstance = () => {
   if (!activeTeamContext.value) return;

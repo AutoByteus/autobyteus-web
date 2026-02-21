@@ -231,6 +231,7 @@
                   </button>
 
                   <button
+                    v-if="canTerminateTeam(team.currentStatus)"
                     type="button"
                     class="ml-2 inline-flex h-5 w-5 items-center justify-center rounded text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                     title="Terminate team"
@@ -485,6 +486,10 @@ const teamStatusClass = (status: AgentTeamStatus): string => {
     default:
       return 'bg-gray-300';
   }
+};
+
+const canTerminateTeam = (status: AgentTeamStatus): boolean => {
+  return status !== AgentTeamStatus.ShutdownComplete && status !== AgentTeamStatus.Uninitialized;
 };
 
 const getAgentNodeKey = (workspaceRootPath: string, agentDefinitionId: string): string => {

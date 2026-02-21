@@ -12,6 +12,8 @@ import { useAgentActivityStore } from '~/stores/agentActivityStore';
 import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
 import { TeamStreamingService } from '~/services/agentStreaming';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
+import { AgentStatus } from '~/types/agent/AgentStatus';
+import { AgentTeamStatus } from '~/types/agent/AgentTeamStatus';
 
 // Maintain a map of streaming services per team
 const teamStreamingServices = new Map<string, TeamStreamingService>();
@@ -55,16 +57,18 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
 
       if (teamContext?.unsubscribe) {
         teamContext.unsubscribe();
+        teamContext.unsubscribe = undefined;
       }
       teamStreamingServices.delete(teamId);
 
       if (teamContext) {
+        teamContext.isSubscribed = false;
+        teamContext.currentStatus = AgentTeamStatus.ShutdownComplete;
         teamContext.members.forEach((member) => {
+          member.state.currentStatus = AgentStatus.ShutdownComplete;
           useAgentActivityStore().clearActivities(member.state.agentId);
         });
       }
-
-      teamContextsStore.removeTeamContext(teamId);
 
       if (teamId.startsWith('temp-')) return;
 
