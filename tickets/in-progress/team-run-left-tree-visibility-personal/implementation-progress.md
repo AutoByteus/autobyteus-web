@@ -21,6 +21,7 @@
 | T-09 | Modify | `stores/runHistoryStore.ts`, `services/runOpen/runOpenCoordinator.ts` | T-08 | Completed | Local Fix | 2026-02-21 | Added persisted team history ingestion, team node projection, team-member restore/open flow, and member conversation rehydrate path for offline continuation. |
 | T-10 | Modify | `components/workspace/history/WorkspaceAgentRunsTreePanel.vue` | T-09 | Completed | Local Fix | 2026-02-21 | Switched team tree rendering to store-driven persisted+live nodes and routed member clicks through store selection/open pipeline. |
 | T-11 | Test | `stores/__tests__/runHistoryStore.spec.ts`, `components/workspace/history/__tests__/WorkspaceAgentRunsTreePanel.spec.ts` | T-09,T-10 | Completed | N/A | 2026-02-21 | Added/updated regression tests for persisted team visibility and team-member history hydration before continuation. |
+| T-12 | Modify | `src/api/graphql/types/team-run-history.ts`, `src/run-history/domain/team-models.ts`, `src/run-history/store/team-run-manifest-store.ts`, `src/run-history/services/team-run-history-service.ts`, `stores/runHistoryStore.ts`, `graphql/queries/runHistoryQueries.ts` | T-08,T-09 | Completed | Local Fix | 2026-02-21 | Removed `hostNodeId` pass-through from personal run-history contracts to enforce single-node personal semantics and eliminate unused enterprise metadata drift. |
 
 ## Verification
 
@@ -44,6 +45,12 @@
 - Result: `19 passed`.
 - Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web exec vitest --run components/workspace/team/__tests__/TeamWorkspaceView.spec.ts stores/__tests__/agentTeamRunStore.spec.ts`
 - Result: `5 passed`.
+- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts vitest run tests/e2e/run-history/team-run-history-graphql.e2e.test.ts`
+- Result: `2 passed`.
+- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts vitest run tests/e2e/agent-team-execution/send-message-to-team-graphql-contract.e2e.test.ts`
+- Result: `2 passed`.
+- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web vitest run stores/__tests__/runHistoryStore.spec.ts components/workspace/history/__tests__/WorkspaceAgentRunsTreePanel.spec.ts components/workspace/team/__tests__/TeamWorkspaceView.spec.ts`
+- Result: `41 passed`.
 
 ## Escalation Log
 

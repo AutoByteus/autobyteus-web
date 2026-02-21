@@ -100,7 +100,6 @@ export interface TeamRunMemberHistoryItem {
   memberName: string;
   memberAgentId: string;
   workspaceRootPath?: string | null;
-  hostNodeId?: string | null;
 }
 
 export interface TeamRunHistoryItem {
@@ -125,7 +124,6 @@ interface TeamRunManifestMemberBinding {
   autoExecuteTools: boolean;
   llmConfig: Record<string, unknown> | null;
   workspaceRootPath: string | null;
-  hostNodeId: string | null;
 }
 
 interface TeamRunManifestPayload {
@@ -151,7 +149,6 @@ export interface TeamMemberTreeRow {
   memberName: string;
   memberAgentId: string;
   workspaceRootPath: string | null;
-  hostNodeId: string | null;
   summary: string;
   lastActivityAt: string;
   lastKnownStatus: TeamRunKnownStatus;
@@ -331,7 +328,6 @@ const parseTeamRunManifest = (value: unknown): TeamRunManifestPayload => {
               : null,
           workspaceRootPath:
             typeof binding.workspaceRootPath === 'string' ? binding.workspaceRootPath : null,
-          hostNodeId: typeof binding.hostNodeId === 'string' ? binding.hostNodeId : null,
         };
       })
     : [];
@@ -1012,7 +1008,6 @@ export const useRunHistoryStore = defineStore('runHistory', {
             memberName: member.memberName,
             memberAgentId: member.memberAgentId,
             workspaceRootPath: member.workspaceRootPath ?? null,
-            hostNodeId: member.hostNodeId ?? null,
             summary: team.summary,
             lastActivityAt: team.lastActivityAt,
             lastKnownStatus: team.lastKnownStatus,
@@ -1050,7 +1045,6 @@ export const useRunHistoryStore = defineStore('runHistory', {
             memberName: memberContext.config.agentDefinitionName || memberRouteKey,
             memberAgentId: memberContext.state.agentId,
             workspaceRootPath: resolveWorkspaceRootPath(workspaceStore, memberContext.config.workspaceId),
-            hostNodeId: null,
             summary,
             lastActivityAt:
               memberContext.state.conversation.updatedAt ||

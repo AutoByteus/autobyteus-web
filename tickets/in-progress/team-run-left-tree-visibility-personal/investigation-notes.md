@@ -121,3 +121,28 @@
 - Regression tests added/updated and passing:
   - `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web exec vitest --run stores/__tests__/runHistoryStore.spec.ts` (`19 passed`)
   - `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web exec vitest --run components/workspace/history/__tests__/WorkspaceAgentRunsTreePanel.spec.ts` (`19 passed`)
+
+## Follow-up Investigation (2026-02-21)
+
+### Question
+
+- Is `hostNodeId` needed in personal run-history payloads and frontend tree rendering?
+
+### Findings
+
+1. `hostNodeId` is not used by personal frontend behavior.
+- Personal left tree rendering uses workspace root path + member ids/route keys only.
+- Personal run open/continue path does not branch on host node id.
+
+2. `hostNodeId` entered personal history via enterprise checkpoint lineage.
+- Server introduction observed in `1a8d75d` (`feat: checkpoint team history restore and distributed runtime fixes`).
+- Web pass-through appeared when restoring enterprise-style run-tree pieces into personal (`266255bb` lineage, then personal restore commit `aa9962b1`).
+
+3. In personal server code, this field was always written as `null`.
+- No personal runtime placement logic consumed it.
+- Keeping it created conceptual drift from personal single-node constraints.
+
+### Action
+
+- Removed `hostNodeId` from personal run-history domain, GraphQL contract, manifest normalization, frontend query/store types, and related tests.
+- Revalidated targeted backend/frontend suites after removal.

@@ -47,6 +47,7 @@ Personal branch should follow enterprise persistence patterns where appropriate,
 - Frontend fetches team-run history during tree load and merges with live contexts.
 - Team history payload contains a canonical team-level workspace root path used for workspace grouping.
 - Backend supports continuation flow for existing `teamId` so sending to an offline team member resumes runtime from persisted manifest/history.
+- Personal contract remains single-node: no distributed host-node metadata is required in team-run history payloads.
 
 5. Test coverage
 - Frontend: workspace tree tests include team render/select regression.

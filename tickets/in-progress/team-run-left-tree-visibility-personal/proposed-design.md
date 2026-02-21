@@ -117,7 +117,7 @@ Personal should keep the same pattern but simplify grouping: all team members sh
   - `frontend fetch` -> `store projection` -> `panel rendering`.
 - Personal simplification:
   - Team-to-workspace mapping is single workspace per team.
-  - No distributed-node placement UX (`hostNodeId`) required for rendering.
+  - No distributed-node placement metadata is required for rendering.
 
 ## File And Module Breakdown
 

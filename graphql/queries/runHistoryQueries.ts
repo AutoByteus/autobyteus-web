@@ -37,7 +37,6 @@ export const ListTeamRunHistory = gql`
         memberName
         memberAgentId
         workspaceRootPath
-        hostNodeId
       }
     }
   }
