@@ -14,6 +14,8 @@ const {
   workspaceStoreMock,
   selectionStoreMock,
   agentRunStoreMock,
+  teamRunStoreMock,
+  teamContextsStoreMock,
   windowNodeContextStoreMock,
   pickFolderPathMock,
   addToastMock,
@@ -87,14 +89,28 @@ const {
       deleteRun: vi.fn().mockResolvedValue(true),
     },
     workspaceStoreMock: {
+      workspaces: {
+        'ws-1': {
+          absolutePath: '/ws/a',
+          workspaceConfig: { root_path: '/ws/a' },
+        },
+      },
       fetchAllWorkspaces: vi.fn().mockResolvedValue(undefined),
     },
     selectionStoreMock: {
       selectedType: null as string | null,
       selectedInstanceId: null as string | null,
+      selectInstance: vi.fn(),
     },
     agentRunStoreMock: {
       terminateRun: vi.fn().mockResolvedValue(true),
+    },
+    teamRunStoreMock: {
+      terminateTeamInstance: vi.fn().mockResolvedValue(undefined),
+    },
+    teamContextsStoreMock: {
+      allTeamInstances: [] as any[],
+      setFocusedMember: vi.fn(),
     },
     windowNodeContextStoreMock: {
       isEmbeddedWindow: { __v_isRef: true, value: false },
@@ -120,6 +136,14 @@ vi.mock('~/stores/agentRunStore', () => ({
   useAgentRunStore: () => agentRunStoreMock,
 }));
 
+vi.mock('~/stores/agentTeamRunStore', () => ({
+  useAgentTeamRunStore: () => teamRunStoreMock,
+}));
+
+vi.mock('~/stores/agentTeamContextsStore', () => ({
+  useAgentTeamContextsStore: () => teamContextsStoreMock,
+}));
+
 vi.mock('~/stores/windowNodeContextStore', () => ({
   useWindowNodeContextStore: () => windowNodeContextStoreMock,
 }));
@@ -142,6 +166,7 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     runHistoryState.selectedRunId = null;
     selectionStoreMock.selectedType = null;
     selectionStoreMock.selectedInstanceId = null;
+    teamContextsStoreMock.allTeamInstances = [];
     windowNodeContextStoreMock.isEmbeddedWindow.value = false;
     pickFolderPathMock.mockResolvedValue(null);
     delete (window as any).electronAPI;
@@ -246,6 +271,49 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     });
     expect(wrapper.emitted('instance-created')).toEqual([
       [{ type: 'agent', definitionId: 'agent-def-1' }],
+    ]);
+  });
+
+  it('renders team rows under workspace and selects the team when clicked', async () => {
+    teamContextsStoreMock.allTeamInstances = [
+      {
+        teamId: 'team-1',
+        config: {
+          teamDefinitionName: 'Team Alpha',
+          workspaceId: 'ws-1',
+        },
+        focusedMemberName: 'super_agent',
+        currentStatus: 'idle',
+        members: new Map([
+          [
+            'super_agent',
+            {
+              config: { workspaceId: 'ws-1' },
+              state: {
+                conversation: {
+                  updatedAt: '2026-01-01T02:00:00.000Z',
+                  createdAt: '2026-01-01T01:59:00.000Z',
+                },
+              },
+            },
+          ],
+        ]),
+      },
+    ];
+
+    const wrapper = mountComponent();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Teams');
+    const row = wrapper.find('[data-test="workspace-team-row-team-1"]');
+    expect(row.exists()).toBe(true);
+
+    await row.trigger('click');
+    await flushPromises();
+
+    expect(selectionStoreMock.selectInstance).toHaveBeenCalledWith('team-1', 'team');
+    expect(wrapper.emitted('instance-selected')).toContainEqual([
+      { type: 'team', instanceId: 'team-1' },
     ]);
   });
 
