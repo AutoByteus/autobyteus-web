@@ -15,7 +15,6 @@ const {
   selectionStoreMock,
   agentRunStoreMock,
   teamRunStoreMock,
-  teamContextsStoreMock,
   windowNodeContextStoreMock,
   pickFolderPathMock,
   addToastMock,
@@ -24,6 +23,7 @@ const {
     loading: false,
     error: null as string | null,
     selectedRunId: null as string | null,
+    teamNodesByWorkspace: {} as Record<string, any[]>,
     nodes: [
       {
         workspaceRootPath: '/ws/a',
@@ -82,6 +82,7 @@ const {
       },
       fetchTree: vi.fn().mockResolvedValue(undefined),
       getTreeNodes: vi.fn(() => state.nodes),
+      getTeamNodes: vi.fn((workspaceRootPath: string) => state.teamNodesByWorkspace[workspaceRootPath] || []),
       formatRelativeTime: vi.fn((iso: string) => (iso.includes('01:00') ? 'now' : '4h')),
       selectTreeRun: vi.fn().mockResolvedValue(undefined),
       createDraftRun: vi.fn().mockResolvedValue('temp-2'),
@@ -107,10 +108,6 @@ const {
     },
     teamRunStoreMock: {
       terminateTeamInstance: vi.fn().mockResolvedValue(undefined),
-    },
-    teamContextsStoreMock: {
-      allTeamInstances: [] as any[],
-      setFocusedMember: vi.fn(),
     },
     windowNodeContextStoreMock: {
       isEmbeddedWindow: { __v_isRef: true, value: false },
@@ -140,10 +137,6 @@ vi.mock('~/stores/agentTeamRunStore', () => ({
   useAgentTeamRunStore: () => teamRunStoreMock,
 }));
 
-vi.mock('~/stores/agentTeamContextsStore', () => ({
-  useAgentTeamContextsStore: () => teamContextsStoreMock,
-}));
-
 vi.mock('~/stores/windowNodeContextStore', () => ({
   useWindowNodeContextStore: () => windowNodeContextStoreMock,
 }));
@@ -164,9 +157,9 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     runHistoryState.loading = false;
     runHistoryState.error = null;
     runHistoryState.selectedRunId = null;
+    runHistoryState.teamNodesByWorkspace = {};
     selectionStoreMock.selectedType = null;
     selectionStoreMock.selectedInstanceId = null;
-    teamContextsStoreMock.allTeamInstances = [];
     windowNodeContextStoreMock.isEmbeddedWindow.value = false;
     pickFolderPathMock.mockResolvedValue(null);
     delete (window as any).electronAPI;
@@ -275,29 +268,34 @@ describe('WorkspaceAgentRunsTreePanel', () => {
   });
 
   it('renders team rows under workspace and selects the team when clicked', async () => {
-    teamContextsStoreMock.allTeamInstances = [
+    runHistoryState.teamNodesByWorkspace['/ws/a'] = [
       {
         teamId: 'team-1',
-        config: {
-          teamDefinitionName: 'Team Alpha',
-          workspaceId: 'ws-1',
-        },
+        teamDefinitionId: 'team-def-1',
+        teamDefinitionName: 'Team Alpha',
+        workspaceRootPath: '/ws/a',
+        summary: 'Team summary',
+        lastActivityAt: '2026-01-01T02:00:00.000Z',
+        lastKnownStatus: 'IDLE',
+        isActive: false,
+        currentStatus: 'shutdown_complete',
+        deleteLifecycle: 'READY',
         focusedMemberName: 'super_agent',
-        currentStatus: 'idle',
-        members: new Map([
-          [
-            'super_agent',
-            {
-              config: { workspaceId: 'ws-1' },
-              state: {
-                conversation: {
-                  updatedAt: '2026-01-01T02:00:00.000Z',
-                  createdAt: '2026-01-01T01:59:00.000Z',
-                },
-              },
-            },
-          ],
-        ]),
+        members: [
+          {
+            teamId: 'team-1',
+            memberRouteKey: 'super_agent',
+            memberName: 'Super Agent',
+            memberAgentId: 'member-run-1',
+            workspaceRootPath: '/ws/a',
+            hostNodeId: null,
+            summary: 'Team summary',
+            lastActivityAt: '2026-01-01T02:00:00.000Z',
+            lastKnownStatus: 'IDLE',
+            isActive: false,
+            deleteLifecycle: 'READY',
+          },
+        ],
       },
     ];
 
@@ -312,6 +310,62 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     await flushPromises();
 
     expect(selectionStoreMock.selectInstance).toHaveBeenCalledWith('team-1', 'team');
+    expect(wrapper.emitted('instance-selected')).toContainEqual([
+      { type: 'team', instanceId: 'team-1' },
+    ]);
+  });
+
+  it('selects team member through runHistoryStore so persisted member history can hydrate', async () => {
+    runHistoryState.teamNodesByWorkspace['/ws/a'] = [
+      {
+        teamId: 'team-1',
+        teamDefinitionId: 'team-def-1',
+        teamDefinitionName: 'Team Alpha',
+        workspaceRootPath: '/ws/a',
+        summary: 'Team summary',
+        lastActivityAt: '2026-01-01T02:00:00.000Z',
+        lastKnownStatus: 'IDLE',
+        isActive: false,
+        currentStatus: 'shutdown_complete',
+        deleteLifecycle: 'READY',
+        focusedMemberName: 'super_agent',
+        members: [
+          {
+            teamId: 'team-1',
+            memberRouteKey: 'super_agent',
+            memberName: 'Super Agent',
+            memberAgentId: 'member-run-1',
+            workspaceRootPath: '/ws/a',
+            hostNodeId: null,
+            summary: 'Team summary',
+            lastActivityAt: '2026-01-01T02:00:00.000Z',
+            lastKnownStatus: 'IDLE',
+            isActive: false,
+            deleteLifecycle: 'READY',
+          },
+        ],
+      },
+    ];
+
+    const wrapper = mountComponent();
+    await flushPromises();
+
+    const teamRow = wrapper.find('[data-test="workspace-team-row-team-1"]');
+    expect(teamRow.exists()).toBe(true);
+    await teamRow.trigger('click');
+    await flushPromises();
+
+    const memberButton = wrapper.find('[data-test="workspace-team-member-team-1-super_agent"]');
+    expect(memberButton.exists()).toBe(true);
+    await memberButton.trigger('click');
+    await flushPromises();
+
+    expect(runHistoryStoreMock.selectTreeRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId: 'team-1',
+        memberRouteKey: 'super_agent',
+      }),
+    );
     expect(wrapper.emitted('instance-selected')).toContainEqual([
       { type: 'team', instanceId: 'team-1' },
     ]);

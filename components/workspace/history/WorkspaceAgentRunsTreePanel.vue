@@ -245,14 +245,14 @@
                 <div v-if="isTeamExpanded(team.teamId)" class="ml-3 space-y-0.5">
                   <button
                     v-for="member in team.members"
-                    :key="member.routeKey"
+                    :key="member.memberRouteKey"
                     type="button"
                     class="flex w-full items-center justify-between rounded-md px-2 py-1 text-left text-sm transition-colors"
-                    :class="member.routeKey === team.focusedMemberName ? 'bg-indigo-50 text-indigo-900' : 'text-gray-600 hover:bg-gray-50'"
-                    :data-test="`workspace-team-member-${team.teamId}-${member.routeKey}`"
-                    @click="onSelectTeamMember(team.teamId, member.routeKey)"
+                    :class="member.memberRouteKey === team.focusedMemberName ? 'bg-indigo-50 text-indigo-900' : 'text-gray-600 hover:bg-gray-50'"
+                    :data-test="`workspace-team-member-${team.teamId}-${member.memberRouteKey}`"
+                    @click="onSelectTeamMember(member)"
                   >
-                    <span class="truncate">{{ member.displayName }}</span>
+                    <span class="truncate">{{ toTeamMemberDisplayName(member) }}</span>
                     <span class="ml-2 text-xs text-gray-400">
                       {{ runHistoryStore.formatRelativeTime(team.lastActivityAt) }}
                     </span>
@@ -289,13 +289,12 @@ import { useWorkspaceStore } from '~/stores/workspace';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 import { useAgentRunStore } from '~/stores/agentRunStore';
 import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
-import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import { useToasts } from '~/composables/useToasts';
 import { pickFolderPath } from '~/composables/useNativeFolderDialog';
 import type { RunTreeRow } from '~/utils/runTreeProjection';
 import { AgentTeamStatus } from '~/types/agent/AgentTeamStatus';
-import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
+import type { TeamMemberTreeRow, TeamTreeNode } from '~/stores/runHistoryStore';
 
 const emit = defineEmits<{
   (e: 'instance-selected', payload: { type: 'agent'; instanceId: string }): void;
@@ -308,7 +307,6 @@ const workspaceStore = useWorkspaceStore();
 const selectionStore = useAgentSelectionStore();
 const agentRunStore = useAgentRunStore();
 const teamRunStore = useAgentTeamRunStore();
-const teamContextsStore = useAgentTeamContextsStore();
 const windowNodeContextStore = useWindowNodeContextStore();
 const { isEmbeddedWindow } = storeToRefs(windowNodeContextStore);
 const { addToast } = useToasts();
@@ -329,20 +327,6 @@ const pendingDeleteRunId = ref<string | null>(null);
 const brokenAvatarByAgentKey = ref<Record<string, boolean>>({});
 const activeStatusClass = 'bg-blue-500 animate-pulse';
 
-interface TeamMemberTreeRow {
-  routeKey: string;
-  displayName: string;
-}
-
-interface TeamTreeRow {
-  teamId: string;
-  teamDefinitionName: string;
-  focusedMemberName: string;
-  currentStatus: AgentTeamStatus;
-  members: TeamMemberTreeRow[];
-  lastActivityAt: string;
-}
-
 const normalizeRootPath = (value: string | null | undefined): string => {
   const source = (value || '').trim();
   if (!source) {
@@ -355,86 +339,8 @@ const normalizeRootPath = (value: string | null | undefined): string => {
   return normalized.replace(/\/+$/, '');
 };
 
-const resolveWorkspaceRootPath = (workspaceId: string | null): string => {
-  if (!workspaceId) {
-    return '';
-  }
-  const workspace = workspaceStore.workspaces[workspaceId];
-  if (!workspace) {
-    return '';
-  }
-  return normalizeRootPath(
-    workspace.absolutePath ||
-      workspace.workspaceConfig?.root_path ||
-      workspace.workspaceConfig?.rootPath ||
-      null,
-  );
-};
-
-const resolveTeamWorkspaceRootPath = (teamContext: AgentTeamContext): string => {
-  const fromTeamConfig = resolveWorkspaceRootPath(teamContext.config.workspaceId);
-  if (fromTeamConfig) {
-    return fromTeamConfig;
-  }
-
-  for (const member of teamContext.members.values()) {
-    const fromMember = resolveWorkspaceRootPath(member.config.workspaceId);
-    if (fromMember) {
-      return fromMember;
-    }
-  }
-  return '';
-};
-
-const resolveTeamLastActivityAt = (teamContext: AgentTeamContext): string => {
-  let latestTimestamp = 0;
-  let latestIso = '';
-  for (const member of teamContext.members.values()) {
-    const updatedAt = member.state.conversation.updatedAt || member.state.conversation.createdAt;
-    const parsed = Date.parse(updatedAt || '');
-    if (Number.isFinite(parsed) && parsed >= latestTimestamp) {
-      latestTimestamp = parsed;
-      latestIso = updatedAt || '';
-    }
-  }
-  return latestIso || new Date().toISOString();
-};
-
 const workspaceNodes = computed(() => {
   return runHistoryStore.getTreeNodes();
-});
-
-const teamNodesByWorkspace = computed<Record<string, TeamTreeRow[]>>(() => {
-  const result: Record<string, TeamTreeRow[]> = {};
-
-  for (const teamContext of teamContextsStore.allTeamInstances) {
-    const workspaceRootPath = resolveTeamWorkspaceRootPath(teamContext);
-    if (!workspaceRootPath) {
-      continue;
-    }
-
-    const members: TeamMemberTreeRow[] = Array.from(teamContext.members.keys()).map((routeKey) => ({
-      routeKey,
-      displayName: routeKey.split('/').filter(Boolean).pop() || routeKey,
-    }));
-    const row: TeamTreeRow = {
-      teamId: teamContext.teamId,
-      teamDefinitionName: teamContext.config.teamDefinitionName || 'Team',
-      focusedMemberName: teamContext.focusedMemberName,
-      currentStatus: teamContext.currentStatus,
-      members,
-      lastActivityAt: resolveTeamLastActivityAt(teamContext),
-    };
-    const workspaceRows = result[workspaceRootPath] || [];
-    workspaceRows.push(row);
-    result[workspaceRootPath] = workspaceRows;
-  }
-
-  Object.values(result).forEach((rows) => {
-    rows.sort((a, b) => Date.parse(b.lastActivityAt) - Date.parse(a.lastActivityAt));
-  });
-
-  return result;
 });
 
 const selectedRunId = computed(() => {
@@ -451,9 +357,12 @@ const selectedTeamId = computed(() => {
   return null;
 });
 
-const workspaceTeams = (workspaceRootPath: string): TeamTreeRow[] => {
+const workspaceTeams = (workspaceRootPath: string): TeamTreeNode[] => {
   const key = normalizeRootPath(workspaceRootPath);
-  return key ? teamNodesByWorkspace.value[key] || [] : [];
+  if (!key) {
+    return [];
+  }
+  return runHistoryStore.getTeamNodes(key);
 };
 
 const isTeamExpanded = (teamId: string): boolean => {
@@ -589,10 +498,27 @@ const onSelectTeam = (teamId: string): void => {
   emit('instance-selected', { type: 'team', instanceId: teamId });
 };
 
-const onSelectTeamMember = (teamId: string, memberRouteKey: string): void => {
-  selectionStore.selectInstance(teamId, 'team');
-  teamContextsStore.setFocusedMember(memberRouteKey);
-  emit('instance-selected', { type: 'team', instanceId: teamId });
+const toTeamMemberDisplayName = (member: TeamMemberTreeRow): string => {
+  const direct = member.memberName?.trim();
+  if (direct) {
+    return direct;
+  }
+  const routeKey = member.memberRouteKey || '';
+  const routeLeaf = routeKey
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0)
+    .pop();
+  return routeLeaf || routeKey || 'Member';
+};
+
+const onSelectTeamMember = async (member: TeamMemberTreeRow): Promise<void> => {
+  try {
+    await runHistoryStore.selectTreeRun(member);
+    emit('instance-selected', { type: 'team', instanceId: member.teamId });
+  } catch (error) {
+    console.error('Failed to open team member run:', error);
+  }
 };
 
 const onTerminateTeam = async (teamId: string): Promise<void> => {

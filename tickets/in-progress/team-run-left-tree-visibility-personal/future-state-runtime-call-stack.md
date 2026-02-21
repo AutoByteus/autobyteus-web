@@ -15,14 +15,14 @@
 ## Design Basis
 
 - Scope Classification: `Medium`
-- Call Stack Version: `v3`
-- Requirements: `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/tickets/in-progress/team-run-left-tree-visibility-personal/requirements.md` (status `Refined`)
-- Source Design Artifact: `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/tickets/in-progress/team-run-left-tree-visibility-personal/proposed-design.md`
-- Source Design Version: `v3`
+- Call Stack Version: `v4`
+- Requirements: `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/tickets/in-progress/team-run-left-tree-visibility-personal/requirements.md` (status `Refined`)
+- Source Design Artifact: `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/tickets/in-progress/team-run-left-tree-visibility-personal/proposed-design.md`
+- Source Design Version: `v4`
 - Referenced Sections:
   - Current State / Target State
-  - Change Inventory `C-001..C-009`
-  - Use-Case Coverage Matrix `UC-001..UC-007`
+  - Change Inventory `C-001..C-014`
+  - Use-Case Coverage Matrix `UC-001..UC-008`
 
 ## Future-State Modeling Rule (Mandatory)
 
@@ -44,9 +44,9 @@
 
 ## Transition Notes
 
-- Existing personal frontend already renders live team rows from `agentTeamContextsStore`.
-- Target state moves canonical team row projection to a unified store path (`runHistoryStore`) that merges persisted + live sources.
-- Backend team-run history APIs/services are currently absent in personal and are part of target-state changes.
+- Canonical team row projection is store-driven in `runHistoryStore.getTeamNodes(...)`; panel-local live-only derivation is removed.
+- Team member selection routes through `runHistoryStore.selectTreeRun(...)` so persisted/offline members hydrate via `openTeamMemberRun(...)`.
+- Backend team-run history APIs/services are available and consumed by personal web flow.
 
 ## Use Case: UC-001 [Run Team Appears Under Workspace Immediately]
 
@@ -74,16 +74,17 @@ Show a new team row under the selected workspace immediately after user clicks `
 │   ├── stores/agentSelectionStore.ts:selectInstance(teamId, "team") [STATE]
 │   └── stores/agentTeamContextsStore.ts:teams.set(teamId, context) [STATE]
 ├── stores/teamRunConfigStore.ts:clearConfig() [STATE]
-└── components/workspace/history/WorkspaceAgentRunsTreePanel.vue:teamNodesByWorkspace(computed) [STATE]
-    └── components/workspace/history/WorkspaceAgentRunsTreePanel.vue:workspaceTeams(workspaceRootPath) [STATE]
+└── components/workspace/history/WorkspaceAgentRunsTreePanel.vue:workspaceTeams(workspaceRootPath) [STATE]
+    └── stores/runHistoryStore.ts:getTeamNodes(workspaceRootPath) [STATE]
+        └── merge persisted `teamRuns` + live `agentTeamContextsStore.allTeamInstances` [STATE]
 ```
 
 ### Branching / Fallback Paths
 
 ```text
-[FALLBACK] if workspace tree still has no persisted team rows
-components/workspace/history/WorkspaceAgentRunsTreePanel.vue:teamNodesByWorkspace(computed)
-└── stores/agentTeamContextsStore.ts:allTeamInstances (live-only projection) [STATE]
+[FALLBACK] if team history query failed on last fetch
+stores/runHistoryStore.ts:getTeamNodes(workspaceRootPath)
+└── still projects live team contexts so temp/active rows remain visible [STATE]
 ```
 
 ```text
@@ -206,22 +207,21 @@ Selecting a team row focuses team context and keeps team panel in sync.
 [ENTRY] components/workspace/history/WorkspaceAgentRunsTreePanel.vue:onSelectTeam(teamId)
 ├── components/workspace/history/WorkspaceAgentRunsTreePanel.vue:toggleTeam(teamId) [STATE]
 ├── stores/agentSelectionStore.ts:selectInstance(teamId, "team") [STATE]
-├── stores/runHistoryStore.ts:openTeamMemberRun(teamId, defaultMemberRouteKey) [ASYNC]
 └── components/workspace/history/WorkspaceAgentRunsTreePanel.vue:$emit("instance-selected", {type:"team", instanceId:teamId}) [ASYNC]
 ```
 
 ### Branching / Fallback Paths
 
 ```text
-[FALLBACK] if selected team exists in persisted history only
-stores/runHistoryStore.ts:openTeamMemberRun(teamId, memberRouteKey) [ASYNC]
-└── hydrates team context before focus update [STATE]
+[FALLBACK] if selected team has no hydrated local context yet
+components/workspace/team/TeamWorkspaceView.vue:activeTeamContext(computed)
+└── renders empty-state until member row click triggers rehydrate path [STATE]
 ```
 
 ```text
-[ERROR] if selected team id cannot be resolved by projection
-stores/runHistoryStore.ts:openTeamMemberRun(...)
-└── set error state and toast: "Failed to open team run."
+[ERROR] no direct async error in `onSelectTeam`; failures surface on later member-open path
+components/workspace/history/WorkspaceAgentRunsTreePanel.vue:onSelectTeamMember(member)
+└── catches and logs store open errors
 ```
 
 ### State And Data Transformations
@@ -252,7 +252,7 @@ stores/runHistoryStore.ts:openTeamMemberRun(...)
 
 ### Goal
 
-Clicking a team member sets focused member for message routing.
+Clicking a team member sets focus for local contexts or hydrates persisted member history before focus/send.
 
 ### Preconditions
 
@@ -265,27 +265,34 @@ Clicking a team member sets focused member for message routing.
 ### Primary Runtime Call Stack
 
 ```text
-[ENTRY] components/workspace/history/WorkspaceAgentRunsTreePanel.vue:onSelectTeamMember(teamId, memberRouteKey)
-├── stores/agentSelectionStore.ts:selectInstance(teamId, "team") [STATE]
-├── stores/agentTeamContextsStore.ts:setFocusedMember(memberRouteKey) [STATE]
-└── components/workspace/history/WorkspaceAgentRunsTreePanel.vue:$emit("instance-selected", {type:"team", instanceId:teamId}) [ASYNC]
+[ENTRY] components/workspace/history/WorkspaceAgentRunsTreePanel.vue:onSelectTeamMember(member)
+├── stores/runHistoryStore.ts:selectTreeRun(member) [ASYNC]
+│   ├── [FALLBACK] if local team context exists
+│   │   ├── stores/agentTeamContextsStore.ts:setFocusedMember(member.memberRouteKey) [STATE]
+│   │   └── stores/agentSelectionStore.ts:selectInstance(member.teamId, "team") [STATE]
+│   └── [PRIMARY] if local context absent
+│       └── stores/runHistoryStore.ts:openTeamMemberRun(member.teamId, member.memberRouteKey) [ASYNC]
+├── stores/agentSelectionStore.ts:selectInstance(member.teamId, "team") [STATE]
+└── components/workspace/history/WorkspaceAgentRunsTreePanel.vue:$emit("instance-selected", {type:"team", instanceId:member.teamId}) [ASYNC]
 ```
 
 ### Branching / Fallback Paths
 
 ```text
-[FALLBACK] none
+[FALLBACK] if local team context already exists
+stores/runHistoryStore.ts:selectTreeRun(member)
+└── skips projection queries and performs in-memory focus switch only
 ```
 
 ```text
-[ERROR] if memberRouteKey is absent from team context
-stores/agentTeamContextsStore.ts:setFocusedMember(memberName)
-└── no-op; UI should not mutate focused member
+[ERROR] if persisted team/member projection cannot be resolved
+stores/runHistoryStore.ts:openTeamMemberRun(teamId, memberRouteKey)
+└── set error state + throw; panel catches and logs failure
 ```
 
 ### State And Data Transformations
 
-- Member route key -> active team `focusedMemberName`.
+- Team member row -> either local focus mutation or persisted projection hydrate + focus mutation.
 
 ### Observability And Debug Points
 
@@ -326,12 +333,14 @@ Terminate active team from left tree and synchronize active/inactive state with 
 [ENTRY] components/workspace/history/WorkspaceAgentRunsTreePanel.vue:onTerminateTeam(teamId)
 ├── stores/agentTeamRunStore.ts:terminateTeamInstance(teamId) [ASYNC]
 │   ├── stores/agentTeamRunStore.ts:teamContext.unsubscribe?.() [STATE]
-│   ├── stores/agentTeamContextsStore.ts:removeTeamContext(teamId) [STATE]
+│   ├── stores/agentTeamRunStore.ts:set teamContext.currentStatus = ShutdownComplete [STATE]
+│   ├── stores/agentTeamRunStore.ts:set each member.state.currentStatus = ShutdownComplete [STATE]
 │   ├── graphql/mutations/agentTeamInstanceMutations.ts:TerminateAgentTeamInstance [IO]
 │   └── [ASYNC] src/api/graphql/types/agent-team-instance.ts:terminateAgentTeamInstance(id) [IO]
 │       ├── src/agent-team-execution/services/agent-team-instance-manager.ts:terminateTeamInstance(id) [STATE]
 │       └── src/run-history/services/team-run-history-service.ts:onTeamTerminated(teamId) [IO]
-└── stores/runHistoryStore.ts:markTeamAsInactive(teamId) [STATE]
+└── components/workspace/history/WorkspaceAgentRunsTreePanel.vue:workspaceTeams(workspaceRootPath) [STATE]
+    └── stores/runHistoryStore.ts:getTeamNodes(workspaceRootPath) keeps row visible from persisted+live merge [STATE]
 ```
 
 ### Branching / Fallback Paths
@@ -339,7 +348,7 @@ Terminate active team from left tree and synchronize active/inactive state with 
 ```text
 [FALLBACK] if temp team id has never been promoted
 stores/agentTeamRunStore.ts:terminateTeamInstance(teamId)
-└── return before backend mutation; remove local context only [STATE]
+└── return before backend mutation; in-memory row remains with shutdown state [STATE]
 ```
 
 ```text
@@ -350,7 +359,7 @@ stores/agentTeamRunStore.ts:terminateTeamInstance(teamId)
 
 ### State And Data Transformations
 
-- Active team context -> removed from memory; persisted row status `ACTIVE` -> `IDLE`.
+- Active team context -> shutdown in memory; persisted row status eventually reflected via history refresh.
 
 ### Observability And Debug Points
 
@@ -526,15 +535,16 @@ When user clicks a persisted/offline team member, history loads and user can con
 ### Primary Runtime Call Stack
 
 ```text
-[ENTRY] components/workspace/history/WorkspaceAgentRunsTreePanel.vue:onSelectTeamMember(teamId, memberRouteKey)
-├── stores/agentSelectionStore.ts:selectInstance(teamId, "team") [STATE]
-├── stores/agentTeamContextsStore.ts:setFocusedMember(memberRouteKey) [STATE]
-├── stores/runHistoryStore.ts:openTeamMemberRun(teamId, memberRouteKey) [ASYNC]
+[ENTRY] components/workspace/history/WorkspaceAgentRunsTreePanel.vue:onSelectTeamMember(member)
+├── stores/runHistoryStore.ts:selectTreeRun(member) [ASYNC]
+│   ├── [FALLBACK] local team context path -> setFocusedMember(member.memberRouteKey) [STATE]
+│   └── [PRIMARY] persisted/offline path -> openTeamMemberRun(member.teamId, member.memberRouteKey) [ASYNC]
 │   ├── graphql/queries/runHistoryQueries.ts:GetTeamRunResumeConfig [IO]
 │   ├── graphql/queries/runHistoryQueries.ts:GetTeamMemberRunProjection [IO]
-│   ├── [ASYNC] src/api/graphql/types/team-run-history.ts:getTeamRunResumeConfig(teamId) [IO]
-│   ├── [ASYNC] src/api/graphql/types/team-run-history.ts:getTeamMemberRunProjection(teamId, memberRouteKey) [IO]
+│   ├── [ASYNC] src/api/graphql/types/team-run-history.ts:getTeamRunResumeConfig(member.teamId) [IO]
+│   ├── [ASYNC] src/api/graphql/types/team-run-history.ts:getTeamMemberRunProjection(member.teamId, member.memberRouteKey) [IO]
 │   └── stores/agentTeamContextsStore.ts:addTeamContext(hydratedContext) [STATE]
+├── stores/agentSelectionStore.ts:selectInstance(member.teamId, "team") [STATE]
 ├── stores/activeContextStore.ts:send() [ENTRY]
 │   └── stores/agentTeamRunStore.ts:sendMessageToFocusedMember(text, contextPaths) [ASYNC]
 │       ├── graphql/mutations/agentTeamInstanceMutations.ts:SendMessageToTeam(input={teamId,targetMemberName}) [IO]
@@ -543,7 +553,7 @@ When user clicks a persisted/offline team member, history loads and user can con
 │           ├── src/agent-team-execution/services/agent-team-instance-manager.ts:createTeamInstanceWithId(...) [STATE]
 │           ├── src/run-history/services/team-run-history-service.ts:onTeamEvent(teamId,{status:"ACTIVE"}) [IO]
 │           └── src/agent-team-execution/services/default-team-command-ingress-service.ts:dispatchUserMessage(...) [ASYNC]
-└── stores/agentTeamContextsStore.ts:focusedMemberContext.state.conversation.messages.push(...) [STATE]
+└── stores/agentTeamRunStore.ts:focusedMember.state.conversation.messages.push(...) [STATE]
 ```
 
 ### Branching / Fallback Paths

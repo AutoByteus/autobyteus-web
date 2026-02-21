@@ -19,3 +19,12 @@ export const DeleteRunHistory = gql`
     }
   }
 `;
+
+export const DeleteTeamRunHistory = gql`
+  mutation DeleteTeamRunHistory($teamId: String!) {
+    deleteTeamRunHistory(teamId: $teamId) {
+      success
+      message
+    }
+  }
+`;

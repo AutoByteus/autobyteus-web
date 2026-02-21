@@ -4,15 +4,26 @@ import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import { useWorkspaceStore } from '~/stores/workspace';
 import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
+import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
+import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
 import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
 import { useLLMProviderConfigStore } from '~/stores/llmProviderConfig';
-import { ListRunHistory } from '~/graphql/queries/runHistoryQueries';
-import { DeleteRunHistory } from '~/graphql/mutations/runHistoryMutations';
-import type { SkillAccessMode } from '~/types/agent/AgentRunConfig';
+import {
+  GetTeamMemberRunProjection,
+  GetTeamRunResumeConfig,
+  ListRunHistory,
+  ListTeamRunHistory,
+} from '~/graphql/queries/runHistoryQueries';
+import { DeleteRunHistory, DeleteTeamRunHistory } from '~/graphql/mutations/runHistoryMutations';
+import type { AgentRunConfig, SkillAccessMode } from '~/types/agent/AgentRunConfig';
 import type { Conversation } from '~/types/conversation';
+import { AgentContext } from '~/types/agent/AgentContext';
+import { AgentRunState } from '~/types/agent/AgentRunState';
 import { AgentStatus } from '~/types/agent/AgentStatus';
+import { AgentTeamStatus } from '~/types/agent/AgentTeamStatus';
+import type { AgentTeamContext } from '~/types/agent/AgentTeamContext';
 import {
   buildRunTreeProjection,
   type DraftRunSnapshot,
@@ -28,7 +39,11 @@ import {
   pickPreferredRunTemplate,
   resolveRunnableModelIdentifier,
 } from '~/utils/runLaunchPolicy';
-import { openRunWithCoordinator } from '~/services/runOpen/runOpenCoordinator';
+import {
+  buildConversationFromProjection,
+  openRunWithCoordinator,
+  type RunProjectionConversationEntry,
+} from '~/services/runOpen/runOpenCoordinator';
 
 export type RunKnownStatus = 'ACTIVE' | 'IDLE' | 'ERROR';
 
@@ -77,12 +92,124 @@ export interface RunResumeConfigPayload {
   editableFields: RunEditableFieldFlags;
 }
 
+export type TeamRunKnownStatus = 'ACTIVE' | 'IDLE' | 'ERROR';
+export type TeamRunDeleteLifecycle = 'READY' | 'CLEANUP_PENDING';
+
+export interface TeamRunMemberHistoryItem {
+  memberRouteKey: string;
+  memberName: string;
+  memberAgentId: string;
+  workspaceRootPath?: string | null;
+  hostNodeId?: string | null;
+}
+
+export interface TeamRunHistoryItem {
+  teamId: string;
+  teamDefinitionId: string;
+  teamDefinitionName: string;
+  workspaceRootPath?: string | null;
+  summary: string;
+  lastActivityAt: string;
+  lastKnownStatus: TeamRunKnownStatus;
+  deleteLifecycle: TeamRunDeleteLifecycle;
+  isActive: boolean;
+  members: TeamRunMemberHistoryItem[];
+}
+
+interface TeamRunManifestMemberBinding {
+  memberRouteKey: string;
+  memberName: string;
+  memberAgentId: string;
+  agentDefinitionId: string;
+  llmModelIdentifier: string;
+  autoExecuteTools: boolean;
+  llmConfig: Record<string, unknown> | null;
+  workspaceRootPath: string | null;
+  hostNodeId: string | null;
+}
+
+interface TeamRunManifestPayload {
+  teamId: string;
+  teamDefinitionId: string;
+  teamDefinitionName: string;
+  coordinatorMemberRouteKey: string;
+  runVersion: number;
+  createdAt: string;
+  updatedAt: string;
+  memberBindings: TeamRunManifestMemberBinding[];
+}
+
+interface TeamRunResumeConfigPayload {
+  teamId: string;
+  isActive: boolean;
+  manifest: TeamRunManifestPayload;
+}
+
+export interface TeamMemberTreeRow {
+  teamId: string;
+  memberRouteKey: string;
+  memberName: string;
+  memberAgentId: string;
+  workspaceRootPath: string | null;
+  hostNodeId: string | null;
+  summary: string;
+  lastActivityAt: string;
+  lastKnownStatus: TeamRunKnownStatus;
+  isActive: boolean;
+  deleteLifecycle: TeamRunDeleteLifecycle;
+}
+
+export interface TeamTreeNode {
+  teamId: string;
+  teamDefinitionId: string;
+  teamDefinitionName: string;
+  workspaceRootPath: string;
+  summary: string;
+  lastActivityAt: string;
+  lastKnownStatus: TeamRunKnownStatus;
+  isActive: boolean;
+  currentStatus: AgentTeamStatus;
+  deleteLifecycle: TeamRunDeleteLifecycle;
+  focusedMemberName: string;
+  members: TeamMemberTreeRow[];
+}
+
 interface ListRunHistoryQueryData {
   listRunHistory: RunHistoryWorkspaceGroup[];
 }
 
+interface ListTeamRunHistoryQueryData {
+  listTeamRunHistory: TeamRunHistoryItem[];
+}
+
+interface TeamMemberRunProjectionPayload {
+  agentId: string;
+  conversation: RunProjectionConversationEntry[];
+  summary?: string | null;
+  lastActivityAt?: string | null;
+}
+
+interface GetTeamMemberRunProjectionQueryData {
+  getTeamMemberRunProjection: TeamMemberRunProjectionPayload;
+}
+
+interface GetTeamRunResumeConfigQueryData {
+  getTeamRunResumeConfig: {
+    teamId: string;
+    isActive: boolean;
+    manifest: unknown;
+  };
+}
+
 interface DeleteRunHistoryMutationData {
   deleteRunHistory: {
+    success: boolean;
+    message: string;
+  };
+}
+
+interface DeleteTeamRunHistoryMutationData {
+  deleteTeamRunHistory: {
     success: boolean;
     message: string;
   };
@@ -95,6 +222,9 @@ const FALSE_EDITABLE_FIELDS: RunEditableFieldFlags = {
   skillAccessMode: false,
   workspaceRootPath: false,
 };
+
+const UNASSIGNED_TEAM_WORKSPACE_KEY = 'unassigned-team-workspace';
+const UNASSIGNED_TEAM_WORKSPACE_LABEL = 'Unassigned Team Workspace';
 
 const normalizeRootPath = (value: string | null | undefined): string => {
   const source = (value || '').trim();
@@ -109,6 +239,9 @@ const normalizeRootPath = (value: string | null | undefined): string => {
 };
 
 const displayWorkspaceName = (workspaceRootPath: string): string => {
+  if (workspaceRootPath === UNASSIGNED_TEAM_WORKSPACE_KEY) {
+    return UNASSIGNED_TEAM_WORKSPACE_LABEL;
+  }
   const normalized = normalizeRootPath(workspaceRootPath);
   if (!normalized) {
     return 'workspace';
@@ -168,6 +301,131 @@ const removeRunFromWorkspaceGroups = (
     .filter((workspace) => workspace.agents.length > 0);
 };
 
+const removeTeamRunById = (
+  rows: TeamRunHistoryItem[],
+  teamId: string,
+): TeamRunHistoryItem[] => rows.filter((row) => row.teamId !== teamId);
+
+const asRecord = (value: unknown): Record<string, unknown> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  return value as Record<string, unknown>;
+};
+
+const parseTeamRunManifest = (value: unknown): TeamRunManifestPayload => {
+  const payload = asRecord(value);
+  const memberBindings = Array.isArray(payload.memberBindings)
+    ? payload.memberBindings.map((item) => {
+        const binding = asRecord(item);
+        return {
+          memberRouteKey: String(binding.memberRouteKey || ''),
+          memberName: String(binding.memberName || ''),
+          memberAgentId: String(binding.memberAgentId || ''),
+          agentDefinitionId: String(binding.agentDefinitionId || ''),
+          llmModelIdentifier: String(binding.llmModelIdentifier || ''),
+          autoExecuteTools: Boolean(binding.autoExecuteTools),
+          llmConfig:
+            binding.llmConfig && typeof binding.llmConfig === 'object' && !Array.isArray(binding.llmConfig)
+              ? (binding.llmConfig as Record<string, unknown>)
+              : null,
+          workspaceRootPath:
+            typeof binding.workspaceRootPath === 'string' ? binding.workspaceRootPath : null,
+          hostNodeId: typeof binding.hostNodeId === 'string' ? binding.hostNodeId : null,
+        };
+      })
+    : [];
+  return {
+    teamId: String(payload.teamId || ''),
+    teamDefinitionId: String(payload.teamDefinitionId || ''),
+    teamDefinitionName: String(payload.teamDefinitionName || ''),
+    coordinatorMemberRouteKey: String(payload.coordinatorMemberRouteKey || ''),
+    runVersion: Number(payload.runVersion || 1),
+    createdAt: String(payload.createdAt || new Date().toISOString()),
+    updatedAt: String(payload.updatedAt || new Date().toISOString()),
+    memberBindings,
+  };
+};
+
+const toTeamMemberKey = (member: { memberRouteKey: string; memberName: string }): string =>
+  member.memberRouteKey || member.memberName;
+
+const toHistoryTeamStatus = (team: Pick<TeamRunHistoryItem, 'isActive' | 'lastKnownStatus'>): AgentTeamStatus => {
+  if (team.lastKnownStatus === 'ERROR') {
+    return AgentTeamStatus.Error;
+  }
+  if (!team.isActive) {
+    return AgentTeamStatus.ShutdownComplete;
+  }
+  return AgentTeamStatus.Processing;
+};
+
+const toTeamRunStatus = (
+  status: AgentTeamStatus,
+): Pick<TeamRunHistoryItem, 'isActive' | 'lastKnownStatus'> => {
+  if (status === AgentTeamStatus.Error) {
+    return { isActive: false, lastKnownStatus: 'ERROR' };
+  }
+
+  if (
+    status === AgentTeamStatus.Uninitialized ||
+    status === AgentTeamStatus.ShutdownComplete
+  ) {
+    return { isActive: false, lastKnownStatus: 'IDLE' };
+  }
+
+  return { isActive: true, lastKnownStatus: 'ACTIVE' };
+};
+
+const summarizeTeamDraft = (teamContext: AgentTeamContext): string => {
+  const focusedContext = teamContext.members.get(teamContext.focusedMemberName) ?? null;
+  const candidateContexts = focusedContext
+    ? [focusedContext, ...Array.from(teamContext.members.values()).filter((member) => member !== focusedContext)]
+    : Array.from(teamContext.members.values());
+
+  for (const member of candidateContexts) {
+    const firstUserMessage = member.state.conversation.messages.find(
+      (message) => message.type === 'user' && message.text?.trim().length > 0,
+    );
+    if (firstUserMessage?.type === 'user') {
+      return firstUserMessage.text.trim();
+    }
+  }
+
+  return `${DEFAULT_DRAFT_SUMMARY_PREFIX}${teamContext.config.teamDefinitionName || 'Team'}`.trim();
+};
+
+const resolveTeamLastActivityAt = (teamContext: AgentTeamContext): string => {
+  let latest = '';
+  for (const member of teamContext.members.values()) {
+    const ts = member.state.conversation.updatedAt || member.state.conversation.createdAt || '';
+    if (!ts) {
+      continue;
+    }
+    if (!latest || ts > latest) {
+      latest = ts;
+    }
+  }
+  return latest || new Date().toISOString();
+};
+
+const resolveTeamWorkspaceRootPathFromContext = (
+  workspaceStore: ReturnType<typeof useWorkspaceStore>,
+  teamContext: AgentTeamContext,
+): string => {
+  const fromTeamConfig = resolveWorkspaceRootPath(workspaceStore, teamContext.config.workspaceId);
+  if (fromTeamConfig) {
+    return fromTeamConfig;
+  }
+  for (const member of teamContext.members.values()) {
+    const fromMemberConfig = resolveWorkspaceRootPath(workspaceStore, member.config.workspaceId);
+    if (fromMemberConfig) {
+      return fromMemberConfig;
+    }
+  }
+  return UNASSIGNED_TEAM_WORKSPACE_KEY;
+};
+
 const toRunStatus = (status: AgentStatus): Pick<RunHistoryItem, 'isActive' | 'lastKnownStatus'> => {
   if (status === AgentStatus.Error) {
     return { isActive: false, lastKnownStatus: 'ERROR' };
@@ -187,9 +445,14 @@ const toRunStatus = (status: AgentStatus): Pick<RunHistoryItem, 'isActive' | 'la
 export const useRunHistoryStore = defineStore('runHistory', {
   state: () => ({
     workspaceGroups: [] as RunHistoryWorkspaceGroup[],
+    teamRuns: [] as TeamRunHistoryItem[],
     agentAvatarByDefinitionId: {} as Record<string, string>,
     resumeConfigByRunId: {} as Record<string, RunResumeConfigPayload>,
+    teamResumeConfigByTeamId: {} as Record<string, TeamRunResumeConfigPayload>,
     selectedRunId: null as string | null,
+    selectedTeamId: null as string | null,
+    selectedTeamMemberRouteKey: null as string | null,
+    teamDraftProjectionRevision: 0,
     loading: false,
     openingRun: false,
     error: null as string | null,
@@ -230,17 +493,27 @@ export const useRunHistoryStore = defineStore('runHistory', {
         }
 
         const client = getApolloClient();
-        const { data, errors } = await client.query<ListRunHistoryQueryData>({
-          query: ListRunHistory,
-          variables: { limitPerAgent },
-          fetchPolicy: 'network-only',
-        });
+        const [agentHistoryResult, teamHistoryResult] = await Promise.all([
+          client.query<ListRunHistoryQueryData>({
+            query: ListRunHistory,
+            variables: { limitPerAgent },
+            fetchPolicy: 'network-only',
+          }),
+          client.query<ListTeamRunHistoryQueryData>({
+            query: ListTeamRunHistory,
+            fetchPolicy: 'network-only',
+          }),
+        ]);
 
-        if (errors && errors.length > 0) {
-          throw new Error(errors.map((e: { message: string }) => e.message).join(', '));
+        if (agentHistoryResult.errors && agentHistoryResult.errors.length > 0) {
+          throw new Error(agentHistoryResult.errors.map((e: { message: string }) => e.message).join(', '));
+        }
+        if (teamHistoryResult.errors && teamHistoryResult.errors.length > 0) {
+          throw new Error(teamHistoryResult.errors.map((e: { message: string }) => e.message).join(', '));
         }
 
-        this.workspaceGroups = data?.listRunHistory || [];
+        this.workspaceGroups = agentHistoryResult.data?.listRunHistory || [];
+        this.teamRuns = teamHistoryResult.data?.listTeamRunHistory || [];
         await this.refreshAgentAvatarIndex({ loadDefinitionsIfNeeded: true });
       } catch (error: any) {
         this.error = error?.message || 'Failed to load run history.';
@@ -295,6 +568,8 @@ export const useRunHistoryStore = defineStore('runHistory', {
 
         this.resumeConfigByRunId[runId] = result.resumeConfig;
         this.selectedRunId = result.runId;
+        this.selectedTeamId = null;
+        this.selectedTeamMemberRouteKey = null;
       } catch (error: any) {
         this.error = error?.message || `Failed to open run '${runId}'.`;
         throw error;
@@ -375,6 +650,8 @@ export const useRunHistoryStore = defineStore('runHistory', {
 
       selectionStore.clearSelection();
       this.selectedRunId = null;
+      this.selectedTeamId = null;
+      this.selectedTeamMemberRouteKey = null;
     },
 
     async createWorkspace(rootPath: string): Promise<string> {
@@ -448,6 +725,56 @@ export const useRunHistoryStore = defineStore('runHistory', {
       }));
     },
 
+    markTeamAsActive(teamId: string): void {
+      const now = new Date().toISOString();
+      this.teamRuns = this.teamRuns.map((team) => {
+        if (team.teamId !== teamId) {
+          return team;
+        }
+        return {
+          ...team,
+          isActive: true,
+          lastKnownStatus: 'ACTIVE',
+          lastActivityAt: now,
+        };
+      });
+
+      const existing = this.teamResumeConfigByTeamId[teamId];
+      if (existing) {
+        this.teamResumeConfigByTeamId[teamId] = {
+          ...existing,
+          isActive: true,
+        };
+      }
+    },
+
+    markTeamAsInactive(teamId: string): void {
+      const now = new Date().toISOString();
+      this.teamRuns = this.teamRuns.map((team) => {
+        if (team.teamId !== teamId) {
+          return team;
+        }
+        return {
+          ...team,
+          isActive: false,
+          lastKnownStatus: team.lastKnownStatus === 'ERROR' ? 'ERROR' : 'IDLE',
+          lastActivityAt: now,
+        };
+      });
+
+      const existing = this.teamResumeConfigByTeamId[teamId];
+      if (existing) {
+        this.teamResumeConfigByTeamId[teamId] = {
+          ...existing,
+          isActive: false,
+        };
+      }
+    },
+
+    markTeamDraftProjectionDirty(): void {
+      this.teamDraftProjectionRevision += 1;
+    },
+
     async deleteRun(runId: string): Promise<boolean> {
       const normalizedRunId = runId.trim();
       if (!normalizedRunId || normalizedRunId.startsWith(DRAFT_RUN_ID_PREFIX)) {
@@ -497,6 +824,57 @@ export const useRunHistoryStore = defineStore('runHistory', {
         return true;
       } catch (error: any) {
         console.error(`Failed to delete run '${normalizedRunId}':`, error);
+        return false;
+      }
+    },
+
+    async deleteTeamRun(teamId: string): Promise<boolean> {
+      const normalizedTeamId = teamId.trim();
+      if (!normalizedTeamId || normalizedTeamId.startsWith('temp-')) {
+        return false;
+      }
+
+      try {
+        const client = getApolloClient();
+        const { data, errors } = await client.mutate<DeleteTeamRunHistoryMutationData>({
+          mutation: DeleteTeamRunHistory,
+          variables: { teamId: normalizedTeamId },
+        });
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map((e: { message: string }) => e.message).join(', '));
+        }
+
+        const result = data?.deleteTeamRunHistory;
+        if (!result?.success) {
+          return false;
+        }
+
+        const nextTeamResume = { ...this.teamResumeConfigByTeamId };
+        delete nextTeamResume[normalizedTeamId];
+        this.teamResumeConfigByTeamId = nextTeamResume;
+        this.teamRuns = removeTeamRunById(this.teamRuns, normalizedTeamId);
+
+        const teamContextsStore = useAgentTeamContextsStore();
+        teamContextsStore.removeTeamContext(normalizedTeamId);
+
+        const selectionStore = useAgentSelectionStore();
+        if (
+          selectionStore.selectedType === 'team' &&
+          selectionStore.selectedInstanceId === normalizedTeamId
+        ) {
+          selectionStore.clearSelection();
+        }
+
+        if (this.selectedTeamId === normalizedTeamId) {
+          this.selectedTeamId = null;
+          this.selectedTeamMemberRouteKey = null;
+        }
+
+        await this.refreshTreeQuietly();
+        return true;
+      } catch (error: any) {
+        console.error(`Failed to delete team run '${normalizedTeamId}':`, error);
         return false;
       }
     },
@@ -612,7 +990,325 @@ export const useRunHistoryStore = defineStore('runHistory', {
       return mergeRunTreeWithLiveContexts(projectedTree, agentContextsStore.instances);
     },
 
-    async selectTreeRun(row: RunTreeRow): Promise<void> {
+    getTeamNodes(workspaceRootPath?: string): TeamTreeNode[] {
+      void this.teamDraftProjectionRevision;
+
+      const workspaceStore = useWorkspaceStore();
+      const teamContextsStore = useAgentTeamContextsStore();
+      const nodesByTeamId = new Map<string, TeamTreeNode>();
+
+      for (const team of this.teamRuns) {
+        const fallbackWorkspaceRootPath = team.members
+          .map((member) => normalizeRootPath(member.workspaceRootPath))
+          .find((value) => Boolean(value))
+          || UNASSIGNED_TEAM_WORKSPACE_KEY;
+        const normalizedWorkspaceRootPath =
+          normalizeRootPath(team.workspaceRootPath) ||
+          fallbackWorkspaceRootPath;
+        const sortedMembers = team.members
+          .map((member) => ({
+            teamId: team.teamId,
+            memberRouteKey: member.memberRouteKey,
+            memberName: member.memberName,
+            memberAgentId: member.memberAgentId,
+            workspaceRootPath: member.workspaceRootPath ?? null,
+            hostNodeId: member.hostNodeId ?? null,
+            summary: team.summary,
+            lastActivityAt: team.lastActivityAt,
+            lastKnownStatus: team.lastKnownStatus,
+            isActive: team.isActive,
+            deleteLifecycle: team.deleteLifecycle,
+          }))
+          .sort((a, b) => a.memberName.localeCompare(b.memberName));
+        const focusedMemberName = sortedMembers[0]?.memberRouteKey || '';
+
+        nodesByTeamId.set(team.teamId, {
+          teamId: team.teamId,
+          teamDefinitionId: team.teamDefinitionId,
+          teamDefinitionName: team.teamDefinitionName || 'Team',
+          workspaceRootPath: normalizedWorkspaceRootPath,
+          summary: team.summary,
+          lastActivityAt: team.lastActivityAt,
+          lastKnownStatus: team.lastKnownStatus,
+          isActive: team.isActive,
+          currentStatus: toHistoryTeamStatus(team),
+          deleteLifecycle: team.deleteLifecycle,
+          focusedMemberName,
+          members: sortedMembers,
+        });
+      }
+
+      for (const teamContext of teamContextsStore.allTeamInstances ?? []) {
+        const workspaceRootPath = resolveTeamWorkspaceRootPathFromContext(workspaceStore, teamContext);
+        const { isActive, lastKnownStatus } = toTeamRunStatus(teamContext.currentStatus);
+        const summary = summarizeTeamDraft(teamContext);
+        const lastActivityAt = resolveTeamLastActivityAt(teamContext);
+        const members = Array.from(teamContext.members.entries())
+          .map(([memberRouteKey, memberContext]) => ({
+            teamId: teamContext.teamId,
+            memberRouteKey,
+            memberName: memberContext.config.agentDefinitionName || memberRouteKey,
+            memberAgentId: memberContext.state.agentId,
+            workspaceRootPath: resolveWorkspaceRootPath(workspaceStore, memberContext.config.workspaceId),
+            hostNodeId: null,
+            summary,
+            lastActivityAt:
+              memberContext.state.conversation.updatedAt ||
+              memberContext.state.conversation.createdAt ||
+              lastActivityAt,
+            lastKnownStatus,
+            isActive,
+            deleteLifecycle: 'READY' as const,
+          }))
+          .sort((a, b) => a.memberName.localeCompare(b.memberName));
+        const existing = nodesByTeamId.get(teamContext.teamId);
+        const deleteLifecycle = existing?.deleteLifecycle ?? ('READY' as const);
+        const teamDefinitionId =
+          existing?.teamDefinitionId ||
+          teamContext.config.teamDefinitionId ||
+          teamContext.teamId;
+
+        nodesByTeamId.set(teamContext.teamId, {
+          teamId: teamContext.teamId,
+          teamDefinitionId,
+          teamDefinitionName: teamContext.config.teamDefinitionName || existing?.teamDefinitionName || 'Team',
+          workspaceRootPath,
+          summary,
+          lastActivityAt,
+          lastKnownStatus,
+          isActive,
+          currentStatus: teamContext.currentStatus,
+          deleteLifecycle,
+          focusedMemberName: teamContext.focusedMemberName,
+          members,
+        });
+      }
+
+      const allNodes = Array.from(nodesByTeamId.values())
+        .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt));
+      if (!workspaceRootPath) {
+        return allNodes;
+      }
+      const normalizedWorkspaceRootPath = normalizeRootPath(workspaceRootPath);
+      return allNodes.filter((node) => node.workspaceRootPath === normalizedWorkspaceRootPath);
+    },
+
+    async openTeamMemberRun(teamId: string, memberRouteKey: string): Promise<void> {
+      this.openingRun = true;
+      this.error = null;
+      try {
+        const client = getApolloClient();
+        const { data, errors } = await client.query<GetTeamRunResumeConfigQueryData>({
+          query: GetTeamRunResumeConfig,
+          variables: { teamId },
+          fetchPolicy: 'network-only',
+        });
+
+        if (errors && errors.length > 0) {
+          throw new Error(errors.map((e: { message: string }) => e.message).join(', '));
+        }
+
+        const resumeConfig = data?.getTeamRunResumeConfig;
+        if (!resumeConfig) {
+          throw new Error(`Team resume config payload missing for '${teamId}'.`);
+        }
+        const manifest = parseTeamRunManifest(resumeConfig.manifest);
+        if (!manifest.teamId) {
+          throw new Error(`Team manifest is invalid for '${teamId}'.`);
+        }
+
+        this.teamResumeConfigByTeamId[teamId] = {
+          teamId: manifest.teamId,
+          isActive: resumeConfig.isActive,
+          manifest,
+        };
+
+        const teamContextsStore = useAgentTeamContextsStore();
+        const selectionStore = useAgentSelectionStore();
+        const projectionByMemberRouteKey = new Map<string, TeamMemberRunProjectionPayload | null>();
+        await Promise.all(
+          manifest.memberBindings.map(async (binding) => {
+            const normalizedMemberRouteKey = toTeamMemberKey(binding).trim();
+            if (!normalizedMemberRouteKey) {
+              return;
+            }
+
+            try {
+              const projectionResponse = await client.query<GetTeamMemberRunProjectionQueryData>({
+                query: GetTeamMemberRunProjection,
+                variables: {
+                  teamId,
+                  memberRouteKey: normalizedMemberRouteKey,
+                },
+                fetchPolicy: 'network-only',
+              });
+
+              if (projectionResponse.errors && projectionResponse.errors.length > 0) {
+                throw new Error(
+                  projectionResponse.errors.map((e: { message: string }) => e.message).join(', '),
+                );
+              }
+
+              projectionByMemberRouteKey.set(
+                normalizedMemberRouteKey,
+                projectionResponse.data?.getTeamMemberRunProjection || null,
+              );
+            } catch (projectionError) {
+              console.warn(
+                `[runHistoryStore] Failed to fetch team-member projection for '${binding.memberRouteKey}'`,
+                projectionError,
+              );
+              projectionByMemberRouteKey.set(normalizedMemberRouteKey, null);
+            }
+          }),
+        );
+
+        const members = new Map<string, AgentContext>();
+        let firstWorkspaceId: string | null = null;
+        for (const binding of manifest.memberBindings) {
+          const normalizedMemberRouteKey = toTeamMemberKey(binding).trim();
+          if (!normalizedMemberRouteKey) {
+            continue;
+          }
+          let workspaceId: string | null = null;
+          if (binding.workspaceRootPath) {
+            workspaceId = await this.ensureWorkspaceByRootPath(binding.workspaceRootPath);
+            if (workspaceId && !firstWorkspaceId) {
+              firstWorkspaceId = workspaceId;
+            }
+          }
+          const memberConfig: AgentRunConfig = {
+            agentDefinitionId: binding.agentDefinitionId,
+            agentDefinitionName: binding.memberName,
+            llmModelIdentifier: binding.llmModelIdentifier,
+            workspaceId,
+            autoExecuteTools: binding.autoExecuteTools,
+            skillAccessMode: 'PRELOADED_ONLY',
+            llmConfig: binding.llmConfig ?? null,
+            isLocked: resumeConfig.isActive,
+          };
+          const memberRunId = binding.memberAgentId || normalizedMemberRouteKey;
+          const projection = projectionByMemberRouteKey.get(toTeamMemberKey(binding)) || null;
+          const conversation = projection
+            ? buildConversationFromProjection(
+              memberRunId,
+              projection.conversation || [],
+              {
+                agentDefinitionId: binding.agentDefinitionId,
+                agentName: binding.memberName,
+                llmModelIdentifier: binding.llmModelIdentifier,
+              },
+            )
+            : {
+              id: `${teamId}::${normalizedMemberRouteKey}`,
+              messages: [],
+              createdAt: manifest.createdAt,
+              updatedAt: manifest.updatedAt,
+              agentDefinitionId: binding.agentDefinitionId,
+              agentName: binding.memberName,
+              llmModelIdentifier: binding.llmModelIdentifier,
+            };
+
+          conversation.id = `${teamId}::${normalizedMemberRouteKey}`;
+          if (conversation.messages.length === 0) {
+            conversation.createdAt = manifest.createdAt;
+            conversation.updatedAt = projection?.lastActivityAt || manifest.updatedAt;
+          } else if (projection?.lastActivityAt) {
+            conversation.updatedAt = projection.lastActivityAt;
+          }
+
+          const state = new AgentRunState(memberRunId, conversation);
+          state.currentStatus = resumeConfig.isActive ? AgentStatus.Uninitialized : AgentStatus.ShutdownComplete;
+          members.set(
+            normalizedMemberRouteKey,
+            new AgentContext(memberConfig, state),
+          );
+        }
+
+        const firstMemberKey = manifest.memberBindings
+          .map((member) => toTeamMemberKey(member).trim())
+          .find((memberKey) => memberKey.length > 0) || '';
+        const focusKey = members.has(memberRouteKey) ? memberRouteKey : firstMemberKey;
+        if (!focusKey) {
+          throw new Error(`Team '${teamId}' has no members in manifest.`);
+        }
+
+        teamContextsStore.addTeamContext({
+          teamId: manifest.teamId,
+          config: {
+            teamDefinitionId: manifest.teamDefinitionId,
+            teamDefinitionName: manifest.teamDefinitionName,
+            workspaceId: firstWorkspaceId,
+            llmModelIdentifier:
+              manifest.memberBindings.find((member) => toTeamMemberKey(member).trim() === focusKey)
+                ?.llmModelIdentifier || '',
+            autoExecuteTools:
+              manifest.memberBindings.find((member) => toTeamMemberKey(member).trim() === focusKey)
+                ?.autoExecuteTools ?? false,
+            memberOverrides: Object.fromEntries(
+              manifest.memberBindings.map((member) => [
+                member.memberName,
+                {
+                  agentDefinitionId: member.agentDefinitionId,
+                  llmModelIdentifier: member.llmModelIdentifier,
+                  autoExecuteTools: member.autoExecuteTools,
+                  llmConfig: member.llmConfig ?? null,
+                },
+              ]),
+            ),
+            isLocked: resumeConfig.isActive,
+          },
+          members,
+          focusedMemberName: focusKey,
+          currentStatus: resumeConfig.isActive ? AgentTeamStatus.Uninitialized : AgentTeamStatus.Idle,
+          isSubscribed: false,
+          taskPlan: null,
+          taskStatuses: null,
+        });
+
+        selectionStore.selectInstance(manifest.teamId, 'team');
+        this.selectedTeamId = manifest.teamId;
+        this.selectedTeamMemberRouteKey = focusKey;
+        this.selectedRunId = null;
+        useTeamRunConfigStore().clearConfig();
+        useAgentRunConfigStore().clearConfig();
+
+        if (resumeConfig.isActive) {
+          useAgentTeamRunStore().connectToTeamStream(manifest.teamId);
+        } else {
+          const activeTeam = teamContextsStore.getTeamContextById(manifest.teamId);
+          if (activeTeam?.unsubscribe) {
+            activeTeam.unsubscribe();
+            activeTeam.isSubscribed = false;
+          }
+        }
+      } catch (error: any) {
+        this.error = error?.message || `Failed to open team '${teamId}'.`;
+        throw error;
+      } finally {
+        this.openingRun = false;
+      }
+    },
+
+    async selectTreeRun(row: RunTreeRow | TeamMemberTreeRow): Promise<void> {
+      if ('teamId' in row) {
+        const teamContextsStore = useAgentTeamContextsStore();
+        const selectionStore = useAgentSelectionStore();
+        const localTeamContext = teamContextsStore.getTeamContextById(row.teamId);
+        if (localTeamContext) {
+          teamContextsStore.setFocusedMember?.(row.memberRouteKey);
+          selectionStore.selectInstance(row.teamId, 'team');
+          this.selectedTeamId = row.teamId;
+          this.selectedTeamMemberRouteKey = row.memberRouteKey;
+          this.selectedRunId = null;
+          useTeamRunConfigStore().clearConfig();
+          useAgentRunConfigStore().clearConfig();
+          return;
+        }
+        await this.openTeamMemberRun(row.teamId, row.memberRouteKey);
+        return;
+      }
+
       if (row.source === 'history') {
         await this.openRun(row.runId);
         return;
@@ -627,6 +1323,8 @@ export const useRunHistoryStore = defineStore('runHistory', {
       const selectionStore = useAgentSelectionStore();
       selectionStore.selectInstance(row.runId, 'agent');
       this.selectedRunId = row.runId;
+      this.selectedTeamId = null;
+      this.selectedTeamMemberRouteKey = null;
       useTeamRunConfigStore().clearConfig();
       useAgentRunConfigStore().clearConfig();
     },

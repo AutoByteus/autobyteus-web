@@ -2,9 +2,9 @@
 
 ## Status
 
-- Implementation Stage: `Completed (Backend Parity + Continuation + Verification)`
-- Last Updated: `2026-02-20`
-- Future-State Call-Stack Review Gate: `Go Confirmed` (Round 4)
+- Implementation Stage: `Completed (Frontend regression restore + verification)`
+- Last Updated: `2026-02-21`
+- Future-State Call-Stack Review Gate: `Go Confirmed` (Round 7, v4 sync)
 
 ## Change Tracker
 
@@ -17,23 +17,33 @@
 | T-05 | Modify | `src/api/graphql/types/agent-team-instance.ts` | T-02,T-04 | Completed | Local Fix | 2026-02-20 | Upserted team history during create/lazy-create; routed existing-team sends to continuation path; preserved `targetNodeName` contract. |
 | T-06 | Modify | `autobyteus-ts/src/agent-team/factory/agent-team-factory.ts`, `autobyteus-ts/src/agent-team/context/team-manager.ts`, `autobyteus-ts/src/agent-team/shutdown-steps/agent-team-shutdown-step.ts` | T-04,T-05 | Completed | Local Fix | 2026-02-20 | Added `createTeamWithId`, stable member-id restoration path, and factory cleanup on shutdown. |
 | T-07 | Test | `tests/e2e/run-history/team-run-history-graphql.e2e.test.ts`, `tests/integration/agent-team-execution/agent-team-instance-manager.integration.test.ts` | T-01..T-06 | Completed | N/A | 2026-02-20 | Added new server E2E coverage for team history + offline continuation and manager preferred-ID integration coverage. |
+| T-08 | Modify | `graphql/queries/runHistoryQueries.ts`, `graphql/mutations/runHistoryMutations.ts` | T-01..T-07 | Completed | Local Fix | 2026-02-21 | Restored missing frontend GraphQL operations for team history list/resume/member projection and team history delete. |
+| T-09 | Modify | `stores/runHistoryStore.ts`, `services/runOpen/runOpenCoordinator.ts` | T-08 | Completed | Local Fix | 2026-02-21 | Added persisted team history ingestion, team node projection, team-member restore/open flow, and member conversation rehydrate path for offline continuation. |
+| T-10 | Modify | `components/workspace/history/WorkspaceAgentRunsTreePanel.vue` | T-09 | Completed | Local Fix | 2026-02-21 | Switched team tree rendering to store-driven persisted+live nodes and routed member clicks through store selection/open pipeline. |
+| T-11 | Test | `stores/__tests__/runHistoryStore.spec.ts`, `components/workspace/history/__tests__/WorkspaceAgentRunsTreePanel.spec.ts` | T-09,T-10 | Completed | N/A | 2026-02-21 | Added/updated regression tests for persisted team visibility and team-member history hydration before continuation. |
 
 ## Verification
 
-- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts test tests/integration/agent-team-execution/agent-team-instance-manager.integration.test.ts`
+- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts test tests/integration/agent-team-execution/agent-team-instance-manager.integration.test.ts`
 - Result: `8 passed`.
-- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts test tests/e2e/run-history/run-history-graphql.e2e.test.ts`
+- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts test tests/e2e/run-history/run-history-graphql.e2e.test.ts`
 - Result: `4 passed`.
-- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts test tests/e2e/agent-team-execution/send-message-to-team-graphql-contract.e2e.test.ts`
+- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts test tests/e2e/agent-team-execution/send-message-to-team-graphql-contract.e2e.test.ts`
 - Result: `2 passed`.
-- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts test tests/e2e/run-history/team-run-history-graphql.e2e.test.ts`
+- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts test tests/e2e/run-history/team-run-history-graphql.e2e.test.ts`
 - Result: `2 passed`.
-- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-ts exec vitest --run tests/unit/agent-team/factory/agent-team-factory.test.ts tests/unit/agent-team/context/team-manager.test.ts tests/unit/agent-team/shutdown-steps/agent-team-shutdown-step.test.ts`
+- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-ts exec vitest --run tests/unit/agent-team/factory/agent-team-factory.test.ts tests/unit/agent-team/context/team-manager.test.ts tests/unit/agent-team/shutdown-steps/agent-team-shutdown-step.test.ts`
 - Result: `12 passed`.
-- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-ts build`
+- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-ts build`
 - Result: `TypeScript build passed`.
-- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts run build:full`
+- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts run build:full`
 - Result: `TypeScript build passed`.
+- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web exec vitest --run stores/__tests__/runHistoryStore.spec.ts`
+- Result: `19 passed`.
+- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web exec vitest --run components/workspace/history/__tests__/WorkspaceAgentRunsTreePanel.spec.ts`
+- Result: `19 passed`.
+- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web exec vitest --run components/workspace/team/__tests__/TeamWorkspaceView.spec.ts stores/__tests__/agentTeamRunStore.spec.ts`
+- Result: `5 passed`.
 
 ## Escalation Log
 
@@ -43,8 +53,8 @@
 
 ## Docs Sync
 
-- Updated: `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/docs/modules/README.md`
-- Added: `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/docs/modules/run_history.md`
+- Updated: `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/docs/modules/README.md`
+- Added: `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/docs/modules/run_history.md`
 - Result: `Updated`.
 
 ## Notes

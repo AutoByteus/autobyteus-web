@@ -123,7 +123,7 @@ const inferToolStatus = (entry: RunProjectionConversationEntry): ToolInvocationS
   return 'parsed';
 };
 
-const buildConversationFromProjection = (
+export const buildConversationFromProjection = (
   runId: string,
   entries: RunProjectionConversationEntry[],
   defaults: {

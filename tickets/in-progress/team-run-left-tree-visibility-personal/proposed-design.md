@@ -2,7 +2,7 @@
 
 ## Design Version
 
-- Current Version: `v3`
+- Current Version: `v4`
 
 ## Revision History
 
@@ -11,11 +11,12 @@
 | v1 | User requested enterprise-pattern design adaptation for personal | Defined frontend + backend parity design with personal shared-workspace simplification | 1 |
 | v2 | Deep review round 1 write-back | Resolved requirement gaps: canonical team workspace path, persisted member auto-open behavior, delete lifecycle policy | 1 |
 | v3 | User added persisted/offline member continuation requirement | Added explicit offline continuation design via team-run continuation service + resolver branch | 4 |
+| v4 | Reopened regression after branch reconciliation | Restored store-driven team history projection, persisted member rehydrate selection path, and query/mutation wiring in web | 7 |
 
 ## Artifact Basis
 
-- Investigation Notes: `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/tickets/in-progress/team-run-left-tree-visibility-personal/investigation-notes.md`
-- Requirements: `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/tickets/in-progress/team-run-left-tree-visibility-personal/requirements.md`
+- Investigation Notes: `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/tickets/in-progress/team-run-left-tree-visibility-personal/investigation-notes.md`
+- Requirements: `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/tickets/in-progress/team-run-left-tree-visibility-personal/requirements.md`
 - Requirements Status: `Refined`
 
 ## Summary
@@ -35,6 +36,8 @@ Personal should keep the same pattern but simplify grouping: all team members sh
 - Personal keeps enterprise `deleteLifecycle` field; current personal lifecycle remains `READY` until deferred-cleanup behavior is introduced.
 - Team workspace grouping uses canonical team-level workspace root path persisted in team manifest/index payloads.
 - For existing `teamId` sends when team runtime is offline, backend continues the team run from persisted team-run manifest/history before dispatching the message.
+- Reopened regression fix uses `runHistoryStore.getTeamNodes(...)` as canonical left-tree source (persisted + live), removing the live-only panel derivation path.
+- Team member row selection is routed through `runHistoryStore.selectTreeRun(...)` so persisted/offline members are rehydrated before continuation send.
 
 ## Legacy Removal Policy (Mandatory)
 
@@ -55,19 +58,18 @@ Personal should keep the same pattern but simplify grouping: all team members sh
 
 | Area | Findings | Evidence (files/functions) | Open Unknowns |
 | --- | --- | --- | --- |
-| Entrypoints / Boundaries | Personal tree is rendered by one panel component and a single run-history store; enterprise splits team history in dedicated APIs/store projection. | `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/components/workspace/history/WorkspaceAgentRunsTreePanel.vue`, `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/stores/runTreeStore.ts:getTeamNodes` | None |
-| Current Naming Conventions | Personal uses `runHistoryStore`; enterprise uses `runTreeStore` with explicit team-run terms (`TeamTreeNode`, `listTeamRunHistory`). | `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/stores/runHistoryStore.ts`, `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/stores/runTreeStore.ts` | Whether personal should rename store now or keep incremental naming |
-| Impacted Modules / Responsibilities | Personal frontend already has live team context; backend lacks team-run-history resolver/service wiring. | `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/stores/agentTeamContextsStore.ts`, `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/src/api/graphql/types/run-history.ts` | None |
-| Data / Persistence / External IO | Enterprise persists team manifest+index and exposes query/mutation; personal currently only agent run history persistence. | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/src/run-history/services/team-run-history-service.ts`, `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/src/run-history/services/run-history-service.ts` | Final personal storage location names for team manifests/index |
+| Entrypoints / Boundaries | Personal tree is rendered by one panel component and a single run-history store; enterprise splits team history in dedicated APIs/store projection. | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/components/workspace/history/WorkspaceAgentRunsTreePanel.vue`, `enterprise:/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/stores/runTreeStore.ts:getTeamNodes` | None |
+| Current Naming Conventions | Personal uses `runHistoryStore`; enterprise uses `runTreeStore` with explicit team-run terms (`TeamTreeNode`, `listTeamRunHistory`). | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/stores/runHistoryStore.ts`, `enterprise:/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/stores/runTreeStore.ts` | Whether personal should rename store now or keep incremental naming |
+| Impacted Modules / Responsibilities | Personal frontend already has live team context; backend lacks team-run-history resolver/service wiring. | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/stores/agentTeamContextsStore.ts`, `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/src/api/graphql/types/run-history.ts` | None |
+| Data / Persistence / External IO | Enterprise persists team manifest+index and exposes query/mutation; personal currently only agent run history persistence. | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/src/run-history/services/team-run-history-service.ts`, `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/src/run-history/services/run-history-service.ts` | Final personal storage location names for team manifests/index |
 
 ## Current State (As-Is)
 
 - Frontend personal:
-  - Workspace tree is agent-history first (`runHistoryStore.getTreeNodes()`).
-  - Live team visibility has been patched in-panel via `agentTeamContextsStore`, but this is not persisted history parity.
+  - Workspace tree projects agent history from `runHistoryStore.getTreeNodes()`.
+  - Before v4 regression restore, team rows were derived from live `agentTeamContextsStore` only in panel scope, so persisted teams could disappear after terminate/reload.
 - Backend personal:
-  - GraphQL run history exposes agent APIs only (`listRunHistory`, `getRunResumeConfig`, `deleteRunHistory`).
-  - No team-run-history query/mutation resolver registered in schema.
+  - Team history APIs and continuation flow exist and are used by personal runtime (`listTeamRunHistory`, `getTeamRunResumeConfig`, `getTeamMemberRunProjection`, `deleteTeamRunHistory`).
 
 ## Target State (To-Be)
 
@@ -77,6 +79,7 @@ Personal should keep the same pattern but simplify grouping: all team members sh
     - persisted team history (`listTeamRunHistory`),
     - live team contexts (temp/draft/active updates).
   - Persisted member selection calls team member projection hydrate flow immediately.
+  - Team member selection goes through store-level `selectTreeRun(...)` dispatch for both local and persisted contexts.
   - Rendering remains under workspace section (personal-specific UX).
 - Backend personal:
   - Add team-run-history resolver and service surface equivalent to enterprise:
@@ -92,15 +95,20 @@ Personal should keep the same pattern but simplify grouping: all team members sh
 
 | Change ID | Change Type (`Add`/`Modify`/`Rename/Move`/`Remove`) | Current Path | Target Path | Rationale | Impacted Areas | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| C-001 | Modify | `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/stores/runHistoryStore.ts` | same | Add persisted team history state and merged projection by workspace | Frontend store/model | Keep personal workspace nesting |
-| C-002 | Modify | `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/components/workspace/history/WorkspaceAgentRunsTreePanel.vue` | same | Consume unified team rows from store + live contexts and render under workspace | Frontend UI | Existing patch can be aligned to store-driven projection |
-| C-003 | Add | N/A | `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/src/api/graphql/types/team-run-history.ts` | Expose team-run-history query/mutation API | GraphQL API | Enterprise-derived with personal simplification |
-| C-004 | Add | N/A | `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/src/run-history/services/team-run-history-service.ts` | Persist and query team run index/manifest | Backend persistence | Reuse enterprise service pattern |
-| C-005 | Modify | `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/src/api/graphql/schema.ts` | same | Register team-run-history resolver | GraphQL schema | Required for query discoverability |
-| C-006 | Modify | `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/src/api/graphql/types/agent-team-instance.ts` | same | Upsert and lifecycle-update team history during create/send/terminate | Team runtime integration | Keep mutation contract unchanged |
-| C-007 | Modify | `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/src/run-history/domain/team-models.ts` | same | Add canonical team-level workspace root path in manifest/index DTO | Backend model contract | Ensures stable workspace grouping |
-| C-008 | Add | N/A | `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/src/run-history/services/team-run-continuation-service.ts` | Resume offline team runtime from persisted team history | Backend continuation | Enterprise-derived and simplified for personal |
-| C-009 | Modify | `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/src/api/graphql/types/agent-team-instance.ts` | same | Route existing-team sends through continuation path prior to dispatch | GraphQL runtime bridge | Required for UC-008 |
+| C-001 | Modify | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/stores/runHistoryStore.ts` | same | Add persisted team history state and merged projection by workspace | Frontend store/model | Keep personal workspace nesting |
+| C-002 | Modify | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/components/workspace/history/WorkspaceAgentRunsTreePanel.vue` | same | Consume unified team rows from store + live contexts and render under workspace | Frontend UI | Existing patch can be aligned to store-driven projection |
+| C-003 | Add | N/A | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/src/api/graphql/types/team-run-history.ts` | Expose team-run-history query/mutation API | GraphQL API | Enterprise-derived with personal simplification |
+| C-004 | Add | N/A | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/src/run-history/services/team-run-history-service.ts` | Persist and query team run index/manifest | Backend persistence | Reuse enterprise service pattern |
+| C-005 | Modify | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/src/api/graphql/schema.ts` | same | Register team-run-history resolver | GraphQL schema | Required for query discoverability |
+| C-006 | Modify | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/src/api/graphql/types/agent-team-instance.ts` | same | Upsert and lifecycle-update team history during create/send/terminate | Team runtime integration | Keep mutation contract unchanged |
+| C-007 | Modify | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/src/run-history/domain/team-models.ts` | same | Add canonical team-level workspace root path in manifest/index DTO | Backend model contract | Ensures stable workspace grouping |
+| C-008 | Add | N/A | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/src/run-history/services/team-run-continuation-service.ts` | Resume offline team runtime from persisted team history | Backend continuation | Enterprise-derived and simplified for personal |
+| C-009 | Modify | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/src/api/graphql/types/agent-team-instance.ts` | same | Route existing-team sends through continuation path prior to dispatch | GraphQL runtime bridge | Required for UC-008 |
+| C-010 | Modify | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/graphql/queries/runHistoryQueries.ts` | same | Add missing team-history query documents used by store projection/open flow | Frontend GraphQL docs | Restored from known-good branch behavior |
+| C-011 | Modify | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/graphql/mutations/runHistoryMutations.ts` | same | Add team-history delete mutation document for parity | Frontend GraphQL docs | Enables store-level team history delete path |
+| C-012 | Modify | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/stores/runHistoryStore.ts` | same | Add team history state, merged team nodes, team-member rehydrate open flow, and select dispatch | Frontend store/model | Canonical source for workspace team tree |
+| C-013 | Modify | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/components/workspace/history/WorkspaceAgentRunsTreePanel.vue` | same | Replace live-only team derivation with store-driven team nodes and store-routed member selection | Frontend UI | Fixes terminate/reload disappearance + restore behavior |
+| C-014 | Modify | `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/services/runOpen/runOpenCoordinator.ts` | same | Export projection-to-conversation builder for team-member hydrate reuse | Frontend service boundary | Prevents duplicate projection conversion logic |
 
 ## Architecture Overview
 
@@ -115,8 +123,11 @@ Personal should keep the same pattern but simplify grouping: all team members sh
 
 | File/Module | Change Type | Concern / Responsibility | Public APIs | Inputs/Outputs | Dependencies |
 | --- | --- | --- | --- | --- | --- |
+| `graphql/queries/runHistoryQueries.ts` | Modify | Declare GraphQL documents for team history/read-side hydration | `ListTeamRunHistory`, `GetTeamRunResumeConfig`, `GetTeamMemberRunProjection` | query vars -> typed payloads | Apollo GraphQL client |
+| `graphql/mutations/runHistoryMutations.ts` | Modify | Declare GraphQL document for team-history deletion | `DeleteTeamRunHistory` | teamId -> mutation result | Apollo GraphQL client |
 | `runHistoryStore.ts` | Modify | Unified run tree projection for agents + teams in personal | `fetchTree`, `getTreeNodes`/team helpers | GraphQL data + live contexts -> UI nodes | Apollo, workspace store, team contexts |
 | `WorkspaceAgentRunsTreePanel.vue` | Modify | Render workspace-scoped rows and dispatch team interactions | emits `instance-selected` | store nodes -> UI events | runHistoryStore, selection/team stores |
+| `runOpenCoordinator.ts` | Modify | Shared projection conversion helper reused by agent/team open flows | `buildConversationFromProjection` | projection entries -> `Conversation` | run-history stores/services |
 | `team-run-history.ts` | Add | GraphQL contract for team history query/mutation/projection hydrate | `listTeamRunHistory`, `getTeamRunResumeConfig`, `getTeamMemberRunProjection`, `deleteTeamRunHistory` | resolver args -> service results | team history + projection services |
 | `team-run-history-service.ts` | Add | Team manifest/index persistence + lifecycle read/write | `listTeamRunHistory`, `upsert...`, `onTeamEvent`, `onTeamTerminated`, `deleteTeamRunHistory` | runtime events -> persisted rows | team instance manager, file stores |
 | `team-run-continuation-service.ts` | Add | Rehydrate/resume offline team runtime from manifest/history | `continueTeamRun` | teamId + targetMember + input -> resumed dispatch | team history service, team instance manager |
@@ -196,14 +207,19 @@ Personal should keep the same pattern but simplify grouping: all team members sh
 
 | Change ID | Implementation Plan Task(s) | Verification (Unit/Integration/E2E/Manual) | Status |
 | --- | --- | --- | --- |
-| C-001 | T-01 | Frontend unit tests + manual run | Planned |
-| C-002 | T-02 | Frontend unit tests + manual run | Planned |
-| C-003 | T-03 | GraphQL resolver tests | Planned |
-| C-004 | T-04 | Backend service tests | Planned |
-| C-005 | T-05 | Schema bootstrap test | Planned |
-| C-006 | T-06 | Team execution integration tests | Planned |
-| C-008 | T-07 | Backend continuation service tests | Planned |
-| C-009 | T-08 | GraphQL `sendMessageToTeam` continuation-path tests | Planned |
+| C-001 | T-01 | Frontend unit tests + manual run | Completed |
+| C-002 | T-02 | Frontend unit tests + manual run | Completed |
+| C-003 | T-03 | GraphQL resolver tests | Completed |
+| C-004 | T-04 | Backend service tests | Completed |
+| C-005 | T-05 | Schema bootstrap test | Completed |
+| C-006 | T-06 | Team execution integration tests | Completed |
+| C-008 | T-07 | Backend continuation service tests | Completed |
+| C-009 | T-08 | GraphQL `sendMessageToTeam` continuation-path tests | Completed |
+| C-010 | T-09 | Frontend unit tests (`runHistoryStore`, workspace panel) | Completed |
+| C-011 | T-09 | Frontend unit tests (`runHistoryStore`) | Completed |
+| C-012 | T-10 | Frontend unit tests + manual regression verification | Completed |
+| C-013 | T-11 | Frontend panel tests + manual UI click-path verification | Completed |
+| C-014 | T-10 | Type compatibility check in store/open flow tests | Completed |
 
 ## Design Feedback Loop Notes (From Review/Implementation)
 
@@ -212,6 +228,7 @@ Personal should keep the same pattern but simplify grouping: all team members sh
 | 2026-02-20 | User requested enterprise cross-check for recurrence confidence | Design Impact | personal only had partial frontend fix; backend parity missing | Yes | Added backend parity scope and enterprise-derived architecture | Open |
 | 2026-02-20 | Deep review round 1 | Requirement Gap | persisted member-open behavior and workspace grouping were ambiguous | Yes | Promoted decisions into requirements + design; bumped to v2 | Closed |
 | 2026-02-20 | User added offline member continuation expectation | Requirement Gap | continuation behavior for existing `teamId` sends was not explicit | Yes | Added UC-008 and continuation-service design in v3 | Closed |
+| 2026-02-21 | User-reported regression after branch reconciliation | Design Impact | left tree relied on live-only team contexts; persisted member selection bypassed store hydrate path | Yes | Added v4 store-driven team projection + member selection routing via `selectTreeRun` | Closed |
 
 ## Open Questions
 

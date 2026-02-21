@@ -3,7 +3,7 @@
 ## Status
 
 - Current Status: `Refined`
-- Updated On: `2026-02-20`
+- Updated On: `2026-02-21`
 
 ## Goal / Problem Statement
 
@@ -51,6 +51,8 @@ Personal branch should follow enterprise persistence patterns where appropriate,
 5. Test coverage
 - Frontend: workspace tree tests include team render/select regression.
 - Backend: team execution + run-history e2e/integration remain green.
+- Frontend: member selection for persisted/offline team must hydrate projection before message continuation path.
+- Frontend: terminated team remains visible in workspace tree from persisted run-history (not only live context memory).
 
 ## Constraints / Dependencies
 

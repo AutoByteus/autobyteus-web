@@ -7,23 +7,23 @@
 
 ## Sources Consulted
 
-- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/components/AppLeftPanel.vue`
-- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/components/workspace/history/WorkspaceAgentRunsTreePanel.vue`
-- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/stores/runHistoryStore.ts`
-- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/stores/agentTeamContextsStore.ts`
-- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/stores/agentTeamRunStore.ts`
-- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/components/workspace/history/__tests__/WorkspaceAgentRunsTreePanel.spec.ts`
-- `enterprise:/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/components/workspace/history/WorkspaceAgentRunsTreePanel.vue`
-- `enterprise:/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/stores/runTreeStore.ts`
-- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/src/api/graphql/types/run-history.ts`
-- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/src/api/graphql/types/agent-team-instance.ts`
-- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/tests/integration/agent-team-execution/agent-team-instance-manager.integration.test.ts`
-- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/tests/e2e/run-history/run-history-graphql.e2e.test.ts`
-- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/tickets/in-progress/team-run-left-tree-visibility-personal/future-state-runtime-call-stack.md`
-- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/tickets/in-progress/team-run-left-tree-visibility-personal/future-state-runtime-call-stack-review.md`
+- `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/components/AppLeftPanel.vue`
+- `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/components/workspace/history/WorkspaceAgentRunsTreePanel.vue`
+- `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/stores/runHistoryStore.ts`
+- `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/stores/agentTeamContextsStore.ts`
+- `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/stores/agentTeamRunStore.ts`
+- `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/components/workspace/history/__tests__/WorkspaceAgentRunsTreePanel.spec.ts`
+- `enterprise:/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/components/workspace/history/WorkspaceAgentRunsTreePanel.vue`
+- `enterprise:/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/stores/runTreeStore.ts`
+- `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/src/api/graphql/types/run-history.ts`
+- `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/src/api/graphql/types/agent-team-instance.ts`
+- `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/tests/integration/agent-team-execution/agent-team-instance-manager.integration.test.ts`
+- `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/tests/e2e/run-history/run-history-graphql.e2e.test.ts`
+- `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/tickets/in-progress/team-run-left-tree-visibility-personal/future-state-runtime-call-stack.md`
+- `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/tickets/in-progress/team-run-left-tree-visibility-personal/future-state-runtime-call-stack-review.md`
 - `enterprise:/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/src/api/graphql/types/agent-team-instance.ts`
 - `enterprise:/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/src/run-history/services/team-run-continuation-service.ts`
-- `enterprise:/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/src/api/graphql/types/team-run-history.ts`
+- `enterprise:/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-server-ts/src/api/graphql/types/team-run-history.ts`
 
 ## Key Findings
 
@@ -75,3 +75,49 @@
   - Historical team-run persistence/listing parity: backend also missing in personal.
 
 - For your stated personal constraint (single shared workspace per team run), frontend live projection is sufficient to satisfy "appear on left under workspace after Run".
+
+## Reopened Investigation (2026-02-21)
+
+### Trigger
+
+- After branch/worktree reconciliation, two regressions were reported in personal web:
+  1. Terminated team row disappeared from workspace tree unexpectedly.
+  2. Selecting a persisted/offline team member showed empty/fresh context instead of restored history.
+
+### Findings
+
+1. `WorkspaceAgentRunsTreePanel` currently renders team rows from `agentTeamContextsStore.allTeamInstances` only.
+- Consequence: any team that is not currently hydrated in memory is invisible, even if persisted in server run-history.
+- This directly breaks post-terminate/persisted visibility expectations.
+
+2. Team member selection path (`onSelectTeamMember`) only calls `setFocusedMember(...)` on local team context.
+- For persisted/offline runs where no local team context exists, this does not load projection/resume config.
+- Consequence: send/continue starts from incomplete runtime context and member history is not restored.
+
+3. Regression source is frontend composition drift, not backend API absence.
+- Personal server already exposes `listTeamRunHistory`, `getTeamRunResumeConfig`, and `getTeamMemberRunProjection`.
+- Current web branch lacks corresponding store/query integration despite server support.
+
+### Required Remediation
+
+- Reintroduce persisted team history fetch into `runHistoryStore.fetchTree(...)`.
+- Add store-level team projection API:
+  - `getTeamNodes(...)` (persisted + live merge),
+  - `openTeamMemberRun(teamId, memberRouteKey)`,
+  - `selectTreeRun(...)` union handling for team member rows.
+- Update workspace tree panel to consume store-provided team nodes and route member selection through the store open flow.
+- Add regression tests for:
+  - persisted team visibility after terminate/reload path,
+  - team-member history restoration before continuation send.
+
+### Resolution Update (2026-02-21)
+
+- Implemented remediation in:
+  - `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/graphql/queries/runHistoryQueries.ts`
+  - `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/graphql/mutations/runHistoryMutations.ts`
+  - `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/stores/runHistoryStore.ts`
+  - `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/components/workspace/history/WorkspaceAgentRunsTreePanel.vue`
+  - `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/services/runOpen/runOpenCoordinator.ts`
+- Regression tests added/updated and passing:
+  - `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web exec vitest --run stores/__tests__/runHistoryStore.spec.ts` (`19 passed`)
+  - `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web exec vitest --run components/workspace/history/__tests__/WorkspaceAgentRunsTreePanel.spec.ts` (`19 passed`)
