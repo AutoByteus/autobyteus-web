@@ -5,12 +5,31 @@ import { TeamStreamingService } from '~/services/agentStreaming';
 import { AgentStatus } from '~/types/agent/AgentStatus';
 import { AgentTeamStatus } from '~/types/agent/AgentTeamStatus';
 
-const mockConnect = vi.fn();
-const mockDisconnect = vi.fn();
-const mockGetTeamContextById = vi.fn();
-const mockRemoveTeamContext = vi.fn();
-const mockMutate = vi.fn();
-const mockClearActivities = vi.fn();
+const {
+  mockConnect,
+  mockDisconnect,
+  mockMutate,
+  mockClearActivities,
+  teamContextsStoreMock,
+  runHistoryStoreMock,
+} = vi.hoisted(() => ({
+  mockConnect: vi.fn(),
+  mockDisconnect: vi.fn(),
+  mockMutate: vi.fn(),
+  mockClearActivities: vi.fn(),
+  teamContextsStoreMock: {
+    activeTeamContext: null as any,
+    focusedMemberContext: null as any,
+    getTeamContextById: vi.fn(),
+    removeTeamContext: vi.fn(),
+    promoteTemporaryTeamId: vi.fn(),
+    lockConfig: vi.fn(),
+  },
+  runHistoryStoreMock: {
+    markTeamAsActive: vi.fn(),
+    refreshTreeQuietly: vi.fn().mockResolvedValue(undefined),
+  },
+}));
 
 vi.mock('~/services/agentStreaming', () => ({
   TeamStreamingService: vi.fn().mockImplementation(() => ({
@@ -30,12 +49,7 @@ vi.mock('~/stores/windowNodeContextStore', () => ({
 }));
 
 vi.mock('~/stores/agentTeamContextsStore', () => ({
-  useAgentTeamContextsStore: () => ({
-    getTeamContextById: mockGetTeamContextById,
-    activeTeamContext: null,
-    focusedMemberContext: null,
-    removeTeamContext: mockRemoveTeamContext,
-  }),
+  useAgentTeamContextsStore: () => teamContextsStoreMock,
 }));
 
 vi.mock('~/utils/apolloClient', () => ({
@@ -50,10 +64,17 @@ vi.mock('~/stores/agentActivityStore', () => ({
   }),
 }));
 
+vi.mock('~/stores/runHistoryStore', () => ({
+  useRunHistoryStore: () => runHistoryStoreMock,
+}));
+
 describe('agentTeamRunStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    teamContextsStoreMock.activeTeamContext = null;
+    teamContextsStoreMock.focusedMemberContext = null;
+    teamContextsStoreMock.getTeamContextById.mockReset();
   });
 
   it('connects team stream using bound node team WS endpoint', () => {
@@ -62,7 +83,7 @@ describe('agentTeamRunStore', () => {
       isSubscribed: false,
       unsubscribe: undefined as undefined | (() => void),
     };
-    mockGetTeamContextById.mockReturnValue(teamContext);
+    teamContextsStoreMock.getTeamContextById.mockReturnValue(teamContext);
 
     const store = useAgentTeamRunStore();
     store.connectToTeamStream('team-1');
@@ -88,7 +109,7 @@ describe('agentTeamRunStore', () => {
         ['member-b', { state: { agentId: 'agent-b', currentStatus: AgentStatus.Idle } }],
       ]),
     };
-    mockGetTeamContextById.mockReturnValue(teamContext);
+    teamContextsStoreMock.getTeamContextById.mockReturnValue(teamContext);
     mockMutate.mockResolvedValue({});
 
     const store = useAgentTeamRunStore();
@@ -102,7 +123,72 @@ describe('agentTeamRunStore', () => {
     expect(teamContext.members.get('member-b')?.state.currentStatus).toBe(AgentStatus.ShutdownComplete);
     expect(mockClearActivities).toHaveBeenCalledWith('agent-a');
     expect(mockClearActivities).toHaveBeenCalledWith('agent-b');
-    expect(mockRemoveTeamContext).not.toHaveBeenCalled();
+    expect(teamContextsStoreMock.removeTeamContext).not.toHaveBeenCalled();
     expect(mockMutate).toHaveBeenCalledTimes(1);
+  });
+
+  it('resubscribes and marks team active when sending to an offline persisted team', async () => {
+    const focusedMember = {
+      state: {
+        agentId: 'member-1',
+        conversation: {
+          messages: [] as any[],
+          updatedAt: '2026-02-21T00:00:00.000Z',
+        },
+      },
+    };
+    const teamContext = {
+      teamId: 'team-1',
+      focusedMemberName: 'professor',
+      isSubscribed: false,
+      config: {
+        teamDefinitionId: 'team-def-1',
+        workspaceId: 'ws-1',
+        llmModelIdentifier: 'model-x',
+        autoExecuteTools: false,
+        memberOverrides: {},
+      },
+      members: new Map([['professor', focusedMember]]),
+    };
+
+    teamContextsStoreMock.activeTeamContext = teamContext;
+    teamContextsStoreMock.focusedMemberContext = focusedMember;
+    teamContextsStoreMock.getTeamContextById.mockImplementation((teamId: string) =>
+      teamId === 'team-1' ? teamContext : null,
+    );
+
+    mockMutate.mockResolvedValue({
+      data: {
+        sendMessageToTeam: {
+          success: true,
+          teamId: 'team-1',
+          message: 'ok',
+        },
+      },
+      errors: [],
+    });
+
+    const store = useAgentTeamRunStore();
+    await store.sendMessageToFocusedMember('hello from history', []);
+
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: {
+          input: {
+            userInput: {
+              content: 'hello from history',
+              contextFiles: [],
+            },
+            teamId: 'team-1',
+            targetMemberName: 'professor',
+          },
+        },
+      }),
+    );
+    expect(runHistoryStoreMock.markTeamAsActive).toHaveBeenCalledWith('team-1');
+    expect(runHistoryStoreMock.refreshTreeQuietly).toHaveBeenCalledTimes(1);
+    expect(TeamStreamingService).toHaveBeenCalledWith('ws://node-a.example/ws/agent-team');
+    expect(mockConnect).toHaveBeenCalledWith('team-1', teamContext);
+    expect(teamContext.isSubscribed).toBe(true);
   });
 });

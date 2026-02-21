@@ -20,6 +20,7 @@
 | R-001/R-004 | UC-001/UC-002/UC-006 | C-003/C-004/C-005/C-007/C-010/C-012/C-013 | T-01/T-02/T-03/T-08/T-09/T-10 | Team history GraphQL E2E + web run-history/panel unit tests |
 | R-002/R-005 | UC-003/UC-004/UC-008 | C-008/C-009/C-012/C-013/C-014 | T-04/T-05/T-10/T-11 | Team send GraphQL E2E + store selection/hydration unit tests |
 | R-003 | UC-005/UC-007 | C-006/C-012/C-013 | T-06/T-10 | Team terminate/history E2E + UI regression checks |
+| R-005 | UC-009 | C-015 | T-12 | Team store unit regression for offline continue stream reconnect |
 
 ## Execution Tasks (Bottom-Up)
 
@@ -73,6 +74,10 @@
 11. T-11 `Test` regression coverage for restored behaviors
 - Update `stores/__tests__/runHistoryStore.spec.ts` for persisted-team projection + persisted-member hydrate/open flow.
 - Update `components/workspace/history/__tests__/WorkspaceAgentRunsTreePanel.spec.ts` for member selection via store path and workspace team rendering from store.
+
+12. T-12 `Modify/Test` offline continuation stream reconnect in team send flow
+- Update `stores/agentTeamRunStore.ts` so successful existing-team send marks run-history team active and reconnects stream when unsubscribed.
+- Add/extend `stores/__tests__/agentTeamRunStore.spec.ts` to cover persisted offline send -> stream reconnect + run-history active marker.
 
 ## Verification Strategy
 

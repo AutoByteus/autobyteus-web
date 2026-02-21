@@ -23,6 +23,8 @@
 | T-11 | Test | `stores/__tests__/runHistoryStore.spec.ts`, `components/workspace/history/__tests__/WorkspaceAgentRunsTreePanel.spec.ts` | T-09,T-10 | Completed | N/A | 2026-02-21 | Added/updated regression tests for persisted team visibility and team-member history hydration before continuation. |
 | T-12 | Modify | `src/api/graphql/types/team-run-history.ts`, `src/run-history/domain/team-models.ts`, `src/run-history/store/team-run-manifest-store.ts`, `src/run-history/services/team-run-history-service.ts`, `stores/runHistoryStore.ts`, `graphql/queries/runHistoryQueries.ts` | T-08,T-09 | Completed | Local Fix | 2026-02-21 | Removed `hostNodeId` pass-through from personal run-history contracts to enforce single-node personal semantics and eliminate unused enterprise metadata drift. |
 | T-13 | Modify/Test | `components/workspace/history/WorkspaceAgentRunsTreePanel.vue`, `components/workspace/history/__tests__/WorkspaceAgentRunsTreePanel.spec.ts` | T-10,T-11 | Completed | Local Fix | 2026-02-21 | Restored inactive team-history delete action (trash button + confirmation + `deleteTeamRun`) for terminated/idle team rows and added regression tests for visibility + delete execution. |
+| T-14 | Modify/Test | `stores/agentTeamRunStore.ts`, `stores/__tests__/agentTeamRunStore.spec.ts` | T-10,T-11 | Completed | Local Fix | 2026-02-21 | Fixed offline continuation UX gap by reconnecting team stream after successful existing-team send and marking team history active; added regression test for persisted offline member send path. |
+| T-15 | Modify/Test | `autobyteus-server-ts/tests/e2e/run-history/team-run-history-graphql.e2e.test.ts` | T-07 | Completed | Local Fix | 2026-02-21 | Added real multi-member backend E2E for terminate/continue with targeted `professor` member restoration and history visibility assertion (no manager/ingress mocks in this scenario). |
 
 ## Verification
 
@@ -52,6 +54,12 @@
 - Result: `2 passed`.
 - Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web vitest run stores/__tests__/runHistoryStore.spec.ts components/workspace/history/__tests__/WorkspaceAgentRunsTreePanel.spec.ts components/workspace/team/__tests__/TeamWorkspaceView.spec.ts`
 - Result: `41 passed`.
+- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web test:nuxt stores/__tests__/agentTeamRunStore.spec.ts --run`
+- Result: `3 passed`.
+- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web test:nuxt stores/__tests__/runHistoryStore.spec.ts stores/__tests__/agentTeamRunStore.spec.ts --run`
+- Result: `22 passed`.
+- Passed: `pnpm -C /Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts test tests/e2e/run-history/team-run-history-graphql.e2e.test.ts`
+- Result: `4 passed`.
 
 ## Escalation Log
 

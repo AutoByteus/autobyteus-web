@@ -26,6 +26,7 @@ Personal branch should follow enterprise persistence patterns where appropriate,
 - UC-006: After app reload, persisted team runs are listed again under their workspace.
 - UC-007: Inactive team run history can be deleted from UI and backend.
 - UC-008: After selecting a persisted/offline team member, history loads and user can continue sending messages to that member.
+- UC-009: After sending to an offline persisted team member, the frontend reconnects to team stream so continued replies are visible.
 
 ## Acceptance Criteria
 
@@ -50,12 +51,14 @@ Personal branch should follow enterprise persistence patterns where appropriate,
 - Team history payload contains a canonical team-level workspace root path used for workspace grouping.
 - Backend supports continuation flow for existing `teamId` so sending to an offline team member resumes runtime from persisted manifest/history.
 - Personal contract remains single-node: no distributed host-node metadata is required in team-run history payloads.
+- Frontend reconnects websocket stream after successful continuation send for existing offline teams.
 
 5. Test coverage
 - Frontend: workspace tree tests include team render/select regression.
 - Backend: team execution + run-history e2e/integration remain green.
 - Frontend: member selection for persisted/offline team must hydrate projection before message continuation path.
 - Frontend: terminated team remains visible in workspace tree from persisted run-history (not only live context memory).
+- Frontend: sending to offline persisted member must reconnect team stream and surface continued assistant output.
 
 ## Constraints / Dependencies
 

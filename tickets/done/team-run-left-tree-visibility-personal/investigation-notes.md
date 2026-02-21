@@ -188,3 +188,50 @@
 
 - `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web exec vitest --run components/workspace/history/__tests__/WorkspaceAgentRunsTreePanel.spec.ts` -> `21 passed`
 - `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web exec vitest --run stores/__tests__/runHistoryStore.spec.ts` -> `19 passed`
+
+## Re-investigation (2026-02-21, offline continue shows no professor response)
+
+### Trigger
+
+- User report: after terminating team runtime, opening a new tab, selecting offline `professor`, and sending a new message, no visible reply arrives in UI.
+
+### Sources Consulted
+
+- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/stores/agentTeamRunStore.ts`
+- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/stores/runHistoryStore.ts`
+- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-web/stores/__tests__/agentTeamRunStore.spec.ts`
+- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/src/api/graphql/types/agent-team-instance.ts`
+- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/src/run-history/services/team-run-continuation-service.ts`
+- `/Users/normy/autobyteus_org/autobyteus-worktrees/personal/autobyteus-server-ts/tests/e2e/run-history/team-run-history-graphql.e2e.test.ts`
+- Runtime state under `/tmp/autobyteus-personal-server-runtime/memory/`
+
+### Findings
+
+1. Backend continuation path succeeds for offline team sends.
+- `sendMessageToTeam(teamId=existing)` branches to `TeamRunContinuationService.continueTeamRun(...)` when runtime is missing.
+- Existing server e2e already verifies terminate -> continue -> projection contains restored history.
+
+2. Runtime trace evidence showed server-side processing without backend failure.
+- Persisted traces in `/tmp/autobyteus-personal-server-runtime/memory/agents/<member>/raw_traces.jsonl` included resumed user input and assistant completion entries.
+- No corresponding backend error surfaced in current server output for this path.
+
+3. Frontend gap caused the observed “no response” UX.
+- In `agentTeamRunStore.sendMessageToFocusedMember(...)`, existing-team send (`teamId` non-temp) did not reconnect team websocket stream after successful continuation.
+- Result: backend continues and processes, but UI remains unsubscribed (`Offline`), so streamed assistant updates are not rendered.
+
+4. Why tests did not catch it.
+- Backend tests cover continuation correctness (mutation + restored projection), not frontend stream re-subscription after continuation.
+- Frontend `agentTeamRunStore` tests previously covered stream connect and terminate only; no test for offline persisted team send -> reconnect.
+
+### Implications
+
+- This regression is frontend orchestration, not GraphQL continuation correctness.
+- Required fix is in web store send flow plus regression coverage in web store tests.
+
+### Enterprise test visibility check (no checkout)
+
+- Verified we can inspect enterprise tests directly from current personal worktree repo using remote refs:
+  - `git show origin/enterprise:tests/e2e/run-history/team-run-restore-lifecycle-graphql.e2e.test.ts`
+  - `git show origin/enterprise:tests/e2e/run-history/team-member-projection-contract.e2e.test.ts`
+- Observation: those enterprise files are useful contract coverage but include mocked manager/ingress seams; they are not the strongest "no-mock runtime" proof for continuation behavior.
+- Action taken in personal instead: strengthened existing real runtime E2E (non-mocked continuation flow) with a multi-member terminate/continue targeted-member scenario.

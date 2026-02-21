@@ -10,6 +10,7 @@ import type {
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
 import { useAgentActivityStore } from '~/stores/agentActivityStore';
 import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
+import { useRunHistoryStore } from '~/stores/runHistoryStore';
 import { TeamStreamingService } from '~/services/agentStreaming';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import { AgentStatus } from '~/types/agent/AgentStatus';
@@ -28,6 +29,10 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
      * Establish WebSocket connection for a team.
      */
     connectToTeamStream(teamId: string) {
+      if (teamStreamingServices.has(teamId)) {
+        return;
+      }
+
       const teamContextsStore = useAgentTeamContextsStore();
       const teamContext = teamContextsStore.getTeamContextById(teamId);
 
@@ -92,6 +97,7 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
 
     async sendMessageToFocusedMember(text: string, contextPaths: { path: string; type: string }[]) {
       const teamContextsStore = useAgentTeamContextsStore();
+      const runHistoryStore = useRunHistoryStore();
       const activeTeam = teamContextsStore.activeTeamContext;
       const focusedMember = teamContextsStore.focusedMemberContext;
 
@@ -177,9 +183,16 @@ export const useAgentTeamRunStore = defineStore('agentTeamRun', {
           throw new Error(data?.sendMessageToTeam?.message || 'Failed to send message.');
         }
 
+        runHistoryStore.markTeamAsActive(permanentId);
+        void runHistoryStore.refreshTreeQuietly();
+
         if (isTemporary) {
           teamContextsStore.promoteTemporaryTeamId(activeTeam.teamId, permanentId);
           teamContextsStore.lockConfig(permanentId);
+        }
+
+        const teamContextAfterSend = teamContextsStore.getTeamContextById(permanentId);
+        if (teamContextAfterSend && !teamContextAfterSend.isSubscribed) {
           this.connectToTeamStream(permanentId);
         }
       } catch (error: any) {
