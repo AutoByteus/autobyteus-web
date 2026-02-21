@@ -41,6 +41,8 @@ Personal branch should follow enterprise persistence patterns where appropriate,
 3. Lifecycle behavior
 - Temporary team id rows remain visible after promotion to permanent id.
 - Terminating team updates local row state and backend history state consistently.
+- When a team reaches inactive/shutdown state and `deleteLifecycle=READY`, the left tree exposes a team-history delete action (trash button) on that team row.
+- Confirming team-history delete removes persisted team history through `deleteTeamRunHistory` and updates the tree without selecting/changing active focus unexpectedly.
 
 4. Persistence behavior
 - Personal backend exposes team-run history query/mutation APIs equivalent to enterprise capability surface.

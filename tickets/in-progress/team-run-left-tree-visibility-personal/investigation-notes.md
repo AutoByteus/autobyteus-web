@@ -146,3 +146,45 @@
 
 - Removed `hostNodeId` from personal run-history domain, GraphQL contract, manifest normalization, frontend query/store types, and related tests.
 - Revalidated targeted backend/frontend suites after removal.
+
+## Follow-up Investigation (2026-02-21, team delete control regression)
+
+### Trigger
+
+- User reported: after terminating a team in personal workspace tree, no trash/delete control appears on the team row.
+
+### Additional Sources Consulted
+
+- `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/components/workspace/history/WorkspaceAgentRunsTreePanel.vue`
+- `/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/components/workspace/history/__tests__/WorkspaceAgentRunsTreePanel.spec.ts`
+- `enterprise:/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/components/workspace/history/TeamRunsSection.vue`
+- `enterprise:/Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web/composables/workspace/history/useRunTreeActions.ts`
+
+### Findings
+
+1. UI gap confirmed in personal panel
+- Team row actions only rendered terminate (`stop`) for active teams.
+- No inactive-team delete action was rendered, despite `runHistoryStore.deleteTeamRun(...)` already existing.
+
+2. Enterprise reference confirms intended behavior
+- Enterprise `TeamRunsSection` renders a delete trash button for inactive teams and routes to `requestDeleteTeam -> confirmDelete -> deleteTeamRun`.
+
+3. Requirement/design mismatch was implementation-only
+- Existing requirements already covered UC-007 (inactive team history delete).
+- Regression was missing UI wiring, not a backend contract gap.
+
+### Resolution
+
+- Restored inactive-team delete action in personal `WorkspaceAgentRunsTreePanel`:
+  - render trash icon when team cannot be terminated and `deleteLifecycle === READY`,
+  - route through existing confirmation modal,
+  - call `runHistoryStore.deleteTeamRun(teamId)`,
+  - preserve `.stop` behavior so delete click does not select/toggle team row.
+- Extended panel tests for:
+  - inactive team delete button visibility,
+  - confirmed delete invokes `deleteTeamRun` without changing selection.
+
+### Verification
+
+- `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web exec vitest --run components/workspace/history/__tests__/WorkspaceAgentRunsTreePanel.spec.ts` -> `21 passed`
+- `pnpm -C /Users/normy/autobyteus_org/autobyteus-workspace/autobyteus-web exec vitest --run stores/__tests__/runHistoryStore.spec.ts` -> `19 passed`

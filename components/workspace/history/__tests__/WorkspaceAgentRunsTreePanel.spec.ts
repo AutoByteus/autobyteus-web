@@ -88,6 +88,7 @@ const {
       createDraftRun: vi.fn().mockResolvedValue('temp-2'),
       createWorkspace: vi.fn(async (rootPath: string) => rootPath),
       deleteRun: vi.fn().mockResolvedValue(true),
+      deleteTeamRun: vi.fn().mockResolvedValue(true),
     },
     workspaceStoreMock: {
       workspaces: {
@@ -367,6 +368,68 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     expect(wrapper.emitted('instance-selected')).toContainEqual([
       { type: 'team', instanceId: 'team-1' },
     ]);
+  });
+
+  it('renders delete action for inactive team history rows', async () => {
+    runHistoryState.teamNodesByWorkspace['/ws/a'] = [
+      {
+        teamId: 'team-1',
+        teamDefinitionId: 'team-def-1',
+        teamDefinitionName: 'Team Alpha',
+        workspaceRootPath: '/ws/a',
+        summary: 'Team summary',
+        lastActivityAt: '2026-01-01T02:00:00.000Z',
+        lastKnownStatus: 'IDLE',
+        isActive: false,
+        currentStatus: 'shutdown_complete',
+        deleteLifecycle: 'READY',
+        focusedMemberName: 'super_agent',
+        members: [],
+      },
+    ];
+
+    const wrapper = mountComponent();
+    await flushPromises();
+
+    const deleteButtons = wrapper.findAll('button[title="Delete team history permanently"]');
+    expect(deleteButtons).toHaveLength(1);
+  });
+
+  it('deletes inactive team history from team row action without selecting the row', async () => {
+    runHistoryState.teamNodesByWorkspace['/ws/a'] = [
+      {
+        teamId: 'team-1',
+        teamDefinitionId: 'team-def-1',
+        teamDefinitionName: 'Team Alpha',
+        workspaceRootPath: '/ws/a',
+        summary: 'Team summary',
+        lastActivityAt: '2026-01-01T02:00:00.000Z',
+        lastKnownStatus: 'IDLE',
+        isActive: false,
+        currentStatus: 'shutdown_complete',
+        deleteLifecycle: 'READY',
+        focusedMemberName: 'super_agent',
+        members: [],
+      },
+    ];
+
+    const wrapper = mountComponent();
+    await flushPromises();
+    const vm = wrapper.vm as any;
+
+    const deleteButton = wrapper.find('button[title="Delete team history permanently"]');
+    expect(deleteButton.exists()).toBe(true);
+
+    await deleteButton.trigger('click');
+    await nextTick();
+    expect(vm.showDeleteConfirmation).toBe(true);
+    expect(runHistoryStoreMock.deleteTeamRun).not.toHaveBeenCalled();
+
+    await vm.confirmDeleteRun();
+    await flushPromises();
+
+    expect(runHistoryStoreMock.deleteTeamRun).toHaveBeenCalledWith('team-1');
+    expect(selectionStoreMock.selectInstance).not.toHaveBeenCalled();
   });
 
   it('creates workspace from inline input when user presses Enter', async () => {

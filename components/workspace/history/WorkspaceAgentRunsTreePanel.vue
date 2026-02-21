@@ -240,6 +240,16 @@
                   >
                     <Icon icon="heroicons:stop-20-solid" class="h-3.5 w-3.5" />
                   </button>
+                  <button
+                    v-else-if="team.deleteLifecycle === 'READY'"
+                    type="button"
+                    class="ml-2 inline-flex h-5 w-5 items-center justify-center rounded text-gray-400 transition-[opacity,color,background-color] duration-150 hover:bg-red-50 hover:text-red-600 md:opacity-0 md:group-hover/team-row:opacity-100 md:group-focus-within/team-row:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    title="Delete team history permanently"
+                    :disabled="Boolean(deletingTeamIds[team.teamId])"
+                    @click.stop="onDeleteTeam(team)"
+                  >
+                    <Icon icon="heroicons:trash-20-solid" class="h-3.5 w-3.5" />
+                  </button>
                 </div>
 
                 <div v-if="isTeamExpanded(team.teamId)" class="ml-3 space-y-0.5">
@@ -317,6 +327,7 @@ const expandedTeams = ref<Record<string, boolean>>({});
 const terminatingRunIds = ref<Record<string, boolean>>({});
 const terminatingTeamIds = ref<Record<string, boolean>>({});
 const deletingRunIds = ref<Record<string, boolean>>({});
+const deletingTeamIds = ref<Record<string, boolean>>({});
 const showCreateWorkspaceInline = ref(false);
 const workspacePathDraft = ref('');
 const workspacePathError = ref('');
@@ -324,6 +335,7 @@ const creatingWorkspace = ref(false);
 const workspacePathInputRef = ref<HTMLInputElement | null>(null);
 const showDeleteConfirmation = ref(false);
 const pendingDeleteRunId = ref<string | null>(null);
+const pendingDeleteTeamId = ref<string | null>(null);
 const brokenAvatarByAgentKey = ref<Record<string, boolean>>({});
 const activeStatusClass = 'bg-blue-500 animate-pulse';
 
@@ -582,41 +594,89 @@ const onDeleteRun = async (run: RunTreeRow): Promise<void> => {
   }
 
   pendingDeleteRunId.value = runId;
+  pendingDeleteTeamId.value = null;
+  showDeleteConfirmation.value = true;
+};
+
+const onDeleteTeam = async (team: TeamTreeNode): Promise<void> => {
+  if (canTerminateTeam(team.currentStatus) || team.deleteLifecycle !== 'READY') {
+    return;
+  }
+
+  const teamId = team.teamId.trim();
+  if (!teamId || deletingTeamIds.value[teamId]) {
+    return;
+  }
+
+  pendingDeleteRunId.value = null;
+  pendingDeleteTeamId.value = teamId;
   showDeleteConfirmation.value = true;
 };
 
 const closeDeleteConfirmation = (): void => {
   showDeleteConfirmation.value = false;
   pendingDeleteRunId.value = null;
+  pendingDeleteTeamId.value = null;
 };
 
 const confirmDeleteRun = async (): Promise<void> => {
   const deleteErrorMessage = 'Failed to delete run. Please try again.';
+  const deleteTeamErrorMessage = 'Failed to delete team history. Please try again.';
   const runId = pendingDeleteRunId.value;
+  const teamId = pendingDeleteTeamId.value;
   closeDeleteConfirmation();
-  if (!runId || deletingRunIds.value[runId]) {
+
+  if (runId) {
+    if (deletingRunIds.value[runId]) {
+      return;
+    }
+
+    deletingRunIds.value = {
+      ...deletingRunIds.value,
+      [runId]: true,
+    };
+
+    try {
+      const deleted = await runHistoryStore.deleteRun(runId);
+      if (!deleted) {
+        addToast(deleteErrorMessage, 'error');
+        return;
+      }
+      addToast('Run deleted permanently.', 'success');
+    } catch (error) {
+      console.error('Failed to delete run:', error);
+      addToast(deleteErrorMessage, 'error');
+    } finally {
+      const next = { ...deletingRunIds.value };
+      delete next[runId];
+      deletingRunIds.value = next;
+    }
     return;
   }
 
-  deletingRunIds.value = {
-    ...deletingRunIds.value,
-    [runId]: true,
+  if (!teamId || deletingTeamIds.value[teamId]) {
+    return;
+  }
+
+  deletingTeamIds.value = {
+    ...deletingTeamIds.value,
+    [teamId]: true,
   };
 
   try {
-    const deleted = await runHistoryStore.deleteRun(runId);
+    const deleted = await runHistoryStore.deleteTeamRun(teamId);
     if (!deleted) {
-      addToast(deleteErrorMessage, 'error');
+      addToast(deleteTeamErrorMessage, 'error');
       return;
     }
-    addToast('Run deleted permanently.', 'success');
+    addToast('Team history deleted permanently.', 'success');
   } catch (error) {
-    console.error('Failed to delete run:', error);
-    addToast(deleteErrorMessage, 'error');
+    console.error('Failed to delete team history:', error);
+    addToast(deleteTeamErrorMessage, 'error');
   } finally {
-    const next = { ...deletingRunIds.value };
-    delete next[runId];
-    deletingRunIds.value = next;
+    const next = { ...deletingTeamIds.value };
+    delete next[teamId];
+    deletingTeamIds.value = next;
   }
 };
 
