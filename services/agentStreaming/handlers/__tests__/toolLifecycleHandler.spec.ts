@@ -96,6 +96,7 @@ describe('toolLifecycleHandler', () => {
     mockActivityStore = {
       updateActivityStatus: vi.fn(),
       updateActivityArguments: vi.fn(),
+      updateActivityToolName: vi.fn(),
       setHighlightedActivity: vi.fn(),
       addActivityLog: vi.fn(),
       setActivityResult: vi.fn(),
@@ -122,6 +123,7 @@ describe('toolLifecycleHandler', () => {
     expect(segment.status).toBe('awaiting-approval');
     expect(segment.path).toBe('/tmp/example.txt');
     expect(segment.originalContent).toBe('--- a\n+++ b\n@@\n+line\n');
+    expect(mockActivityStore.updateActivityToolName).toHaveBeenCalledWith(agentId, invocationId, 'edit_file');
     expect(mockActivityStore.updateActivityStatus).toHaveBeenCalledWith(agentId, invocationId, 'awaiting-approval');
     expect(mockActivityStore.updateActivityArguments).toHaveBeenCalledWith(agentId, invocationId, payload.arguments);
   });
@@ -148,6 +150,7 @@ describe('toolLifecycleHandler', () => {
     handleToolExecutionStarted(startedPayload, context);
     expect(segment.status).toBe('executing');
     expect(segment.command).toBe('npm run dev');
+    expect(mockActivityStore.updateActivityToolName).toHaveBeenCalledWith(agentId, invocationId, 'run_bash');
     expect(mockActivityStore.updateActivityStatus).toHaveBeenCalledWith(agentId, invocationId, 'approved');
     expect(mockActivityStore.updateActivityStatus).toHaveBeenCalledWith(agentId, invocationId, 'executing');
   });

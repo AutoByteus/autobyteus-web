@@ -27,7 +27,11 @@ export const useAgentActivityStore = defineStore('agentActivity', {
 
   getters: {
     getActivities: (state) => (agentId: string): ToolActivity[] => {
-      return state.activitiesByAgentId.get(agentId)?.activities ?? [];
+      const activities = state.activitiesByAgentId.get(agentId)?.activities ?? [];
+      return activities.filter(
+        (activity) =>
+          typeof activity?.invocationId === 'string' && activity.invocationId.trim().length > 0
+      );
     },
     
     hasAwaitingApproval: (state) => (agentId: string): boolean => {
@@ -58,6 +62,10 @@ export const useAgentActivityStore = defineStore('agentActivity', {
     },
 
     addActivity(agentId: string, activity: ToolActivity) {
+      if (typeof activity.invocationId !== 'string' || activity.invocationId.trim().length === 0) {
+        console.warn('[agentActivityStore] Dropping activity with invalid invocationId', activity);
+        return;
+      }
       const state = this._ensureAgentState(agentId);
       // Avoid duplicates
       if (state.activities.some((a) => a.invocationId === activity.invocationId)) {
@@ -104,6 +112,24 @@ export const useAgentActivityStore = defineStore('agentActivity', {
       const activity = state.activities.find((a) => a.invocationId === invocationId);
       if (activity) {
         activity.arguments = { ...activity.arguments, ...args };
+      }
+    },
+
+    updateActivityToolName(agentId: string, invocationId: string, toolName: string) {
+      if (typeof toolName !== 'string' || toolName.trim().length === 0) {
+        return;
+      }
+      const state = this._ensureAgentState(agentId);
+      const activity = state.activities.find((a) => a.invocationId === invocationId);
+      if (!activity) {
+        return;
+      }
+      if (
+        activity.toolName === 'MISSING_TOOL_NAME' ||
+        activity.toolName.trim().length === 0 ||
+        activity.toolName === 'tool_call'
+      ) {
+        activity.toolName = toolName;
       }
     },
 
