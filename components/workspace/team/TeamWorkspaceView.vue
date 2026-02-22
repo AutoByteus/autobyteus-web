@@ -3,7 +3,18 @@
     <!-- Header Bar -->
     <div class="flex items-center justify-between px-4 py-2 border-b border-gray-200 flex-shrink-0">
       <div class="flex items-center space-x-3 min-w-0">
-        <span class="text-xl">👥</span>
+        <div class="h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-slate-100 flex items-center justify-center">
+          <img
+            v-if="showHeaderAvatarImage"
+            :src="headerAvatarUrl"
+            :alt="`${headerTitle || 'Team member'} avatar`"
+            class="h-full w-full object-cover"
+            @error="headerAvatarLoadError = true"
+          />
+          <span v-else class="text-[10px] font-semibold tracking-wide text-slate-600">
+            {{ headerAvatarInitials }}
+          </span>
+        </div>
         <h4 v-if="activeTeamContext" class="text-base font-medium text-gray-800 truncate" :title="headerTitle">
           {{ headerTitle }}
         </h4>
@@ -32,8 +43,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
+import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
 import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
 import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
@@ -43,9 +55,11 @@ import AgentTeamEventMonitor from '~/components/workspace/team/AgentTeamEventMon
 import WorkspaceHeaderActions from '~/components/workspace/common/WorkspaceHeaderActions.vue';
 
 const teamContextsStore = useAgentTeamContextsStore();
+const agentDefinitionStore = useAgentDefinitionStore();
 const teamRunConfigStore = useTeamRunConfigStore();
 const agentRunConfigStore = useAgentRunConfigStore();
 const selectionStore = useAgentSelectionStore();
+const headerAvatarLoadError = ref(false);
 
 const activeTeamContext = computed(() => teamContextsStore.activeTeamContext);
 const focusedMemberContext = computed(() => {
@@ -91,6 +105,56 @@ const headerTitle = computed(() => {
   return focusedMemberName || team.config.teamDefinitionName || 'Team';
 });
 
+const headerAvatarUrl = computed(() => {
+  const focusedContext = focusedMemberContext.value;
+  if (!focusedContext) {
+    return '';
+  }
+
+  const fromContext = focusedContext.config.agentAvatarUrl?.trim();
+  if (fromContext) {
+    return fromContext;
+  }
+
+  const definitionId = focusedContext.config.agentDefinitionId?.trim();
+  if (definitionId) {
+    const fromDefinition = agentDefinitionStore.getAgentDefinitionById(definitionId)?.avatarUrl?.trim();
+    if (fromDefinition) {
+      return fromDefinition;
+    }
+  }
+
+  const normalizedName = headerTitle.value.trim().toLowerCase();
+  if (!normalizedName) {
+    return '';
+  }
+  return (
+    agentDefinitionStore.agentDefinitions.find((definition) =>
+      (definition.name || '').trim().toLowerCase() === normalizedName
+    )?.avatarUrl?.trim() || ''
+  );
+});
+
+const showHeaderAvatarImage = computed(() => Boolean(headerAvatarUrl.value) && !headerAvatarLoadError.value);
+
+const headerAvatarInitials = computed(() => {
+  const name = headerTitle.value.trim();
+  if (!name) {
+    return 'AI';
+  }
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+  return initials || 'AI';
+});
+
+watch(headerAvatarUrl, () => {
+  headerAvatarLoadError.value = false;
+});
+
 const createNewTeamInstance = () => {
   if (!activeTeamContext.value) return;
 
@@ -100,4 +164,10 @@ const createNewTeamInstance = () => {
   agentRunConfigStore.clearConfig();
   selectionStore.clearSelection();
 };
+
+onMounted(async () => {
+  if (agentDefinitionStore.agentDefinitions.length === 0) {
+    await agentDefinitionStore.fetchAllAgentDefinitions().catch(() => undefined);
+  }
+});
 </script>

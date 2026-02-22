@@ -3,6 +3,8 @@
     <AgentEventMonitor
       v-if="conversationOfFocusedMember"
       :conversation="conversationOfFocusedMember"
+      :agent-name="focusedMemberDisplayName"
+      :agent-avatar-url="focusedMemberAvatarUrl"
       :inter-agent-sender-name-by-id="interAgentSenderNameById"
       class="h-full"
     />
@@ -20,13 +22,52 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useAgentTeamContextsStore } from '~/stores/agentTeamContextsStore';
+import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
 import AgentEventMonitor from '~/components/workspace/agent/AgentEventMonitor.vue';
 
 const teamContextsStore = useAgentTeamContextsStore();
+const agentDefinitionStore = useAgentDefinitionStore();
 
 const activeTeam = computed(() => teamContextsStore.activeTeamContext);
 const focusedMember = computed(() => teamContextsStore.focusedMemberContext);
 const conversationOfFocusedMember = computed(() => focusedMember.value?.state.conversation);
+
+const focusedMemberDisplayName = computed(() => {
+  const context = focusedMember.value;
+  if (!context) {
+    return '';
+  }
+  return context.config.agentDefinitionName?.trim() || context.state.conversation.agentName?.trim() || 'Agent';
+});
+
+const focusedMemberAvatarUrl = computed(() => {
+  const context = focusedMember.value;
+  if (!context) {
+    return null;
+  }
+
+  const fromContext = context.config.agentAvatarUrl?.trim();
+  if (fromContext) {
+    return fromContext;
+  }
+
+  const definitionId = context.config.agentDefinitionId?.trim();
+  if (definitionId) {
+    const fromDefinition = agentDefinitionStore.getAgentDefinitionById(definitionId)?.avatarUrl?.trim();
+    if (fromDefinition) {
+      return fromDefinition;
+    }
+  }
+
+  const normalizedName = focusedMemberDisplayName.value.trim().toLowerCase();
+  if (!normalizedName) {
+    return null;
+  }
+  const byName = agentDefinitionStore.agentDefinitions.find((definition) =>
+    (definition.name || '').trim().toLowerCase() === normalizedName
+  )?.avatarUrl?.trim();
+  return byName || null;
+});
 
 const formatMemberDisplayName = (memberRouteKey: string): string => {
   const routeLeaf = memberRouteKey

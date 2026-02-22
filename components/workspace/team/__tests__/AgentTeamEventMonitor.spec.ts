@@ -25,6 +25,30 @@ vi.mock('~/stores/agentTeamContextsStore', () => ({
   useAgentTeamContextsStore: () => teamContextsStoreMock,
 }));
 
+const agentDefinitionStoreMock = vi.hoisted(() => ({
+  agentDefinitions: [
+    {
+      id: 'agent-professor-def',
+      name: 'Professor',
+      avatarUrl: 'https://example.com/professor.png',
+    },
+  ],
+  getAgentDefinitionById: vi.fn((id: string) => {
+    if (id === 'agent-professor-def') {
+      return {
+        id: 'agent-professor-def',
+        name: 'Professor',
+        avatarUrl: 'https://example.com/professor.png',
+      };
+    }
+    return null;
+  }),
+}));
+
+vi.mock('~/stores/agentDefinitionStore', () => ({
+  useAgentDefinitionStore: () => agentDefinitionStoreMock,
+}));
+
 const createConversation = () => ({
   id: 'team-1::professor',
   createdAt: '2026-02-17T00:00:00.000Z',
@@ -35,12 +59,22 @@ const createConversation = () => ({
 describe('AgentTeamEventMonitor.vue', () => {
   beforeEach(() => {
     const professorContext = {
+      config: {
+        agentDefinitionId: 'agent-professor-def',
+        agentDefinitionName: 'Professor',
+        agentAvatarUrl: null,
+      },
       state: {
         agentId: 'member_a111',
         conversation: createConversation(),
       },
     };
     const studentContext = {
+      config: {
+        agentDefinitionId: 'agent-student-def',
+        agentDefinitionName: 'Student',
+        agentAvatarUrl: null,
+      },
       state: {
         agentId: 'member_b222',
         conversation: {
@@ -66,7 +100,7 @@ describe('AgentTeamEventMonitor.vue', () => {
         stubs: {
           AgentEventMonitor: {
             name: 'AgentEventMonitor',
-            props: ['conversation', 'interAgentSenderNameById'],
+            props: ['conversation', 'agentName', 'agentAvatarUrl', 'interAgentSenderNameById'],
             template: '<div class="agent-event-monitor-stub" />',
           },
         },
@@ -79,5 +113,24 @@ describe('AgentTeamEventMonitor.vue', () => {
       member_a111: 'Professor',
       member_b222: 'Student',
     });
+  });
+
+  it('passes focused member display name and avatar to AgentEventMonitor', () => {
+    const wrapper = shallowMount(AgentTeamEventMonitor, {
+      global: {
+        stubs: {
+          AgentEventMonitor: {
+            name: 'AgentEventMonitor',
+            props: ['conversation', 'agentName', 'agentAvatarUrl', 'interAgentSenderNameById'],
+            template: '<div class="agent-event-monitor-stub" />',
+          },
+        },
+      },
+    });
+
+    const monitor = wrapper.findComponent({ name: 'AgentEventMonitor' });
+    expect(monitor.exists()).toBe(true);
+    expect(monitor.props('agentName')).toBe('Professor');
+    expect(monitor.props('agentAvatarUrl')).toBe('https://example.com/professor.png');
   });
 });

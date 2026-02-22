@@ -15,6 +15,8 @@ const {
   selectionStoreMock,
   agentRunStoreMock,
   teamRunStoreMock,
+  agentDefinitionStoreMock,
+  agentTeamDefinitionStoreMock,
   windowNodeContextStoreMock,
   pickFolderPathMock,
   addToastMock,
@@ -110,6 +112,26 @@ const {
     teamRunStoreMock: {
       terminateTeamInstance: vi.fn().mockResolvedValue(undefined),
     },
+    agentDefinitionStoreMock: {
+      agentDefinitions: [
+        {
+          id: 'agent-def-1',
+          name: 'Super Agent',
+          avatarUrl: 'https://example.com/team-member.png',
+        },
+      ],
+      fetchAllAgentDefinitions: vi.fn().mockResolvedValue(undefined),
+    },
+    agentTeamDefinitionStoreMock: {
+      agentTeamDefinitions: [
+        {
+          id: 'team-def-1',
+          name: 'Team Alpha',
+          avatarUrl: 'https://example.com/team-alpha.png',
+        },
+      ],
+      fetchAllAgentTeamDefinitions: vi.fn().mockResolvedValue(undefined),
+    },
     windowNodeContextStoreMock: {
       isEmbeddedWindow: { __v_isRef: true, value: false },
     },
@@ -138,6 +160,14 @@ vi.mock('~/stores/agentTeamRunStore', () => ({
   useAgentTeamRunStore: () => teamRunStoreMock,
 }));
 
+vi.mock('~/stores/agentDefinitionStore', () => ({
+  useAgentDefinitionStore: () => agentDefinitionStoreMock,
+}));
+
+vi.mock('~/stores/agentTeamDefinitionStore', () => ({
+  useAgentTeamDefinitionStore: () => agentTeamDefinitionStoreMock,
+}));
+
 vi.mock('~/stores/windowNodeContextStore', () => ({
   useWindowNodeContextStore: () => windowNodeContextStoreMock,
 }));
@@ -161,6 +191,20 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     runHistoryState.teamNodesByWorkspace = {};
     selectionStoreMock.selectedType = null;
     selectionStoreMock.selectedInstanceId = null;
+    agentDefinitionStoreMock.agentDefinitions = [
+      {
+        id: 'agent-def-1',
+        name: 'Super Agent',
+        avatarUrl: 'https://example.com/team-member.png',
+      },
+    ];
+    agentTeamDefinitionStoreMock.agentTeamDefinitions = [
+      {
+        id: 'team-def-1',
+        name: 'Team Alpha',
+        avatarUrl: 'https://example.com/team-alpha.png',
+      },
+    ];
     windowNodeContextStoreMock.isEmbeddedWindow.value = false;
     pickFolderPathMock.mockResolvedValue(null);
     delete (window as any).electronAPI;
@@ -313,6 +357,76 @@ describe('WorkspaceAgentRunsTreePanel', () => {
     expect(wrapper.emitted('instance-selected')).toContainEqual([
       { type: 'team', instanceId: 'team-1' },
     ]);
+  });
+
+  it('renders team avatar image when team definition avatar is available', async () => {
+    runHistoryState.teamNodesByWorkspace['/ws/a'] = [
+      {
+        teamId: 'team-1',
+        teamDefinitionId: 'team-def-1',
+        teamDefinitionName: 'Team Alpha',
+        workspaceRootPath: '/ws/a',
+        summary: 'Team summary',
+        lastActivityAt: '2026-01-01T02:00:00.000Z',
+        lastKnownStatus: 'IDLE',
+        isActive: false,
+        currentStatus: 'shutdown_complete',
+        deleteLifecycle: 'READY',
+        focusedMemberName: 'super_agent',
+        members: [],
+      },
+    ];
+
+    const wrapper = mountComponent();
+    await flushPromises();
+
+    const teamAvatar = wrapper.find('img[alt="Team Alpha avatar"]');
+    expect(teamAvatar.exists()).toBe(true);
+    expect(teamAvatar.attributes('src')).toBe('https://example.com/team-alpha.png');
+  });
+
+  it('renders team member avatar image when matching agent definition avatar is available', async () => {
+    runHistoryState.teamNodesByWorkspace['/ws/a'] = [
+      {
+        teamId: 'team-1',
+        teamDefinitionId: 'team-def-1',
+        teamDefinitionName: 'Team Alpha',
+        workspaceRootPath: '/ws/a',
+        summary: 'Team summary',
+        lastActivityAt: '2026-01-01T02:00:00.000Z',
+        lastKnownStatus: 'IDLE',
+        isActive: false,
+        currentStatus: 'shutdown_complete',
+        deleteLifecycle: 'READY',
+        focusedMemberName: 'super_agent',
+        members: [
+          {
+            teamId: 'team-1',
+            memberRouteKey: 'super_agent',
+            memberName: 'Super Agent',
+            memberAgentId: 'member-run-1',
+            workspaceRootPath: '/ws/a',
+            summary: 'Team summary',
+            lastActivityAt: '2026-01-01T02:00:00.000Z',
+            lastKnownStatus: 'IDLE',
+            isActive: false,
+            deleteLifecycle: 'READY',
+          },
+        ],
+      },
+    ];
+
+    const wrapper = mountComponent();
+    await flushPromises();
+
+    const teamRow = wrapper.find('[data-test="workspace-team-row-team-1"]');
+    expect(teamRow.exists()).toBe(true);
+    await teamRow.trigger('click');
+    await flushPromises();
+
+    const memberAvatar = wrapper.find('img[alt="Super Agent avatar"]');
+    expect(memberAvatar.exists()).toBe(true);
+    expect(memberAvatar.attributes('src')).toBe('https://example.com/team-member.png');
   });
 
   it('selects team member through runHistoryStore so persisted member history can hydrate', async () => {

@@ -226,6 +226,18 @@
                       class="mr-1.5 inline-block h-2 w-2 flex-shrink-0 rounded-full"
                       :class="teamStatusClass(team.currentStatus)"
                     />
+                    <span
+                      class="mr-1.5 inline-flex h-5 w-5 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-[10px] font-semibold text-gray-600"
+                    >
+                      <img
+                        v-if="showTeamAvatar(team)"
+                        :src="getTeamAvatarUrl(team)"
+                        :alt="`${team.teamDefinitionName} avatar`"
+                        class="h-full w-full object-cover"
+                        @error="onTeamAvatarError(team)"
+                      >
+                      <span v-else>{{ getTeamInitials(team.teamDefinitionName) }}</span>
+                    </span>
                     <span class="truncate font-medium">{{ team.teamDefinitionName }}</span>
                     <span class="ml-1 text-xs text-gray-400">({{ team.members.length }})</span>
                   </button>
@@ -262,7 +274,21 @@
                     :data-test="`workspace-team-member-${team.teamId}-${member.memberRouteKey}`"
                     @click="onSelectTeamMember(member)"
                   >
-                    <span class="truncate">{{ toTeamMemberDisplayName(member) }}</span>
+                    <div class="flex min-w-0 items-center">
+                      <span
+                        class="mr-1.5 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-[9px] font-semibold text-gray-600"
+                      >
+                        <img
+                          v-if="showTeamMemberAvatar(member)"
+                          :src="getTeamMemberAvatarUrl(member)"
+                          :alt="`${getTeamMemberDisplayName(member)} avatar`"
+                          class="h-full w-full object-cover"
+                          @error="onTeamMemberAvatarError(member)"
+                        >
+                        <span v-else>{{ getTeamMemberInitials(member) }}</span>
+                      </span>
+                      <span class="truncate">{{ getTeamMemberDisplayName(member) }}</span>
+                    </div>
                     <span class="ml-2 text-xs text-gray-400">
                       {{ runHistoryStore.formatRelativeTime(team.lastActivityAt) }}
                     </span>
@@ -299,6 +325,8 @@ import { useWorkspaceStore } from '~/stores/workspace';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 import { useAgentRunStore } from '~/stores/agentRunStore';
 import { useAgentTeamRunStore } from '~/stores/agentTeamRunStore';
+import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
+import { useAgentTeamDefinitionStore } from '~/stores/agentTeamDefinitionStore';
 import { useWindowNodeContextStore } from '~/stores/windowNodeContextStore';
 import { useToasts } from '~/composables/useToasts';
 import { pickFolderPath } from '~/composables/useNativeFolderDialog';
@@ -317,6 +345,8 @@ const workspaceStore = useWorkspaceStore();
 const selectionStore = useAgentSelectionStore();
 const agentRunStore = useAgentRunStore();
 const teamRunStore = useAgentTeamRunStore();
+const agentDefinitionStore = useAgentDefinitionStore();
+const agentTeamDefinitionStore = useAgentTeamDefinitionStore();
 const windowNodeContextStore = useWindowNodeContextStore();
 const { isEmbeddedWindow } = storeToRefs(windowNodeContextStore);
 const { addToast } = useToasts();
@@ -337,6 +367,8 @@ const showDeleteConfirmation = ref(false);
 const pendingDeleteRunId = ref<string | null>(null);
 const pendingDeleteTeamId = ref<string | null>(null);
 const brokenAvatarByAgentKey = ref<Record<string, boolean>>({});
+const brokenAvatarByTeamKey = ref<Record<string, boolean>>({});
+const brokenAvatarByTeamMemberKey = ref<Record<string, boolean>>({});
 const activeStatusClass = 'bg-blue-500 animate-pulse';
 
 const normalizeRootPath = (value: string | null | undefined): string => {
@@ -439,6 +471,99 @@ const getAgentInitials = (agentName: string): string => {
     .join('');
 };
 
+const teamAvatarByDefinitionId = computed(() => {
+  const next: Record<string, string> = {};
+  for (const definition of agentTeamDefinitionStore.agentTeamDefinitions) {
+    const key = (definition.id || '').trim();
+    const avatarUrl = (definition.avatarUrl || '').trim();
+    if (key && avatarUrl && !next[key]) {
+      next[key] = avatarUrl;
+    }
+  }
+  return next;
+});
+
+const memberAvatarByName = computed(() => {
+  const next: Record<string, string> = {};
+  for (const definition of agentDefinitionStore.agentDefinitions) {
+    const key = (definition.name || '').trim().toLowerCase();
+    const avatarUrl = (definition.avatarUrl || '').trim();
+    if (key && avatarUrl && !next[key]) {
+      next[key] = avatarUrl;
+    }
+  }
+  return next;
+});
+
+const getTeamInitials = (teamName: string): string => getAgentInitials(teamName || 'Team');
+
+const getTeamAvatarUrl = (team: TeamTreeNode): string => {
+  return teamAvatarByDefinitionId.value[(team.teamDefinitionId || '').trim()] || '';
+};
+
+const getTeamAvatarKey = (team: TeamTreeNode, avatarUrl: string): string => {
+  return `${team.teamId}::${avatarUrl.trim()}`;
+};
+
+const showTeamAvatar = (team: TeamTreeNode): boolean => {
+  const avatarUrl = getTeamAvatarUrl(team);
+  if (!avatarUrl) {
+    return false;
+  }
+  const key = getTeamAvatarKey(team, avatarUrl);
+  return !brokenAvatarByTeamKey.value[key];
+};
+
+const onTeamAvatarError = (team: TeamTreeNode): void => {
+  const avatarUrl = getTeamAvatarUrl(team);
+  if (!avatarUrl) {
+    return;
+  }
+  const key = getTeamAvatarKey(team, avatarUrl);
+  brokenAvatarByTeamKey.value = {
+    ...brokenAvatarByTeamKey.value,
+    [key]: true,
+  };
+};
+
+const getTeamMemberDisplayName = (member: TeamMemberTreeRow): string => {
+  return toTeamMemberDisplayName(member);
+};
+
+const getTeamMemberInitials = (member: TeamMemberTreeRow): string => {
+  return getAgentInitials(getTeamMemberDisplayName(member));
+};
+
+const getTeamMemberAvatarUrl = (member: TeamMemberTreeRow): string => {
+  const memberNameKey = getTeamMemberDisplayName(member).trim().toLowerCase();
+  return memberAvatarByName.value[memberNameKey] || '';
+};
+
+const getTeamMemberAvatarKey = (member: TeamMemberTreeRow, avatarUrl: string): string => {
+  return `${member.teamId}::${member.memberRouteKey}::${avatarUrl.trim()}`;
+};
+
+const showTeamMemberAvatar = (member: TeamMemberTreeRow): boolean => {
+  const avatarUrl = getTeamMemberAvatarUrl(member);
+  if (!avatarUrl) {
+    return false;
+  }
+  const key = getTeamMemberAvatarKey(member, avatarUrl);
+  return !brokenAvatarByTeamMemberKey.value[key];
+};
+
+const onTeamMemberAvatarError = (member: TeamMemberTreeRow): void => {
+  const avatarUrl = getTeamMemberAvatarUrl(member);
+  if (!avatarUrl) {
+    return;
+  }
+  const key = getTeamMemberAvatarKey(member, avatarUrl);
+  brokenAvatarByTeamMemberKey.value = {
+    ...brokenAvatarByTeamMemberKey.value,
+    [key]: true,
+  };
+};
+
 const showAgentAvatar = (
   workspaceRootPath: string,
   agentDefinitionId: string,
@@ -465,6 +590,8 @@ watch(
   (loading, previousLoading) => {
     if (previousLoading && !loading) {
       brokenAvatarByAgentKey.value = {};
+      brokenAvatarByTeamKey.value = {};
+      brokenAvatarByTeamMemberKey.value = {};
     }
   },
 );
@@ -772,6 +899,8 @@ onMounted(async () => {
   await Promise.all([
     workspaceStore.fetchAllWorkspaces().catch(() => undefined),
     runHistoryStore.fetchTree(),
+    agentDefinitionStore.fetchAllAgentDefinitions().catch(() => undefined),
+    agentTeamDefinitionStore.fetchAllAgentTeamDefinitions().catch(() => undefined),
   ]);
 });
 </script>

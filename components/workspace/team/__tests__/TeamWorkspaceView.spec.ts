@@ -7,6 +7,7 @@ import { AgentTeamStatus } from '~/types/agent/AgentTeamStatus';
 const {
   state,
   teamContextsStoreMock,
+  agentDefinitionStoreMock,
   teamRunConfigStoreMock,
   agentRunConfigStoreMock,
   selectionStoreMock,
@@ -22,6 +23,26 @@ const {
         return localState.activeTeamContext;
       },
     },
+    agentDefinitionStoreMock: {
+      agentDefinitions: [
+        {
+          id: 'agent-professor-def',
+          name: 'Professor',
+          avatarUrl: 'https://example.com/professor.png',
+        },
+      ],
+      fetchAllAgentDefinitions: vi.fn().mockResolvedValue(undefined),
+      getAgentDefinitionById: vi.fn((id: string) => {
+        if (id === 'agent-professor-def') {
+          return {
+            id: 'agent-professor-def',
+            name: 'Professor',
+            avatarUrl: 'https://example.com/professor.png',
+          };
+        }
+        return null;
+      }),
+    },
     teamRunConfigStoreMock: {
       setConfig: vi.fn(),
     },
@@ -36,6 +57,10 @@ const {
 
 vi.mock('~/stores/agentTeamContextsStore', () => ({
   useAgentTeamContextsStore: () => teamContextsStoreMock,
+}));
+
+vi.mock('~/stores/agentDefinitionStore', () => ({
+  useAgentDefinitionStore: () => agentDefinitionStoreMock,
 }));
 
 vi.mock('~/stores/teamRunConfigStore', () => ({
@@ -61,7 +86,11 @@ const buildTeamContext = (overrides: Record<string, any> = {}) => ({
     [
       'professor',
       {
-        config: { agentDefinitionName: 'Professor' },
+        config: {
+          agentDefinitionId: 'agent-professor-def',
+          agentDefinitionName: 'Professor',
+          agentAvatarUrl: null,
+        },
         state: {
           currentStatus: AgentStatus.ExecutingTool,
           conversation: { agentName: 'Professor' },
@@ -100,6 +129,13 @@ describe('TeamWorkspaceView', () => {
   it('shows focused member status in header', () => {
     const wrapper = mountComponent();
     expect(wrapper.get('[data-test="header-status"]').text()).toBe(AgentStatus.ExecutingTool);
+  });
+
+  it('shows focused member avatar in header when available', () => {
+    const wrapper = mountComponent();
+    const avatar = wrapper.find('img[alt="Professor avatar"]');
+    expect(avatar.exists()).toBe(true);
+    expect(avatar.attributes('src')).toBe('https://example.com/professor.png');
   });
 
   it('falls back to focused route key when focused member context is missing', () => {

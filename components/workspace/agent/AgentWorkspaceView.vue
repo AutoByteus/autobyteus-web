@@ -48,17 +48,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import AgentEventMonitor from '~/components/workspace/agent/AgentEventMonitor.vue';
 import WorkspaceHeaderActions from '~/components/workspace/common/WorkspaceHeaderActions.vue';
 import AgentStatusDisplay from '~/components/workspace/agent/AgentStatusDisplay.vue';
 import CopyButton from '~/components/common/CopyButton.vue';
 import { useAgentContextsStore } from '~/stores/agentContextsStore';
+import { useAgentDefinitionStore } from '~/stores/agentDefinitionStore';
 import { useAgentRunConfigStore } from '~/stores/agentRunConfigStore';
 import { useTeamRunConfigStore } from '~/stores/teamRunConfigStore';
 import { useAgentSelectionStore } from '~/stores/agentSelectionStore';
 
 const agentContextsStore = useAgentContextsStore();
+const agentDefinitionStore = useAgentDefinitionStore();
 const runConfigStore = useAgentRunConfigStore();
 const teamRunConfigStore = useTeamRunConfigStore();
 const selectionStore = useAgentSelectionStore();
@@ -79,7 +81,19 @@ const headerTitle = computed(() => {
   return 'Workspace'; // A generic fallback
 });
 
-const selectedAgentAvatarUrl = computed(() => selectedAgent.value?.config.agentAvatarUrl || '');
+const selectedAgentAvatarUrl = computed(() => {
+  const fromContext = selectedAgent.value?.config.agentAvatarUrl?.trim();
+  if (fromContext) {
+    return fromContext;
+  }
+
+  const definitionId = selectedAgent.value?.config.agentDefinitionId?.trim();
+  if (!definitionId) {
+    return '';
+  }
+
+  return agentDefinitionStore.getAgentDefinitionById(definitionId)?.avatarUrl?.trim() || '';
+});
 const showHeaderAvatarImage = computed(
   () => Boolean(selectedAgentAvatarUrl.value) && !headerAvatarLoadError.value
 );
@@ -124,4 +138,10 @@ const createNewAgent = () => {
   teamRunConfigStore.clearConfig();
   selectionStore.clearSelection();
 };
+
+onMounted(async () => {
+  if (agentDefinitionStore.agentDefinitions.length === 0) {
+    await agentDefinitionStore.fetchAllAgentDefinitions().catch(() => undefined);
+  }
+});
 </script>
